@@ -1,0 +1,28 @@
+[
+  {
+    "id": "assigned-ex-1764015911604",
+    "exerciseId": "ex-5",
+    "equipment": [
+      "Cable Machine",
+      "Box"
+    ],
+    "createdAt": "2025-11-24T20:25:11.604Z"
+  },
+  {
+    "id": "assigned-ex-1764021484380",
+    "exerciseId": "ex-2",
+    "equipment": [
+      "Dumbbell",
+      "Resistance Band"
+    ],
+    "createdAt": "2025-11-24T21:58:04.380Z"
+  },
+  {
+    "id": "assigned-ex-1764021560011",
+    "exerciseId": "ex-2",
+    "equipment": [
+      "Cable Machine"
+    ],
+    "createdAt": "2025-11-24T21:59:20.011Z"
+  }
+]
