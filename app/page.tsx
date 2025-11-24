@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PATIENTS, MOCK_WORKOUT_WEEKS } from "@/lib/mock-data";
+import { PATIENTS } from "@/lib/mock-data";
 import { Users, TrendingUp, AlertCircle, CheckCircle, Activity } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
