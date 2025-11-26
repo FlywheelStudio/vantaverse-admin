@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlayCircle } from "lucide-react";
 
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
@@ -41,16 +40,16 @@ export function ExerciseDetailModal({
               </DialogDescription>
             </DialogHeader>
 
-            {/* Video Placeholder */}
-            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden group cursor-pointer">
+            {/* Video Player */}
+            <div className="aspect-video bg-muted rounded-lg overflow-hidden">
               {exercise.thumbnailUrl && (
-                <img
+                <video
                   src={exercise.thumbnailUrl}
-                  alt={exercise.name}
-                  className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-40 transition-opacity"
+                  className="w-full h-full object-cover"
+                  controls
+                  playsInline
                 />
               )}
-              <PlayCircle className="w-16 h-16 text-primary z-10" />
             </div>
 
             <div className="space-y-4">

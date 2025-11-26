@@ -25,6 +25,11 @@ export function Header() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter((item) => item !== "");
 
+  // Hide header on assign-program page for single-page app feel
+  if (pathname === "/assign-program") {
+    return null;
+  }
+
   const breadcrumbs = segments.map((segment, index) => {
     const href = `/${segments.slice(0, index + 1).join("/")}`;
     const isLast = index === segments.length - 1;
@@ -59,29 +64,29 @@ export function Header() {
         </Breadcrumb>
 
         <div className="flex items-center gap-x-4">
-            <div className="flex items-center gap-x-2">
-                <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium leading-none">Dr. Sarah Smith</p>
-                    <p className="text-xs text-muted-foreground">Lead Physiologist</p>
-                </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger className="outline-none">
-                         <Avatar>
-                            <AvatarImage src="https://github.com/shadcn.png" />
-                            <AvatarFallback>CN</AvatarFallback>
-                        </Avatar>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>Profile</DropdownMenuItem>
-                        <DropdownMenuItem>Settings</DropdownMenuItem>
-                        <DropdownMenuItem>Team</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">Logout</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+          <div className="flex items-center gap-x-2">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium leading-none">Dr. Sarah Smith</p>
+              <p className="text-xs text-muted-foreground">Lead Physiologist</p>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="outline-none">
+                <Avatar>
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Profile</DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem>Team</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600">Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>

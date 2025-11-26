@@ -145,6 +145,10 @@ export async function getTeamAssignment(teamId: string): Promise<TeamProgramAssi
   return assignments.find(a => a.teamId === teamId) || null;
 }
 
+export async function getAllTeamAssignments(): Promise<TeamProgramAssignment[]> {
+  return await getJsonFile<TeamProgramAssignment[]>("team-assignments.json");
+}
+
 export async function saveTeamAssignment(assignment: TeamProgramAssignment): Promise<void> {
   const assignments = await getJsonFile<TeamProgramAssignment[]>("team-assignments.json");
   

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSidebar } from "@/components/providers/sidebar-provider";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -7,7 +9,6 @@ import {
   LayoutDashboard,
   Users,
   Dumbbell,
-  BarChart3,
   Settings,
   LogOut,
   Menu
@@ -47,31 +48,36 @@ const routes = [
     href: "/assign-program",
     color: "text-green-500",
   },
-  {
-    label: "Analytics",
-    icon: BarChart3,
-    href: "/analytics",
-    color: "text-orange-700",
-  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isCollapsed, toggle } = useSidebar();
 
   return (
-    <div className="space-y-4 py-4 flex flex-col h-full bg-[#111827] text-white">
+    <div className="space-y-4 py-4 flex flex-col h-full bg-[#111827] text-white relative">
       <div className="px-3 py-2 flex-1">
-        <Link href="/" className="flex items-center pl-3 mb-14">
-          <div className="relative w-8 h-8 mr-4">
-            {/* Logo placeholder */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center font-bold text-lg">
-              V
+        <div className="flex items-center justify-between mb-14 pl-3 pr-3">
+          <div
+            onClick={toggle}
+            className={cn(
+              "flex items-center cursor-pointer hover:opacity-80 transition-opacity",
+              isCollapsed && "justify-center w-full"
+            )}
+          >
+            <div className={cn("relative w-8 h-8 flex-shrink-0", !isCollapsed && "mr-4")}>
+              {/* Logo placeholder */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center font-bold text-lg">
+                V
+              </div>
             </div>
+            {!isCollapsed && (
+              <h1 className="text-2xl font-bold transition-opacity duration-300">
+                Vantaverse
+              </h1>
+            )}
           </div>
-          <h1 className="text-2xl font-bold">
-            Vantaverse
-          </h1>
-        </Link>
+        </div>
         <div className="space-y-1">
           {routes.map((route) => (
             <Link
@@ -79,12 +85,21 @@ export function Sidebar() {
               href={route.href}
               className={cn(
                 "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
-                pathname === route.href ? "text-white bg-white/10" : "text-zinc-400"
+                pathname === route.href
+                  ? "text-white bg-white/10"
+                  : "text-zinc-400",
+                isCollapsed && "justify-center px-2"
               )}
             >
-              <div className="flex items-center flex-1">
-                <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
-                {route.label}
+              <div className={cn("flex items-center flex-1", isCollapsed && "justify-center")}>
+                <route.icon
+                  className={cn(
+                    "h-5 w-5",
+                    route.color,
+                    !isCollapsed && "mr-3"
+                  )}
+                />
+                {!isCollapsed && route.label}
               </div>
             </Link>
           ))}
@@ -95,23 +110,29 @@ export function Sidebar() {
           <Link
             href="/settings"
             className={cn(
-              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400"
+              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400",
+              isCollapsed && "justify-center px-2"
             )}
           >
-            <div className="flex items-center flex-1">
-              <Settings className="h-5 w-5 mr-3 text-gray-400" />
-              Settings
+            <div className={cn("flex items-center flex-1", isCollapsed && "justify-center")}>
+              <Settings
+                className={cn("h-5 w-5 text-gray-400", !isCollapsed && "mr-3")}
+              />
+              {!isCollapsed && "Settings"}
             </div>
           </Link>
           <Link
             href="#"
             className={cn(
-              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400"
+              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400",
+              isCollapsed && "justify-center px-2"
             )}
           >
-            <div className="flex items-center flex-1">
-              <LogOut className="h-5 w-5 mr-3 text-gray-400" />
-              Logout
+            <div className={cn("flex items-center flex-1", isCollapsed && "justify-center")}>
+              <LogOut
+                className={cn("h-5 w-5 text-gray-400", !isCollapsed && "mr-3")}
+              />
+              {!isCollapsed && "Logout"}
             </div>
           </Link>
         </div>

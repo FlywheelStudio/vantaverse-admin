@@ -77,53 +77,46 @@ export type WeeklyProgram = {
 export const EXERCISES: Exercise[] = [
   {
     id: "ex-1",
-    name: "Single Leg Squat",
-    thumbnailUrl: "https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=800&auto=format&fit=crop&q=60",
+    name: "MP: Bear Crawl Holds",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044483.mp4",
     instructions: [
-      "Stand on one leg with your other leg extended forward.",
-      "Lower your hips back and down as if sitting in a chair.",
-      "Keep your chest up and your back straight.",
-      "Push through your heel to return to the starting position."
+      "Hold bear crawl position with knees off the ground",
+      "Keep back flat and core tight"
     ],
     equipment: ["Bodyweight"],
-    muscleGroups: ["Quads", "Glutes"],
-    difficulty: "Advanced",
-    category: "Strength",
-    hasWeight: true,
-    hasReps: true,
-    hasTime: false
+    muscleGroups: ["Core", "Shoulders"],
+    difficulty: "Intermediate",
+    category: "Movement Prep",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
   },
   {
     id: "ex-2",
-    name: "Glute Bridge - 2 Leg Up 1 Leg Down",
-    thumbnailUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&auto=format&fit=crop&q=60",
+    name: "Box Jumps",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044488.mp4",
     instructions: [
-      "Lie on your back with knees bent and feet flat on the floor.",
-      "Lift your hips until your body forms a straight line from shoulders to knees.",
-      "Lift one leg off the ground.",
-      "Lower your hips slowly with the supporting leg.",
-      "Return to start and repeat."
+      "Swing arms from front to back, bend knees and hips, and jump onto the box",
+      "Land softly with knees bent"
     ],
-    equipment: ["Mat"],
-    muscleGroups: ["Glutes", "Hamstrings"],
-    difficulty: "Intermediate",
-    category: "Strength",
+    equipment: ["Box"],
+    muscleGroups: ["Quads", "Glutes", "Calves"],
+    difficulty: "Advanced",
+    category: "Plyometrics",
     hasWeight: false,
     hasReps: true,
     hasTime: false
   },
   {
     id: "ex-3",
-    name: "Push Up - Narrow Hand Position",
-    thumbnailUrl: "https://images.unsplash.com/photo-1598971639058-211a742e7279?w=800&auto=format&fit=crop&q=60",
+    name: "Lateral Lunges Bodyweight",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044391.mp4",
     instructions: [
-      "Start in a plank position with hands closer than shoulder-width.",
-      "Lower your body until your chest nearly touches the floor.",
-      "Keep your elbows tucked close to your body.",
-      "Push back up to the starting position."
+      "Step wide to the side, keeping the stepping knee over toes",
+      "Push hips back and keep chest up"
     ],
     equipment: ["Bodyweight"],
-    muscleGroups: ["Chest", "Triceps"],
+    muscleGroups: ["Quads", "Glutes", "Hip Adductors"],
     difficulty: "Intermediate",
     category: "Strength",
     hasWeight: false,
@@ -132,15 +125,30 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: "ex-4",
-    name: "Foam Roll - Latissimus Dorsi",
-    thumbnailUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=60",
+    name: "Standing Hip Hike on Step",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044215.mp4",
     instructions: [
-      "Lie on your side with a foam roller under your armpit.",
-      "Roll slowly down towards your waist and back up.",
-      "Pause on any tight spots."
+      "Stand on a step with one foot hanging off",
+      "Lift hip on the hanging leg side without bending the knee"
     ],
-    equipment: ["Foam Roller"],
-    muscleGroups: ["Lats", "Back"],
+    equipment: ["Step"],
+    muscleGroups: ["Hip Abductors", "Glutes"],
+    difficulty: "Beginner",
+    category: "Mobility",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-5",
+    name: "ITB Stretch Standing",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044384.mp4",
+    instructions: [
+      "Cross one leg behind the other and lean laterally toward the side of the back leg",
+      "Hold the stretch along the side of your hip"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["IT Band", "Hip Flexors"],
     difficulty: "Beginner",
     category: "Recovery",
     hasWeight: false,
@@ -148,106 +156,240 @@ export const EXERCISES: Exercise[] = [
     hasTime: true
   },
   {
-    id: "ex-5",
-    name: "Goblet Squat",
-    thumbnailUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&auto=format&fit=crop&q=60",
-    instructions: [
-      "Hold a kettlebell or dumbbell close to your chest.",
-      "Squat down, keeping your chest up and back straight.",
-      "Go as deep as you can while maintaining good form.",
-      "Stand back up."
-    ],
-    equipment: ["Kettlebell", "Dumbbell"],
-    muscleGroups: ["Quads", "Glutes", "Core"],
-    difficulty: "Intermediate",
-    category: "Strength",
-    hasWeight: true,
-    hasReps: true,
-    hasTime: false
-  },
-  {
     id: "ex-6",
-    name: "Plank",
-    thumbnailUrl: "https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=800&auto=format&fit=crop&q=60",
+    name: "Standing Quadratus Lumborum Stretch with Doorway",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044217.mp4",
     instructions: [
-      "Start in a push-up position but on your forearms.",
-      "Keep your body in a straight line from head to heels.",
-      "Hold the position."
+      "Stand near a doorway and reach the corner of the wall of doorway with both hands",
+      "Lean gently to the side to stretch the lower back"
     ],
-    equipment: ["Bodyweight"],
-    muscleGroups: ["Core"],
+    equipment: ["Doorway"],
+    muscleGroups: ["Lower Back", "Quadratus Lumborum"],
     difficulty: "Beginner",
-    category: "Core",
+    category: "Recovery",
     hasWeight: false,
     hasReps: false,
     hasTime: true
   },
   {
     id: "ex-7",
-    name: "Dumbbell Lunges",
-    thumbnailUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60",
+    name: "Wall Angels",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044263.mp4",
     instructions: [
-      "Stand with dumbbells in each hand.",
-      "Step forward with one leg and lower your hips.",
-      "Both knees should be bent at a 90-degree angle.",
-      "Push back to the starting position."
+      "Stand with back against wall",
+      "Raise arms overhead, sliding them along the wall without arching back"
     ],
-    equipment: ["Dumbbell"],
-    muscleGroups: ["Quads", "Glutes", "Hamstrings"],
-    difficulty: "Intermediate",
-    category: "Strength",
-    hasWeight: true,
-    hasReps: true,
-    hasTime: false
-  },
-  {
-    id: "ex-8",
-    name: "Dead Bug",
-    thumbnailUrl: "https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=800&auto=format&fit=crop&q=60",
-    instructions: [
-      "Lie on your back with arms extended towards the ceiling and legs in tabletop position.",
-      "Lower your right arm behind your head and extend your left leg straight out.",
-      "Return to start and repeat on the other side."
-    ],
-    equipment: ["Mat"],
-    muscleGroups: ["Core"],
+    equipment: ["Wall"],
+    muscleGroups: ["Shoulders", "Upper Back"],
     difficulty: "Beginner",
-    category: "Core",
+    category: "Mobility",
     hasWeight: false,
     hasReps: true,
     hasTime: false
   },
   {
-    id: "ex-9",
-    name: "Face Pulls",
-    thumbnailUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60",
+    id: "ex-8",
+    name: "MP: Child's Pose",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044434.mp4",
     instructions: [
-      "Attach a rope to a cable machine at face height.",
-      "Pull the rope towards your face, separating your hands.",
-      "Squeeze your shoulder blades together.",
-      "Return to start."
+      "On hands and knees, sit back towards your heels while keeping your arms long"
     ],
-    equipment: ["Cable Machine", "Rope"],
-    muscleGroups: ["Shoulders", "Upper Back"],
-    difficulty: "Intermediate",
+    equipment: ["Mat"],
+    muscleGroups: ["Lower Back", "Hip Flexors"],
+    difficulty: "Beginner",
+    category: "Movement Prep",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-9",
+    name: "Mini Lunge",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044418.mp4",
+    instructions: [
+      "Step a small distance forward and lower hips slightly",
+      "Keep back straight and core engaged"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Quads", "Glutes"],
+    difficulty: "Beginner",
     category: "Strength",
-    hasWeight: true,
+    hasWeight: false,
     hasReps: true,
     hasTime: false
   },
   {
     id: "ex-10",
-    name: "Box Jumps",
-    thumbnailUrl: "https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=800&auto=format&fit=crop&q=60",
+    name: "Prone Press-up on Forearms",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044296.mp4",
     instructions: [
-      "Stand in front of a sturdy box.",
-      "Jump onto the box, landing softly with both feet.",
-      "Step down and repeat."
+      "Prop up on forearms, lifting chest",
+      "Keep hips relaxed and breathe deeply"
     ],
-    equipment: ["Box"],
-    muscleGroups: ["Quads", "Glutes", "Calves"],
-    difficulty: "Advanced",
-    category: "Plyometrics",
+    equipment: ["Mat"],
+    muscleGroups: ["Lower Back", "Core"],
+    difficulty: "Beginner",
+    category: "Mobility",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-11",
+    name: "Lower Quarter Reach Combination",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044401.mp4",
+    instructions: [
+      "Perform controlled reaches with your leg in multiple directions while balancing",
+      "Engage core throughout"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Core", "Hip Stabilizers", "Glutes"],
+    difficulty: "Intermediate",
+    category: "Balance",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-12",
+    name: "Standing Bent Over Row BW",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044363.mp4",
+    instructions: [
+      "Stand tall with elbows at sides",
+      "Rotate arms outward while squeezing shoulder blades together"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Upper Back", "Shoulders", "Rhomboids"],
+    difficulty: "Intermediate",
+    category: "Strength",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-13",
+    name: "Wall Child's Pose",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044264.mp4",
+    instructions: [
+      "Stand facing a wall, bend at hips with arms extended against the wall",
+      "Press chest toward the floor"
+    ],
+    equipment: ["Wall"],
+    muscleGroups: ["Lower Back", "Hip Flexors", "Shoulders"],
+    difficulty: "Beginner",
+    category: "Recovery",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-14",
+    name: "Supine Piriformis Stretch Cross-body",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044237.mp4",
+    instructions: [
+      "Lie on back and one knee bent",
+      "Grab the bent knee toward your oppisite shoulder",
+      "Keep your back flat on the floor"
+    ],
+    equipment: ["Mat"],
+    muscleGroups: ["Piriformis", "Hip Rotators", "Glutes"],
+    difficulty: "Beginner",
+    category: "Recovery",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-15",
+    name: "MP: Third Trimester",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044244.mp4",
+    instructions: [
+      "Breathe deeply and relax pelvic floor muscles",
+      "Avoid bearing down forcefully"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Core", "Pelvic Floor"],
+    difficulty: "Beginner",
+    category: "Movement Prep",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-16",
+    name: "Supine Bridge",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044235.mp4",
+    instructions: [
+      "Lie on back with knees bent",
+      "Push through heels to lift hips while squeezing glutes"
+    ],
+    equipment: ["Mat"],
+    muscleGroups: ["Glutes", "Hamstrings", "Lower Back"],
+    difficulty: "Beginner",
+    category: "Strength",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-17",
+    name: "Lumbar Flexion AROM Standing",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044407.mp4",
+    instructions: [
+      "Cross your arms at your chest, bend forward slowly",
+      "Keep knees straight and avoid bouncing"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Lower Back", "Hamstrings"],
+    difficulty: "Beginner",
+    category: "Mobility",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-18",
+    name: "MP: Labor Positions",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044390.mp4",
+    instructions: [
+      "Practice different positions (e.g., hands and knees, squatting) to find comfortable labor postures"
+    ],
+    equipment: ["Bodyweight"],
+    muscleGroups: ["Core", "Hip Flexors", "Glutes"],
+    difficulty: "Beginner",
+    category: "Movement Prep",
+    hasWeight: false,
+    hasReps: false,
+    hasTime: true
+  },
+  {
+    id: "ex-19",
+    name: "MP: Step-ups",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044228.mp4",
+    instructions: [
+      "Step onto a platform, pushing through the heel of leading foot",
+      "Keep torso upright"
+    ],
+    equipment: ["Step", "Platform"],
+    muscleGroups: ["Quads", "Glutes"],
+    difficulty: "Intermediate",
+    category: "Movement Prep",
+    hasWeight: false,
+    hasReps: true,
+    hasTime: false
+  },
+  {
+    id: "ex-20",
+    name: "Thoracic Extension AROM Hands Behind Head Seated",
+    thumbnailUrl: "https://rijathaquzmuxtuipenz.supabase.co/storage/v1/object/public/workout_videos/videos/1044245.mp4",
+    instructions: [
+      "Sit tall with hands behind neck",
+      "Gently arch upper back without pulling on the neck"
+    ],
+    equipment: ["Chair"],
+    muscleGroups: ["Upper Back", "Thoracic Spine"],
+    difficulty: "Beginner",
+    category: "Mobility",
     hasWeight: false,
     hasReps: true,
     hasTime: false

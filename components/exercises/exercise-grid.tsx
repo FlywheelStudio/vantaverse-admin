@@ -10,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Dumbbell } from "lucide-react";
+import { Search, Dumbbell } from "lucide-react";
 import { ExerciseDetailModal } from "./exercise-detail-modal";
 import { AssignmentModal } from "./assignment-modal";
 import { toast } from "sonner";
@@ -117,12 +117,14 @@ export function ExerciseGrid() {
               className="overflow-hidden cursor-pointer hover:border-primary transition-colors group"
               onClick={() => handleExerciseClick(ex)}
             >
-              <div className="aspect-video relative bg-muted">
+              <div className="aspect-video relative bg-muted overflow-hidden">
                 {ex.thumbnailUrl && (
-                  <img
+                  <video
                     src={ex.thumbnailUrl}
-                    alt={ex.name}
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover w-full h-full"
+                    muted
+                    loop
+                    playsInline
                   />
                 )}
                 <div className="absolute top-2 right-2">
