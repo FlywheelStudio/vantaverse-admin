@@ -1,15 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
+import { initializeStorage } from "@/lib/storage-init";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const { isCollapsed } = useSidebar();
     const pathname = usePathname();
     const isAssignProgramPage = pathname === "/assign-program";
+
+    // Initialize localStorage on app startup
+    useEffect(() => {
+        initializeStorage();
+    }, []);
 
     return (
         <div className="flex h-full min-h-screen bg-background">

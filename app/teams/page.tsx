@@ -1,12 +1,19 @@
-import { getTeams } from './actions';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getTeamsAction } from './actions';
 import { PATIENTS } from '@/lib/mock-data';
 import { TeamsView } from '@/components/teams/teams-view';
+import { Team } from '@/lib/mock-data';
 
-export default async function TeamsPage() {
-    const teams = await getTeams();
-    // In a real app, we'd fetch patients from DB too. 
-    // For now, we use the mock data but we need to merge the team assignments from the JSON file if we want persistence there.
-    // However, our actions update the teams.json with patientIds, so we can just use PATIENTS and map them in the view.
+export default function TeamsPage() {
+    const [teams, setTeams] = useState<Team[]>([]);
+
+    useEffect(() => {
+        // Load teams from localStorage on mount
+        const loadedTeams = getTeamsAction();
+        setTeams(loadedTeams);
+    }, []);
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">

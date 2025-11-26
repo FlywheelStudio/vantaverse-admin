@@ -26,9 +26,9 @@ export default function AssignProgramPage() {
     }, [setCollapsed]);
 
     useEffect(() => {
-        getTeamsAction().then(setTeams);
-        getAllTeamAssignments().then(setAssignments);
-        getAllPrograms().then(setPrograms);
+        setTeams(getTeamsAction());
+        setAssignments(getAllTeamAssignments());
+        setPrograms(getAllPrograms());
     }, []);
 
     // Calculate program stats based on assignments
@@ -78,7 +78,7 @@ export default function AssignProgramPage() {
         setViewMode("builder");
     };
 
-    const handleAssignProgram = async (programId: string, teamId: string) => {
+    const handleAssignProgram = (programId: string, teamId: string) => {
         const team = teams.find((t) => t.id === teamId);
         const program = programs.find((p) => p.id === programId);
         
@@ -100,7 +100,7 @@ export default function AssignProgramPage() {
                 exerciseSets: [],
             };
 
-            await saveTeamAssignment(assignment);
+            saveTeamAssignment(assignment);
             
             // Update local state
             setAssignments(prev => {
@@ -120,7 +120,7 @@ export default function AssignProgramPage() {
         toast.success("Program saved successfully!");
         setViewMode("management");
         // Refresh programs
-        getAllPrograms().then(setPrograms);
+        setPrograms(getAllPrograms());
     };
 
     return (

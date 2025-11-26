@@ -1,6 +1,20 @@
-"use server";
+"use client";
 
-import { getJsonFile, updateJsonFile } from "@/lib/storage";
+import {
+  getTeams,
+  getPrograms,
+  updatePrograms,
+  getPhases,
+  updatePhases,
+  getBlocks,
+  updateBlocks,
+  getAssignedExercises,
+  updateAssignedExercises,
+  getExerciseSets,
+  updateExerciseSets,
+  getTeamAssignments,
+  updateTeamAssignments,
+} from "@/lib/storage-client";
 import {
   ProgramTemplate,
   PhaseTemplate,
@@ -20,16 +34,16 @@ import { Team } from "@/lib/mock-data";
 // TEAMS
 // ============================================================================
 
-export async function getTeamsAction(): Promise<Team[]> {
-  return await getJsonFile<Team[]>("teams.json");
+export function getTeamsAction(): Team[] {
+  return getTeams();
 }
 
 // ============================================================================
 // UPSERT FUNCTIONS (Find existing or create new)
 // ============================================================================
 
-export async function upsertProgram(name: string, description: string): Promise<ProgramTemplate> {
-  const programs = await getJsonFile<ProgramTemplate[]>("programs.json");
+export function upsertProgram(name: string, description: string): ProgramTemplate {
+  const programs = getPrograms();
   
   // Find existing by name and description
   const existing = programs.find(p => p.name === name && p.description === description);
@@ -44,12 +58,12 @@ export async function upsertProgram(name: string, description: string): Promise<
     updatedAt: new Date().toISOString(),
   };
   
-  await updateJsonFile("programs.json", [...programs, newProgram]);
+  updatePrograms([...programs, newProgram]);
   return newProgram;
 }
 
-export async function upsertPhase(title: string): Promise<PhaseTemplate> {
-  const phases = await getJsonFile<PhaseTemplate[]>("phases.json");
+export function upsertPhase(title: string): PhaseTemplate {
+  const phases = getPhases();
   
   const existing = phases.find(p => p.title === title);
   if (existing) return existing;
@@ -60,12 +74,12 @@ export async function upsertPhase(title: string): Promise<PhaseTemplate> {
     createdAt: new Date().toISOString(),
   };
   
-  await updateJsonFile("phases.json", [...phases, newPhase]);
+  updatePhases([...phases, newPhase]);
   return newPhase;
 }
 
-export async function upsertBlock(name: string, isSuperset: boolean): Promise<BlockTemplate> {
-  const blocks = await getJsonFile<BlockTemplate[]>("blocks.json");
+export function upsertBlock(name: string, isSuperset: boolean): BlockTemplate {
+  const blocks = getBlocks();
   
   const existing = blocks.find(b => b.name === name && b.isSuperset === isSuperset);
   if (existing) return existing;
@@ -77,15 +91,15 @@ export async function upsertBlock(name: string, isSuperset: boolean): Promise<Bl
     createdAt: new Date().toISOString(),
   };
   
-  await updateJsonFile("blocks.json", [...blocks, newBlock]);
+  updateBlocks([...blocks, newBlock]);
   return newBlock;
 }
 
-export async function upsertAssignedExercise(
+export function upsertAssignedExercise(
   exerciseId: string,
   equipment: string[]
-): Promise<AssignedExerciseTemplate> {
-  const exercises = await getJsonFile<AssignedExerciseTemplate[]>("assigned-exercises.json");
+): AssignedExerciseTemplate {
+  const exercises = getAssignedExercises();
   
   const existing = exercises.find(
     e => e.exerciseId === exerciseId && 
@@ -100,18 +114,18 @@ export async function upsertAssignedExercise(
     createdAt: new Date().toISOString(),
   };
   
-  await updateJsonFile("assigned-exercises.json", [...exercises, newExercise]);
+  updateAssignedExercises([...exercises, newExercise]);
   return newExercise;
 }
 
-export async function upsertExerciseSet(
+export function upsertExerciseSet(
   setNumber: number,
   reps?: number,
   time?: number,
   rest?: number,
   notes?: string
-): Promise<ExerciseSetTemplate> {
-  const sets = await getJsonFile<ExerciseSetTemplate[]>("exercise-sets.json");
+): ExerciseSetTemplate {
+  const sets = getExerciseSets();
   
   const existing = sets.find(
     s => s.setNumber === setNumber &&
@@ -132,7 +146,7 @@ export async function upsertExerciseSet(
     createdAt: new Date().toISOString(),
   };
   
-  await updateJsonFile("exercise-sets.json", [...sets, newSet]);
+  updateExerciseSets([...sets, newSet]);
   return newSet;
 }
 
@@ -140,17 +154,17 @@ export async function upsertExerciseSet(
 // TEAM ASSIGNMENT FUNCTIONS
 // ============================================================================
 
-export async function getTeamAssignment(teamId: string): Promise<TeamProgramAssignment | null> {
-  const assignments = await getJsonFile<TeamProgramAssignment[]>("team-assignments.json");
+export function getTeamAssignment(teamId: string): TeamProgramAssignment | null {
+  const assignments = getTeamAssignments();
   return assignments.find(a => a.teamId === teamId) || null;
 }
 
-export async function getAllTeamAssignments(): Promise<TeamProgramAssignment[]> {
-  return await getJsonFile<TeamProgramAssignment[]>("team-assignments.json");
+export function getAllTeamAssignments(): TeamProgramAssignment[] {
+  return getTeamAssignments();
 }
 
-export async function saveTeamAssignment(assignment: TeamProgramAssignment): Promise<void> {
-  const assignments = await getJsonFile<TeamProgramAssignment[]>("team-assignments.json");
+export function saveTeamAssignment(assignment: TeamProgramAssignment): void {
+  const assignments = getTeamAssignments();
   
   const existingIndex = assignments.findIndex(a => a.teamId === assignment.teamId);
   
@@ -160,22 +174,22 @@ export async function saveTeamAssignment(assignment: TeamProgramAssignment): Pro
     assignments.push(assignment);
   }
   
-  await updateJsonFile("team-assignments.json", assignments);
+  updateTeamAssignments(assignments);
 }
 
 // ============================================================================
 // LOAD FULL PROGRAM STRUCTURE FOR A TEAM
 // ============================================================================
 
-export async function loadTeamProgramStructure(teamId: string): Promise<FullProgramStructure | null> {
-  const assignment = await getTeamAssignment(teamId);
+export function loadTeamProgramStructure(teamId: string): FullProgramStructure | null {
+  const assignment = getTeamAssignment(teamId);
   if (!assignment) return null;
   
-  const programs = await getJsonFile<ProgramTemplate[]>("programs.json");
-  const phases = await getJsonFile<PhaseTemplate[]>("phases.json");
-  const blocks = await getJsonFile<BlockTemplate[]>("blocks.json");
-  const exercises = await getJsonFile<AssignedExerciseTemplate[]>("assigned-exercises.json");
-  const sets = await getJsonFile<ExerciseSetTemplate[]>("exercise-sets.json");
+  const programs = getPrograms();
+  const phases = getPhases();
+  const blocks = getBlocks();
+  const exercises = getAssignedExercises();
+  const sets = getExerciseSets();
   
   const program = programs.find(p => p.id === assignment.programId);
   if (!program) return null;
@@ -226,14 +240,14 @@ export async function loadTeamProgramStructure(teamId: string): Promise<FullProg
 // GET ALL PROGRAMS (for template selection)
 // ============================================================================
 
-export async function getAllPrograms(): Promise<ProgramTemplate[]> {
-  return await getJsonFile<ProgramTemplate[]>("programs.json");
+export function getAllPrograms(): ProgramTemplate[] {
+  return getPrograms();
 }
 
-export async function getAllPhases(): Promise<PhaseTemplate[]> {
-  return await getJsonFile<PhaseTemplate[]>("phases.json");
+export function getAllPhases(): PhaseTemplate[] {
+  return getPhases();
 }
 
-export async function getAllBlocks(): Promise<BlockTemplate[]> {
-  return await getJsonFile<BlockTemplate[]>("blocks.json");
+export function getAllBlocks(): BlockTemplate[] {
+  return getBlocks();
 }

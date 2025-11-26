@@ -86,10 +86,10 @@ export function TeamsView({ initialTeams, patients }: TeamsViewProps) {
         router.refresh();
     };
 
-    const handleCreateTeam = async () => {
+    const handleCreateTeam = () => {
         if (!newTeamName.trim()) return;
         try {
-            const newTeam = await createTeam(newTeamName);
+            const newTeam = createTeam(newTeamName);
             setTeams([...teams, newTeam]);
             setIsCreateDialogOpen(false);
             setNewTeamName('');
@@ -103,7 +103,7 @@ export function TeamsView({ initialTeams, patients }: TeamsViewProps) {
         setActiveDragId(event.active.id);
     };
 
-    const handleDragEnd = async (event: DragEndEvent) => {
+    const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveDragId(null);
 
@@ -122,7 +122,7 @@ export function TeamsView({ initialTeams, patients }: TeamsViewProps) {
             }
 
             if (ids.length && over.id) {
-                await assignMultiplePatientsToTeam(over.id as string, ids);
+                assignMultiplePatientsToTeam(over.id as string, ids);
                 setTeams(prev =>
                     prev.map(t =>
                         t.id === over.id ? { ...t, patientIds: Array.from(new Set([...t.patientIds, ...ids])) } : t
@@ -140,13 +140,13 @@ export function TeamsView({ initialTeams, patients }: TeamsViewProps) {
         setSelectedPatientIds(prev => (checked ? [...prev, patientId] : prev.filter(id => id !== patientId)));
     };
 
-    const handleSheetAssign = async (patientIds: string[]) => {
+    const handleSheetAssign = (patientIds: string[]) => {
         if (!activeTeamId) {
             toast.error('No active team selected');
             return;
         }
         try {
-            await assignMultiplePatientsToTeam(activeTeamId, patientIds);
+            assignMultiplePatientsToTeam(activeTeamId, patientIds);
             setTeams(prev =>
                 prev.map(t =>
                     t.id === activeTeamId ? { ...t, patientIds: Array.from(new Set([...t.patientIds, ...patientIds])) } : t

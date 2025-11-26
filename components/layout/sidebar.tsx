@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { toast } from "sonner";
+import { resetToDefaults } from "@/lib/storage-client";
 
 const routes = [
   {
@@ -53,6 +55,16 @@ const routes = [
 export function Sidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebar();
+
+  const handleResetSettings = () => {
+    try {
+      resetToDefaults();
+      toast.success("Local storage reset to default values");
+    } catch (error) {
+      toast.error("Failed to reset local storage");
+      console.error(error);
+    }
+  };
 
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-[#111827] text-white relative">
@@ -107,8 +119,8 @@ export function Sidebar() {
       </div>
       <div className="px-3 py-2">
         <div className="space-y-1">
-          <Link
-            href="/settings"
+          <button
+            onClick={handleResetSettings}
             className={cn(
               "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400",
               isCollapsed && "justify-center px-2"
@@ -120,7 +132,7 @@ export function Sidebar() {
               />
               {!isCollapsed && "Settings"}
             </div>
-          </Link>
+          </button>
           <Link
             href="#"
             className={cn(

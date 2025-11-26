@@ -1,17 +1,14 @@
-'use server'
+'use client'
 
-import { getJsonFile, updateJsonFile } from '@/lib/storage';
+import { getTeams, updateTeams } from '@/lib/storage-client';
 import { Team } from '@/lib/mock-data';
-import { revalidatePath } from 'next/cache';
 
-const TEAMS_FILE = 'teams.json';
-
-export async function getTeams(): Promise<Team[]> {
-  return getJsonFile<Team[]>(TEAMS_FILE);
+export function getTeamsAction(): Team[] {
+  return getTeams();
 }
 
-export async function createTeam(name: string): Promise<Team> {
-  const teams = await getTeams();
+export function createTeam(name: string): Team {
+  const teams = getTeams();
   const newTeam: Team = {
     id: `team-${Date.now()}`,
     name,
@@ -19,13 +16,12 @@ export async function createTeam(name: string): Promise<Team> {
     createdAt: new Date().toISOString(),
   };
   
-  await updateJsonFile(TEAMS_FILE, [...teams, newTeam]);
-  revalidatePath('/teams');
+  updateTeams([...teams, newTeam]);
   return newTeam;
 }
 
-export async function assignPatientToTeam(teamId: string, patientId: string): Promise<void> {
-  const teams = await getTeams();
+export function assignPatientToTeam(teamId: string, patientId: string): void {
+  const teams = getTeams();
   const updatedTeams = teams.map(team => {
     if (team.id === teamId) {
       // Add patient if not already in team
@@ -37,12 +33,11 @@ export async function assignPatientToTeam(teamId: string, patientId: string): Pr
     return team;
   });
 
-  await updateJsonFile(TEAMS_FILE, updatedTeams);
-  revalidatePath('/teams');
+  updateTeams(updatedTeams);
 }
 
-export async function assignMultiplePatientsToTeam(teamId: string, patientIds: string[]): Promise<void> {
-  const teams = await getTeams();
+export function assignMultiplePatientsToTeam(teamId: string, patientIds: string[]): void {
+  const teams = getTeams();
   const updatedTeams = teams.map(team => {
     if (team.id === teamId) {
       // Add new patients, avoiding duplicates
@@ -53,6 +48,5 @@ export async function assignMultiplePatientsToTeam(teamId: string, patientIds: s
     return team;
   });
 
-  await updateJsonFile(TEAMS_FILE, updatedTeams);
-  revalidatePath('/teams');
+  updateTeams(updatedTeams);
 }

@@ -39,20 +39,20 @@ export function useProgramAssignment(teamId?: string) {
   useEffect(() => {
     if (!teamId) return;
     
-    loadTeamProgramStructure(teamId).then((structure) => {
-      if (!structure) {
-        // No assignment yet, reset everything
-        setProgram(undefined);
-        setProgramPhases([]);
-        setPhaseBlocks([]);
-        setBlockExercises([]);
-        setExerciseSets([]);
-        setPhases([]);
-        setBlocks([]);
-        setExercises([]);
-        setSets([]);
-        return;
-      }
+    const structure = loadTeamProgramStructure(teamId);
+    if (!structure) {
+      // No assignment yet, reset everything
+      setProgram(undefined);
+      setProgramPhases([]);
+      setPhaseBlocks([]);
+      setBlockExercises([]);
+      setExerciseSets([]);
+      setPhases([]);
+      setBlocks([]);
+      setExercises([]);
+      setSets([]);
+      return;
+    }
       
       // Load the structure
       setProgram(structure.program);
@@ -102,19 +102,18 @@ export function useProgramAssignment(teamId?: string) {
         });
       });
       
-      setPhases(allPhases);
-      setBlocks(allBlocks);
-      setExercises(allExercises);
-      setSets(allSets);
-      setProgramPhases(ppRels);
-      setPhaseBlocks(pbRels);
-      setBlockExercises(beRels);
-      setExerciseSets(esRels);
-    });
+    setPhases(allPhases);
+    setBlocks(allBlocks);
+    setExercises(allExercises);
+    setSets(allSets);
+    setProgramPhases(ppRels);
+    setPhaseBlocks(pbRels);
+    setBlockExercises(beRels);
+    setExerciseSets(esRels);
   }, [teamId]);
 
   // Save assignment
-  const saveAssignment = useCallback(async () => {
+  const saveAssignment = useCallback(() => {
     if (!teamId || !program) return;
     
     const assignment: TeamProgramAssignment = {
@@ -128,14 +127,14 @@ export function useProgramAssignment(teamId?: string) {
       exerciseSets,
     };
     
-    await saveTeamAssignment(assignment);
+    saveTeamAssignment(assignment);
   }, [teamId, program, programPhases, phaseBlocks, blockExercises, exerciseSets]);
 
   // Add phase to program
-  const addPhase = useCallback(async (title: string) => {
+  const addPhase = useCallback((title: string) => {
     if (!program) return;
     
-    const phase = await upsertPhase(title);
+    const phase = upsertPhase(title);
     setPhases(prev => [...prev, phase]);
     
     const newRel: ProgramPhaseRelation = {
@@ -147,8 +146,8 @@ export function useProgramAssignment(teamId?: string) {
   }, [program, programPhases.length]);
 
   // Add block to phase
-  const addBlock = useCallback(async (phaseId: string, name: string, isSuperset: boolean) => {
-    const block = await upsertBlock(name, isSuperset);
+  const addBlock = useCallback((phaseId: string, name: string, isSuperset: boolean) => {
+    const block = upsertBlock(name, isSuperset);
     setBlocks(prev => [...prev, block]);
     
     const currentBlocks = phaseBlocks.filter(pb => pb.phaseId === phaseId);
@@ -163,8 +162,8 @@ export function useProgramAssignment(teamId?: string) {
   }, [phaseBlocks]);
 
   // Add exercise to block
-  const addExercise = useCallback(async (blockId: string, exerciseId: string, equipment: string[]) => {
-    const exercise = await upsertAssignedExercise(exerciseId, equipment);
+  const addExercise = useCallback((blockId: string, exerciseId: string, equipment: string[]) => {
+    const exercise = upsertAssignedExercise(exerciseId, equipment);
     setExercises(prev => [...prev, exercise]);
     
     const currentExercises = blockExercises.filter(be => be.blockId === blockId);
@@ -179,7 +178,7 @@ export function useProgramAssignment(teamId?: string) {
   }, [blockExercises]);
 
   // Add set to exercise
-  const addSet = useCallback(async (
+  const addSet = useCallback((
     exerciseId: string,
     setNumber: number,
     reps?: number,
@@ -187,7 +186,7 @@ export function useProgramAssignment(teamId?: string) {
     rest?: number,
     notes?: string
   ) => {
-    const set = await upsertExerciseSet(setNumber, reps, time, rest, notes);
+    const set = upsertExerciseSet(setNumber, reps, time, rest, notes);
     setSets(prev => [...prev, set]);
     
     const currentSets = exerciseSets.filter(es => es.exerciseId === exerciseId);
@@ -202,7 +201,7 @@ export function useProgramAssignment(teamId?: string) {
   }, [exerciseSets]);
 
   // Delete phase from program
-  const deletePhase = useCallback(async (phaseId: string) => {
+  const deletePhase = useCallback((phaseId: string) => {
     if (!program) return;
     
     // Remove the phase
@@ -235,7 +234,7 @@ export function useProgramAssignment(teamId?: string) {
   }, [program, phaseBlocks, blockExercises, exerciseSets]);
 
   // Reorder phases
-  const reorderPhases = useCallback(async (phaseIds: string[]) => {
+  const reorderPhases = useCallback((phaseIds: string[]) => {
     if (!program) return;
     
     // Update the order in programPhases relations
