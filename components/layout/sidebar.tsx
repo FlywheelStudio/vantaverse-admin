@@ -11,13 +11,13 @@ import {
   Dumbbell,
   Settings,
   LogOut,
-  Menu
+  Menu,
+  FileBarChart,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
-import { toast } from "sonner";
-import { resetToDefaults } from "@/lib/storage-client";
 
 const routes = [
   {
@@ -50,21 +50,24 @@ const routes = [
     href: "/assign-program",
     color: "text-green-500",
   },
+  {
+    label: "Reports & Data",
+    icon: FileBarChart,
+    href: "/reports",
+    color: "text-orange-500",
+  },
+  {
+    label: "Messaging",
+    icon: MessageSquare,
+    href: "/messaging",
+    color: "text-blue-500",
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebar();
 
-  const handleResetSettings = () => {
-    try {
-      resetToDefaults();
-      toast.success("Local storage reset to default values");
-    } catch (error) {
-      toast.error("Failed to reset local storage");
-      console.error(error);
-    }
-  };
 
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-[#111827] text-white relative">
@@ -119,10 +122,13 @@ export function Sidebar() {
       </div>
       <div className="px-3 py-2">
         <div className="space-y-1">
-          <button
-            onClick={handleResetSettings}
+          <Link
+            href="/settings"
             className={cn(
-              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition text-zinc-400",
+              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
+              pathname === "/settings"
+                ? "text-white bg-white/10"
+                : "text-zinc-400",
               isCollapsed && "justify-center px-2"
             )}
           >
@@ -132,7 +138,7 @@ export function Sidebar() {
               />
               {!isCollapsed && "Settings"}
             </div>
-          </button>
+          </Link>
           <Link
             href="#"
             className={cn(

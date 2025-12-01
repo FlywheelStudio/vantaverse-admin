@@ -61,7 +61,6 @@ export function ProgramWeekCard({
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDayId, setActiveDayId] = useState<DayOfWeek | null>(null);
     const [expandedDays, setExpandedDays] = useState<Set<DayOfWeek>>(new Set());
-    const [hoveredDay, setHoveredDay] = useState<DayOfWeek | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -137,14 +136,6 @@ export function ProgramWeekCard({
         }
 
         setActiveId(null);
-        // Clean up expanded state if not hovering
-        if (hoveredDay !== day) {
-            setExpandedDays(prev => {
-                const next = new Set(prev);
-                next.delete(day);
-                return next;
-            });
-        }
     };
 
     const handleDayDragStart = (event: DragStartEvent) => {
@@ -176,17 +167,35 @@ export function ProgramWeekCard({
             });
         }
 
-        const draggedDay = active.id as DayOfWeek;
         setActiveDayId(null);
-        // Clean up expanded state if not hovering
-        if (hoveredDay !== draggedDay) {
-            setExpandedDays(prev => {
-                const next = new Set(prev);
-                next.delete(draggedDay);
-                return next;
-            });
+    };
+
+    const handleDayClick = (day: DayOfWeek, e: React.MouseEvent) => {
+        // Don't toggle if clicking on interactive elements
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('[role="button"]') || target.closest('.cursor-grab')) {
+            return;
+        }
+
+        setExpandedDays(prev => {
+            const next = new Set(prev);
+            if (next.has(day)) {
+                next.delete(day);
+            } else {
+                next.add(day);
+            }
+            return next;
+        });
+    };
+
+    const handleOverlayClick = (e: React.MouseEvent) => {
+        // Only close if clicking directly on the overlay, not on cards
+        if (e.target === e.currentTarget) {
+            setExpandedDays(new Set());
         }
     };
+
+    const hasExpandedDays = expandedDays.size > 0;
 
     return (
         <DndContext
@@ -195,23 +204,39 @@ export function ProgramWeekCard({
             onDragStart={handleDayDragStart}
             onDragEnd={handleDayDragEnd}
         >
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-                {DAYS.map((day) => {
-                    const isDraggingAny = activeId !== null || activeDayId !== null;
-                    const isExpanded = expandedDays.has(day) || hoveredDay === day || (isDraggingAny && (assignments[day].length > 0 || activeDayId === day));
-                    const hasExercises = assignments[day].length > 0;
-                    
-                    return (
-                        <Card
-                            key={day}
-                            className={cn(
-                                "flex-shrink-0 snap-center border-2 bg-card/80 backdrop-blur-sm transition-all",
-                                hasExercises ? "border-indigo-500/50 bg-indigo-500/10" : "border-border",
-                                isExpanded ? "min-w-[200px]" : "min-w-[120px]"
-                            )}
-                            onMouseEnter={() => setHoveredDay(day)}
-                            onMouseLeave={() => setHoveredDay(null)}
-                        >
+            <div className="relative">
+                {/* Invisible overlay that appears when any card is expanded */}
+                <AnimatePresence>
+                    {hasExpandedDays && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 z-10 bg-black/0"
+                            onClick={handleOverlayClick}
+                            style={{ pointerEvents: 'auto' }}
+                        />
+                    )}
+                </AnimatePresence>
+
+                <div className="flex gap-4 overflow-x-auto pb-4 snap-x relative z-20">
+                    {DAYS.map((day) => {
+                        const isDraggingAny = activeId !== null || activeDayId !== null;
+                        const isExpanded = expandedDays.has(day) || (isDraggingAny && (assignments[day].length > 0 || activeDayId === day));
+                        const hasExercises = assignments[day].length > 0;
+                        
+                        return (
+                            <Card
+                                key={day}
+                                className={cn(
+                                    "flex-shrink-0 snap-center border-2 bg-card/80 backdrop-blur-sm transition-all relative z-30",
+                                    hasExercises ? "border-indigo-500/50 bg-indigo-500/10" : "border-border",
+                                    isExpanded ? "min-w-[200px]" : "min-w-[120px]",
+                                    "cursor-pointer"
+                                )}
+                                onClick={(e) => handleDayClick(day, e)}
+                            >
                             <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
                                 <DraggableDayTitle day={day} />
                                 <AnimatePresence>
@@ -325,6 +350,7 @@ export function ProgramWeekCard({
                         </Card>
                     );
                 })}
+                </div>
             </div>
             <DragOverlay>
                 {activeDayId ? (
@@ -424,7 +450,10 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <div className="bg-card/90 backdrop-blur-sm p-3 rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow group relative cursor-grab active:cursor-grabbing">
+                <div 
+                    className="bg-card/90 backdrop-blur-sm p-3 rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow group relative cursor-grab active:cursor-grabbing"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
                             {index}
@@ -466,8 +495,12 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
                     </button>
                 </div>
             </PopoverTrigger>
-            <PopoverContent className="w-80">
-                <div className="space-y-4">
+            <PopoverContent 
+                className="w-80"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
+                <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
                     <h4 className="font-medium leading-none">Edit Exercise Details</h4>
                     <div className="grid gap-4 py-2">
                         <div className="grid grid-cols-3 items-center gap-4">
@@ -478,6 +511,7 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
                                 value={exercise.sets}
                                 onChange={(e) => onUpdate({ sets: parseInt(e.target.value) })}
                                 className="col-span-2 h-8"
+                                onClick={(e) => e.stopPropagation()}
                             />
                         </div>
                         <div className="grid grid-cols-3 items-center gap-4">
@@ -487,6 +521,7 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
                                 value={exercise.reps || ""}
                                 onChange={(e) => onUpdate({ reps: e.target.value })}
                                 className="col-span-2 h-8"
+                                onClick={(e) => e.stopPropagation()}
                             />
                         </div>
                         <div className="grid grid-cols-3 items-center gap-4">
@@ -497,6 +532,7 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
                                 onChange={(e) => onUpdate({ time: e.target.value })}
                                 className="col-span-2 h-8"
                                 placeholder="e.g. 30s"
+                                onClick={(e) => e.stopPropagation()}
                             />
                         </div>
                         <div className="grid grid-cols-3 items-center gap-4">
@@ -505,7 +541,10 @@ function ExerciseCard({ exercise, index, onRemove, onUpdate }: { exercise: Assig
                                 value={exercise.equipment?.[0] || ""}
                                 onValueChange={(value) => onUpdate({ equipment: value ? [value] : [] })}
                             >
-                                <SelectTrigger className="col-span-2 h-8">
+                                <SelectTrigger 
+                                    className="col-span-2 h-8"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <SelectValue placeholder="Select equipment" />
                                 </SelectTrigger>
                                 <SelectContent side="top">
