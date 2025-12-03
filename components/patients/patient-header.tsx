@@ -1,17 +1,20 @@
 "use client";
 
+import * as React from "react";
 import { Patient } from "@/lib/mock-data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare } from "lucide-react";
+import { PatientConversationSheet } from "./patient-conversation-sheet";
 
 interface PatientHeaderProps {
   patient: Patient;
 }
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
+  const [isConversationOpen, setIsConversationOpen] = React.useState(false);
   const complianceColor =
     patient.compliancePercent >= 80
       ? "text-green-500"
@@ -20,30 +23,29 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
       : "text-red-500";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={patient.avatarUrl} />
-            <AvatarFallback className="text-xl">
-              {patient.firstName[0]}
-              {patient.lastName[0]}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold">
-              {patient.firstName} {patient.lastName}
-            </h1>
-            <p className="text-muted-foreground">{patient.email}</p>
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={patient.avatarUrl} />
+              <AvatarFallback className="text-xl">
+                {patient.firstName[0]}
+                {patient.lastName[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-3xl font-bold">
+                {patient.firstName} {patient.lastName}
+              </h1>
+              <p className="text-muted-foreground">{patient.email}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline">Message</Button>
-          <Button>
-            View in Bridge Athletics <ExternalLink className="ml-2 h-4 w-4" />
+          <Button onClick={() => setIsConversationOpen(true)}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Message
           </Button>
         </div>
-      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -104,6 +106,12 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
           </CardContent>
         </Card>
       </div>
+      <PatientConversationSheet
+        open={isConversationOpen}
+        onOpenChange={setIsConversationOpen}
+        patient={patient}
+      />
     </div>
+    </>
   );
 }

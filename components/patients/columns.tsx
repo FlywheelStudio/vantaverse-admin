@@ -17,8 +17,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 
-export const columns: ColumnDef<Patient>[] = [
+export function createColumns(onMessageClick?: (patient: Patient) => void): ColumnDef<Patient>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -105,7 +107,7 @@ export const columns: ColumnDef<Patient>[] = [
 
       return (
         <div className="flex items-center gap-x-2">
-          <div className="w-full bg-secondary h-2 rounded-full w-[60px]">
+          <div className="w-[60px] bg-secondary h-2 rounded-full">
             <div
               className={`h-2 rounded-full ${color}`}
               style={{ width: `${compliance}%` }}
@@ -152,28 +154,52 @@ export const columns: ColumnDef<Patient>[] = [
       const patient = row.original;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(patient.id)}
-            >
-              Copy patient ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-                <Link href={`/patients/${patient.id}`}>View details</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>View program</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="h-8 w-8 p-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(patient.id);
+                }}
+              >
+                Copy patient ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                  <Link href={`/patients/${patient.id}`} onClick={(e) => e.stopPropagation()}>View details</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>View program</DropdownMenuItem>
+              {onMessageClick && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMessageClick(patient);
+                    }}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Message
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },
-];
+  ];
+}

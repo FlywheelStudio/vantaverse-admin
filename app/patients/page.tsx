@@ -1,12 +1,17 @@
 "use client";
 
-import { PATIENTS } from "@/lib/mock-data";
-import { columns } from "@/components/patients/columns";
+import * as React from "react";
+import { PATIENTS, Patient } from "@/lib/mock-data";
+import { createColumns } from "@/components/patients/columns";
 import { DataTable } from "@/components/patients/patient-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
+import { PatientConversationSheet } from "@/components/patients/patient-conversation-sheet";
 
 export default function PatientsPage() {
+    const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(null);
+    const [isConversationOpen, setIsConversationOpen] = React.useState(false);
+    
     const totalPatients = PATIENTS.length;
     const avgCompliance = Math.round(
       PATIENTS.reduce((acc, p) => acc + p.compliancePercent, 0) / totalPatients
@@ -14,7 +19,15 @@ export default function PatientsPage() {
     const needsAttention = PATIENTS.filter((p) => p.status === "needs-attention").length;
     const workoutsThisWeek = 42;
 
+    const handleMessageClick = (patient: Patient) => {
+      setSelectedPatient(patient);
+      setIsConversationOpen(true);
+    };
+
+    const columns = React.useMemo(() => createColumns(handleMessageClick), []);
+
   return (
+    <>
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Patients</h2>
@@ -70,5 +83,11 @@ export default function PatientsPage() {
 
       <DataTable columns={columns} data={PATIENTS} />
     </div>
+    <PatientConversationSheet
+      open={isConversationOpen}
+      onOpenChange={setIsConversationOpen}
+      patient={selectedPatient}
+    />
+    </>
   );
 }

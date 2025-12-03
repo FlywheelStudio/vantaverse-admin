@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -136,12 +136,17 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer"
                   onClick={(e) => {
-                      // Prevent navigation if clicking on checkbox or actions
-                      if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="checkbox"]')) {
+                      // Prevent navigation if clicking on checkbox, actions, or dropdown menu
+                      if (
+                          (e.target as HTMLElement).closest('button') || 
+                          (e.target as HTMLElement).closest('[role="checkbox"]') ||
+                          (e.target as HTMLElement).closest('[role="menu"]') ||
+                          (e.target as HTMLElement).closest('[data-radix-popper-content-wrapper]')
+                      ) {
                           return;
                       }
                       // Assuming the ID is in the original data and we want to navigate
-                      // @ts-ignore
+                      // @ts-expect-error - row.original may not have id typed
                       router.push(`/patients/${row.original.id}`);
                   }}
                 >
