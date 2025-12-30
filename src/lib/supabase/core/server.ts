@@ -1,7 +1,7 @@
-"use server";
+'use server';
 
-import { CookieOptions, createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { CookieOptions, createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 interface CookieToSet {
   name: string;
@@ -19,15 +19,13 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(
-          cookiesToSet: CookieToSet[],
-        ) {
+        setAll(cookiesToSet: CookieToSet[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options),
             );
           } catch {
-            console.error("Error setting cookies");
+            console.error('Error setting cookies');
           }
         },
       },

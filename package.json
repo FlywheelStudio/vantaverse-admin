@@ -12,7 +12,7 @@
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "knip": "knip",
-    "commitlint": "commitlint --edit ${1} --config ./commitlint.config.json",
+    "commitlint": "node scripts/commitlint.js",
     "release": "release-it --ci",
     "prepare": "husky"
   },

@@ -443,17 +443,17 @@ export default function UserProfile(props: any) {
 // ✅ Good
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  
+
   useEffect(() => {
     const subscription = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
     });
-    
+
     return () => {
       subscription.data.subscription.unsubscribe();
     };
   }, []);
-  
+
   return { user };
 }
 ```
@@ -520,7 +520,7 @@ export async function signIn(email: string, password: string): Promise<User> {
     email,
     password,
   });
-  
+
   if (error) throw new AuthError(error.message);
   return data.user;
 }
@@ -579,4 +579,3 @@ Your contributions make this project better for everyone. We appreciate your tim
 ---
 
 **Happy Coding! 🚀**
-

@@ -9,13 +9,15 @@ Before you begin, make sure you have the following installed on your system:
 ### Required Software
 
 1. **Node.js (v22.x or higher)**
+
    ```bash
    # Check your Node.js version
    node --version
    # Should output: v22.x.x or higher
    ```
-   
+
    If you don't have Node.js 22, download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm):
+
    ```bash
    # Install Node.js 22 using nvm
    nvm install 22
@@ -23,21 +25,23 @@ Before you begin, make sure you have the following installed on your system:
    ```
 
 2. **pnpm (v10.x or higher)**
+
    ```bash
    # Check your pnpm version
    pnpm --version
    # Should output: 10.x.x or higher
-   
+
    # Install pnpm globally if you don't have it
    npm install -g pnpm@10
    ```
 
 3. **Git**
+
    ```bash
    # Check your Git version
    git --version
    ```
-   
+
    Download from [git-scm.com](https://git-scm.com/) if needed.
 
 4. **A Supabase Account**
@@ -90,11 +94,13 @@ pnpm install
 ```
 
 This will:
+
 - Install all required npm packages
 - Set up the project according to `package.json`
 - Create a `node_modules` directory
 
 **Expected output:**
+
 ```
 Packages: +XXX
 +++++++++++++++++++++++++++++++++++++++++++++
@@ -191,6 +197,7 @@ pnpm prepare
 ```
 
 This will:
+
 - Initialize Husky
 - Set up pre-commit hooks (runs linting)
 - Set up commit-msg hooks (validates commit messages)
@@ -236,10 +243,10 @@ import { createClient } from '@/lib/supabase/core/server';
 
 export default async function TestPage() {
   const supabase = await createClient();
-  
+
   // This will test your connection
   const { data, error } = await supabase.auth.getSession();
-  
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold">Supabase Connection Test</h1>
@@ -283,15 +290,17 @@ your-project/
 
 ### Try Making Changes
 
-1. **Edit the Home Page**: 
+1. **Edit the Home Page**:
    - Open `src/app/page.tsx`
    - Change the text
    - See the changes instantly (hot reload)
 
 2. **Add a New Component**:
+
    ```bash
    npx shadcn@latest add card
    ```
+
    This adds a Card component you can use!
 
 3. **Test Theme Switching**:
@@ -342,7 +351,7 @@ export async function getNotes() {
     .from('notes')
     .select('*')
     .order('created_at', { ascending: false });
-  
+
   if (error) throw error;
   return data;
 }
@@ -382,6 +391,7 @@ You're all set! Here's what to do next:
 When you're ready to deploy:
 
 1. **Push to GitHub**:
+
    ```bash
    git add .
    git commit -m "feat: initial setup"
@@ -432,6 +442,7 @@ pnpm install
 ### Supabase Connection Issues
 
 Check:
+
 1. ✅ Environment variables are set correctly
 2. ✅ `.env.local` file exists
 3. ✅ Variables start with `NEXT_PUBLIC_`
@@ -485,4 +496,3 @@ You've successfully set up your Next.js + Supabase project! Start building amazi
 ---
 
 **Need help?** Check our [Contributing Guide](../CONTRIBUTING.md) or open an issue on GitHub.
-

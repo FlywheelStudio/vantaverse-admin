@@ -47,7 +47,7 @@ import { createBrowserClient } from '@supabase/ssr';
 
 export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 ```
 
@@ -98,14 +98,14 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options),
             );
           } catch {
             console.error('Error setting cookies');
           }
         },
       },
-    }
+    },
   );
 }
 ```
@@ -139,7 +139,7 @@ import { createClient } from '@supabase/supabase-js';
 export function createAnonymousClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 }
 ```
@@ -172,6 +172,7 @@ const { data } = await supabase
 ```
 
 **Problems:**
+
 - Exposes database structure to client
 - Complex logic in frontend
 - Harder to maintain and test
@@ -183,11 +184,12 @@ const { data } = await supabase
 ```typescript
 // Good: Call PostgreSQL function via RPC
 const { data } = await supabase.rpc('get_user_dashboard', {
-  p_user_id: userId
+  p_user_id: userId,
 });
 ```
 
 **Benefits:**
+
 - ✅ **Security**: Logic stays on server
 - ✅ **Performance**: Complex operations run on database
 - ✅ **Maintainability**: Single source of truth
@@ -233,7 +235,7 @@ $$;
 
 ```typescript
 const { data, error } = await supabase.rpc('get_user_notes', {
-  p_user_id: userId
+  p_user_id: userId,
 });
 ```
 
@@ -298,7 +300,7 @@ const { data, error } = await supabase.rpc('create_note', {
   p_user_id: user.id,
   p_title: 'My Note',
   p_content: 'Note content here',
-  p_tags: ['important', 'todo']
+  p_tags: ['important', 'todo'],
 });
 
 if (error) {
@@ -363,7 +365,7 @@ $$;
 
 ```typescript
 const { data: stats, error } = await supabase.rpc('get_dashboard_stats', {
-  p_user_id: user.id
+  p_user_id: user.id,
 });
 
 if (error) throw error;
@@ -423,10 +425,9 @@ export interface DashboardStats {
 import type { UserNote, GetUserNotesParams } from '@/lib/supabase/types/rpc';
 
 async function getUserNotes(userId: string) {
-  const { data, error } = await supabase
-    .rpc('get_user_notes', {
-      p_user_id: userId
-    } as GetUserNotesParams);
+  const { data, error } = await supabase.rpc('get_user_notes', {
+    p_user_id: userId,
+  } as GetUserNotesParams);
 
   if (error) throw error;
   return data as UserNote[];
@@ -470,7 +471,7 @@ import { createClient } from '@/lib/supabase/core/server';
 
 export async function getPublicNotes() {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('notes')
     .select('*')
@@ -519,7 +520,7 @@ export function RealtimeNotes() {
           if (payload.eventType === 'INSERT') {
             setNotes(prev => [payload.new, ...prev]);
           }
-          
+
           if (payload.eventType === 'UPDATE') {
             setNotes(prev =>
               prev.map(note =>
@@ -527,7 +528,7 @@ export function RealtimeNotes() {
               )
             );
           }
-          
+
           if (payload.eventType === 'DELETE') {
             setNotes(prev =>
               prev.filter(note => note.id !== payload.old.id)
@@ -561,7 +562,7 @@ import { supabase } from '@/lib/supabase/core/client';
 
 export function subscribeToNotes(
   userId: string,
-  callback: (payload: any) => void
+  callback: (payload: any) => void,
 ) {
   const channel = supabase
     .channel(`notes-${userId}`)
@@ -571,9 +572,9 @@ export function subscribeToNotes(
         event: '*',
         schema: 'public',
         table: 'notes',
-        filter: `user_id=eq.${userId}`
+        filter: `user_id=eq.${userId}`,
       },
-      callback
+      callback,
     )
     .subscribe();
 
@@ -614,16 +615,12 @@ export class StorageService {
   /**
    * Upload a file to a bucket
    */
-  static async uploadFile(
-    bucket: string,
-    path: string,
-    file: File
-  ) {
+  static async uploadFile(bucket: string, path: string, file: File) {
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
       });
 
     if (error) throw error;
@@ -634,9 +631,7 @@ export class StorageService {
    * Get public URL for a file
    */
   static getPublicUrl(bucket: string, path: string) {
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
 
     return data.publicUrl;
   }
@@ -645,9 +640,7 @@ export class StorageService {
    * Delete a file
    */
   static async deleteFile(bucket: string, path: string) {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .remove([path]);
+    const { error } = await supabase.storage.from(bucket).remove([path]);
 
     if (error) throw error;
   }
@@ -725,7 +718,7 @@ export class SupabaseError extends Error {
   constructor(
     message: string,
     public code?: string,
-    public details?: any
+    public details?: any,
   ) {
     super(message);
     this.name = 'SupabaseError';
@@ -784,4 +777,3 @@ export function handleSupabaseError(error: any): never {
 ---
 
 **Next**: [Custom Hooks →](./HOOKS.md)
-

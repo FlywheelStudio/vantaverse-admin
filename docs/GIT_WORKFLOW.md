@@ -100,16 +100,16 @@ A specification for adding human and machine-readable meaning to commit messages
 
 The type of change you're making:
 
-| Type | Description | Version Bump | Example |
-|------|-------------|--------------|---------|
-| `feat` | New feature | Minor (0.X.0) | `feat: add user login` |
-| `fix` | Bug fix | Patch (0.0.X) | `fix: resolve login timeout` |
-| `hotfix` | Critical bug fix | Patch (0.0.X) | `hotfix: fix payment crash` |
-| `docs` | Documentation only | None | `docs: update README` |
-| `style` | Code style (formatting) | None | `style: format code` |
-| `chore` | Maintenance | None | `chore: update deps` |
-| `test` | Add or update tests | None | `test: add login tests` |
-| `ci` | CI/CD changes | None | `ci: update workflow` |
+| Type     | Description             | Version Bump  | Example                      |
+| -------- | ----------------------- | ------------- | ---------------------------- |
+| `feat`   | New feature             | Minor (0.X.0) | `feat: add user login`       |
+| `fix`    | Bug fix                 | Patch (0.0.X) | `fix: resolve login timeout` |
+| `hotfix` | Critical bug fix        | Patch (0.0.X) | `hotfix: fix payment crash`  |
+| `docs`   | Documentation only      | None          | `docs: update README`        |
+| `style`  | Code style (formatting) | None          | `style: format code`         |
+| `chore`  | Maintenance             | None          | `chore: update deps`         |
+| `test`   | Add or update tests     | None          | `test: add login tests`      |
+| `ci`     | CI/CD changes           | None          | `ci: update workflow`        |
 
 #### 2. Scope (Optional)
 
@@ -122,6 +122,7 @@ docs(api): update endpoint docs
 ```
 
 **Common scopes:**
+
 - `auth` - Authentication
 - `ui` - User interface
 - `api` - API endpoints
@@ -134,6 +135,7 @@ docs(api): update endpoint docs
 Brief description of the change:
 
 **Rules:**
+
 - Use imperative mood ("add" not "added" or "adds")
 - Don't capitalize first letter
 - No period at the end
@@ -237,6 +239,7 @@ Update your login flow accordingly."
 ```
 
 **This will:**
+
 - Trigger a MAJOR version bump (X.0.0)
 - Highlight the breaking change in changelog
 - Alert developers to review the change
@@ -270,6 +273,7 @@ pnpm commitlint
 ```
 
 **What it does:**
+
 - Checks if commit message follows Conventional Commits
 - Validates message length (max 120 characters)
 - Ensures proper type is used
@@ -297,6 +301,7 @@ pnpm lint
 ```
 
 **What it does:**
+
 - Runs ESLint on your code
 - Checks for syntax errors
 - Enforces code style
@@ -380,6 +385,7 @@ git commit -n -m "fix: emergency fix"
 ```
 
 **⚠️ Warning:** Only use this in emergencies. Bypassing hooks can lead to:
+
 - Broken code in repository
 - Inconsistent commit messages
 - CI/CD failures
@@ -560,11 +566,13 @@ Located in `.release-it.json`:
 ```
 
 **before:release:**
+
 - Runs `pnpm lint` before starting release
 - Ensures code quality
 - Release aborts if linting fails
 
 **before:release:commit:**
+
 - Runs `pnpm knip` before creating release commit
 - Checks for unused dependencies and exports
 - Helps keep codebase clean
@@ -668,7 +676,7 @@ pnpm release
   ❯ patch (0.1.0 → 0.1.1)
     minor (0.1.0 → 0.2.0)
     major (0.1.0 → 1.0.0)
-    
+
 ? Continue? Yes
 
 ✔  Bumped version to 0.2.0
@@ -685,12 +693,12 @@ pnpm release
 
 Version bump is determined from your commits:
 
-| Commits | Version Bump | Example |
-|---------|--------------|---------|
-| `fix:` | Patch | 1.0.0 → 1.0.1 |
-| `feat:` | Minor | 1.0.0 → 1.1.0 |
-| `feat!:` or `BREAKING CHANGE:` | Major | 1.0.0 → 2.0.0 |
-| `docs:`, `chore:`, `style:` | None | 1.0.0 → 1.0.0 |
+| Commits                        | Version Bump | Example       |
+| ------------------------------ | ------------ | ------------- |
+| `fix:`                         | Patch        | 1.0.0 → 1.0.1 |
+| `feat:`                        | Minor        | 1.0.0 → 1.1.0 |
+| `feat!:` or `BREAKING CHANGE:` | Major        | 1.0.0 → 2.0.0 |
+| `docs:`, `chore:`, `style:`    | None         | 1.0.0 → 1.0.0 |
 
 **Example:**
 
@@ -940,4 +948,3 @@ HUSKY=0 git commit -m "fix: emergency fix"
 ---
 
 **Previous**: [UI Components ←](./UI_COMPONENTS.md) | **Main**: [README](../README.md)
-

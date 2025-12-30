@@ -238,10 +238,10 @@ import { useAuth } from '@/hooks/use-auth';
 
 function MiComponente() {
   const { user, session, isLoading, signOut } = useAuth();
-  
+
   if (isLoading) return <div>Cargando...</div>;
   if (!user) return <div>No autenticado</div>;
-  
+
   return (
     <div>
       <p>Bienvenido, {user.email}</p>
@@ -262,7 +262,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 function ThemeToggle() {
   const { theme, toggleTheme, setTheme } = useTheme();
-  
+
   return (
     <button onClick={toggleTheme}>
       Tema actual: {theme}
@@ -280,7 +280,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 function ComponenteResponsivo() {
   const isMobile = useIsMobile();
-  
+
   return (
     <div>
       {isMobile ? <VistaMóvil /> : <VistaEscritorio />}
@@ -324,18 +324,19 @@ import { createClient } from '@/lib/supabase/core/server';
 
 async function obtenerNotasUsuario(userId: string) {
   const supabase = await createClient();
-  
+
   // Llamar función RPC (recomendado)
   const { data, error } = await supabase.rpc('get_user_notes', {
-    p_user_id: userId
+    p_user_id: userId,
   });
-  
+
   if (error) throw error;
   return data;
 }
 ```
 
 **¿Por qué RPC?**
+
 - ✅ Mejor seguridad (lógica permanece en el servidor)
 - ✅ Mejor rendimiento (operaciones complejas se ejecutan en la base de datos)
 - ✅ Más fácil de mantener y probar
@@ -348,9 +349,10 @@ import { supabase } from '@/lib/supabase/core/client';
 
 const canal = supabase
   .channel('cambios-tabla')
-  .on('postgres_changes', 
+  .on(
+    'postgres_changes',
     { event: '*', schema: 'public', table: 'tu_tabla' },
-    (payload) => console.log('¡Cambio recibido!', payload)
+    (payload) => console.log('¡Cambio recibido!', payload),
   )
   .subscribe();
 ```
@@ -500,4 +502,3 @@ Ender Puentes <endpuent@gmail.com>
 **Hecho con ❤️ por Flywheel Studio**
 
 **[English](README.md) | Español**
-

@@ -27,7 +27,7 @@ ShadCN UI is **not a component library** in the traditional sense. Instead, it's
 ✅ **TypeScript** - Full type safety  
 ✅ **Accessible** - Built on Radix UI (ARIA compliant)  
 ✅ **Styled with Tailwind** - Easy to theme and customize  
-✅ **Dark mode ready** - Built-in theme support  
+✅ **Dark mode ready** - Built-in theme support
 
 ### Architecture
 
@@ -52,6 +52,7 @@ src/components/ui/
 Versatile button with multiple variants and sizes.
 
 **Variants:**
+
 - `default` - Primary button style
 - `destructive` - Danger/delete actions
 - `outline` - Outlined button
@@ -60,6 +61,7 @@ Versatile button with multiple variants and sizes.
 - `link` - Link-styled button
 
 **Sizes:**
+
 - `default` - Standard size
 - `sm` - Small
 - `lg` - Large
@@ -83,6 +85,7 @@ import { Button } from '@/components/ui/button';
 Display important messages to users.
 
 **Variants:**
+
 - `default` - Standard alert
 - `destructive` - Error/warning messages
 
@@ -271,17 +274,17 @@ export function ContactForm() {
             <Label htmlFor="name">Name</Label>
             <Input id="name" placeholder="Your name" required />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" placeholder="your@email.com" required />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="message">Message</Label>
             <Textarea id="message" placeholder="Your message..." required />
           </div>
-          
+
           <Button type="submit" className="w-full">
             Send Message
           </Button>
@@ -318,7 +321,7 @@ export function UserProfile({ user }) {
           <CardDescription>{user.email}</CardDescription>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -333,7 +336,7 @@ export function UserProfile({ user }) {
           </div>
         </div>
       </CardContent>
-      
+
       <CardFooter className="flex justify-between">
         <Button variant="outline">View Profile</Button>
         <Button>Edit</Button>
@@ -378,7 +381,7 @@ export function DeleteConfirmation({ onConfirm }) {
       <DialogTrigger asChild>
         <Button variant="destructive">Delete</Button>
       </DialogTrigger>
-      
+
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Are you absolutely sure?</DialogTitle>
@@ -387,7 +390,7 @@ export function DeleteConfirmation({ onConfirm }) {
             account and remove your data from our servers.
           </DialogDescription>
         </DialogHeader>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
@@ -421,7 +424,7 @@ export function SettingsTabs() {
         <TabsTrigger value="password">Password</TabsTrigger>
         <TabsTrigger value="notifications">Notifications</TabsTrigger>
       </TabsList>
-      
+
       <TabsContent value="account">
         <Card>
           <CardHeader>
@@ -435,7 +438,7 @@ export function SettingsTabs() {
           </CardContent>
         </Card>
       </TabsContent>
-      
+
       <TabsContent value="password">
         <Card>
           <CardHeader>
@@ -449,7 +452,7 @@ export function SettingsTabs() {
           </CardContent>
         </Card>
       </TabsContent>
-      
+
       <TabsContent value="notifications">
         <Card>
           <CardHeader>
@@ -496,7 +499,7 @@ export function ToastDemo() {
       >
         Show Success
       </Button>
-      
+
       <Button
         variant="destructive"
         onClick={() => {
@@ -509,7 +512,7 @@ export function ToastDemo() {
       >
         Show Error
       </Button>
-      
+
       <Button
         variant="outline"
         onClick={() => {
@@ -776,7 +779,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 function ResponsiveComponent() {
   const isMobile = useIsMobile();
-  
+
   return isMobile ? <Sheet /> : <Dialog />;
 }
 ```
@@ -800,4 +803,3 @@ Browse all available components:
 ---
 
 **Next**: [Git Workflow →](./GIT_WORKFLOW.md)
-

@@ -308,11 +308,11 @@ export class UserService {
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (error) throw new Error(error.message);
     return data;
   }
-  
+
   /**
    * Update user profile
    */
@@ -324,7 +324,7 @@ export class UserService {
       .eq('id', userId)
       .select()
       .single();
-    
+
     if (error) throw new Error(error.message);
     return data;
   }
@@ -358,7 +358,7 @@ import { createClient } from '@/lib/supabase/core/server';
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: user } = await supabase.auth.getUser();
-  
+
   // Data fetched on server, rendered as HTML
   return <div>Welcome, {user?.email}</div>;
 }
@@ -390,7 +390,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 export function Profile() {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) return <Spinner />;
   return <div>{user?.email}</div>;
 }
@@ -424,7 +424,7 @@ import { useEffect, useState } from 'react';
 
 export function RealtimeNotes() {
   const [notes, setNotes] = useState([]);
-  
+
   useEffect(() => {
     // Subscribe to changes
     const channel = supabase
@@ -440,13 +440,13 @@ export function RealtimeNotes() {
         }
       })
       .subscribe();
-    
+
     // Cleanup
     return () => {
       channel.unsubscribe();
     };
   }, []);
-  
+
   return <NotesList notes={notes} />;
 }
 ```
@@ -508,11 +508,13 @@ Extract and reuse stateful logic.
 function useUserData(userId: string) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
-    fetchUser(userId).then(setUser).finally(() => setLoading(false));
+    fetchUser(userId)
+      .then(setUser)
+      .finally(() => setLoading(false));
   }, [userId]);
-  
+
   return { user, loading };
 }
 
@@ -533,7 +535,7 @@ export class NoteService {
   static async createNote(data: CreateNoteInput) {
     // Validation
     const validated = noteSchema.parse(data);
-    
+
     // Business logic
     const supabase = await createClient();
     const { data: note, error } = await supabase
@@ -541,12 +543,12 @@ export class NoteService {
       .insert(validated)
       .select()
       .single();
-    
+
     if (error) throw new Error(error.message);
-    
+
     // Post-processing
     await this.notifySubscribers(note);
-    
+
     return note;
   }
 }
@@ -611,11 +613,11 @@ import { redirect } from 'next/navigation';
 export default async function ProtectedPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) {
     redirect('/login');
   }
-  
+
   return <ProtectedContent />;
 }
 
@@ -627,7 +629,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 export function Profile() {
   const { user, session, signOut } = useAuth();
-  
+
   return (
     <div>
       <p>{user?.email}</p>
@@ -676,11 +678,11 @@ async function Page() {
 // Client Component: Fetch and update on client
 function ClientPage() {
   const [data, setData] = useState([]);
-  
+
   useEffect(() => {
     fetchData().then(setData);
   }, []);
-  
+
   return <List data={data} />;
 }
 ```
@@ -690,6 +692,7 @@ function ClientPage() {
 ### 1. Server Components by Default
 
 Leverage Next.js 16 server components for:
+
 - Zero JavaScript bundle size
 - Direct database access
 - Better SEO
@@ -748,6 +751,7 @@ export default function RootLayout({ children }) {
 ### Adding New Features
 
 1. **Create feature directory**:
+
    ```
    src/
    ├── app/my-feature/           # Routes
@@ -769,7 +773,7 @@ export default function RootLayout({ children }) {
 
 ## 📚 Best Practices
 
-1. **Keep Server Components**:  Use server components by default, opt into client components only when needed
+1. **Keep Server Components**: Use server components by default, opt into client components only when needed
 
 2. **Co-locate Code**: Keep related code together (feature-based organization)
 
@@ -794,4 +798,3 @@ export default function RootLayout({ children }) {
 ---
 
 **Next**: [Supabase Integration →](./SUPABASE.md)
-

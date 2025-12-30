@@ -2,11 +2,11 @@ import {
   RealtimeChannel,
   RealtimeChannelOptions,
   RealtimePostgresChangesPayload,
-} from "@supabase/supabase-js";
-import { supabase } from "./core/client";
+} from '@supabase/supabase-js';
+import { supabase } from './core/client';
 
 export interface PostgresChangesConfig {
-  event: "INSERT" | "UPDATE" | "DELETE" | "*";
+  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
   schema?: string;
   table: string;
   filter?: string;
@@ -93,7 +93,7 @@ export abstract class SupabaseRealtime {
     config: PostgresChangesConfig,
     callback: (payload: RealtimePostgresChangesPayload<T>) => void,
   ): RealtimeChannel {
-    return channel.on("postgres_changes", config as never, callback);
+    return channel.on('postgres_changes', config as never, callback);
   }
 
   /**

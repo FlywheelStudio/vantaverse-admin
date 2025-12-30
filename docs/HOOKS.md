@@ -15,11 +15,11 @@ This guide covers all custom React hooks available in the starter template and h
 
 Custom hooks are reusable functions that encapsulate stateful logic. This starter includes three essential hooks:
 
-| Hook | Purpose | Context Required |
-|------|---------|------------------|
-| `useAuth` | Authentication state and methods | `AuthProvider` |
-| `useTheme` | Theme management (light/dark) | `ThemeProvider` |
-| `useIsMobile` | Responsive design detection | None |
+| Hook          | Purpose                          | Context Required |
+| ------------- | -------------------------------- | ---------------- |
+| `useAuth`     | Authentication state and methods | `AuthProvider`   |
+| `useTheme`    | Theme management (light/dark)    | `ThemeProvider`  |
+| `useIsMobile` | Responsive design detection      | None             |
 
 ## 🔐 useAuth Hook
 
@@ -34,15 +34,15 @@ src/hooks/use-auth.ts
 ### Source Code
 
 ```typescript
-import { AuthContext, AuthContextType } from "@/context/auth";
-import { useContext } from "react";
+import { AuthContext, AuthContextType } from '@/context/auth';
+import { useContext } from 'react';
 
 export const useAuth = (): AuthContextType => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error("useAuth must be used within a AuthProvider");
-    }
-    return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within a AuthProvider');
+  }
+  return context;
 };
 ```
 
@@ -50,9 +50,9 @@ export const useAuth = (): AuthContextType => {
 
 ```typescript
 interface AuthContextType {
-  user: User | null;          // Current user object
-  session: Session | null;    // Current session
-  isLoading: boolean;         // Loading state
+  user: User | null; // Current user object
+  session: Session | null; // Current session
+  isLoading: boolean; // Loading state
   signOut: () => Promise<void>; // Sign out function
 }
 ```
@@ -170,12 +170,12 @@ export function UserInfo() {
       <p>Email: {user.email}</p>
       <p>ID: {user.id}</p>
       <p>Created: {new Date(user.created_at).toLocaleDateString()}</p>
-      
+
       {/* Access session data */}
       {session && (
         <p>Expires: {new Date(session.expires_at! * 1000).toLocaleDateString()}</p>
       )}
-      
+
       {/* Access user metadata */}
       {user.user_metadata?.full_name && (
         <p>Name: {user.user_metadata.full_name}</p>
@@ -255,10 +255,10 @@ export const useTheme = (): ThemeContextType => {
 
 ```typescript
 interface ThemeContextType {
-  theme: 'light' | 'dark' | 'system';      // Current theme setting
+  theme: 'light' | 'dark' | 'system'; // Current theme setting
   resolvedTheme: 'light' | 'dark' | undefined; // Actual theme applied
-  setTheme: (theme: Theme) => void;        // Set theme manually
-  toggleTheme: () => void;                 // Toggle between light/dark
+  setTheme: (theme: Theme) => void; // Set theme manually
+  toggleTheme: () => void; // Toggle between light/dark
 }
 ```
 
@@ -302,8 +302,8 @@ export function ThemeSelector() {
   return (
     <div>
       <label>Choose Theme:</label>
-      <select 
-        value={theme} 
+      <select
+        value={theme}
         onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
       >
         <option value="light">Light</option>
@@ -385,9 +385,9 @@ export default function RootLayout({ children }) {
 
 ```typescript
 interface ThemeProviderProps {
-  attribute?: 'class' | 'data-theme';  // How theme is applied
+  attribute?: 'class' | 'data-theme'; // How theme is applied
   defaultTheme?: 'light' | 'dark' | 'system'; // Default theme
-  enableSystem?: boolean;              // Allow system preference
+  enableSystem?: boolean; // Allow system preference
   disableTransitionOnChange?: boolean; // Disable animation on change
 }
 ```
@@ -431,7 +431,7 @@ export function useIsMobile() {
 ### Return Type
 
 ```typescript
-boolean // true if mobile, false if desktop
+boolean; // true if mobile, false if desktop
 ```
 
 ### Usage
@@ -611,7 +611,7 @@ export function useExample(initialValue: string) {
   useEffect(() => {
     // Setup
     setIsLoading(true);
-    
+
     // Async operation
     fetchData(value).then((result) => {
       setValue(result);
@@ -725,7 +725,7 @@ function SettingsComponent() {
         <input
           type="checkbox"
           checked={settings.notifications}
-          onChange={(e) => 
+          onChange={(e) =>
             setSettings({ ...settings, notifications: e.target.checked })
           }
         />
@@ -742,14 +742,14 @@ function SettingsComponent() {
 
 ```typescript
 // ✅ Good
-export function useAuth() { }
-export function useIsMobile() { }
-export function useDebounce() { }
+export function useAuth() {}
+export function useIsMobile() {}
+export function useDebounce() {}
 
 // ❌ Bad
-export function getAuth() { }
-export function isMobile() { }
-export function debounce() { }
+export function getAuth() {}
+export function isMobile() {}
+export function debounce() {}
 ```
 
 ### 2. Return Objects for Multiple Values
@@ -807,11 +807,11 @@ const { data } = useData<User>('/api/user');
 ```typescript
 /**
  * Debounces a value by a specified delay
- * 
+ *
  * @param value - The value to debounce
  * @param delay - Delay in milliseconds (default: 500)
  * @returns The debounced value
- * 
+ *
  * @example
  * const debouncedSearch = useDebounce(searchTerm, 500);
  */
@@ -857,4 +857,3 @@ export function useWindowSize() {
 ---
 
 **Next**: [UI Components →](./UI_COMPONENTS.md)
-
