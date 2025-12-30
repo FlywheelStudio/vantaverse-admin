@@ -1,0 +1,25 @@
+# Check if the current branch is dev or main
+
+# TypeScript type checks (strict enforced)
+pnpm tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "TypeScript (tsc) failed. Please fix the type errors before pushing."
+  exit 1
+fi
+
+
+# Run knip
+pnpm knip
+if [ $? -ne 0 ]; then
+  echo "Knip check failed. Please fix the issues before pushing."
+  exit 1
+fi
+
+# Run full lint
+pnpm lint
+if [ $? -ne 0 ]; then
+  echo "Lint failed. Please fix the issues before pushing."
+  exit 1
+fi
+
+echo "All pre-push checks passed successfully."

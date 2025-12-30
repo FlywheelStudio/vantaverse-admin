@@ -1,0 +1,427 @@
+---
+description: Cursor rules for Next.js using App Router, Shadcn UI, and Supabase (Postgres/Auth)
+globs:
+  - '**/*.ts'
+  - '**/*.tsx'
+  - '**/*.js'
+  - '**/*.jsx'
+---
+
+# Next.js 16 with App Router, Shadcn UI & Supabase Cursor Rules
+
+## Core Principles
+
+- Favor React Server Components (RSC) and Next.js SSR features.
+- Minimize 'use client' to only small, isolated components requiring web API access.
+- Rely on the Next.js App Router for state changes and routing.
+- Use Zod for form validation and type-safe schema definitions.
+- Wrap client components in Suspense with a fallback.
+- Use dynamic loading for non-critical components to optimize performance.
+- Optimize images using WebP format, size data, and lazy loading.
+- Model expected errors as return values instead of try/catch in Server Actions.
+- Use error boundaries (e.g. error.tsx, global-error.tsx) to handle unexpected errors gracefully.
+- Follow SOLID principles for backend code and maintain high modularity and encapsulation.
+- Use object-oriented programming patterns with abstract classes for extensibility.
+
+## TypeScript Standards
+
+### Configuration (`tsconfig.json`)
+
+- **strict mode**: Always enabled (`"strict": true`)
+- **target**: ES2017
+- **module**: esnext with bundler resolution
+- **Path aliases**: Use `@/*` for `./src/*` imports
+- **Excluded**: node_modules, supabase directory
+
+### Type System Rules
+
+- **NEVER** use the `any` type under any circumstances. Use `unknown` if the type is truly unknown, then narrow it.
+- All functions must have explicit return types.
+- **Prefer `interface` over `type`** for:
+  - Component props (e.g., `interface ButtonProps`)
+  - Object shapes that may be extended
+  - Public API contracts
+- **Use `type` for**:
+  - Union types (e.g., `type Status = 'active' | 'inactive'`)
+  - Intersection types (e.g., `type Combined = A & B`)
+  - Type aliases derived from Zod (`type User = z.infer<typeof userSchema>`)
+  - Mapped types and conditional types
+- **Avoid TypeScript enums**: Use `z.enum()` from Zod instead and derive types with `z.infer`
+
+  ```typescript
+  // ✅ CORRECT
+  const statusSchema = z.enum(['active', 'inactive', 'pending']);
+  type Status = z.infer<typeof statusSchema>;
+
+  // ❌ INCORRECT
+  enum Status {
+    Active,
+    Inactive,
+    Pending,
+  }
+  ```
+
+- Use type inference wisely but prefer explicit typing for public APIs and exports.
+- Leverage TypeScript utility types (Partial, Pick, Omit, etc.) for type transformations.
+- Use descriptive variable names with auxiliary verbs (e.g., `isLoading`, `hasError`, `canSubmit`).
+
+## Code Quality Standards
+
+### Knip Configuration (Unused Code Detection)
+
+- **Run before commit**: `pnpm knip` to detect unused exports, dependencies, and files
+- **Ignored paths** (auto-generated or WIP):
+  - `src/components/ui/**/*.tsx` (ShadCN UI components)
+  - `src/components/common/in-construction.tsx`
+  - `src/components/common/charts/bar.tsx`
+  - `src/app/forbidden.tsx`
+- **Ignored dependencies** (used indirectly):
+  - `tw-animate-css`, `tailwindcss`, `eslint`, `eslint-config-next`
+  - `@commitlint/config-conventional`
+  - `@radix-ui/react-radio-group`, `@radix-ui/react-checkbox`
+
+### Code Standards
+
+- **NO unused exports**: All exports must be used. Use Knip to detect and remove unused code.
+- **NO unused variables**: All declared variables must be used (TypeScript strict mode enforces this).
+- **NO ambiguous comments**: Comments must be clear, purposeful, and add value. Use JSDoc for functions and classes.
+- **NO todos, placeholders, or missing pieces**: Ensure all code is complete and fully functional before committing.
+- Use JSDoc comments for all exported functions, classes, and complex logic.
+- Prefer self-documenting code with descriptive variable and function names.
+- Use "handle" prefix for event handler functions (e.g., `handleClick`, `handleSubmit`, `handleKeyDown`).
+- Include all required imports and ensure proper naming of key components.
+
+## Supabase Usage Guidelines
+
+- Always use `@supabase/ssr` package for Supabase client instantiation.
+- **ONLY** interact with Supabase via RPC (Remote Procedure Calls) - no direct table queries from the frontend.
+- All database operations must go through PostgreSQL functions defined in `supabase/database/functions/`.
+- Implement Row Level Security (RLS) policies for all tables in Postgres.
+- Use `createBrowserClient` and `createServerClient` with the prescribed cookie handling methods: _only_ `getAll` and `setAll`.
+- Do _not_ import or use deprecated patterns (`auth-helpers-nextjs` or individual cookie get/set/remove).
+- Implement middleware to refresh auth tokens correctly using the Supabase SSR client.
+- Leverage Supabase Storage and Edge Functions as needed.
+- Use abstract base classes (`SupabaseQuery`, `Api`, `Engine`, `Sync`) for consistent patterns.
+
+## Architecture Patterns
+
+- Use abstract classes for shared functionality: `SupabaseQuery`, `Api`, `Engine`, `Sync`.
+- Implement the Success/Error pattern for all data operations:
+  ```typescript
+  type Success<T> = { success: true; data: T };
+  type Error = { success: false; error: string };
+  type Result<T> = Success<T> | Error;
+  ```
+- Services should be implemented as classes with clear single responsibilities.
+- Use factory patterns for client initialization (Supabase, Stripe, Resend).
+- Organize code by domain/feature, not by technical layer.
+
+## Code Style and Structure
+
+- Follow kebab-case for filenames and directories (e.g. `auth-wizard.tsx`, `user-profile.ts`).
+- Use functional components declared with the `function` keyword, and TypeScript interfaces for props.
+- Use arrow functions (`const`) for utility functions, helpers, and event handlers.
+- Place exported components at the top, followed by subcomponents, helpers, static content, and types at the bottom.
+- Use the Receive an Object, Return an Object (RORO) pattern to improve readability.
+- Use Tailwind CSS for styling and the Class Variance Authority (CVA) pattern for managing component variants.
+- **Favor named exports** and **avoid default exports** in all files.
+- Use concise, one-line conditionals when suitable, with proper spacing and no unnecessary braces.
+- Prefer semantic HTML and accessibility best practices with ARIA roles and keyboard navigability.
+- Write code that prioritizes readability and maintainability; optimize for performance only when necessary.
+
+## Tailwind CSS Best Practices
+
+- Use Tailwind utility classes extensively; avoid creating custom CSS when utilities exist.
+- Leverage Tailwind's responsive design utilities (sm:, md:, lg:, xl:, 2xl:) for mobile-first design.
+- Use the `cn()` utility from `@/lib/utils` for conditional and merged class names.
+- Utilize Tailwind's color palette and spacing scale for consistency.
+- Implement custom theme extensions in `globals.css` using CSS variables with `@theme inline`.
+- **NEVER use @apply directive** - it defeats the purpose of utility-first CSS and increases bundle size.
+- Use CVA (Class Variance Authority) for component variants instead of @apply.
+- Leverage `tailwind-merge` (via `cn()`) to handle conflicting classes properly.
+- Use semantic color tokens (e.g., `bg-primary`, `text-muted-foreground`) instead of hard-coded colors.
+- Implement dark mode using Tailwind's `dark:` variant with the custom `&:is(.dark *)` selector.
+
+## Error Handling & Data Fetching
+
+- Use React Server Components for data fetching whenever possible.
+- Implement preload patterns to avoid waterfall requests.
+- Add loading and error states to every data-fetching component.
+- Use `useActionState` with react-hook-form to manage form validation and action errors.
+- All database operations must return `Success<T> | Error` pattern, never throw in production code.
+- Use Zod's `safeParse` for validation and handle errors gracefully.
+- Log errors appropriately with context, but avoid console.log in production code.
+- **Handle errors at the beginning of functions** - Use early returns for error conditions.
+- **Use guard clauses** for preconditions and invalid states to avoid deep nesting.
+- Implement proper error logging and user-friendly error messages.
+- Prioritize error handling and edge cases in all business logic.
+
+## Validation & Schemas
+
+- All external data must be validated using Zod schemas.
+- Define Zod schemas in `src/lib/supabase/schemas/` for frontend or `supabase/functions/_shared/libs/supabase/schemas/` for Edge Functions.
+- Export TypeScript types using `z.infer<typeof schema>`.
+- Use `safeParse` instead of `parse` to handle validation errors gracefully.
+- Implement custom error messages for user-facing validation.
+
+## Database & PostgreSQL
+
+- All database logic must be in PostgreSQL functions (`supabase/database/functions/`).
+- Organize functions by domain (subscribers, projects, workflows, etc.).
+- Use database triggers for automated workflows (`supabase/database/triggers/`).
+- All tables must have RLS policies enabled.
+- Follow the naming convention: `action_entity` for functions (e.g., `create_project`, `get_workflow_by_id`).
+- Use `params` object pattern for all RPC function parameters.
+
+## Performance Optimization
+
+- Use dynamic imports (`next/dynamic`) for code splitting of heavy components.
+- Implement lazy loading for non-critical components and routes.
+- Optimize images: use WebP format, include size data, implement lazy loading with Next.js Image.
+- Minimize client-side JavaScript by favoring Server Components.
+- Use React.memo() sparingly and only when profiling shows benefit.
+- Implement proper caching strategies for API responses and database queries.
+- Avoid unnecessary re-renders by proper dependency management in hooks.
+
+## Stripe Integration
+
+- Use `StripeService` class for all Stripe operations following the Success/Error pattern.
+- Implement webhook handlers for Stripe events in `supabase/functions/stripe/webhooks/`.
+- Always verify webhook signatures using `stripeMiddleware` before processing events.
+- Use Stripe Customer Portal for user subscription management.
+- Sync subscription status with database immediately after Stripe events.
+- Store minimal Stripe data in database; use Stripe as source of truth for payment data.
+- Handle failed payments and subscription status changes gracefully.
+- Implement proper error handling and logging for all Stripe operations.
+- Never expose Stripe secret keys in client-side code.
+
+## SEO and Metadata (Next.js)
+
+- Use Next.js metadata API for all SEO tags (`generateMetadata` for dynamic pages).
+- Implement proper Open Graph and Twitter Card meta tags for social sharing.
+- Use canonical URLs for proper SEO (via metadata.alternates.canonical).
+- Implement structured data (JSON-LD) for rich snippets when appropriate.
+- Optimize page titles and descriptions for search engines (50-60 chars for titles, 150-160 for descriptions).
+- Use Next.js Image component for automatic image optimization and proper alt attributes.
+- Implement proper heading hierarchy (h1 → h2 → h3) for accessibility and SEO.
+
+## Accessibility (a11y)
+
+- Ensure proper semantic HTML structure (nav, main, article, section, aside, footer).
+- Implement ARIA attributes only when semantic HTML is insufficient.
+- Ensure all interactive elements are keyboard navigable (use proper button/a tags).
+- Provide meaningful alt text for all images; use empty alt="" for decorative images.
+- Maintain sufficient color contrast ratios (WCAG AA minimum: 4.5:1 for normal text).
+- Ensure focus indicators are visible for keyboard navigation (don't remove outline without replacement).
+- Use proper form labels and error messages for form accessibility.
+- Test with screen readers and keyboard-only navigation regularly.
+- Implement skip-to-content links for keyboard users.
+
+## Testing and Documentation
+
+- Write unit tests for utility functions, hooks, and business logic.
+- Use integration tests for complex components, pages, and critical user flows.
+- Use Bruno collections for API endpoint testing (located in `supabase/docs/bruno/`).
+- Keep README files up-to-date (both EN and ES versions).
+- Document all PostgreSQL functions, RLS policies, and Edge Functions with comments.
+- Maintain JSDoc comments for all exported functions and classes.
+- Include code examples in documentation for complex implementations.
+
+## Supabase Edge Functions & Database
+
+**For detailed Supabase development standards, see `.cursorrules.supabase.md`**
+
+### Edge Functions (Deno/TypeScript)
+
+**Base Classes** - All functions must extend one of four abstract classes:
+
+- `Api` - Public API endpoints (authenticated with project SDK token via `apiMiddleware`)
+- `Engine` - Workflow execution tasks (authenticated with ENGINE_TOKEN via `engineMiddleware`)
+- `Sync` - Data synchronization (webhooks, cron jobs, fixed endpoints)
+- `StripeBase` - Stripe webhook handlers (verified with `stripeMiddleware`)
+
+**Structure**:
+
+```typescript
+import { Api, type ApiRequest } from '@shared/core/api.ts';
+import { apiMiddleware } from '@shared/middleware/api.ts';
+
+export class MyEndpoint extends Api {
+  async run(req: ApiRequest): Promise<Response> {
+    // Validate with Zod
+    // Call RPC function
+    // Return JSON response
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  return await apiMiddleware(req, async (reqWithProject) => {
+    return await new MyEndpoint().run(reqWithProject);
+  });
+});
+```
+
+**Rules**:
+
+- Use `@shared/` import alias for shared code
+- Always validate inputs with Zod schemas
+- Use RPC pattern for all database operations (never direct table queries)
+- Use `parseResponseZodError` and `parseResponsePostgresError` helpers
+- Return consistent JSON responses: `{ message, data? }` or `{ errors: [{ message, path? }] }`
+- Include JSDoc comments with `@endpoint` annotation
+- Each function must have `deno.json` with import maps
+
+### PostgreSQL Functions
+
+**Naming Convention**: `<action>_<entity>[_<detail>]` (e.g., `create_project`, `get_subscriber_by_external_id`)
+
+**Template**:
+
+```sql
+CREATE OR REPLACE FUNCTION function_name(
+  params JSONB DEFAULT '{"param1": null}'::jsonb
+)
+RETURNS return_type
+SET search_path = 'public'
+AS $$
+DECLARE
+  variable_name type;
+BEGIN
+  -- Extract params
+  variable_name := (params->>'param1')::type;
+
+  -- Validate permissions
+  IF NOT EXISTS (SELECT 1 FROM users WHERE id = auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized' USING ERRCODE = 'P0403';
+  END IF;
+
+  -- Main logic
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**Rules**:
+
+- **Always** use JSONB `params` object as single parameter
+- **Always** set `search_path = 'public'`
+- **Always** use `SECURITY DEFINER` for RLS bypass
+- Use custom error codes: P0400 (Bad Request), P0401 (Unauthorized), P0403 (Forbidden), P0404 (Not Found), P0500 (Internal Error)
+- Organize functions by entity in `supabase/database/functions/`
+- Validate permissions with `auth.uid()` when applicable
+- Use descriptive variable names in snake_case
+
+### Database Triggers
+
+**Naming Convention**: `<timing>_<event>_<table_name>` (e.g., `insert_after_subscribers`)
+
+**Rules**:
+
+- Organize triggers by entity in `supabase/database/triggers/`
+- Match function name with trigger name
+- Set `search_path = 'public'`
+- Return NEW for AFTER INSERT/UPDATE, OLD for AFTER DELETE
+- Keep triggers focused - delegate complex logic to functions
+- Use RPC calls within triggers for complex operations
+
+### Security Standards
+
+**Edge Functions**:
+
+- Always use appropriate middleware for authentication
+- Validate all inputs with Zod schemas
+- Use environment variables for secrets (never hardcode)
+- Log security-relevant events
+
+**Database Functions**:
+
+- All tables must have RLS (Row Level Security) enabled
+- Functions with SECURITY DEFINER bypass RLS - validate permissions explicitly
+- Store secrets in Supabase Vault
+- Use `auth.uid()` for user-based permissions
+
+## Git & Version Control
+
+### Conventional Commits (`commitlint.config.json`)
+
+- **Max length**: 120 characters for header
+- **Allowed types**: `feat`, `fix`, `chore`, `test`, `docs`, `style`, `ci`
+- **Format**: `<type>(<scope>): <subject>`
+- **Examples**:
+  ```
+  feat(auth): add social login with Google
+  fix(api): resolve timeout issue in workflow execution
+  chore(deps): upgrade Next.js to 15.2.4
+  docs(readme): update installation instructions
+  ```
+
+### Husky Git Hooks
+
+- **pre-commit**: Runs `pnpm lint` (ESLint validation)
+- **commit-msg**: Runs `pnpm commitlint` (validates commit message format)
+
+### Workflow
+
+1. Make changes
+2. Stage files: `git add .`
+3. Commit: `git commit -m "type(scope): message"` (Husky will validate)
+4. Pre-commit runs linting automatically
+5. Commit message is validated against Conventional Commits
+
+### Release Management
+
+- Use `pnpm release` for creating releases with release-it
+- Follows semantic versioning (major.minor.patch)
+- Auto-generates changelog from conventional commits
+- Current version: 0.34.1
+
+### Best Practices
+
+- Run `pnpm knip` before committing to ensure no unused code
+- Keep commits atomic and focused on single changes
+- Write descriptive commit messages
+- Use scopes to identify affected area (e.g., auth, api, ui, db)
+
+## Example snippet for correct Supabase SSR client usage
+
+```typescript
+import { createBrowserClient } from '@supabase/ssr';
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+}
+```
+
+## Example snippet for RPC usage pattern
+
+```typescript
+// CORRECT: Using RPC to interact with database
+const { data, error } = await supabase.rpc('get_project_by_id', {
+  params: { project_id: '123' },
+});
+
+// INCORRECT: Direct table queries from frontend
+const { data, error } = await supabase
+  .from('projects')
+  .select('*')
+  .eq('id', '123'); // ❌ Don't do this
+```
+
+## Example snippet for Success/Error pattern
+
+```typescript
+async function fetchUser(id: string): Promise<UserSuccess | UserError> {
+  const { data, error } = await supabase.rpc('get_user_by_id', {
+    params: { user_id: id },
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data };
+}
+```

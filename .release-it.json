@@ -1,0 +1,27 @@
+{
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "CHANGELOG.md"
+    }
+  },
+  "hooks": {
+    "before:release": "pnpm lint",
+    "before:release:commit": "pnpm knip"
+  },
+  "npm": {
+    "publish": false
+  },
+  "git": {
+    "commit": true,
+    "commitMessage": "chore(release): ${version}",
+    "tags": true,
+    "tagAnnotation": "Release ${version}",
+    "push": true
+  },
+  "github": {
+    "release": true,
+    "releaseName": "${version}",
+    "tokenRef": "RELEASE_GIT"
+  }
+}
