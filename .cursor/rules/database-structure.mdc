@@ -1,0 +1,171 @@
+---
+description: All the tables and structure of the database
+globs:
+alwaysApply: true
+---
+# Database Structure - VantaVerse Backend
+
+## Core Tables Overview
+
+### **User Management**
+- **`profiles`** - User profile information linked to auth.users
+- **`allowed_emails`** - Email whitelist for signup control (service_role only)
+- **`otp_codes`** - One-time password codes for authentication (service_role only)
+
+### **Points & Transactions System**
+- **`hp_transactions`** - VP (Vanta Points) transaction history with level tracking
+- **`ip_transactions`** - IP transaction history (mirrors hp_transactions structure)
+- **`hp_level_thresholds`** - VP level progression thresholds (authenticated users can read)
+- **`ip_level_thresholds`** - IP level progression thresholds (authenticated users can read)
+- **`profiles_with_stats`** - View combining profiles with calculated stats and level progression
+
+## Table Details
+
+### **profiles**
+```sql
+id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
+username TEXT UNIQUE
+full_name TEXT
+email TEXT UNIQUE
+phone TEXT UNIQUE
+journey_phase journey_phase DEFAULT 'discovery'
+screening_completed BOOLEAN DEFAULT false
+consultation_completed BOOLEAN DEFAULT false
+program_started BOOLEAN DEFAULT false
+avatar_url TEXT
+created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+```
+**RLS**: Users can view their own profile, update/insert their own
+
+### **hp_transactions** (VP Transactions)
+```sql
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+user_id UUID REFERENCES profiles(id) ON DELETE CASCADE
+points_earned INTEGER NOT NULL
+points_before INTEGER NOT NULL
+points_after INTEGER NOT NULL
+transaction_type hp_transaction_type NOT NULL
+exercise_completion_id UUID
+daily_activity_id UUID
+level_before INTEGER NOT NULL
+level_after INTEGER NOT NULL
+level_up_occurred BOOLEAN GENERATED ALWAYS AS (level_after > level_before) STORED
+description TEXT
+metadata JSONB
+created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+```
+**RLS**: Users can view their own transactions, service_role has full access
+
+### **ip_transactions** (IP Transactions)
+- **Identical structure** to `hp_transactions`
+- Uses same `hp_transaction_type` enum
+- Separate table for IP point tracking
+
+### **hp_level_thresholds**
+```sql
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+level INTEGER UNIQUE NOT NULL
+description TEXT NOT NULL
+image_url TEXT
+hp_required_for_next_level INTEGER
+total_hp_at_level INTEGER NOT NULL
+hp_range_min INTEGER NOT NULL
+hp_range_max INTEGER
+created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+```
+**RLS**: Service role can manage, authenticated users can read
+**Data**: Pre-populated with 10 levels (0-100,000+ HP)
+
+### **ip_level_thresholds**
+- **Identical structure** to `hp_level_thresholds`
+- **RLS**: Service role can manage, authenticated users can read
+- **Data**: Empty, ready for IP level configuration
+
+### **profiles_with_stats** (View)
+```sql
+-- All profile columns plus:
+current_level INTEGER -- User's current level (defaults to 1)
+hp_points INTEGER -- Total HP points earned (defaults to 0)
+points_required_for_next_level INTEGER -- HP points needed for next level (NULL for max level)
+```
+**RLS**: Users can view their own profile with stats, service_role has full access
+**Security**: Uses security_invoker = true to inherit RLS from underlying tables
+
+## Enums
+
+### **hp_transaction_type**
+```sql
+'first_exercise'        -- 300 VP onboarding bonus
+'exercise_pre_check'    -- 20 VP for pre-exercise check
+'exercise_post_check'   -- 100 VP for post-exercise check
+'exercise_sync_bonus'   -- 120 VP daily sync bonus
+'daily_completion_bonus' -- 150 VP for completing all daily exercises
+'level_bonus'           -- Bonus VP for reaching new level
+'streak_bonus'          -- Streak milestone rewards
+'manual_adjustment'     -- Admin corrections
+```
+
+## Key Relationships
+
+### **User Flow**
+1. **User signs up** → `auth.users` → `profiles` (auto-created)
+2. **Points earned** → `hp_transactions` (VP) or `transactions_ip` (IP)
+3. **Level calculation** → `vp_level_thresholds` or `ip_level_thresholds`
+
+### **Transaction Flow**
+1. **Calculate current total** from transaction history
+2. **Determine current level** from thresholds table
+3. **Record transaction** with before/after points and levels
+4. **Auto-calculate** `level_up_occurred` using generated column
+
+## RLS Policies Summary
+
+- **`profiles`**: Users view own, modify own
+- **`hp_transactions`**: Users view own, service_role full access
+- **`ip_transactions`**: Users view own, service_role full access
+- **`hp_level_thresholds`**: Service role can manage, authenticated users can read
+- **`ip_level_thresholds`**: Service role can manage, authenticated users can read
+- **`profiles_with_stats`**: Users view own, service_role full access
+- **`allowed_emails`**: Service role only
+- **`otp_codes`**: Service role only
+
+## Important Notes
+
+⚠️ **REMOVED**: `vanta_points` table - no longer used  
+✅ **USE**: `hp_transactions` for VP point calculations  
+✅ **USE**: `transactions_ip` for IP point calculations  
+🔒 **SECURE**: All tables have RLS enabled with appropriate policies  
+📊 **PERFORMANCE**: Strategic indexes on user_id, transaction_type, created_at  
+🎯 **AUTO-CALC**: `level_up_occurred` automatically tracks level progression  
+
+## Common Queries
+
+### Get User's Current VP Total
+```sql
+SELECT SUM(points_earned) as total_vp 
+FROM hp_transactions 
+WHERE user_id = 'user-uuid'
+```
+
+### Get User's Current Level
+```sql
+SELECT level FROM hp_level_thresholds 
+WHERE hp_range_min <= (SELECT SUM(points_earned) FROM hp_transactions WHERE user_id = 'user-uuid')
+  AND (hp_range_max >= (SELECT SUM(points_earned) FROM hp_transactions WHERE user_id = 'user-uuid') OR hp_range_max IS NULL)
+```
+
+### Get User's Profile with Stats (Recommended)
+```sql
+SELECT * FROM profiles_with_stats 
+WHERE id = 'user-uuid'
+```
+
+### Get User's Transaction History
+```sql
+SELECT * FROM hp_transactions 
+WHERE user_id = 'user-uuid' 
+ORDER BY created_at DESC
+```
+

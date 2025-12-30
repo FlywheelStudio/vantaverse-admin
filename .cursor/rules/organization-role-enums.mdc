@@ -1,0 +1,122 @@
+---
+description: Use centralized enum types for organization role checks instead of hardcoded strings
+alwaysApply: true
+---
+
+# Organization Role Enum Usage
+
+## Overview
+Always use the centralized enum types for role checks instead of hardcoding role strings like 'admin' or 'member'.
+
+## Enum Types
+
+### `public.organization_role`
+Contains all organization roles:
+- `'admin'` - Can manage users and permissions within organization
+- `'member'` - Physicians who can assign programs to patients
+- `'patient'` - Base user role
+
+### `public.super_organization_role`
+Contains roles that grant super admin access (subset of organization_role):
+- `'admin'` - Super admin admin role
+- `'member'` - Super admin member role
+
+## Usage Rules
+
+### ✅ CORRECT - Cast Enum Values Explicitly
+```sql
+-- For checking specific role (single value)
+AND om.role = 'admin'::public.organization_role
+
+-- For checking admin/member roles (super admin roles) - CORRECT SYNTAX
+AND om.role IN ('admin'::public.organization_role, 'member'::public.organization_role)
+
+-- You must cast each enum value individually - this is the only way PostgreSQL supports it
+```
+
+### ❌ INCORRECT - Invalid Syntax
+```sql
+-- Don't use hardcoded strings without casting
+AND om.role = 'admin'
+AND om.role IN ('admin', 'member')
+
+-- ❌ This syntax does NOT work - PostgreSQL doesn't support casting enum types directly
+-- This will cause "missing FROM-clause entry for table" error
+AND om.role IN (public.super_organization_role)
+
+-- Note: While the enum type exists for documentation purposes, you cannot use it directly in IN clauses
+```
+
+## When to Use Which Enum
+
+1. **`public.organization_role`**: Use when checking a specific single role
+   - Example: `role = 'admin'::public.organization_role`
+   - Example: `role = 'patient'::public.organization_role`
+
+2. **`public.super_organization_role`**: Enum type exists for documentation purposes, but you cannot use it directly in SQL
+   - **CORRECT**: `role IN ('admin'::public.organization_role, 'member'::public.organization_role)`
+   - You must cast each enum value individually - PostgreSQL doesn't support `IN (enum_type)` syntax
+   - The enum type serves as documentation of which roles grant super admin access
+   - If you add roles to the enum, remember to update all SQL queries that check for super admin roles
+
+## Examples in RLS Policies
+
+```sql
+-- ✅ GOOD - Using enum type for specific role check
+CREATE POLICY "example_policy" ON table_name
+    FOR UPDATE USING (
+        organization_id IN (
+            SELECT organization_id
+            FROM public.organization_members
+            WHERE user_id = (select auth.uid())
+            AND role = 'admin'::public.organization_role
+            AND is_active = TRUE
+        )
+    );
+
+-- ✅ GOOD - Using cast enum values for admin/member checks (CORRECT)
+CREATE POLICY "example_policy" ON table_name
+    FOR INSERT WITH CHECK (
+        organization_id IN (
+            SELECT organization_id
+            FROM public.organization_members
+            WHERE user_id = (select auth.uid())
+            AND role IN ('admin'::public.organization_role, 'member'::public.organization_role)
+            AND is_active = TRUE
+        )
+    );
+
+-- ✅ GOOD - Using cast enum values for super admin checks
+CREATE POLICY "example_policy" ON table_name
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM public.organization_members om
+            JOIN public.organizations o ON om.organization_id = o.id
+            WHERE om.user_id = (select auth.uid())
+            AND om.is_active = TRUE
+            AND om.role IN ('admin'::public.organization_role, 'member'::public.organization_role)
+            AND o.is_super_admin = TRUE
+            AND o.is_active = TRUE
+        )
+    );
+```
+
+## Benefits
+
+- **Type Safety**: PostgreSQL validates enum values at compile time when you cast them explicitly
+- **Consistency**: Single source of truth for role values (use the enum type definition as reference)
+- **Maintainability**: Enum types serve as documentation - check the enum definition when adding new role checks
+- **Documentation**: Enum types document which roles grant super admin access (admin, member)
+
+## Important Note
+
+⚠️ **PostgreSQL Limitation**: You cannot use `IN (enum_type)` syntax. You must cast each enum value individually:
+- ✅ Correct: `role IN ('admin'::public.organization_role, 'member'::public.organization_role)`
+- ❌ Incorrect: `role IN (public.super_organization_role)` - This will cause a SQL error
+
+The `super_organization_role` enum type exists primarily for documentation purposes to clearly indicate which roles grant super admin privileges.
+
+## Reference
+
+See [organizations-and-permissions.sql](mdc:supabase/schemas/organizations/organizations-and-permissions.sql) for enum definitions and usage examples.

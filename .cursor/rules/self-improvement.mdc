@@ -1,0 +1,71 @@
+---
+description: Guidelines for continuously improving Cursor rules based on emerging code patterns and best 
+practices.
+globs: **/*
+alwaysApply: true
+---
+# Supabase Backend Development Guidelines
+
+## Database Structure Awareness
+
+Always maintain a clear understanding of:
+- **Table relationships** and foreign key constraints
+- **RLS (Row Level Security) policies** for each table
+- **Database functions** and their search_path configurations
+- **Schema organization** and naming conventions
+- **Indexes** and performance considerations
+
+## RLS Policy Management
+
+When working with RLS policies:
+- **Always define policies** for every table that contains sensitive data
+- **Test policies thoroughly** with different user roles
+- **Document policy logic** in schema comments
+- **Consider performance impact** of complex policy conditions
+- **Use policy functions** for reusable security logic
+
+## Continuous Improvement:
+
+- Monitor code review comments related to database design
+- Track common RLS policy questions and edge cases
+- Update rules after major schema refactors
+- Add links to relevant Supabase documentation
+- Cross-reference related database rules
+
+## Rule Deprecation
+
+- Mark outdated database patterns as deprecated
+- Remove rules that no longer apply to current schema
+- Update references to deprecated table structures
+- Document migration paths for schema changes
+
+## Documentation Updates:
+
+- Keep examples synchronized with current schema
+- Update references to external Supabase docs
+- Maintain links between related database rules
+- Document breaking changes in schema structure
+
+# Supabase-Specific Guidelines
+
+When working with Supabase in this project:
+
+1. **Database Schema**: Always modify `supabase/schemas/schema.sql` for declarative schema changes
+2. **Functions**: Always specify `search_path` when creating Supabase functions
+3. **Migrations**: Let Supabase generate migrations automatically from schema.sql
+4. **Client Usage**: Use environment variables for Supabase configuration
+5. **Type Safety**: Leverage Supabase's generated types for database operations
+
+## Project Context
+
+- **Backend Focus**: This project is backend-only using Supabase
+- **Frontend**: FlutterFlow handled by another team member
+- **Integration**: Ensure API endpoints and database structure support FlutterFlow requirements
+- **Documentation**: Maintain clear API documentation for frontend team
+
+Follow [cursor-rules.mdc](mdc:.cursor/cursor-rules.mdc) for proper rule formatting and structure.
+
+- Maintain links between related rules
+- Document breaking changes
+
+Follow [cursor-rules.mdc](mdc:.cursor/rules/curs or-rules.mdc) for proper rule formatting and structure.

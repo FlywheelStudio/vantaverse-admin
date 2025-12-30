@@ -1,0 +1,102 @@
+---
+alwaysApply: true
+---
+-Query examples:
+Use the following query to get exercises for a day in a simple JSON object. The following query gets Monday's exercises of the first week:
+select schedule[1][1] from workout_schedules where id = 'YOUR WORKOUT SCHEDULE ID'
+Returns the array of ordered exercises for the day:
+{
+   "exercises":[
+      {
+         "id":"7c670ab2-c6e7-4998-97db-10494c1e4831",
+         "type":"exercise_template"
+      },
+      {
+         "id":"13addd79-e446-4612-a5b6-7da02e08f9c2",
+         "type":"exercise_template"
+      },
+      {
+         "id":"bcc869d3-414f-4c76-8a57-ddb19723184c",
+         "type":"exercise_template"
+      }
+   ]
+}
+Tuesdays of the first week, we change the second index:
+select schedule[1][2] from workout_schedules where id = 'YOUR WORKOUT SCHEDULE ID'
+Mondays of the second week:
+select schedule[2][1] from workout_schedules where id = 'YOUR WORKOUT SCHEDULE ID'
+
+To query an entire week is a bit more tricky; this queries the entire first week:
+select schedule[1:1] from workout_schedules where id = '6b8c44ee-20d5-41c4-9c58-ae945ba684ea'
+Returns an ordered multidimensional array for the week. This week is (I only assigned exercises to monday):
+[
+   [
+      {
+         "exercises":[
+            {
+               "id":"7c670ab2-c6e7-4998-97db-10494c1e4831",
+               "type":"exercise_template"
+            },
+            {
+               "id":"13addd79-e446-4612-a5b6-7da02e08f9c2",
+               "type":"exercise_template"
+            },
+            {
+               "id":"bcc869d3-414f-4c76-8a57-ddb19723184c",
+               "type":"exercise_template"
+            }
+         ]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      }
+   ]
+]
+The following queries the second week:
+select schedule[2:2] from workout_schedules where id = '6b8c44ee-20d5-41c4-9c58-ae945ba684ea'
+Notice how we changed both values to the 1 index week number, this returns:
+[
+   [
+      {
+         "exercises":[
+            {
+               "id":"e4758130-73b3-4f44-a400-54bf3808f4d0",
+               "type":"group"
+            }
+         ]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      },
+      {
+         "exercises":[]
+      }
+   ]
+]

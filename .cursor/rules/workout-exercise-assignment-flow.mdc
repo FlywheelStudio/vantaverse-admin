@@ -1,0 +1,1024 @@
+# Workout and Exercise Assignment Flow - Developer Guide
+
+## Overview
+
+This document provides a comprehensive guide to understanding how workout schedules, exercise assignments, and completion tracking work in the VantaVerse backend. This system enables administrators to create reusable workout schedules (identified by schedule hash) and assign them to users through program templates, with detailed completion tracking and patient override capabilities.
+
+## System Architecture
+
+### Core Components
+
+1. **`exercise_templates`** - Reusable exercise definitions with parameters (sets, reps, time, weight, etc.)
+2. **`groups`** - Collections of exercise templates (can be supersets or regular groups)
+3. **`workout_schedules`** - Multi-week workout schedules organized by week and day, identified by schedule hash
+4. **`program_template`** - Organization-scoped program definitions that reference workout schedules
+5. **`program_assignment`** - Program assignments with completion tracking and overrides (can be user-specific or templates)
+
+### Data Flow
+
+```
+exercise_templates → groups → workout_schedules → program_template → program_assignment
+```
+
+## JSONB[][] Array Structure
+
+### Understanding the 2D Array Notation
+
+The system uses **PostgreSQL `JSONB[][]`** (2D array of JSONB) to represent hierarchical data structures. The notation `JSONB[][]` means:
+- **Outer array**: First dimension (weeks)
+- **Inner array**: Second dimension (days within a week)
+- **Array elements**: JSONB objects representing workout items
+
+### Indexing Convention
+
+**⚠️ CRITICAL: All arrays are 1-indexed**
+
+- **Week 1** = First week of the program
+- **Day 1** = Monday
+- **Day 2** = Tuesday
+- **Day 3** = Wednesday
+- **Day 4** = Thursday
+- **Day 5** = Friday
+- **Day 6** = Saturday
+- **Day 7** = Sunday
+
+### Visual Representation
+
+```
+schedule[week][day][item_index]
+     ↓         ↓     ↓        ↓
+   Array    Week  Day    Item Position
+```
+
+**Example Structure:**
+```json
+[
+  [  // Week 1
+    [  // Day 1 (Monday)
+      { "type": "exercise_template", "id": "uuid-1" },
+      { "type": "rest", "id": null },
+      { "type": "group", "id": "uuid-2" }
+    ],
+    [  // Day 2 (Tuesday)
+      { "type": "exercise_template", "id": "uuid-3" }
+    ]
+  ],
+  [  // Week 2
+    [  // Day 1 (Monday)
+      { "type": "exercise_template", "id": "uuid-4" }
+    ]
+  ]
+]
+```
+
+## Workout Schedules (`workout_schedules`)
+
+### Table Structure
+
+```sql
+CREATE TABLE public.workout_schedules (
+    id UUID PRIMARY KEY,
+    schedule_hash TEXT NOT NULL,
+    notes TEXT,
+    schedule JSONB[][],  -- 2D array: [week][day][items]
+    
+    -- Reference tracking (derived from schedule, NOT in hash)
+    exercise_template_ids UUID[] DEFAULT '{}',  -- Unique template IDs used
+    group_ids UUID[] DEFAULT '{}',               -- Unique group IDs used
+    exercise_template_counts JSONB DEFAULT '{}', -- {"uuid": count} per template
+    group_counts JSONB DEFAULT '{}',             -- {"uuid": count} per group
+    
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+**Reference Tracking:**
+- **`exercise_template_ids`**: Array of unique exercise template IDs directly referenced in the schedule
+- **`group_ids`**: Array of unique group IDs referenced in the schedule
+- **`exercise_template_counts`**: JSONB object mapping template IDs to their usage count within this schedule (e.g., `{"uuid-1": 10, "uuid-2": 2}`)
+- **`group_counts`**: JSONB object mapping group IDs to their usage count within this schedule
+
+These fields are automatically extracted during schedule normalization and stored for efficient reference tracking. They are NOT included in the `schedule_hash` calculation.
+
+### `schedule` Structure
+
+The `schedule` column stores a 2D array where:
+- **Outer array index** = Week number (1-indexed)
+- **Inner array index** = Day of week (1-indexed, Monday = 1)
+- **Array elements** = JSONB objects with format `{"exercises": [...]}`
+
+**⚠️ IMPORTANT: Array Structure Wrapping**
+
+Each day in the schedule is stored as a JSONB object wrapping the exercises array:
+- `schedule[1][1]` = `{"exercises": [...]}` as JSONB
+- The exercises array is wrapped in a JSON object because **Supabase requires all inner elements of a multi-dimensional array to be the same size**
+- Since different days have different numbers of exercises, we cannot store the exercise arrays directly in the array structure
+- Instead, we wrap each day's exercises in a JSONB object: `{"exercises": [exercise_items...]}`
+
+**⚠️ IMPORTANT: Normalization Behavior**
+- **Input format**: `[week][day][exercise_items]` - 3D array from frontend
+- **Database format**: `[week][day]` where each cell is `{"exercises": [...]}` - 2D array of JSONB objects
+- **Missing days**: If a week has fewer than 7 days, missing days are automatically filled with `{"exercises": []}` (representing rest days)
+- **Normalization**: Handled automatically by `normalize_schedule_structure()` function before storage
+
+### Workout Item Object Types
+
+Each item in the `exercises` array can be one of three types:
+
+#### 1. Exercise Template Item
+```json
+{
+  "type": "exercise_template",
+  "id": "uuid-of-exercise-template"
+}
+```
+References an exercise template from the `exercise_templates` table.
+
+#### 2. Group Item
+```json
+{
+  "type": "group",
+  "id": "uuid-of-group"
+}
+```
+References a group from the `groups` table (can be a superset or regular group).
+
+#### 3. Rest Item
+```json
+{
+  "type": "rest",
+  "id": null
+}
+```
+Explicit rest marker. Alternatively, an empty array `[]` also represents a rest day.
+
+**Note**: The order of items in the `exercises` array matters for hash generation. Different orders produce different hashes.
+
+### Complete Example
+
+**Input Format (from frontend):**
+```json
+[
+  // Week 1
+  [
+    // Monday (Day 1)
+    [
+      { "type": "exercise_template", "id": "550e8400-e29b-41d4-a716-446655440000" },
+      { "type": "rest", "id": null },
+      { "type": "group", "id": "660e8400-e29b-41d4-a716-446655440001" }
+    ],
+    // Tuesday (Day 2)
+    [
+      { "type": "exercise_template", "id": "770e8400-e29b-41d4-a716-446655440002" }
+    ],
+    // Wednesday (Day 3) - Rest day (empty array)
+    [],
+    // Thursday (Day 4)
+    [
+      { "type": "group", "id": "880e8400-e29b-41d4-a716-446655440003" }
+    ]
+    // Friday-Sunday (Days 5-7) are missing - will be auto-filled with [] (rest days)
+  ],
+  // Week 2
+  [
+    // Monday (Day 1)
+    [
+      { "type": "exercise_template", "id": "990e8400-e29b-41d4-a716-446655440004" }
+    ]
+    // Tuesday-Sunday (Days 2-7) are missing - will be auto-filled with [] (rest days)
+  ]
+]
+```
+
+**Database Format (after normalization):**
+```json
+[
+  // Week 1
+  [
+    { "exercises": [
+      { "type": "exercise_template", "id": "550e8400-e29b-41d4-a716-446655440000" },
+      { "type": "rest", "id": null },
+      { "type": "group", "id": "660e8400-e29b-41d4-a716-446655440001" }
+    ]},  // Monday (Day 1)
+    { "exercises": [
+      { "type": "exercise_template", "id": "770e8400-e29b-41d4-a716-446655440002" }
+    ]},  // Tuesday (Day 2)
+    { "exercises": [] },  // Wednesday (Day 3) - Rest day
+    { "exercises": [
+      { "type": "group", "id": "880e8400-e29b-41d4-a716-446655440003" }
+    ]},  // Thursday (Day 4)
+    { "exercises": [] },  // Friday (Day 5) - Auto-filled rest day
+    { "exercises": [] },  // Saturday (Day 6) - Auto-filled rest day
+    { "exercises": [] }   // Sunday (Day 7) - Auto-filled rest day
+  ],
+  // Week 2
+  [
+    { "exercises": [
+      { "type": "exercise_template", "id": "990e8400-e29b-41d4-a716-446655440004" }
+    ]},  // Monday (Day 1)
+    { "exercises": [] },  // Tuesday (Day 2) - Auto-filled rest day
+    { "exercises": [] },  // Wednesday (Day 3) - Auto-filled rest day
+    { "exercises": [] },  // Thursday (Day 4) - Auto-filled rest day
+    { "exercises": [] },  // Friday (Day 5) - Auto-filled rest day
+    { "exercises": [] },  // Saturday (Day 6) - Auto-filled rest day
+    { "exercises": [] }   // Sunday (Day 7) - Auto-filled rest day
+  ]
+]
+```
+
+**Key Points:**
+- Missing days are automatically filled with `{"exercises": []}` (rest days)
+- Each day is wrapped in `{"exercises": [...]}` format as a JSONB object
+- Every week must have exactly 7 days in the database format
+- The wrapping is necessary because Supabase requires all inner array elements to be the same size
+- Normalization is handled by `normalize_schedule_structure()` function
+- To query all exercises for a week, use `schedule[1:]` to get the entire week array
+
+### Accessing Schedule Items
+
+**JavaScript/TypeScript:**
+```typescript
+const workoutSchedule = await supabase
+  .from('workout_schedules')
+  .select('schedule')
+  .eq('schedule_hash', scheduleHash)
+  .single();
+
+// Access week 1, Monday (day 1) - returns {"exercises": [...]}
+const mondayDay = workoutSchedule.data.schedule[1][1];
+
+// Access week 1, Monday (day 1), exercises array
+const mondayExercises = workoutSchedule.data.schedule[1][1].exercises;
+
+// Access week 1, Monday (day 1), first exercise item
+const firstExercise = workoutSchedule.data.schedule[1][1].exercises[0];
+
+// Access week 2, Tuesday (day 2), all exercises
+const tuesdayExercises = workoutSchedule.data.schedule[2][2].exercises;
+```
+
+**SQL:**
+```sql
+-- Get all items for week 1, day 1 (Monday) - returns {"exercises": [...]}
+SELECT schedule[1][1] FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Get exercises array for week 1, day 1 (Monday)
+SELECT schedule[1][1]->'exercises' FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Get specific exercise item (first item of week 1, day 1)
+SELECT schedule[1][1]->'exercises'->0 FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Query all exercises for week 1 (all 7 days)
+SELECT schedule[1:] FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Lookup by schedule hash (indexed for fast lookups)
+SELECT * FROM workout_schedules WHERE schedule_hash = 'hash-value';
+```
+
+**Note:** The `schedule[1:]` syntax queries all elements starting from index 1, which returns the entire first week (all 7 days) as an array of JSONB objects.
+
+### Schedule Normalization and Hash Generation
+
+**Normalization Function: `normalize_schedule_structure()`**
+
+This function automatically:
+1. Validates input structure (must be array of arrays)
+2. Ensures every week has exactly 7 days (fills missing days with empty arrays)
+3. Wraps each day's exercises in `{"exercises": [...]}` format
+4. Returns normalized `JSONB[][]` structure
+
+**Hash Generation:**
+- Uses SHA-256 hash of the normalized schedule structure
+- **Array order matters**: `[{ex1}, {ex2}]` ≠ `[{ex2}, {ex1}]` (different hashes)
+- **Object property order doesn't matter**: `{type: "x", id: "y"}` = `{id: "y", type: "x"}` (same hash)
+- Hash is stored in `schedule_hash` column for duplicate detection
+
+**Reference Tracking:**
+- Automatically extracts all exercise_template and group IDs from the normalized schedule
+- Stores unique IDs in `exercise_template_ids` and `group_ids` arrays
+- Counts how many times each template/group is used within the schedule
+- Stores counts in `exercise_template_counts` and `group_counts` JSONB fields
+- Used for efficient reference counting when editing templates/groups
+
+**Upsert Logic (`upsert_workout_schedule()` RPC):**
+1. Normalizes input schedule structure
+2. Generates hash from normalized structure
+3. Extracts and stores reference tracking data (template/group IDs and counts)
+4. Checks if schedule with same hash exists
+5. If exists and referenced > 1 time → creates clone (new UUID, same hash)
+6. If exists and referenced 1 time → returns existing (updates notes if provided)
+7. If doesn't exist → creates new schedule
+
+**Example:**
+```sql
+-- Call RPC function to upsert schedule
+SELECT * FROM upsert_workout_schedule(
+  '[[[{type: "exercise_template", id: "uuid-1"}], []]]'::jsonb,
+  'My workout notes'
+);
+
+-- Returns:
+-- {
+--   "success": true,
+--   "id": "new-uuid",
+--   "schedule_hash": "abc123...",
+--   "cloned": false,
+--   "reference_count": 0
+-- }
+```
+
+## Program Assignments (`program_assignment`)
+
+### Table Structure
+
+```sql
+CREATE TABLE public.program_assignment (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id),  -- Nullable for templates
+    organization_id UUID REFERENCES organizations(id),  -- Nullable for templates
+    program_template_id UUID NOT NULL REFERENCES program_template(id),
+    workout_schedule_id UUID REFERENCES workout_schedules(id),  -- Nullable
+    start_date DATE NOT NULL,
+    end_date DATE,
+    patient_override JSONB[][],  -- 2D array: [week][day][items]
+    completion JSONB[][],        -- 2D array: [week][day][items]
+    status TEXT DEFAULT 'active' CHECK (status IN ('template', 'active', 'completed', 'paused', 'cancelled')),
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(user_id, organization_id, program_template_id)
+);
+```
+
+### Completion Tracking (`completion`)
+
+The `completion` column tracks user progress through their assigned workout program.
+
+#### Structure
+
+**Format:** `JSONB[][]` - Same 2D array structure as `schedule`
+- **Outer array index** = Week number (1-indexed)
+- **Inner array index** = Day of week (1-indexed)
+- **Array elements** = Completion data for each workout item
+
+#### Completion Object Types
+
+The completion structure varies based on the item type:
+
+##### 1. Exercise Template Completion
+```json
+{
+  "type": "exercise_template",
+  "exercise_template_id": "uuid-of-exercise-template",
+  "completed_sets": [0, 1, 2]  // Array of set indices (0-indexed) that were completed
+}
+```
+
+**Example:** If an exercise has 3 sets and the user completed sets 1 and 2:
+```json
+{
+  "type": "exercise_template",
+  "exercise_template_id": "550e8400-e29b-41d4-a716-446655440000",
+  "completed_sets": [0, 1]  // First and second sets (0-indexed)
+}
+```
+
+##### 2. Group Completion
+```json
+{
+  "type": "group",
+  "group_id": "uuid-of-group",
+  "group_completion": [
+    {
+      "exercise_index": 0,  // Index of exercise within the group (0-indexed)
+      "completed_sets": [0, 1, 2]  // Sets completed for this exercise
+    },
+    {
+      "exercise_index": 1,
+      "completed_sets": [0]
+    }
+  ]
+}
+```
+
+**Example:** A group with 2 exercises, first exercise completed all 3 sets, second exercise completed only the first set:
+```json
+{
+  "type": "group",
+  "group_id": "660e8400-e29b-41d4-a716-446655440001",
+  "group_completion": [
+    { "exercise_index": 0, "completed_sets": [0, 1, 2] },
+    { "exercise_index": 1, "completed_sets": [0] }
+  ]
+}
+```
+
+##### 3. Rest Completion
+```json
+{
+  "type": "rest",
+  "completed": true
+}
+```
+
+#### Day Completion Simplification
+
+**⚠️ IMPORTANT:** After a day is fully completed, the completion structure is simplified to a boolean:
+
+```json
+{
+  "1": {  // Week 1
+    "1": true,  // Day 1 (Monday) - fully completed
+    "2": [  // Day 2 (Tuesday) - in progress
+      { "type": "exercise_template", "exercise_template_id": "...", "completed_sets": [0] }
+    ]
+  }
+}
+```
+
+**Note:** The simplified format uses object keys (strings) instead of array indices for weeks and days.
+
+#### Complete Completion Example
+
+```json
+[
+  // Week 1
+  [
+    // Monday (Day 1) - Fully completed (simplified)
+    true,
+    // Tuesday (Day 2) - In progress
+    [
+      {
+        "type": "exercise_template",
+        "exercise_template_id": "550e8400-e29b-41d4-a716-446655440000",
+        "completed_sets": [0, 1]
+      },
+      {
+        "type": "rest",
+        "completed": true
+      },
+      {
+        "type": "group",
+        "group_id": "660e8400-e29b-41d4-a716-446655440001",
+        "group_completion": [
+          { "exercise_index": 0, "completed_sets": [0, 1, 2] },
+          { "exercise_index": 1, "completed_sets": [0] }
+        ]
+      }
+    ],
+    // Wednesday (Day 3) - Not started
+    []
+  ]
+]
+```
+
+### Patient Override (`patient_override`)
+
+The `patient_override` column allows administrators to completely replace the base workout template items for specific weeks/days.
+
+#### Structure
+
+**Format:** `JSONB[][]` - Same 2D array structure as `schedule`
+- **Outer array index** = Week number (1-indexed)
+- **Inner array index** = Day of week (1-indexed)
+- **Array elements** = Replacement workout items
+
+#### Override Behavior
+
+- **Complete Replacement**: When `patient_override[week][day]` exists, it completely replaces `workout_schedule.schedule[week][day]`
+- **Partial Override**: Only override specific weeks/days that need changes
+- **Null/Empty**: If `patient_override[week][day]` is null or empty, use base template items
+
+#### Override Item Structure
+
+Same structure as `schedule`:
+```json
+[
+  { "type": "exercise_template", "id": "uuid" },
+  { "type": "group", "id": "uuid" },
+  { "type": "rest", "id": null }
+]
+```
+
+#### Complete Override Example
+
+```json
+[
+  // Week 1
+  [
+    // Monday (Day 1) - Override with different exercises
+    [
+      { "type": "exercise_template", "id": "new-exercise-uuid-1" },
+      { "type": "exercise_template", "id": "new-exercise-uuid-2" }
+    ],
+    // Tuesday (Day 2) - No override (use base template)
+    null,
+    // Wednesday (Day 3) - Override with rest day
+    [
+      { "type": "rest", "id": null }
+    ]
+  ]
+]
+```
+
+#### Resolving Workout Items (Base vs Override)
+
+**Logic:**
+```typescript
+function getWorkoutItemsForDay(
+  workoutSchedule: WorkoutSchedule,
+  patientOverride: JSONB[][] | null,
+  week: number,
+  day: number
+): WorkoutItem[] {
+  // Check if override exists for this week/day
+  // Override structure: [week][day] = [exercise_items...] (array of items)
+  if (patientOverride?.[week]?.[day]) {
+    return patientOverride[week][day];
+  }
+  
+  // Fall back to base schedule
+  // Schedule structure: [week][day] = {"exercises": [exercise_items...]} (JSONB object)
+  const dayObject = workoutSchedule.schedule[week]?.[day];
+  return dayObject?.exercises || [];
+}
+```
+
+## Related Tables
+
+### Exercise Templates (`exercise_templates`)
+
+Exercise templates define the parameters for individual exercises and use hash-based deduplication:
+
+```sql
+CREATE TABLE public.exercise_templates (
+    id UUID PRIMARY KEY,
+    template_hash TEXT NOT NULL,  -- Hash of template structure (for deduplication)
+    exercise_id INTEGER REFERENCES exercises(id),
+    notes TEXT,  -- Metadata, not included in hash
+    sets NUMERIC,
+    time NUMERIC,  -- seconds
+    rep NUMERIC,
+    distance TEXT,
+    weight TEXT,
+    rest_time NUMERIC,  -- seconds
+    equipment_ids INTEGER[],
+    -- ... override arrays for per-set customization
+);
+```
+
+**Hash-Based Deduplication:**
+- Templates with identical structure (same exercise_id, sets, reps, equipment_ids, etc.) produce the same `template_hash`
+- Same hash = automatic template reuse (no duplicates)
+- `notes` field is excluded from hash (metadata only)
+- Equipment IDs are sorted before hashing (order doesn't matter)
+- Empty arrays `{}` for equipment_ids are normalized to `NULL` for consistency
+
+**See:** [Hash-Based Deduplication Documentation](HASH_BASED_DEDUPLICATION.md) for detailed information.
+
+### Groups (`groups`)
+
+Groups contain ordered arrays of exercise templates and use hash-based deduplication:
+
+```sql
+CREATE TABLE public.groups (
+    id UUID PRIMARY KEY,
+    group_hash TEXT NOT NULL,  -- Hash of group structure (for deduplication)
+    title TEXT NOT NULL,  -- Included in hash (semantic meaning)
+    is_superset BOOLEAN DEFAULT false,
+    exercise_template_ids UUID[],  -- Ordered array (order matters!)
+    note TEXT  -- Metadata, not included in hash
+);
+```
+
+**Hash-Based Deduplication:**
+- Groups with identical structure (same title, is_superset flag, and exercise_template_ids in same order) produce the same `group_hash`
+- Same hash = automatic group reuse (no duplicates)
+- `note` field is excluded from hash (metadata only)
+- `title` is included in hash (different titles = different groups)
+- Exercise template IDs order matters (supersets require specific sequence)
+
+**See:** [Hash-Based Deduplication Documentation](HASH_BASED_DEDUPLICATION.md) for detailed information.
+
+**Example:**
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "title": "Upper Body Superset",
+  "is_superset": true,
+  "exercise_template_ids": [
+    "550e8400-e29b-41d4-a716-446655440000",  // Exercise 1
+    "770e8400-e29b-41d4-a716-446655440002"   // Exercise 2
+  ]
+}
+```
+
+## Common Operations
+
+### 1. Creating a Workout Schedule
+
+```typescript
+// Generate a hash from the schedule structure for deduplication
+const scheduleHash = generateScheduleHash(schedule);
+
+const workoutSchedule = {
+  schedule_hash: scheduleHash,
+  notes: "Optional notes about this schedule",
+  schedule: [
+    // Week 1
+    [
+      // Monday
+      [
+        { type: "exercise_template", id: "exercise-uuid-1" },
+        { type: "rest", id: null },
+        { type: "exercise_template", id: "exercise-uuid-2" }
+      ],
+      // Tuesday
+      [
+        { type: "group", id: "group-uuid-1" }
+      ],
+      // Wednesday - Rest day
+      [],
+      // Thursday
+      [
+        { type: "exercise_template", id: "exercise-uuid-3" }
+      ]
+    ],
+    // Week 2
+    [
+      // Monday
+      [
+        { type: "exercise_template", id: "exercise-uuid-4" }
+      ]
+    ]
+  ]
+};
+
+await supabase
+  .from('workout_schedules')
+  .insert(workoutSchedule);
+```
+
+### 2. Assigning a Program to a User
+
+```typescript
+const userProgram = {
+  user_id: "user-uuid",
+  organization_id: "org-uuid",
+  program_template_id: "program-template-uuid",
+  workout_schedule_id: "workout-schedule-uuid",
+  start_date: "2024-01-01",
+  completion: [],  // Initialize empty
+  patient_override: null,  // No overrides initially
+  status: "active"
+};
+
+await supabase
+  .from('program_assignment')
+  .insert(userProgram);
+```
+
+### 3. Recording Exercise Completion
+
+```typescript
+// User completed sets 0 and 1 (first and second sets) of an exercise
+const completionUpdate = {
+  completion: [
+    [
+      // Week 1, Day 1 (Monday)
+      [
+        {
+          type: "exercise_template",
+          exercise_template_id: "exercise-uuid-1",
+          completed_sets: [0, 1]  // Completed first 2 sets
+        },
+        {
+          type: "rest",
+          completed: true
+        }
+      ]
+    ]
+  ]
+};
+
+await supabase
+  .from('program_assignment')
+  .update(completionUpdate)
+  .eq('id', userProgramId);
+```
+
+### 4. Recording Group Completion
+
+```typescript
+// Group with 2 exercises
+// First exercise: completed all 3 sets
+// Second exercise: completed only first set
+const groupCompletion = {
+  type: "group",
+  group_id: "group-uuid-1",
+  group_completion: [
+    {
+      exercise_index: 0,  // First exercise in group
+      completed_sets: [0, 1, 2]  // All sets completed
+    },
+    {
+      exercise_index: 1,  // Second exercise in group
+      completed_sets: [0]  // Only first set completed
+    }
+  ]
+};
+```
+
+### 5. Adding Patient Override
+
+```typescript
+// Override week 1, Monday with different exercises
+const override = {
+  patient_override: [
+    [
+      // Week 1
+      [
+        // Monday - Replace with new exercises
+        [
+          { type: "exercise_template", id: "new-exercise-uuid-1" },
+          { type: "exercise_template", id: "new-exercise-uuid-2" }
+        ],
+        // Tuesday - No override (null)
+        null
+      ]
+    ]
+  ]
+};
+
+await supabase
+  .from('program_assignment')
+  .update(override)
+  .eq('id', userProgramId);
+```
+
+### 6. Checking Day Completion Status
+
+```typescript
+function isDayCompleted(
+  completion: JSONB[][],
+  week: number,
+  day: number
+): boolean {
+  const dayCompletion = completion[week]?.[day];
+  
+  // Simplified format (boolean)
+  if (dayCompletion === true) {
+    return true;
+  }
+  
+  // Array format - check if all items are completed
+  if (Array.isArray(dayCompletion)) {
+    // Get workout items for this day (from template or override)
+    const workoutItems = getWorkoutItemsForDay(week, day);
+    
+    // Check if completion array length matches workout items
+    if (dayCompletion.length !== workoutItems.length) {
+      return false;
+    }
+    
+    // Verify each item is completed
+    return dayCompletion.every((itemCompletion, index) => {
+      const workoutItem = workoutItems[index];
+      
+      if (workoutItem.type === "rest") {
+        return itemCompletion.completed === true;
+      }
+      
+      if (workoutItem.type === "exercise_template") {
+        const exerciseTemplate = getExerciseTemplate(workoutItem.id);
+        const expectedSets = exerciseTemplate.sets || 0;
+        return itemCompletion.completed_sets?.length === expectedSets;
+      }
+      
+      if (workoutItem.type === "group") {
+        const group = getGroup(workoutItem.id);
+        return itemCompletion.group_completion?.length === group.exercise_template_ids.length;
+      }
+      
+      return false;
+    });
+  }
+  
+  return false;
+}
+```
+
+## Best Practices
+
+### 1. Array Index Validation
+
+Always validate array indices before accessing:
+```typescript
+// Access the day object (contains {"exercises": [...]})
+if (schedule[week]?.[day]) {
+  const dayObject = schedule[week][day];
+  const exercises = dayObject.exercises;
+  // Process exercises
+}
+
+// Or access exercises directly
+if (schedule[week]?.[day]?.exercises) {
+  const exercises = schedule[week][day].exercises;
+  // Process exercises
+}
+```
+
+### 2. Completion Tracking
+
+- **Incremental Updates**: Update completion as user progresses, don't replace entire structure
+- **Set Tracking**: Use 0-indexed arrays for set completion
+- **Day Simplification**: After day completion, simplify to boolean for performance
+
+### 3. Override Management
+
+- **Sparse Overrides**: Only override weeks/days that need changes
+- **Null Handling**: Use `null` for days that should use base template
+- **Validation**: Ensure override items match workout item structure
+
+### 4. Performance Considerations
+
+- **GIN Indexes**: Both `completion` and `patient_override` have GIN indexes for efficient JSONB queries
+- **Partial Updates**: Update only the specific week/day being modified
+- **Caching**: Cache workout template data when processing multiple user programs
+
+## Common Pitfalls
+
+### ❌ Incorrect Indexing
+
+```typescript
+// ❌ WRONG - Using 0-indexed
+const mondayDay = schedule[0][0];  // This would be out of bounds or incorrect!
+
+// ✅ CORRECT - Using 1-indexed
+const mondayDay = schedule[1][1];  // Week 1, Monday (Day 1) - returns {"exercises": [...]}
+const mondayExercises = schedule[1][1].exercises;  // Access the exercises array
+```
+
+### ❌ Incorrect Structure Access
+
+```typescript
+// ❌ WRONG - Trying to access exercises directly from array
+const exercises = schedule[1][1][0];  // This gets the first character/byte, not exercises!
+
+// ✅ CORRECT - Access the exercises property from the JSONB object
+const dayObject = schedule[1][1];  // {"exercises": [...]}
+const exercises = dayObject.exercises;  // [exercise_items...]
+```
+
+### ❌ Mixing Array and Object Formats
+
+```typescript
+// ❌ WRONG - Mixing formats
+completion[1][1] = true;  // Boolean
+completion[1][2] = [{ type: "..." }];  // Array
+
+// ✅ CORRECT - Consistent format
+// Use array format during progress, boolean after completion
+```
+
+### ❌ Incorrect Set Indexing
+
+```typescript
+// ❌ WRONG - 1-indexed sets
+completed_sets: [1, 2, 3]  // This would be sets 2, 3, 4!
+
+// ✅ CORRECT - 0-indexed sets
+completed_sets: [0, 1, 2]  // Sets 1, 2, 3
+```
+
+## SQL Query Examples
+
+### Get Schedule Items for Specific Week/Day
+
+```sql
+-- Get week 1, day 1 (Monday) - returns {"exercises": [...]}
+SELECT schedule[1][1] FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Get exercises array for week 1, day 1 (Monday)
+SELECT schedule[1][1]->'exercises' FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Get first exercise item from week 1, day 1
+SELECT schedule[1][1]->'exercises'->0 FROM workout_schedules WHERE schedule_hash = 'hash-value';
+```
+
+### Query All Exercises for a Week
+
+```sql
+-- Get all days for week 1 (all 7 days) - returns array of {"exercises": [...]} objects
+SELECT schedule[1:] FROM workout_schedules WHERE schedule_hash = 'hash-value';
+
+-- Get exercises for all days in week 1 (extract exercises from each day)
+SELECT 
+  schedule[1][1]->'exercises' as monday,
+  schedule[1][2]->'exercises' as tuesday,
+  schedule[1][3]->'exercises' as wednesday,
+  schedule[1][4]->'exercises' as thursday,
+  schedule[1][5]->'exercises' as friday,
+  schedule[1][6]->'exercises' as saturday,
+  schedule[1][7]->'exercises' as sunday
+FROM workout_schedules 
+WHERE schedule_hash = 'hash-value';
+```
+
+**Note:** The `schedule[1:]` syntax queries all elements starting from index 1, which returns the entire first week (all 7 days) as an array of JSONB objects, each containing `{"exercises": [...]}`.
+
+### Get User's Completion for Week 1, Monday
+
+```sql
+SELECT completion[1][1]
+FROM program_assignment
+WHERE id = 'program-assignment-uuid';
+```
+
+### Check if Day is Completed
+
+```sql
+SELECT 
+  CASE 
+    WHEN completion[1][1] = 'true'::jsonb THEN true
+    WHEN jsonb_array_length(completion[1][1]) > 0 THEN false
+    ELSE false
+  END as is_completed
+FROM program_assignment
+WHERE id = 'program-assignment-uuid';
+```
+
+### Get Effective Schedule Items (Base or Override)
+
+```sql
+-- Get effective day (override or base schedule) - returns {"exercises": [...]}
+SELECT 
+  COALESCE(
+    pa.patient_override[1][1],
+    ws.schedule[1][1]
+  ) as effective_items
+FROM program_assignment pa
+JOIN workout_schedules ws ON pa.workout_schedule_id = ws.id
+WHERE pa.id = 'program-assignment-uuid';
+
+-- Get effective exercises array (override or base schedule)
+SELECT 
+  COALESCE(
+    pa.patient_override[1][1]->'exercises',
+    ws.schedule[1][1]->'exercises'
+  ) as effective_exercises
+FROM program_assignment pa
+JOIN workout_schedules ws ON pa.workout_schedule_id = ws.id
+WHERE pa.id = 'program-assignment-uuid';
+```
+
+### Query Reference Tracking
+
+```sql
+-- Find all schedules using a specific exercise template
+SELECT id, schedule_hash, notes
+FROM workout_schedules
+WHERE 'template-uuid' = ANY(exercise_template_ids);
+
+-- Find all schedules using a specific group
+SELECT id, schedule_hash, notes
+FROM workout_schedules
+WHERE 'group-uuid' = ANY(group_ids);
+
+-- Get usage count of a template within a specific schedule
+SELECT 
+  exercise_template_counts->>'template-uuid' as usage_count
+FROM workout_schedules
+WHERE id = 'schedule-uuid';
+
+-- Get all templates used in a schedule with their counts
+SELECT 
+  jsonb_object_keys(exercise_template_counts) as template_id,
+  exercise_template_counts->jsonb_object_keys(exercise_template_counts) as count
+FROM workout_schedules
+WHERE id = 'schedule-uuid';
+```
+
+## Hash-Based Deduplication and Reference Tracking
+
+The system uses hash-based deduplication to prevent duplicate templates and efficiently track their usage:
+
+- **Exercise Templates**: Hash-based deduplication by structure (`template_hash`)
+- **Groups**: Hash-based deduplication by structure including title (`group_hash`)
+- **Workout Schedules**: Hash-based deduplication by schedule structure (`schedule_hash`)
+- **Reference Tracking**: Workout schedules automatically track which templates/groups are used and how many times
+
+**See:** [Hash-Based Deduplication Documentation](HASH_BASED_DEDUPLICATION.md) for comprehensive details on:
+- How hashes are generated
+- Cloning logic when editing templates
+- Reference counting and tracking
+- Usage examples and best practices
+
+## References
+
+- [Hash-Based Deduplication Guide](HASH_BASED_DEDUPLICATION.md) - Complete guide to hash-based deduplication system
+- [Program Assignment Schema](mdc:supabase/schemas/programs/z-user-program.sql) - Complete schema definition
+- [Workout Schedules Schema](mdc:supabase/schemas/programs/workouts.sql) - Workout schedule structure
+- [Groups Schema](mdc:supabase/schemas/programs/supersets.sql) - Group definitions
+- [Exercise Templates Schema](mdc:supabase/schemas/programs/exercise-templates.sql) - Exercise template structure
+- [Program Templates Schema](mdc:supabase/schemas/programs/program-templating.sql) - Program template structure

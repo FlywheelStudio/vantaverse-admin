@@ -14,6 +14,8 @@ const config: KnipConfig = {
     'tw-animate-css',
     'tailwindcss',
     '@commitlint/config-conventional',
+    '@commitlint/cli',
+    'commitlint',
   ],
   project: ['src/**/*.{js,ts,jsx,tsx}'],
 };
