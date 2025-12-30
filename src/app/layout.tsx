@@ -82,13 +82,12 @@ export const metadata: Metadata = {
   title: 'Flywheel Starter for Next.js and Supabase',
   description: 'Flywheel Starter for Next.js and Supabase',
   icons: {
-    icon: '/static/favicons/favicon.ico',
-    apple: '/static/favicons/apple-touch-icon.png',
-    shortcut: '/static/favicons/favicon.ico',
-    other: {
-      rel: 'icon',
-      url: '/static/favicons/favicon.ico',
-    },
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-icon.png',
+    shortcut: '/favicon.ico',
   },
   openGraph: {
     title: 'Flywheel Starter for Next.js and Supabase',
