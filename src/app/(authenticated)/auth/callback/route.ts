@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/core/server';
 import { NextResponse } from 'next/server';
-import { serverGetNext, verifyAdminAccess } from '../actions';
+import { serverGetNext } from '../actions';
+import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 
 const errorMessage = 'An error occurred during sign in. Please try again.';
 
@@ -31,8 +32,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const isAdmin = await verifyAdminAccess(userId);
-    if (!isAdmin) {
+    const organizationMembers = new OrganizationMembers();
+    const adminCheck = await organizationMembers.isUserAdminById(userId);
+
+    if (!adminCheck.success || !adminCheck.data) {
       // Sign out the user and redirect with error
       await supabase.auth.signOut();
       return NextResponse.redirect(

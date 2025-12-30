@@ -13,7 +13,7 @@ export type SupabaseSuccess<T> = {
   data: T;
 };
 
-export type ClientRole = 'user' | 'service_role';
+export type ClientRole = 'authenticated_user' | 'service_role';
 
 type SupabaseClientType =
   | Awaited<ReturnType<typeof createClient>>
@@ -39,11 +39,11 @@ export abstract class SupabaseQuery {
 
   /**
    * Get the supabase client with the specified role
-   * @param role - The client role ('user' or 'admin')
+   * @param role - The client role ('authenticated_user' or 'service_role')
    * @returns The supabase client
    */
   protected async getClient(
-    role: ClientRole = 'user',
+    role: ClientRole = 'authenticated_user',
   ): Promise<
     | Awaited<ReturnType<typeof createClient>>
     | Awaited<ReturnType<typeof createAdminClient>>
@@ -73,7 +73,7 @@ export abstract class SupabaseQuery {
     }
 
     this._user = user;
-    this._clientRole = 'user';
+    this._clientRole = 'authenticated_user';
     return this._supabase;
   }
 
@@ -82,8 +82,8 @@ export abstract class SupabaseQuery {
    * @returns The user
    */
   public async getUser() {
-    if (this._clientRole !== 'user') {
-      await this.getClient('user');
+    if (this._clientRole !== 'authenticated_user') {
+      await this.getClient('authenticated_user');
     }
     return this._user;
   }
@@ -95,7 +95,7 @@ export abstract class SupabaseQuery {
    * @returns The result of the query
    */
   protected async withClient<T>(
-    role: ClientRole = 'user',
+    role: ClientRole = 'authenticated_user',
     queryFn: (
       client:
         | Awaited<ReturnType<typeof createClient>>
