@@ -3,6 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export default async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
+
+  // Skip middleware for static files
+  const staticFileExtensions =
+    /\.(png|jpg|jpeg|gif|svg|webp|avif|ico|mp4|webm|mov|woff|woff2|ttf|otf|eot|json|xml|txt)$/i;
+  if (staticFileExtensions.test(path)) {
+    return NextResponse.next();
+  }
+
+  // Skip middleware for Next.js internal routes and public assets
+  if (
+    path.startsWith('/_next/') ||
+    path.startsWith('/api/') ||
+    path === '/favicon.ico' ||
+    path === '/manifest.json' ||
+    path === '/manifest.webmanifest' ||
+    path === '/sitemap.xml' ||
+    path === '/robots.txt' ||
+    path === '/bg_gates_open.mp4'
+  ) {
+    return NextResponse.next();
+  }
+
   const supabase = await createClient();
 
   const {
@@ -10,15 +32,15 @@ export default async function proxy(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   const regexPathPublic =
-    /^(\/$|\/sign-in$|\/auth\/callback$|\/docs(\/.*)?$|\/blog(\/.*)?$|\/legals(\/.*)?$)/;
+    /^(\/login$|\/auth\/callback$|\/docs(\/.*)?$|\/blog(\/.*)?$|\/legals(\/.*)?$)/;
   const isPathPublic = regexPathPublic.test(path);
 
-  const regexPathAuth = /^\/sign-in$|\/auth\/callback$/;
+  const regexPathAuth = /^\/login$|\/auth\/callback$/;
   const isPathAuth = regexPathAuth.test(path);
 
   if (!session && !isPathPublic) {
     const redirectUrl = new URL(
-      `/sign-in?next=${encodeURIComponent(path)}`,
+      `/login?next=${encodeURIComponent(path)}`,
       req.url,
     );
     return NextResponse.redirect(redirectUrl);
@@ -39,8 +61,7 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
      */
-    '/((?!auth/callback|api|static|_next/static|_next/image|favicon.ico|manifest.json|sitemap.xml|robots.txt).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|manifest.webmanifest|sitemap.xml|robots.txt).*)',
   ],
 };

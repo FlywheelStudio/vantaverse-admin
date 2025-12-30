@@ -1,7 +1,7 @@
 ---
 description: All the tables and structure of the database
 globs:
-alwaysApply: true
+alwaysApply: false
 ---
 # Database Structure - VantaVerse Backend
 

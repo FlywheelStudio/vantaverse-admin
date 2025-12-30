@@ -1,5 +1,6 @@
 import { AuthProvider } from '@/context/auth';
 import { ThemeProvider } from '@/context/theme';
+import { Toaster } from 'react-hot-toast';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
@@ -72,15 +73,9 @@ const satoshi = localFont({
   display: 'swap',
 });
 
-const gas = localFont({
-  src: '../fonts/GAS.TTF',
-  variable: '--font-gas',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
-  title: 'Flywheel Starter for Next.js and Supabase',
-  description: 'Flywheel Starter for Next.js and Supabase',
+  title: 'VantaVerse Admin',
+  description: 'VantaVerse Admin panel for the VantaVerse application',
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -90,8 +85,8 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
   },
   openGraph: {
-    title: 'Flywheel Starter for Next.js and Supabase',
-    description: 'Flywheel Starter for Next.js and Supabase',
+    title: 'VantaVerse Admin',
+    description: 'VantaVerse Admin panel for the VantaVerse application',
     url: process.env.APP_URL,
     type: 'website',
     images: [
@@ -99,21 +94,21 @@ export const metadata: Metadata = {
         url: `${process.env.APP_URL}/og-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'Flywheel Starter for Next.js and Supabase',
+        alt: 'VantaVerse Admin',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@flywheelstudio',
-    title: 'Flywheel Starter for Next.js and Supabase',
-    description: 'Flywheel Starter for Next.js and Supabase',
+    title: 'VantaVerse Admin',
+    description: 'VantaVerse Admin panel for the VantaVerse application',
     images: [
       {
         url: `${process.env.APP_URL}/twitter-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'Flywheel Starter for Next.js and Supabase',
+        alt: 'VantaVerse Admin',
       },
     ],
   },
@@ -127,8 +122,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${satoshi.variable} ${gas.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${satoshi.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <div>
+          <Toaster position="bottom-right" reverseOrder={false} />
+        </div>
         <AuthProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </AuthProvider>

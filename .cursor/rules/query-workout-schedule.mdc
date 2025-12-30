@@ -1,5 +1,5 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
 -Query examples:
 Use the following query to get exercises for a day in a simple JSON object. The following query gets Monday's exercises of the first week:
