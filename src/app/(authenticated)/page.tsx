@@ -1,33 +1,26 @@
-'use server';
+'use client';
 
-import { createClient } from '@/lib/supabase/core/server';
-import { redirect } from 'next/navigation';
-import Header from './header';
+import { useProfile } from '@/hooks/use-profile';
+import { PageWrapper } from '@/components/page-wrapper';
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+export default function HomePage() {
+  const { data: profile } = useProfile();
 
-  if (!session) {
-    redirect('/login');
-  }
+  const firstName = profile?.first_name || profile?.username;
 
   return (
-    <div
-      className="min-h-screen w-full bg-gradient-to-b from-[#0D47A1] via-[#2196F3] to-[#B3E5FC]"
-      style={{
-        background:
-          'linear-gradient(180deg, #0D47A1 0%, #2196F3 50%, #B3E5FC 100%)',
-      }}
+    <PageWrapper
+      subheader={
+        <h1 className="text-2xl font-medium">
+          Welcome back{firstName ? `, ${firstName}` : ''}!
+        </h1>
+      }
     >
-      <Header />
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome</h1>
-        </div>
+      <div className="text-white">
+        <p className="text-base opacity-80">
+          Click the Vanta Buddy to open the menu and start today&apos;s journey
+        </p>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

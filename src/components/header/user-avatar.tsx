@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/use-profile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Generate a consistent color from a seed string
 function generateColorFromSeed(seed: string): string {
@@ -40,6 +41,7 @@ interface UserAvatarProps {
 
 export function UserAvatar({ showName = true }: UserAvatarProps) {
   const { data: profile, isLoading, error } = useProfile();
+  const isMobile = useIsMobile();
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -86,9 +88,9 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
             }}
           />
         </span>
-        {showName && (
+        {showName && !isMobile && (
           <motion.span
-            className="hidden sm:inline text-sm font-medium text-muted-foreground"
+            className="text-sm font-medium text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -123,8 +125,8 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
             {initials}
           </div>
         </motion.span>
-        {showName && (
-          <span className="hidden sm:inline text-sm font-medium">User</span>
+        {showName && !isMobile && (
+          <span className="text-sm font-medium">User</span>
         )}
       </motion.button>
     );
@@ -170,9 +172,9 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           </motion.div>
         )}
       </motion.span>
-      {showName && (
+      {showName && !isMobile && (
         <motion.span
-          className="hidden sm:inline text-sm font-medium text-white"
+          className="text-sm font-medium text-white"
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
