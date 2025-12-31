@@ -18,8 +18,10 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
+    "@rive-app/react-canvas": "^4.25.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
+    "@tanstack/react-query": "^5.90.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",

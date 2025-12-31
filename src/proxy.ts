@@ -16,8 +16,6 @@ export default async function proxy(req: NextRequest) {
     path.startsWith('/_next/') ||
     path.startsWith('/api/') ||
     path === '/favicon.ico' ||
-    path === '/manifest.json' ||
-    path === '/manifest.webmanifest' ||
     path === '/sitemap.xml' ||
     path === '/robots.txt' ||
     path === '/bg_gates_open.mp4'
@@ -62,6 +60,6 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|manifest.webmanifest|sitemap.xml|robots.txt).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };

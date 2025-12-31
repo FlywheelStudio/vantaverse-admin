@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/core/server';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 /**
@@ -184,4 +185,12 @@ export async function serverVerifyOtp(email: string, token: string) {
       `/login?error=${encodeURIComponent('An error occurred. Please try again.')}`,
     );
   }
+}
+
+/**
+ * Get the authenticated user's profile
+ */
+export async function getAuthProfile() {
+  const query = new ProfilesQuery();
+  return query.getAuthProfile();
 }

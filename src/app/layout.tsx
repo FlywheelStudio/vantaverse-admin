@@ -1,5 +1,6 @@
 import { AuthProvider } from '@/context/auth';
 import { ThemeProvider } from '@/context/theme';
+import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
@@ -81,7 +82,6 @@ export const metadata: Metadata = {
       { url: '/favicon.ico' },
       { url: '/icon0.svg', type: 'image/svg+xml' },
     ],
-    apple: '/apple-icon.png',
     shortcut: '/favicon.ico',
   },
   openGraph: {
@@ -127,9 +127,11 @@ export default function RootLayout({
         <div>
           <Toaster position="bottom-right" reverseOrder={false} />
         </div>
-        <AuthProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

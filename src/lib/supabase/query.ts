@@ -19,6 +19,9 @@ type SupabaseClientType =
   | Awaited<ReturnType<typeof createClient>>
   | Awaited<ReturnType<typeof createAdminClient>>;
 
+let adminClientInstance: Awaited<ReturnType<typeof createAdminClient>> | null =
+  null;
+
 export abstract class SupabaseQuery {
   /**
    * The supabase client (lazy initialized)
@@ -54,7 +57,11 @@ export abstract class SupabaseQuery {
     }
 
     if (role === 'service_role') {
-      this._supabase = await createAdminClient();
+      // Use singleton admin client
+      if (!adminClientInstance) {
+        adminClientInstance = await createAdminClient();
+      }
+      this._supabase = adminClientInstance;
       this._user = null;
       this._clientRole = 'service_role';
       return this._supabase;
