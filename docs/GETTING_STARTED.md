@@ -33,6 +33,9 @@ Before you begin, make sure you have the following installed on your system:
 
    # Install pnpm globally if you don't have it
    npm install -g pnpm@10
+   # Or use Corepack (built into Node.js 22+)
+   # corepack enable
+   # corepack prepare pnpm@10 --activate
    ```
 
 3. **Git**
