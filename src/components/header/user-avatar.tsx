@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/use-profile';
@@ -46,7 +47,7 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
   const userName =
     profile?.first_name && profile?.last_name
       ? `${profile.first_name} ${profile.last_name}`
-      : profile?.username || 'Admin';
+      : profile?.username;
 
   const userAvatar = profile?.avatar_url;
   const initials = getInitials(
@@ -64,40 +65,18 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
     return (
       <motion.button
         type="button"
-        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] h-9 px-4 py-2 gap-2"
+        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] h-9 px-1.5 py-2 gap-2"
         aria-label="User menu"
         disabled
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
-        <span className="relative flex size-9 shrink-0 overflow-hidden rounded-full">
-          <motion.div
-            className="w-full h-full bg-muted flex items-center justify-center"
-            animate={{
-              backgroundColor: [
-                'hsl(var(--muted))',
-                'hsl(var(--muted-foreground) / 0.1)',
-                'hsl(var(--muted))',
-              ],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
+        <span className="relative flex size-9 shrink-0 overflow-visible rounded-full">
+          <div className="flex items-center justify-center pointer-events-none">
+            <div className="loader" style={{ width: '38px', height: '38px' }} />
+          </div>
         </span>
-        {showName && !isMobile && (
-          <motion.span
-            className="text-sm font-medium text-muted-foreground"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            <span className="inline-block w-16 h-4 bg-muted rounded animate-pulse" />
-          </motion.span>
-        )}
       </motion.button>
     );
   }
@@ -142,27 +121,28 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
       transition={{ duration: 0.2 }}
     >
       <motion.span
-        className="relative flex size-9 shrink-0 overflow-hidden rounded-full"
+        className="relative flex size-9 shrink-0 overflow-visible rounded-full"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
         {userAvatar ? (
           <motion.div
+            className="relative w-full h-full rounded-full bg-gray-200 overflow-hidden"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
             <Image
               src={userAvatar}
-              alt={userName}
+              alt=""
               fill
               className="aspect-square size-full object-cover"
             />
           </motion.div>
         ) : (
           <motion.div
-            className="w-full h-full flex items-center justify-center text-white text-xs font-medium"
+            className="w-full h-full flex items-center justify-center text-white text-xs font-medium rounded-full"
             style={{ backgroundColor: avatarColor }}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

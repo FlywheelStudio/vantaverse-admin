@@ -73,10 +73,12 @@ export class OrganizationsQuery extends SupabaseQuery {
   /**
    * Create a new organization
    * @param name - The organization name
+   * @param description - Optional organization description
    * @returns Success with created organization or error
    */
   public async create(
     name: string,
+    description?: string | null,
   ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
@@ -84,6 +86,7 @@ export class OrganizationsQuery extends SupabaseQuery {
       .from('organizations')
       .insert({
         name: name.trim(),
+        description: description?.trim() || null,
       })
       .select()
       .single();

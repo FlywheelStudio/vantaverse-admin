@@ -10,6 +10,13 @@ interface EditingCell {
   field: EditableField;
 }
 
+interface NewOrgData {
+  name: string;
+  description: string;
+  imageFile: File | null;
+  imagePreview: string | null;
+}
+
 interface OrganizationsTableContextValue {
   onEdit: (org: Organization) => void;
   handleCreate: () => void;
@@ -27,10 +34,18 @@ interface OrganizationsTableContextValue {
     originalValue: string | null,
   ) => void;
   creatingId: string | null;
+  creatingRow: boolean;
   editingCell: EditingCell | null;
   editingValue: string;
   setEditingValue: (value: string) => void;
   inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  newOrgData: NewOrgData;
+  setNewOrgData: React.Dispatch<React.SetStateAction<NewOrgData>>;
+  uploadingImage: string | null;
+  setUploadingImage: React.Dispatch<React.SetStateAction<string | null>>;
+  handleImageUpload: (file: File, orgId?: string) => Promise<void>;
+  handleSaveNewOrg: () => Promise<void>;
+  handleCancelNewOrg: () => void;
 }
 
 const OrganizationsTableContext =

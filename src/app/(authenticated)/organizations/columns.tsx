@@ -1,7 +1,9 @@
 'use client';
 
+import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
@@ -95,33 +97,95 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
   );
 }
 
+function PictureCell({ org }: { org: Organization }) {
+  const { handleImageUpload, uploadingImage } = useOrganizationsTable();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const isUploading = uploadingImage === org.id;
+  const pictureUrl = org.picture_url;
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
+      return;
+    }
+
+    // Upload immediately for existing orgs
+    await handleImageUpload(file, org.id);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  if (!pictureUrl) {
+    return (
+      <>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          onClick={handleClick}
+          disabled={isUploading}
+          className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] bg-muted items-center justify-center hover:border-[#2454FF] hover:bg-[#2454FF]/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Upload className="h-5 w-5 text-[#64748B]" />
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <button
+        onClick={handleClick}
+        disabled={isUploading}
+        className="relative flex size-8 shrink-0 overflow-visible rounded-full h-12 w-12 border-2 border-[#E5E9F0] hover:border-[#2454FF] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200"
+      >
+        <Image
+          src={pictureUrl}
+          alt=""
+          className="aspect-square size-full object-contain"
+          width={48}
+          height={48}
+        />
+        {isUploading && (
+          <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
+            <div className="loader" style={{ width: '56px', height: '56px' }} />
+          </div>
+        )}
+      </button>
+    </>
+  );
+}
+
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
     header: () => (
       <span className="text-sm font-bold text-[#1E3A5F]">Image</span>
     ),
-    cell: ({ row }) => {
-      const pictureUrl = row.getValue('picture_url') as string | null;
-      if (!pictureUrl) {
-        return (
-          <span className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] bg-muted items-center justify-center">
-            <span className="text-[#64748B] text-xs">—</span>
-          </span>
-        );
-      }
-      return (
-        <span className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0]">
-          <Image
-            src={pictureUrl}
-            alt=""
-            className="aspect-square size-full object-cover"
-            width={48}
-            height={48}
-          />
-        </span>
-      );
-    },
+    cell: ({ row }) => <PictureCell org={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
   },

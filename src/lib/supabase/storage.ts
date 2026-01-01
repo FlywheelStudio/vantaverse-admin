@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { createClient } from './core/server';
+import { createAdminClient } from './core/admin';
 import { SupabaseError, SupabaseSuccess } from './query';
 
 /**
@@ -28,16 +28,16 @@ interface UploadParams {
  * Handles interactions with Supabase Storage, including error handling for RLS violations.
  */
 export class SupabaseStorage {
-  private client: Awaited<ReturnType<typeof createClient>> | null = null;
+  private client: Awaited<ReturnType<typeof createAdminClient>> | null = null;
 
   /**
-   * Resolves the SSR Supabase client.
-   * @returns Initialized Supabase client.
+   * Resolves the admin Supabase client (bypasses RLS).
+   * @returns Initialized admin Supabase client.
    */
   private async resolveClient(): Promise<
-    Awaited<ReturnType<typeof createClient>>
+    Awaited<ReturnType<typeof createAdminClient>>
   > {
-    this.client ??= await createClient();
+    this.client ??= await createAdminClient();
     return this.client;
   }
 
@@ -168,6 +168,59 @@ export class SupabaseStorage {
           process.env.NEXT_PUBLIC_API_URL!,
         ),
       },
+    };
+  }
+
+  /**
+   * Deletes a file from Supabase Storage.
+   * Handles row-level security (RLS) violations by returning a user-friendly error message.
+   * @param bucket - The storage bucket name.
+   * @param path - The path to the file to delete.
+   * @returns Success result or an error message if deletion fails.
+   */
+  public async delete(
+    bucket: string,
+    path: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const client = await this.resolveClient();
+
+    const { error } = await client.storage.from(bucket).remove([path]);
+
+    // If file doesn't exist, treat as success (idempotent)
+    if (
+      error &&
+      (error.message?.toLowerCase().includes('not found') ||
+        error.message?.toLowerCase().includes('does not exist'))
+    ) {
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    // Handle RLS violation errors
+    if (error) {
+      const message = error.message?.toLowerCase() ?? '';
+      if (
+        message.includes('row-level security') ||
+        error.message === 'PGRST116' ||
+        error.message === '403'
+      ) {
+        return {
+          success: false,
+          error:
+            'You do not have permission to delete from this storage bucket. Please contact support or ensure you are logged in with the correct account.',
+        };
+      }
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: true,
+      data: undefined,
     };
   }
 }

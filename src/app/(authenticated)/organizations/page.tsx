@@ -2,9 +2,15 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useOrganizations } from '@/hooks/use-organizations';
-import { createOrganization, updateOrganization } from './actions';
+import {
+  createOrganization,
+  updateOrganization,
+  uploadOrganizationPicture,
+  updateOrganizationPicture,
+} from './actions';
 import { useQueryClient } from '@tanstack/react-query';
 import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
@@ -35,21 +41,34 @@ export default function OrganizationsPage() {
   const { data: organizations, isLoading } = useOrganizations();
   const queryClient = useQueryClient();
   const [creatingId, setCreatingId] = useState<string | null>(null);
+  const [creatingRow, setCreatingRow] = useState(false);
   const [editingCell, setEditingCell] = useState<{
     id: string;
     field: EditableField;
   } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [newOrgData, setNewOrgData] = useState<{
+    name: string;
+    description: string;
+    imageFile: File | null;
+    imagePreview: string | null;
+  }>({
+    name: '',
+    description: '',
+    imageFile: null,
+    imagePreview: null,
+  });
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-  const handleCreate = async () => {
-    const tempId = `temp-${Date.now()}`;
-    setCreatingId(tempId);
-    setEditingValue('');
-
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+  const handleCreate = () => {
+    setCreatingRow(true);
+    setNewOrgData({
+      name: '',
+      description: '',
+      imageFile: null,
+      imagePreview: null,
+    });
   };
 
   const handleSave = async (
@@ -147,6 +166,131 @@ export default function OrganizationsPage() {
     }
   };
 
+  const handleImageUpload = async (file: File, orgId?: string) => {
+    if (!orgId) return;
+
+    setUploadingImage(orgId);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+
+      const base64String = await base64Promise;
+
+      // Get old picture URL if exists
+      const org = organizations?.find((o) => o.id === orgId);
+      const oldPictureUrl = org?.picture_url || null;
+
+      // Upload picture
+      const uploadResult = await uploadOrganizationPicture(
+        orgId,
+        base64String,
+        oldPictureUrl,
+      );
+
+      if (uploadResult.success && uploadResult.data) {
+        // Update organization with new picture URL
+        await updateOrganizationPicture(orgId, uploadResult.data);
+        queryClient.invalidateQueries({ queryKey: ['organizations'] });
+        toast.success('Image uploaded successfully');
+      } else if (!uploadResult.success) {
+        toast.error(uploadResult.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const handleSaveNewOrg = async () => {
+    if (!newOrgData.name.trim()) {
+      return;
+    }
+
+    try {
+      // Create organization
+      const createResult = await createOrganization(
+        newOrgData.name.trim(),
+        newOrgData.description.trim() || null,
+      );
+
+      if (!createResult.success) {
+        toast.error(createResult.error || 'Failed to create organization');
+        return;
+      }
+
+      const orgId = createResult.data.id;
+
+      // Upload image if provided
+      if (newOrgData.imageFile) {
+        setUploadingImage(orgId);
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const base64String = reader.result as string;
+              resolve(base64String);
+            };
+            reader.onerror = reject;
+          });
+          reader.readAsDataURL(newOrgData.imageFile);
+
+          const base64String = await base64Promise;
+          const uploadResult = await uploadOrganizationPicture(
+            orgId,
+            base64String,
+            null,
+          );
+
+          if (uploadResult.success && uploadResult.data) {
+            await updateOrganizationPicture(orgId, uploadResult.data);
+          }
+        } catch (error) {
+          console.error('Error uploading image:', error);
+        } finally {
+          setUploadingImage(null);
+        }
+      }
+
+      // Refresh organizations list
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+
+      // Reset state
+      setCreatingRow(false);
+      setNewOrgData({
+        name: '',
+        description: '',
+        imageFile: null,
+        imagePreview: null,
+      });
+
+      toast.success('Organization created successfully');
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      toast.error('Failed to create organization');
+    }
+  };
+
+  const handleCancelNewOrg = () => {
+    setCreatingRow(false);
+    setNewOrgData({
+      name: '',
+      description: '',
+      imageFile: null,
+      imagePreview: null,
+    });
+  };
+
   const displayOrganizations = organizations || [];
 
   const contextValue = {
@@ -157,10 +301,18 @@ export default function OrganizationsPage() {
     handleCellEdit,
     handleCellBlur,
     creatingId,
+    creatingRow,
     editingCell,
     editingValue,
     setEditingValue,
     inputRef,
+    newOrgData,
+    setNewOrgData,
+    uploadingImage,
+    setUploadingImage,
+    handleImageUpload,
+    handleSaveNewOrg,
+    handleCancelNewOrg,
   };
 
   return (
