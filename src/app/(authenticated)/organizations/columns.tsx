@@ -1,30 +1,35 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
-    header: 'Image',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Image</span>
+    ),
     cell: ({ row }) => {
       const pictureUrl = row.getValue('picture_url') as string | null;
       if (!pictureUrl) {
         return (
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-            <span className="text-muted-foreground text-xs">—</span>
-          </div>
+          <span className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] bg-muted items-center justify-center">
+            <span className="text-[#64748B] text-xs">—</span>
+          </span>
         );
       }
       return (
-        <Image
-          src={pictureUrl}
-          alt=""
-          className="h-10 w-10 rounded-full object-cover"
-        />
+        <span className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0]">
+          <Image
+            src={pictureUrl}
+            alt=""
+            className="aspect-square size-full object-cover"
+            width={48}
+            height={48}
+          />
+        </span>
       );
     },
     enableSorting: false,
@@ -33,19 +38,27 @@ export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => {
+      const sorted = column.getIsSorted();
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="h-8 px-2 lg:px-3"
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
         >
           Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+          )}
+        </button>
       );
     },
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue('name')}</div>
+      <span className="font-semibold text-[#1E3A5F]">
+        {row.getValue('name')}
+      </span>
     ),
     filterFn: (row, id, value) => {
       const name = row.getValue(id) as string;
@@ -55,61 +68,81 @@ export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'description',
     header: ({ column }) => {
+      const sorted = column.getIsSorted();
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="h-8 px-2 lg:px-3"
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
         >
           Description
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+          )}
+        </button>
       );
     },
     cell: ({ row }) => {
       const description = row.getValue('description') as string | null;
-      if (!description) return <div className="text-muted-foreground">—</div>;
-      return <div className="text-sm max-w-md truncate">{description}</div>;
+      if (!description) return <span className="text-[#64748B]">—</span>;
+      return <span className="text-[#64748B]">{description}</span>;
     },
   },
   {
     accessorKey: 'members_count',
     header: ({ column }) => {
+      const sorted = column.getIsSorted();
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="h-8 px-2 lg:px-3"
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
         >
           Members
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+          )}
+        </button>
       );
     },
     cell: ({ row }) => {
       const count = (row.getValue('members_count') as number | undefined) ?? 0;
-      return <div className="text-sm font-medium">{count}</div>;
+      return <span className="font-semibold text-[#1E3A5F]">{count}</span>;
     },
   },
   {
     accessorKey: 'created_at',
     header: ({ column }) => {
+      const sorted = column.getIsSorted();
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="h-8 px-2 lg:px-3"
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
         >
           Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+          )}
+        </button>
       );
     },
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string | null;
-      if (!date) return <div className="text-muted-foreground">—</div>;
+      if (!date) return <span className="text-[#64748B]">—</span>;
       return (
-        <div className="text-sm">{new Date(date).toLocaleDateString()}</div>
+        <span className="text-[#64748B]">
+          {new Date(date).toLocaleDateString()}
+        </span>
       );
     },
   },

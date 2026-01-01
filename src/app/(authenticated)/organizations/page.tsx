@@ -5,12 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { createOrganization, updateOrganization } from './actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { HEADER_HEIGHT, VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import { useQueryClient } from '@tanstack/react-query';
 import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
+import { Card } from '@/components/ui/card';
+import { OrganizationsTableProvider } from './context';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -76,17 +75,6 @@ export default function OrganizationsPage() {
     setEditingName('');
   };
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    id: string,
-  ) => {
-    if (e.key === 'Enter') {
-      handleSave(id, editingName);
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
-
   const handleEdit = (organization: { id: string; name: string }) => {
     setCreatingId(organization.id);
     setEditingName(organization.name);
@@ -97,68 +85,46 @@ export default function OrganizationsPage() {
 
   const displayOrganizations = organizations || [];
 
+  const contextValue = {
+    onEdit: handleEdit,
+    handleCreate,
+    handleSave,
+    handleCancel,
+    creatingId,
+    editingName,
+    setEditingName,
+    inputRef,
+  };
+
   return (
     <PageWrapper
       subheader={
         <h1 className="text-2xl font-medium">Organizations & Teams</h1>
       }
     >
-      <div
-        className="overflow-y-auto h-full pb-4"
-        style={{
-          height: `calc(100vh - ${HEADER_HEIGHT}px - ${VANTABUDDY_CONFIG.height}px - 16px)`,
-        }}
-      >
-        {isLoading ? (
-          <div className="h-full" />
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="content"
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="p-6 h-full glass-background"
-            >
-              <div className="mb-4">
-                <Button
-                  onClick={handleCreate}
-                  style={{ backgroundColor: '#2454FF' }}
-                >
-                  Create New
-                </Button>
+      <div className="p-6 flex-1 min-h-0 overflow-y-auto glass-background h-full">
+        <OrganizationsTableProvider value={contextValue}>
+          {!isLoading && (
+            <Card className="text-card-foreground flex flex-col gap-6 py-6 bg-white/95 backdrop-blur-sm rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden">
+              <div className="p-6 sm:p-8">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key="table"
+                    variants={contentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
+                    <OrganizationsTable
+                      columns={columns}
+                      data={displayOrganizations}
+                    />
+                  </motion.div>
+                </AnimatePresence>
               </div>
-
-              {(creatingId?.startsWith('temp-') || creatingId) && (
-                <div className="mb-4 flex items-center gap-2 p-3 rounded-md bg-white/10">
-                  <Input
-                    ref={inputRef}
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, creatingId!)}
-                    onBlur={() => {
-                      if (editingName.trim()) {
-                        handleSave(creatingId!, editingName);
-                      } else {
-                        handleCancel();
-                      }
-                    }}
-                    placeholder="Organization name"
-                    className="flex-1"
-                    autoFocus
-                  />
-                </div>
-              )}
-
-              <OrganizationsTable
-                columns={columns}
-                data={displayOrganizations}
-                onEdit={handleEdit}
-              />
-            </motion.div>
-          </AnimatePresence>
-        )}
+            </Card>
+          )}
+        </OrganizationsTableProvider>
       </div>
     </PageWrapper>
   );

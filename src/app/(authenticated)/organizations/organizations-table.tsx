@@ -13,36 +13,45 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
+import { useOrganizationsTable } from './context';
 
 interface OrganizationsTableProps {
   columns: ColumnDef<Organization>[];
   data: Organization[];
-  onEdit: (organization: Organization) => void;
 }
 
-export function OrganizationsTable({
-  columns,
-  data,
-  onEdit,
-}: OrganizationsTableProps) {
+export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
+  const {
+    handleCreate,
+    onEdit,
+    creatingId,
+    editingName,
+    setEditingName,
+    inputRef,
+    handleSave,
+    handleCancel,
+  } = useOrganizationsTable();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [searchValue, setSearchValue] = React.useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    id: string,
+  ) => {
+    if (e.key === 'Enter') {
+      handleSave(id, editingName);
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
 
   React.useEffect(() => {
     setColumnFilters((prev) => {
@@ -80,91 +89,141 @@ export function OrganizationsTable({
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <Button
+          onClick={handleCreate}
+          className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg"
+        >
+          Create New
+        </Button>
         <Input
           placeholder="Search organizations..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="max-w-sm"
+          className="bg-white border-[#2454FF]/20 rounded-xl placeholder:text-[#64748B]/60 focus:border-[#2454FF] focus:ring-[#2454FF] flex-1"
         />
       </div>
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
+      {(creatingId?.startsWith('temp-') || creatingId) && (
+        <div className="mb-4 flex items-center gap-2 p-3 rounded-md bg-white/10">
+          <Input
+            ref={inputRef}
+            value={editingName}
+            onChange={(e) => setEditingName(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, creatingId!)}
+            onBlur={() => {
+              if (editingName.trim()) {
+                handleSave(creatingId!, editingName);
+              } else {
+                handleCancel();
+              }
+            }}
+            placeholder="Organization name"
+            className="flex-1"
+            autoFocus
+          />
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <tr
+                key={headerGroup.id}
+                className="border-b-2 border-[#2454FF]/20"
+              >
                 {headerGroup.headers.map((header) => {
+                  const isDescription = header.column.id === 'description';
+                  const isCreated = header.column.id === 'created_at';
                   return (
-                    <TableHead key={header.id}>
+                    <th
+                      key={header.id}
+                      className={`text-left py-4 px-4 text-sm font-bold text-[#1E3A5F] ${
+                        isDescription ? 'hidden lg:table-cell' : ''
+                      } ${isCreated ? 'hidden md:table-cell' : ''}`}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext(),
                           )}
-                    </TableHead>
+                    </th>
                   );
                 })}
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
+                <th className="text-left py-4 px-4 text-sm font-bold text-[#1E3A5F]">
+                  Actions
+                </th>
+              </tr>
             ))}
-          </TableHeader>
-          <TableBody>
+          </thead>
+          <tbody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
+              table.getRowModel().rows.map((row, index, array) => (
+                <tr
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
+                  className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
+                    index === array.length - 1 ? 'border-b-0' : ''
+                  }`}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                  <TableCell>
+                  {row.getVisibleCells().map((cell) => {
+                    const isDescription = cell.column.id === 'description';
+                    const isCreated = cell.column.id === 'created_at';
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`py-5 px-4 ${
+                          isDescription ? 'hidden lg:table-cell' : ''
+                        } ${isCreated ? 'hidden md:table-cell' : ''}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="py-5 px-4">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onEdit(row.original)}
-                      className="text-white hover:bg-white/20"
+                      className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold"
                     >
                       Edit
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell
+              <tr>
+                <td
                   colSpan={columns.length + 1}
-                  className="h-24 text-center"
+                  className="h-24 text-center py-5 px-4"
                 >
                   No results.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
-      <div className="flex items-center justify-between px-2">
-        <div className="text-muted-foreground flex-1 text-sm">
+      <div className="flex items-center justify-between mt-6 pt-6 border-t border-[#E5E9F0]">
+        <span className="text-sm text-[#64748B]">
           {table.getFilteredRowModel().rows.length} organization(s) total.
-        </div>
-        <div className="flex items-center space-x-2">
+        </span>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <div className="text-sm font-medium">
+          <div className="px-4 py-2 bg-[#2454FF]/10 text-[#2454FF] rounded-lg font-medium text-sm">
             Page {table.getState().pagination.pageIndex + 1} of{' '}
             {table.getPageCount()}
           </div>
@@ -173,9 +232,10 @@ export function OrganizationsTable({
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
           >
             Next
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </div>

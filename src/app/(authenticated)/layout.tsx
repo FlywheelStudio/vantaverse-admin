@@ -36,9 +36,9 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
         <div className="flex">
           {isOpen && <Sidebar />}
           <main
-            className="flex-1"
+            className="flex flex-col"
             style={{
-              minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
+              height: `calc(100vh - ${HEADER_HEIGHT}px)`,
               width: isOpen
                 ? `calc(100% - ${VANTABUDDY_CONFIG.width}px)`
                 : '100%',
@@ -52,9 +52,10 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
         <>
           <Sidebar />
           <main
+            className="flex flex-col"
             style={{
               marginLeft: isOpen ? `${sidebarOffset}px` : '0',
-              minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
+              height: `calc(100vh - ${HEADER_HEIGHT}px)`,
               width: isOpen ? `calc(100% - ${sidebarOffset}px)` : '100%',
               transition: `margin-left ${SIDEBAR_CONFIG.animation.duration}s cubic-bezier(${SIDEBAR_CONFIG.animation.ease.join(', ')}), width ${SIDEBAR_CONFIG.animation.duration}s cubic-bezier(${SIDEBAR_CONFIG.animation.ease.join(', ')})`,
             }}
