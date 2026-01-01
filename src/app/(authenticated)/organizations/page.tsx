@@ -321,10 +321,10 @@ export default function OrganizationsPage() {
         <h1 className="text-2xl font-medium">Organizations & Teams</h1>
       }
     >
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto glass-background h-full">
+      <div className="p-6 flex-1 min-h-0 overflow-y-auto glass-background h-full slim-scrollbar">
         <OrganizationsTableProvider value={contextValue}>
           {!isLoading && (
-            <Card className="text-card-foreground flex flex-col gap-6 py-6 bg-white/95 backdrop-blur-sm rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden">
+            <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 backdrop-blur-sm rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden">
               <div className="p-6 sm:p-8">
                 <AnimatePresence mode="wait">
                   <motion.div

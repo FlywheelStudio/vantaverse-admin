@@ -134,6 +134,33 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.slim-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(36, 84, 255, 0.3) transparent;
+}
+
+.slim-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.slim-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(36, 84, 255, 0.3);
+  border-radius: 3px;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(36, 84, 255, 0.5);
+}
+
+.slim-scrollbar::-webkit-scrollbar-button {
+  display: none;
+}
+
 .loader {
   width: 50px;
   aspect-ratio: 1;

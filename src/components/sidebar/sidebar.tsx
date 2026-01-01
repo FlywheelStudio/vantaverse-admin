@@ -91,7 +91,7 @@ export function Sidebar() {
             }}
           >
             <div
-              className={`${isMobile || !isExpanded ? '' : 'pr-6'} pb-6 h-full overflow-y-auto`}
+              className={`${isMobile || !isExpanded ? '' : 'pr-6'} pb-6 h-full overflow-y-auto slim-scrollbar`}
               style={{
                 paddingTop: `${VANTABUDDY_CONFIG.height}px`,
               }}

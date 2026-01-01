@@ -160,7 +160,7 @@ function PictureCell({ org }: { org: Organization }) {
       <button
         onClick={handleClick}
         disabled={isUploading}
-        className="relative flex size-8 shrink-0 overflow-visible rounded-full h-12 w-12 border-2 border-[#E5E9F0] hover:border-[#2454FF] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200"
+        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] hover:border-[#2454FF] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200"
       >
         <Image
           src={pictureUrl}

@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
   flexRender,
@@ -171,19 +170,18 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleSaveNewOrg}
-                      disabled={!newOrgData.name.trim()}
-                      className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-4 py-2 rounded-lg"
+                      disabled={!newOrgData.name.trim() || creatingRow}
+                      className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-2 rounded-lg cursor-pointer"
                     >
-                      <Save className="h-4 w-4 mr-1" />
-                      Save
+                      <Save className="h-4 w-4" />
                     </Button>
                     <Button
                       onClick={handleCancelNewOrg}
                       variant="outline"
-                      className="text-[#64748B] border-[#E5E9F0] font-semibold px-4 py-2 rounded-lg"
+                      disabled={creatingRow}
+                      className="text-[#64748B] border-[#E5E9F0] font-semibold py-2 rounded-lg cursor-pointer"
                     >
-                      <X className="h-4 w-4 mr-1" />
-                      Cancel
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </td>
