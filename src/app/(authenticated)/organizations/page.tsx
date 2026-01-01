@@ -114,6 +114,7 @@ export default function OrganizationsPage() {
 
   const handleEdit = (organization: Organization) => {
     // Keep this for the Edit button (UI only for now)
+    console.log('handleEdit', organization);
   };
 
   const handleCellEdit = (id: string, field: EditableField) => {
