@@ -12,10 +12,11 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from './context';
 
@@ -35,6 +36,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     handleSave,
     handleCancel,
   } = useOrganizationsTable();
+  const isMobile = useIsMobile();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [searchValue, setSearchValue] = React.useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
@@ -90,12 +92,12 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-row gap-4 mb-6">
         <Button
           onClick={handleCreate}
           className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg"
         >
-          Create New
+          <Plus className="h-4 w-4" />
         </Button>
         <Input
           placeholder="Search organizations..."
@@ -208,11 +210,13 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between mt-6 pt-6 border-t border-[#E5E9F0]">
-        <span className="text-sm text-[#64748B]">
-          {table.getFilteredRowModel().rows.length} organization(s) total.
-        </span>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
+        <div className="flex justify-center">
+          <span className="text-sm text-[#64748B]">
+            {table.getFilteredRowModel().rows.length} organization(s) total.
+          </span>
+        </div>
+        <div className="flex items-center justify-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -224,8 +228,9 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
             Previous
           </Button>
           <div className="px-4 py-2 bg-[#2454FF]/10 text-[#2454FF] rounded-lg font-medium text-sm">
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
-            {table.getPageCount()}
+            {isMobile
+              ? `${table.getState().pagination.pageIndex + 1}/${table.getPageCount()}`
+              : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
           </div>
           <Button
             variant="outline"
