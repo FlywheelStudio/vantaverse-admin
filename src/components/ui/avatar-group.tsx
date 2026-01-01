@@ -8,6 +8,7 @@ import { Avatar, getInitials } from '@/components/ui/avatar';
 interface SingleAvatarProps {
   src?: string;
   label?: string;
+  id?: string;
   size: number;
   overlap: number;
   index: number;
@@ -19,6 +20,7 @@ interface SingleAvatarProps {
 const SingleAvatar = ({
   src,
   label,
+  id,
   size,
   overlap,
   index,
@@ -26,12 +28,11 @@ const SingleAvatar = ({
   onMouseEnter,
   onMouseLeave,
 }: SingleAvatarProps) => {
-  const colorSeed = label || `avatar-${index}`;
   const initials = getInitials(undefined, undefined, undefined, label);
 
   return (
     <div
-      className="border-4 border-background rounded-full bg-background transition-all duration-300 relative"
+      className="cursor-pointer border-4 border-background rounded-full bg-background transition-all duration-300 relative"
       style={{
         width: size,
         height: size,
@@ -49,7 +50,7 @@ const SingleAvatar = ({
         src={src || null}
         alt={label || `Avatar ${index + 1}`}
         initials={initials}
-        colorSeed={colorSeed}
+        id={id}
         size={size}
       />
       <AnimatePresence>
@@ -94,7 +95,7 @@ const SingleAvatar = ({
 };
 
 export interface AvatarGroupProps {
-  avatars: { src?: string; alt?: string; label?: string }[];
+  avatars: { src?: string; alt?: string; label?: string; id?: string }[];
   maxVisible?: number;
   size?: number;
   overlap?: number;
@@ -120,6 +121,7 @@ const AvatarGroup = ({
               key={idx}
               src={avatar.src}
               label={avatar.label}
+              id={avatar.id}
               size={size}
               overlap={overlap}
               index={visibleAvatars.length - idx}

@@ -44,7 +44,7 @@ interface AvatarProps {
   src?: string | null;
   alt?: string;
   initials?: string;
-  colorSeed?: string;
+  id?: string;
   size?: number;
   className?: string;
 }
@@ -53,10 +53,12 @@ export function Avatar({
   src,
   alt = '',
   initials,
-  colorSeed = 'default',
+  id,
   size = 36,
   className = '',
 }: AvatarProps) {
+  // Calculate seed: use id if available, fallback to alt (label), then default
+  const colorSeed = id || alt || 'default';
   const avatarColor = generateColorFromSeed(colorSeed);
   const fontSize = size * 0.35;
 

@@ -26,9 +26,9 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
     profile?.username,
   );
 
-  // Use email as seed if available, fallback to ID or username
-  const colorSeed =
-    profile?.email || profile?.id || profile?.username || 'default';
+  // Use email as id if available, fallback to ID or username for consistent color seed
+  const avatarId =
+    profile?.email || profile?.id || profile?.username || undefined;
 
   if (isLoading) {
     return (
@@ -66,12 +66,7 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Avatar
-            src={null}
-            initials={initials}
-            colorSeed={colorSeed}
-            size={36}
-          />
+          <Avatar src={null} initials={initials} id={avatarId} size={36} />
         </motion.span>
         {showName && !isMobile && (
           <span className="text-sm font-medium">User</span>
@@ -95,12 +90,7 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
-        <Avatar
-          src={userAvatar}
-          initials={initials}
-          colorSeed={colorSeed}
-          size={36}
-        />
+        <Avatar src={userAvatar} initials={initials} id={avatarId} size={36} />
       </motion.span>
       {showName && !isMobile && (
         <motion.span

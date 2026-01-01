@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationsTable } from './context';
+import { AvatarGroup } from '@/components/ui/avatar-group';
 
 function EditableNameCell({ org }: { org: Organization }) {
   const {
@@ -258,8 +259,25 @@ export const columns: ColumnDef<Organization>[] = [
       );
     },
     cell: ({ row }) => {
-      const count = (row.getValue('members_count') as number | undefined) ?? 0;
-      return <span className="font-semibold text-[#1E3A5F]">{count}</span>;
+      const org = row.original;
+      const members = org.members || [];
+      const avatars = members.map((member) => {
+        const profile = member.profile;
+        let label = '';
+        if (profile?.first_name && profile?.last_name) {
+          label = `${profile.first_name} ${profile.last_name}`;
+        } else if (profile?.username) {
+          label = profile.username;
+        }
+        const avatarId = profile?.id || profile?.username || undefined;
+        return {
+          src: profile?.avatar_url || undefined,
+          alt: label || undefined,
+          label: label || undefined,
+          id: avatarId,
+        };
+      });
+      return <AvatarGroup avatars={avatars} maxVisible={5} />;
     },
   },
   {

@@ -20,7 +20,9 @@ export class OrganizationsQuery extends SupabaseQuery {
 
     const { data, error } = await supabase
       .from('organizations')
-      .select('*, organization_members(id)')
+      .select(
+        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, username))',
+      )
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -37,24 +39,54 @@ export class OrganizationsQuery extends SupabaseQuery {
       };
     }
 
-    // Transform data: organization_members(id) returns [{ id: string }, ...]
-    // Extract IDs array and count from array length
+    // Transform data: organization_members now includes profile data
+    type RawOrganizationMember = {
+      id: string;
+      user_id: string;
+      is_active: boolean | null;
+      profiles: {
+        id: string;
+        avatar_url: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        username: string | null;
+      } | null;
+    };
+
     type RawOrganization = Omit<
       Organization,
-      'members_count' | 'member_ids'
+      'members_count' | 'member_ids' | 'members'
     > & {
-      organization_members: Array<{ id: string }> | null;
+      organization_members: RawOrganizationMember[] | null;
     };
+
     const transformedData = (data as RawOrganization[]).map((org) => {
       const { organization_members, ...orgData } = org;
-      const memberIds =
+      // Filter to only active members and transform to include profile data
+      const members =
         Array.isArray(organization_members) && organization_members.length > 0
-          ? organization_members.map((m) => m.id)
+          ? organization_members
+              .filter((m) => m.is_active === true)
+              .map((m) => ({
+                id: m.id,
+                user_id: m.user_id,
+                profile: m.profiles
+                  ? {
+                      id: m.profiles.id,
+                      avatar_url: m.profiles.avatar_url,
+                      first_name: m.profiles.first_name,
+                      last_name: m.profiles.last_name,
+                      username: m.profiles.username,
+                    }
+                  : null,
+              }))
           : [];
+      const memberIds = members.map((m) => m.id);
       return {
         ...orgData,
-        members_count: memberIds.length,
+        members_count: members.length,
         member_ids: memberIds.length > 0 ? memberIds : undefined,
+        members: members.length > 0 ? members : undefined,
       };
     });
 
