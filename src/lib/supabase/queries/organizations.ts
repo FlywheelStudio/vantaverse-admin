@@ -20,7 +20,7 @@ export class OrganizationsQuery extends SupabaseQuery {
 
     const { data, error } = await supabase
       .from('organizations')
-      .select('*')
+      .select('*, organization_members(id)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -37,7 +37,28 @@ export class OrganizationsQuery extends SupabaseQuery {
       };
     }
 
-    const result = organizationSchema.array().safeParse(data);
+    // Transform data: organization_members(id) returns [{ id: string }, ...]
+    // Extract IDs array and count from array length
+    type RawOrganization = Omit<
+      Organization,
+      'members_count' | 'member_ids'
+    > & {
+      organization_members: Array<{ id: string }> | null;
+    };
+    const transformedData = (data as RawOrganization[]).map((org) => {
+      const { organization_members, ...orgData } = org;
+      const memberIds =
+        Array.isArray(organization_members) && organization_members.length > 0
+          ? organization_members.map((m) => m.id)
+          : [];
+      return {
+        ...orgData,
+        members_count: memberIds.length,
+        member_ids: memberIds.length > 0 ? memberIds : undefined,
+      };
+    });
+
+    const result = organizationSchema.array().safeParse(transformedData);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);

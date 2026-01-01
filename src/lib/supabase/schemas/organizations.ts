@@ -9,6 +9,8 @@ export const organizationSchema = z.object({
   is_super_admin: z.boolean().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  members_count: z.number().optional(),
+  member_ids: z.array(z.string()).optional(),
 });
 
 export type Organization = z.infer<typeof organizationSchema>;

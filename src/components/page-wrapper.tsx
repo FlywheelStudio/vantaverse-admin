@@ -1,5 +1,3 @@
-'use client';
-
 import { ReactNode } from 'react';
 import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
@@ -18,6 +16,7 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
   return (
     <div className="h-full w-full flex flex-col pr-4">
       <div
+        suppressHydrationWarning
         className="text-white flex items-center shrink-0"
         style={{
           paddingLeft: `${paddingLeft}px`,

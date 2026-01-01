@@ -9,27 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { HEADER_HEIGHT, VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import { useQueryClient } from '@tanstack/react-query';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-    },
-  },
-};
+import { OrganizationsTable } from './organizations-table';
+import { columns } from './columns';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -61,7 +42,6 @@ export default function OrganizationsPage() {
     setCreatingId(tempId);
     setEditingName('');
 
-    // Focus input after state update
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -75,7 +55,6 @@ export default function OrganizationsPage() {
     }
 
     if (id.startsWith('temp-')) {
-      // Creating new organization
       const result = await createOrganization(name.trim());
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['organizations'] });
@@ -83,7 +62,6 @@ export default function OrganizationsPage() {
         setEditingName('');
       }
     } else {
-      // Updating existing organization
       const result = await updateOrganization(id, { name: name.trim() });
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['organizations'] });
@@ -109,6 +87,14 @@ export default function OrganizationsPage() {
     }
   };
 
+  const handleEdit = (organization: { id: string; name: string }) => {
+    setCreatingId(organization.id);
+    setEditingName(organization.name);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
   const displayOrganizations = organizations || [];
 
   return (
@@ -118,7 +104,7 @@ export default function OrganizationsPage() {
       }
     >
       <div
-        className="overflow-y-auto h-full"
+        className="overflow-y-auto h-full pb-4"
         style={{
           height: `calc(100vh - ${HEADER_HEIGHT}px - ${VANTABUDDY_CONFIG.height}px - 16px)`,
         }}
@@ -133,15 +119,7 @@ export default function OrganizationsPage() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="p-6"
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '16px',
-                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                backdropFilter: 'blur(5px)',
-                WebkitBackdropFilter: 'blur(5px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-              }}
+              className="p-6 h-full glass-background"
             >
               <div className="mb-4">
                 <Button
@@ -152,82 +130,32 @@ export default function OrganizationsPage() {
                 </Button>
               </div>
 
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-2"
-              >
-                {creatingId && creatingId.startsWith('temp-') && (
-                  <motion.div
-                    key={creatingId}
-                    variants={rowVariants}
-                    className="flex items-center gap-2 p-3 rounded-md bg-white/10"
-                  >
-                    <Input
-                      ref={inputRef}
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, creatingId)}
-                      onBlur={() => {
-                        if (editingName.trim()) {
-                          handleSave(creatingId, editingName);
-                        } else {
-                          handleCancel();
-                        }
-                      }}
-                      placeholder="Organization name"
-                      className="flex-1"
-                      autoFocus
-                    />
-                  </motion.div>
-                )}
+              {(creatingId?.startsWith('temp-') || creatingId) && (
+                <div className="mb-4 flex items-center gap-2 p-3 rounded-md bg-white/10">
+                  <Input
+                    ref={inputRef}
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, creatingId!)}
+                    onBlur={() => {
+                      if (editingName.trim()) {
+                        handleSave(creatingId!, editingName);
+                      } else {
+                        handleCancel();
+                      }
+                    }}
+                    placeholder="Organization name"
+                    className="flex-1"
+                    autoFocus
+                  />
+                </div>
+              )}
 
-                {displayOrganizations.map((org) => (
-                  <motion.div
-                    key={org.id}
-                    variants={rowVariants}
-                    className="flex items-center gap-2 p-3 rounded-md bg-white/10"
-                  >
-                    {creatingId === org.id ? (
-                      <Input
-                        ref={inputRef}
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, org.id)}
-                        onBlur={() => {
-                          if (editingName.trim()) {
-                            handleSave(org.id, editingName);
-                          } else {
-                            handleCancel();
-                          }
-                        }}
-                        placeholder="Organization name"
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <>
-                        <span className="flex-1 text-white">{org.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCreatingId(org.id);
-                            setEditingName(org.name);
-                            setTimeout(() => {
-                              inputRef.current?.focus();
-                            }, 0);
-                          }}
-                          className="text-white hover:bg-white/20"
-                        >
-                          Edit
-                        </Button>
-                      </>
-                    )}
-                  </motion.div>
-                ))}
-              </motion.div>
+              <OrganizationsTable
+                columns={columns}
+                data={displayOrganizations}
+                onEdit={handleEdit}
+              />
             </motion.div>
           </AnimatePresence>
         )}
