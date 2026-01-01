@@ -10,6 +10,8 @@ import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
 import { Card } from '@/components/ui/card';
 import { OrganizationsTableProvider } from './context';
+import type { Organization } from '@/lib/supabase/schemas/organizations';
+import type { EditableField } from './context';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -33,54 +35,115 @@ export default function OrganizationsPage() {
   const { data: organizations, isLoading } = useOrganizations();
   const queryClient = useQueryClient();
   const [creatingId, setCreatingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [editingCell, setEditingCell] = useState<{
+    id: string;
+    field: EditableField;
+  } | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   const handleCreate = async () => {
     const tempId = `temp-${Date.now()}`;
     setCreatingId(tempId);
-    setEditingName('');
+    setEditingValue('');
 
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
   };
 
-  const handleSave = async (id: string, name: string) => {
-    if (!name.trim()) {
-      setCreatingId(null);
-      setEditingName('');
+  const handleSave = async (
+    id: string,
+    field: EditableField,
+    value: string,
+  ) => {
+    if (!value.trim() && field === 'name') {
+      setEditingCell(null);
+      setEditingValue('');
       return;
     }
 
     if (id.startsWith('temp-')) {
-      const result = await createOrganization(name.trim());
+      const result = await createOrganization(value.trim());
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['organizations'] });
         setCreatingId(null);
-        setEditingName('');
+        setEditingValue('');
       }
     } else {
-      const result = await updateOrganization(id, { name: name.trim() });
+      const updateData: Partial<Organization> = {
+        [field]: field === 'description' ? value.trim() || null : value.trim(),
+      };
+
+      // Optimistic update
+      const previousData = queryClient.getQueryData<Organization[]>([
+        'organizations',
+      ]);
+
+      if (previousData) {
+        queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+          if (!old) return old;
+          return old.map((org) =>
+            org.id === id ? { ...org, ...updateData } : org,
+          );
+        });
+      }
+
+      const result = await updateOrganization(id, updateData);
+
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['organizations'] });
-        setCreatingId(null);
-        setEditingName('');
+        setEditingCell(null);
+        setEditingValue('');
+      } else {
+        // Rollback on error
+        if (previousData) {
+          queryClient.setQueryData<Organization[]>(
+            ['organizations'],
+            previousData,
+          );
+        }
       }
     }
   };
 
   const handleCancel = () => {
-    setCreatingId(null);
-    setEditingName('');
+    setEditingCell(null);
+    setEditingValue('');
   };
 
-  const handleEdit = (organization: { id: string; name: string }) => {
-    setCreatingId(organization.id);
-    setEditingName(organization.name);
+  const handleEdit = (organization: Organization) => {
+    // Keep this for the Edit button (UI only for now)
+  };
+
+  const handleCellEdit = (id: string, field: EditableField) => {
+    const org = organizations?.find((o) => o.id === id);
+    if (!org) return;
+
+    const value = field === 'name' ? org.name : org.description || '';
+    setEditingCell({ id, field });
+    setEditingValue(value);
+
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
+  };
+
+  const handleCellBlur = (
+    id: string,
+    field: EditableField,
+    value: string,
+    originalValue: string | null,
+  ) => {
+    const normalizedNew = value.trim();
+    const normalizedOriginal = originalValue?.trim() || '';
+
+    if (normalizedNew !== normalizedOriginal) {
+      handleSave(id, field, value);
+    } else {
+      setEditingCell(null);
+      setEditingValue('');
+    }
   };
 
   const displayOrganizations = organizations || [];
@@ -90,9 +153,12 @@ export default function OrganizationsPage() {
     handleCreate,
     handleSave,
     handleCancel,
+    handleCellEdit,
+    handleCellBlur,
     creatingId,
-    editingName,
-    setEditingName,
+    editingCell,
+    editingValue,
+    setEditingValue,
     inputRef,
   };
 

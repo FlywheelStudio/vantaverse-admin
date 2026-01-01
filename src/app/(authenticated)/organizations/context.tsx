@@ -3,15 +3,34 @@
 import React, { createContext, useContext } from 'react';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
+export type EditableField = 'name' | 'description';
+
+export interface EditingCell {
+  id: string;
+  field: EditableField;
+}
+
 interface OrganizationsTableContextValue {
   onEdit: (org: Organization) => void;
   handleCreate: () => void;
-  handleSave: (id: string, name: string) => Promise<void>;
+  handleSave: (
+    id: string,
+    field: EditableField,
+    value: string,
+  ) => Promise<void>;
   handleCancel: () => void;
+  handleCellEdit: (id: string, field: EditableField) => void;
+  handleCellBlur: (
+    id: string,
+    field: EditableField,
+    value: string,
+    originalValue: string | null,
+  ) => void;
   creatingId: string | null;
-  editingName: string;
-  setEditingName: (name: string) => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  editingCell: EditingCell | null;
+  editingValue: string;
+  setEditingValue: (value: string) => void;
+  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 }
 
 const OrganizationsTableContext =
@@ -42,3 +61,5 @@ export function OrganizationsTableProvider({
     </OrganizationsTableContext.Provider>
   );
 }
+
+export type { OrganizationsTableContextValue };

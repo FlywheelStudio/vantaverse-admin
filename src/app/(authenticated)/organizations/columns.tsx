@@ -4,6 +4,96 @@ import { ColumnDef } from '@tanstack/react-table';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useOrganizationsTable } from './context';
+
+function EditableNameCell({ org }: { org: Organization }) {
+  const {
+    editingCell,
+    editingValue,
+    setEditingValue,
+    handleCellEdit,
+    handleCellBlur,
+    handleCancel,
+    inputRef,
+  } = useOrganizationsTable();
+  const isEditing = editingCell?.id === org.id && editingCell?.field === 'name';
+  const value = org.name;
+
+  if (isEditing) {
+    return (
+      <Input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        value={editingValue}
+        onChange={(e) => setEditingValue(e.target.value)}
+        onBlur={() => handleCellBlur(org.id, 'name', editingValue, value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+        className="font-semibold text-[#1E3A5F]"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => handleCellEdit(org.id, 'name')}
+      className="font-semibold text-[#1E3A5F] cursor-pointer hover:text-[#2454FF] transition-colors"
+    >
+      {value}
+    </span>
+  );
+}
+
+function EditableDescriptionCell({ org }: { org: Organization }) {
+  const {
+    editingCell,
+    editingValue,
+    setEditingValue,
+    handleCellEdit,
+    handleCellBlur,
+    handleCancel,
+    inputRef,
+  } = useOrganizationsTable();
+  const isEditing =
+    editingCell?.id === org.id && editingCell?.field === 'description';
+  const description = org.description;
+
+  if (isEditing) {
+    return (
+      <Textarea
+        ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+        value={editingValue}
+        onChange={(e) => setEditingValue(e.target.value)}
+        onBlur={() =>
+          handleCellBlur(org.id, 'description', editingValue, description)
+        }
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+        className="text-[#64748B] min-h-[60px]"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => handleCellEdit(org.id, 'description')}
+      className="text-[#64748B] cursor-pointer hover:text-[#2454FF] transition-colors"
+    >
+      {description || '—'}
+    </span>
+  );
+}
 
 export const columns: ColumnDef<Organization>[] = [
   {
@@ -55,11 +145,7 @@ export const columns: ColumnDef<Organization>[] = [
         </button>
       );
     },
-    cell: ({ row }) => (
-      <span className="font-semibold text-[#1E3A5F]">
-        {row.getValue('name')}
-      </span>
-    ),
+    cell: ({ row }) => <EditableNameCell org={row.original} />,
     filterFn: (row, id, value) => {
       const name = row.getValue(id) as string;
       return name?.toLowerCase().includes(String(value).toLowerCase());
@@ -85,11 +171,7 @@ export const columns: ColumnDef<Organization>[] = [
         </button>
       );
     },
-    cell: ({ row }) => {
-      const description = row.getValue('description') as string | null;
-      if (!description) return <span className="text-[#64748B]">—</span>;
-      return <span className="text-[#64748B]">{description}</span>;
-    },
+    cell: ({ row }) => <EditableDescriptionCell org={row.original} />,
   },
   {
     accessorKey: 'members_count',

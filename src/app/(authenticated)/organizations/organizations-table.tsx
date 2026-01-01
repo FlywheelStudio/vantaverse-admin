@@ -30,8 +30,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     handleCreate,
     onEdit,
     creatingId,
-    editingName,
-    setEditingName,
+    editingValue,
+    setEditingValue,
     inputRef,
     handleSave,
     handleCancel,
@@ -43,17 +43,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    id: string,
-  ) => {
-    if (e.key === 'Enter') {
-      handleSave(id, editingName);
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
 
   React.useEffect(() => {
     setColumnFilters((prev) => {
@@ -97,7 +86,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           onClick={handleCreate}
           className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg"
         >
-          <Plus className="h-4 w-4" />
+          {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
         </Button>
         <Input
           placeholder="Search organizations..."
@@ -106,16 +95,22 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           className="bg-white border-[#2454FF]/20 rounded-xl placeholder:text-[#64748B]/60 focus:border-[#2454FF] focus:ring-[#2454FF] flex-1"
         />
       </div>
-      {(creatingId?.startsWith('temp-') || creatingId) && (
+      {creatingId && creatingId.startsWith('temp-') && (
         <div className="mb-4 flex items-center gap-2 p-3 rounded-md bg-white/10">
           <Input
-            ref={inputRef}
-            value={editingName}
-            onChange={(e) => setEditingName(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, creatingId!)}
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            value={editingValue}
+            onChange={(e) => setEditingValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && editingValue.trim()) {
+                handleSave(creatingId, 'name', editingValue);
+              } else if (e.key === 'Escape') {
+                handleCancel();
+              }
+            }}
             onBlur={() => {
-              if (editingName.trim()) {
-                handleSave(creatingId!, editingName);
+              if (editingValue.trim()) {
+                handleSave(creatingId, 'name', editingValue);
               } else {
                 handleCancel();
               }
@@ -210,8 +205,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
-        <div className="flex justify-center">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
+        <div className="flex justify-center md:justify-start">
           <span className="text-sm text-[#64748B]">
             {table.getFilteredRowModel().rows.length} organization(s) total.
           </span>
