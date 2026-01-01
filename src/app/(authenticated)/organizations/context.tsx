@@ -5,7 +5,7 @@ import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 export type EditableField = 'name' | 'description';
 
-export interface EditingCell {
+interface EditingCell {
   id: string;
   field: EditableField;
 }
@@ -61,5 +61,3 @@ export function OrganizationsTableProvider({
     </OrganizationsTableContext.Provider>
   );
 }
-
-export type { OrganizationsTableContextValue };
