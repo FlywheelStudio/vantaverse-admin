@@ -1,40 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/use-profile';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// Generate a consistent color from a seed string
-function generateColorFromSeed(seed: string): string {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  // Generate HSL color with good saturation and lightness for avatars
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 50%)`;
-}
-
-// Generate initials from name
-function getInitials(
-  firstName: string | null | undefined,
-  lastName: string | null | undefined,
-  username: string | null | undefined,
-): string {
-  if (firstName && lastName) {
-    return `${firstName[0]}${lastName[0]}`.toUpperCase();
-  }
-  if (firstName) {
-    return firstName[0].toUpperCase();
-  }
-  if (username) {
-    return username[0].toUpperCase();
-  }
-  return 'A';
-}
+import { Avatar, getInitials } from '@/components/ui/avatar';
 
 interface UserAvatarProps {
   showName?: boolean;
@@ -59,7 +29,6 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
   // Use email as seed if available, fallback to ID or username
   const colorSeed =
     profile?.email || profile?.id || profile?.username || 'default';
-  const avatarColor = generateColorFromSeed(colorSeed);
 
   if (isLoading) {
     return (
@@ -97,12 +66,12 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <div
-            className="w-full h-full flex items-center justify-center text-white text-xs font-medium"
-            style={{ backgroundColor: avatarColor }}
-          >
-            {initials}
-          </div>
+          <Avatar
+            src={null}
+            initials={initials}
+            colorSeed={colorSeed}
+            size={36}
+          />
         </motion.span>
         {showName && !isMobile && (
           <span className="text-sm font-medium">User</span>
@@ -126,31 +95,12 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
-        {userAvatar ? (
-          <motion.div
-            className="relative w-full h-full rounded-full bg-gray-200 overflow-hidden"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            <Image
-              src={userAvatar}
-              alt=""
-              fill
-              className="aspect-square size-full object-cover"
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            className="w-full h-full flex items-center justify-center text-white text-xs font-medium rounded-full"
-            style={{ backgroundColor: avatarColor }}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            {initials}
-          </motion.div>
-        )}
+        <Avatar
+          src={userAvatar}
+          initials={initials}
+          colorSeed={colorSeed}
+          size={36}
+        />
       </motion.span>
       {showName && !isMobile && (
         <motion.span
