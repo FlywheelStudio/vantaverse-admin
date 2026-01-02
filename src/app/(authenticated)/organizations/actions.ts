@@ -99,3 +99,11 @@ export async function updateOrganizationPicture(
   const query = new OrganizationsQuery();
   return query.update(organizationId, { picture_url: pictureUrl });
 }
+
+/**
+ * Delete an organization
+ */
+export async function deleteOrganization(id: string) {
+  const query = new OrganizationsQuery();
+  return query.delete(id);
+}

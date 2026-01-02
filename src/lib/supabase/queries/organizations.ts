@@ -196,4 +196,32 @@ export class OrganizationsQuery extends SupabaseQuery {
       data: result.data,
     };
   }
+
+  /**
+   * Delete an organization
+   * @param id - The organization id
+   * @returns Success or error
+   */
+  public async delete(
+    id: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { error } = await supabase
+      .from('organizations')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to delete organization',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
 }

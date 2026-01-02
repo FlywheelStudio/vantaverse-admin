@@ -10,6 +10,7 @@ import {
   updateOrganization,
   uploadOrganizationPicture,
   updateOrganizationPicture,
+  deleteOrganization,
 } from './actions';
 import { useQueryClient } from '@tanstack/react-query';
 import { OrganizationsTable } from './organizations-table';
@@ -291,6 +292,17 @@ export default function OrganizationsPage() {
     });
   };
 
+  const handleDelete = async (id: string) => {
+    const result = await deleteOrganization(id);
+
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      toast.success('Organization deleted successfully');
+    } else {
+      toast.error(result.error || 'Failed to delete organization');
+    }
+  };
+
   const displayOrganizations = organizations || [];
 
   const contextValue = {
@@ -313,6 +325,7 @@ export default function OrganizationsPage() {
     handleImageUpload,
     handleSaveNewOrg,
     handleCancelNewOrg,
+    handleDelete,
   };
 
   return (

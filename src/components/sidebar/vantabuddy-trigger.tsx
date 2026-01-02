@@ -1,5 +1,3 @@
-'use client';
-
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
 import { useSidebar } from '@/context/sidebar';
 import { useEffect } from 'react';
@@ -53,7 +51,7 @@ export function VantaBuddyTrigger() {
       className="fixed cursor-pointer hover:opacity-80 transition-opacity touch-manipulation"
       aria-label="Toggle sidebar"
       style={{
-        zIndex: 60,
+        zIndex: 50,
         touchAction: 'manipulation',
         top: `${VANTABUDDY_CONFIG.top}px`,
         left: `${VANTABUDDY_CONFIG.left}px`,

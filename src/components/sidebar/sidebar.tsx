@@ -1,5 +1,3 @@
-'use client';
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '@/context/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';

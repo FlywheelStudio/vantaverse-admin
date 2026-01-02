@@ -46,6 +46,7 @@ interface OrganizationsTableContextValue {
   handleImageUpload: (file: File, orgId?: string) => Promise<void>;
   handleSaveNewOrg: () => Promise<void>;
   handleCancelNewOrg: () => void;
+  handleDelete: (id: string) => Promise<void>;
 }
 
 const OrganizationsTableContext =

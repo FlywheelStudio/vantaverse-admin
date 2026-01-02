@@ -12,15 +12,95 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, Plus, Save, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Save, X, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from './context';
 import { CreateRowImageCell } from './create-row-image-cell';
+
+function DeleteOrganizationButton({
+  organization,
+  onDelete,
+}: {
+  organization: Organization;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const { onEdit } = useOrganizationsTable();
+  const [open, setOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(organization.id);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onEdit(organization)}
+        className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold"
+      >
+        Edit
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &ldquo;{organization.name}&rdquo;?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer" disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
 
 interface OrganizationsTableProps {
   columns: ColumnDef<Organization>[];
@@ -30,12 +110,12 @@ interface OrganizationsTableProps {
 export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
   const {
     handleCreate,
-    onEdit,
     creatingRow,
     newOrgData,
     setNewOrgData,
     handleSaveNewOrg,
     handleCancelNewOrg,
+    handleDelete,
   } = useOrganizationsTable();
 
   const isMobile = useIsMobile();
@@ -213,14 +293,10 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                     );
                   })}
                   <td className="py-5 px-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(row.original)}
-                      className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold"
-                    >
-                      Edit
-                    </Button>
+                    <DeleteOrganizationButton
+                      organization={row.original}
+                      onDelete={handleDelete}
+                    />
                   </td>
                 </tr>
               ))
