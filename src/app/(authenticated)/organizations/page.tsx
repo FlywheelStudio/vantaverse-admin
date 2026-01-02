@@ -23,7 +23,7 @@ import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
 import { Card } from '@/components/ui/card';
 import { OrganizationsTableProvider } from './context';
-import { AddMembersModal } from './add-members-modal';
+import { AddMembersModal } from './add-members/add-members-modal';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { EditableField, EditableTeamField } from './context';
 import type { Team } from '@/lib/supabase/schemas/teams';
