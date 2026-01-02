@@ -198,7 +198,7 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
         >
           Name
           {sorted === 'asc' ? (
@@ -224,7 +224,7 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
         >
           Description
           {sorted === 'asc' ? (
@@ -246,7 +246,7 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
         >
           Members
           {sorted === 'asc' ? (
@@ -298,7 +298,7 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors"
+          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
         >
           Created
           {sorted === 'asc' ? (

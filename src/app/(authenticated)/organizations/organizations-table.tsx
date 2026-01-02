@@ -159,6 +159,22 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table.getState().pagination.pageIndex]);
 
+  // Close expanded view when sorting changes
+  useEffect(() => {
+    if (expandedOrganizationId) {
+      handleExpandToggle(expandedOrganizationId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorting]);
+
+  // Close expanded view when filtering changes
+  useEffect(() => {
+    if (expandedOrganizationId) {
+      handleExpandToggle(expandedOrganizationId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnFilters]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-row gap-4 mb-6">

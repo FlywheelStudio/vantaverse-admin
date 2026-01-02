@@ -92,6 +92,7 @@ export default function OrganizationsPage() {
 
   const handleCreate = () => {
     setCreatingRow(true);
+    setExpandedOrganizationId(null);
     setNewOrgData({
       name: '',
       description: '',
