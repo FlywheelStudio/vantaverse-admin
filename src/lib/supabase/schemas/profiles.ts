@@ -27,11 +27,30 @@ export const profileSchema = z.object({
   program_due_date: z.string().nullable(),
   avatar_url: z.string().nullable(),
   certificate_url: z.any().nullable(),
-  timezone: z.string().nullable(),
-  last_sign_in_at_testing: z.string().nullable(),
+  timezone: z.string().nullish(),
+  last_sign_in_at_testing: z.string().nullish(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
 });
 
 export type JourneyPhase = z.infer<typeof journeyPhaseSchema>;
 export type Profile = z.infer<typeof profileSchema>;
+
+export const profileWithStatsSchema = profileSchema.extend({
+  current_level: z.number().nullable(),
+  current_phase: z.string().nullable(),
+  empowerment: z.number().nullable(),
+  empowerment_base: z.number().nullable(),
+  empowerment_metadata: z.any().nullable(),
+  empowerment_threshold: z.number().nullable(),
+  empowerment_title: z.string().nullable(),
+  empowerment_top: z.number().nullable(),
+  hp_points: z.number().nullable(),
+  max_gate_type: z.string().nullable(),
+  max_gate_unlocked: z.number().nullable(),
+  points_required_for_next_level: z.number().nullable(),
+  program_completion_percentage: z.number().nullable(),
+  program_weeks: z.number().nullable(),
+});
+
+export type ProfileWithStats = z.infer<typeof profileWithStatsSchema>;
