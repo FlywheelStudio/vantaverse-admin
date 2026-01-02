@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, startTransition } from 'react';
 
 export function useMemberSelection(initialMemberIds: Set<string>) {
   // Initialize from initialMemberIds, will be synced via useEffect when it changes
@@ -13,8 +13,16 @@ export function useMemberSelection(initialMemberIds: Set<string>) {
     [initialMemberIds],
   );
 
+  const prevKeyRef = useRef(initialIdsKey);
+
   useEffect(() => {
-    setSelectedUserIds(new Set(initialMemberIds));
+    // Only update when the key actually changes (prop change, not user interaction)
+    if (prevKeyRef.current !== initialIdsKey) {
+      prevKeyRef.current = initialIdsKey;
+      startTransition(() => {
+        setSelectedUserIds(new Set(initialMemberIds));
+      });
+    }
   }, [initialMemberIds, initialIdsKey]);
 
   const handleToggleUser = (userId: string) => {
