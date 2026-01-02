@@ -132,6 +132,3 @@ export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
     </>
   );
 }
-
-// Keep the old export for backward compatibility during migration
-export const ImportMenu = AddUserMenu;

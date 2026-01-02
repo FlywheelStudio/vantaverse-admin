@@ -12,20 +12,9 @@ export async function getExercises() {
 }
 
 /**
- * Get exercise by ID
- */
-export async function getExerciseById(id: number) {
-  const query = new ExercisesQuery();
-  return query.getById(id);
-}
-
-/**
  * Update an exercise
  */
-export async function updateExercise(
-  id: number,
-  data: Partial<Exercise>,
-) {
+export async function updateExercise(id: number, data: Partial<Exercise>) {
   const query = new ExercisesQuery();
   return query.update(id, data);
 }
