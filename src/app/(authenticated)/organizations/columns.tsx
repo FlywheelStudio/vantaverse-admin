@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationsTable } from './context';
 import { AvatarGroup } from '@/components/ui/avatar-group';
+import { TeamsCell } from './teams-cell';
 
 function EditableNameCell({ org }: { org: Organization }) {
   const {
@@ -269,7 +270,8 @@ export const columns: ColumnDef<Organization>[] = [
         } else if (profile?.username) {
           label = profile.username;
         }
-        const avatarId = profile?.id || profile?.username || undefined;
+        const avatarId =
+          profile?.email || profile?.id || profile?.username || undefined;
         return {
           src: profile?.avatar_url || undefined,
           alt: label || undefined,
@@ -279,6 +281,15 @@ export const columns: ColumnDef<Organization>[] = [
       });
       return <AvatarGroup avatars={avatars} maxVisible={5} />;
     },
+  },
+  {
+    accessorKey: 'teams_count',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Teams</span>
+    ),
+    cell: ({ row }) => <TeamsCell organization={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
   },
   {
     accessorKey: 'created_at',

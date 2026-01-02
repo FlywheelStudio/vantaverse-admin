@@ -2,12 +2,19 @@
 
 import React, { createContext, useContext } from 'react';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
+import type { Team } from '@/lib/supabase/schemas/teams';
 
 export type EditableField = 'name' | 'description';
+export type EditableTeamField = 'name' | 'description';
 
 interface EditingCell {
   id: string;
   field: EditableField;
+}
+
+interface EditingTeam {
+  id: string;
+  field: EditableTeamField;
 }
 
 interface NewOrgData {
@@ -15,6 +22,12 @@ interface NewOrgData {
   description: string;
   imageFile: File | null;
   imagePreview: string | null;
+}
+
+interface NewTeamData {
+  organizationId: string;
+  name: string;
+  description: string;
 }
 
 interface OrganizationsTableContextValue {
@@ -47,6 +60,28 @@ interface OrganizationsTableContextValue {
   handleSaveNewOrg: () => Promise<void>;
   handleCancelNewOrg: () => void;
   handleDelete: (id: string) => Promise<void>;
+  // Teams related
+  expandedOrganizationId: string | null;
+  handleExpandToggle: (organizationId: string) => void;
+  editingTeam: EditingTeam | null;
+  editingTeamValue: string;
+  setEditingTeamValue: (value: string) => void;
+  handleTeamEdit: (id: string, field: EditableTeamField) => void;
+  handleTeamBlur: (
+    id: string,
+    field: EditableTeamField,
+    value: string,
+    originalValue: string | null,
+  ) => void;
+  handleTeamCancel: () => void;
+  handleTeamCreate: (organizationId: string) => void;
+  handleTeamDelete: (teamId: string) => Promise<void>;
+  creatingTeam: boolean;
+  savingTeam: boolean;
+  newTeamData: NewTeamData;
+  setNewTeamData: React.Dispatch<React.SetStateAction<NewTeamData>>;
+  handleSaveNewTeam: (organizationId: string) => Promise<void>;
+  handleCancelNewTeam: () => void;
 }
 
 const OrganizationsTableContext =

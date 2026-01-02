@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { teamSchema } from './teams';
 
-const organizationMemberSchema = z.object({
+const teamMemberSchema = z.object({
   id: z.string(),
   user_id: z.string(),
   profile: z
@@ -16,20 +15,18 @@ const organizationMemberSchema = z.object({
     .nullable(),
 });
 
-export const organizationSchema = z.object({
+export const teamSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
-  picture_url: z.string().nullable(),
-  is_active: z.boolean().nullable(),
-  is_super_admin: z.boolean().nullable(),
+  notes: z.string().nullable(),
+  organization_id: z.uuid(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
   members_count: z.number().optional(),
   member_ids: z.array(z.string()).optional(),
-  members: z.array(organizationMemberSchema).optional(),
-  teams_count: z.number().optional(),
-  teams: z.array(teamSchema).optional(),
+  members: z.array(teamMemberSchema).optional(),
 });
 
-export type Organization = z.infer<typeof organizationSchema>;
+export type Team = z.infer<typeof teamSchema>;
+export type TeamMember = z.infer<typeof teamMemberSchema>;

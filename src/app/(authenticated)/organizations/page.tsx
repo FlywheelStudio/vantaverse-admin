@@ -12,13 +12,20 @@ import {
   updateOrganizationPicture,
   deleteOrganization,
 } from './actions';
+import {
+  getTeamsByOrganizationId,
+  createTeam,
+  updateTeam,
+  deleteTeam,
+} from './teams-actions';
 import { useQueryClient } from '@tanstack/react-query';
 import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
 import { Card } from '@/components/ui/card';
 import { OrganizationsTableProvider } from './context';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import type { EditableField } from './context';
+import type { EditableField, EditableTeamField } from './context';
+import type { Team } from '@/lib/supabase/schemas/teams';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -61,6 +68,27 @@ export default function OrganizationsPage() {
     imagePreview: null,
   });
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  // Teams state
+  const [expandedOrganizationId, setExpandedOrganizationId] = useState<
+    string | null
+  >(null);
+  const [editingTeam, setEditingTeam] = useState<{
+    id: string;
+    field: EditableTeamField;
+  } | null>(null);
+  const [editingTeamValue, setEditingTeamValue] = useState<string>('');
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [savingTeam, setSavingTeam] = useState(false);
+  const [newTeamData, setNewTeamData] = useState<{
+    organizationId: string;
+    name: string;
+    description: string;
+  }>({
+    organizationId: '',
+    name: '',
+    description: '',
+  });
 
   const handleCreate = () => {
     setCreatingRow(true);
@@ -303,6 +331,236 @@ export default function OrganizationsPage() {
     }
   };
 
+  // Teams handlers
+  const handleExpandToggle = async (organizationId: string) => {
+    if (expandedOrganizationId === organizationId) {
+      setExpandedOrganizationId(null);
+    } else {
+      setExpandedOrganizationId(organizationId);
+      // Fetch teams for this organization
+      const org = organizations?.find((o) => o.id === organizationId);
+      if (org) {
+        const teamsResult = await getTeamsByOrganizationId(organizationId);
+        if (teamsResult.success) {
+          // Update organization with teams data
+          queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+            if (!old) return old;
+            return old.map((o) =>
+              o.id === organizationId
+                ? {
+                    ...o,
+                    teams: teamsResult.data,
+                    teams_count: teamsResult.data.length,
+                  }
+                : o,
+            );
+          });
+        }
+      }
+    }
+  };
+
+  const handleTeamEdit = (id: string, field: EditableTeamField) => {
+    const org = organizations?.find((o) => o.id === expandedOrganizationId);
+    const team = org?.teams?.find((t) => t.id === id);
+    if (!team) return;
+
+    const value = field === 'name' ? team.name : team.description || '';
+    setEditingTeam({ id, field });
+    setEditingTeamValue(value);
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleTeamBlur = async (
+    id: string,
+    field: EditableTeamField,
+    value: string,
+    originalValue: string | null,
+  ) => {
+    const normalizedNew = value.trim();
+    const normalizedOriginal = originalValue?.trim() || '';
+
+    if (normalizedNew !== normalizedOriginal) {
+      const updateData: Partial<Team> = {
+        [field]:
+          field === 'description' ? normalizedNew || null : normalizedNew,
+      };
+
+      // Optimistic update
+      const previousData = queryClient.getQueryData<Organization[]>([
+        'organizations',
+      ]);
+
+      if (previousData && expandedOrganizationId) {
+        queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+          if (!old) return old;
+          return old.map((org) =>
+            org.id === expandedOrganizationId
+              ? {
+                  ...org,
+                  teams: org.teams?.map((team) =>
+                    team.id === id ? { ...team, ...updateData } : team,
+                  ),
+                }
+              : org,
+          );
+        });
+      }
+
+      const result = await updateTeam(id, updateData);
+
+      if (result.success) {
+        // Refetch teams for this organization to update the cache
+        if (expandedOrganizationId) {
+          const teamsResult = await getTeamsByOrganizationId(
+            expandedOrganizationId,
+          );
+          if (teamsResult.success) {
+            queryClient.setQueryData<Organization[]>(
+              ['organizations'],
+              (old) => {
+                if (!old) return old;
+                return old.map((o) =>
+                  o.id === expandedOrganizationId
+                    ? {
+                        ...o,
+                        teams: teamsResult.data,
+                        teams_count: teamsResult.data.length,
+                      }
+                    : o,
+                );
+              },
+            );
+          }
+        }
+        setEditingTeam(null);
+        setEditingTeamValue('');
+      } else {
+        // Rollback on error
+        if (previousData) {
+          queryClient.setQueryData<Organization[]>(
+            ['organizations'],
+            previousData,
+          );
+        }
+        toast.error(result.error || 'Failed to update team');
+      }
+    } else {
+      setEditingTeam(null);
+      setEditingTeamValue('');
+    }
+  };
+
+  const handleTeamCancel = () => {
+    setEditingTeam(null);
+    setEditingTeamValue('');
+  };
+
+  const handleTeamCreate = (organizationId: string) => {
+    setCreatingTeam(true);
+    setNewTeamData({
+      organizationId,
+      name: '',
+      description: '',
+    });
+  };
+
+  const handleSaveNewTeam = async (organizationId: string) => {
+    if (!newTeamData.name.trim()) {
+      return;
+    }
+
+    setSavingTeam(true);
+    try {
+      const result = await createTeam(
+        organizationId,
+        newTeamData.name.trim(),
+        newTeamData.description.trim() || null,
+      );
+
+      if (!result.success) {
+        toast.error(result.error || 'Failed to create team');
+        return;
+      }
+
+      // Fetch updated teams for this organization
+      const teamsResult = await getTeamsByOrganizationId(organizationId);
+      if (teamsResult.success) {
+        // Update organization with teams data
+        queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+          if (!old) return old;
+          return old.map((o) =>
+            o.id === organizationId
+              ? {
+                  ...o,
+                  teams: teamsResult.data,
+                  teams_count: teamsResult.data.length,
+                }
+              : o,
+          );
+        });
+      }
+
+      // Reset state
+      setCreatingTeam(false);
+      setNewTeamData({
+        organizationId: '',
+        name: '',
+        description: '',
+      });
+
+      toast.success('Team created successfully');
+    } catch (error) {
+      console.error('Error creating team:', error);
+      toast.error('Failed to create team');
+    } finally {
+      setSavingTeam(false);
+    }
+  };
+
+  const handleCancelNewTeam = () => {
+    setCreatingTeam(false);
+    setExpandedOrganizationId(null);
+    setNewTeamData({
+      organizationId: '',
+      name: '',
+      description: '',
+    });
+  };
+
+  const handleTeamDelete = async (teamId: string) => {
+    const result = await deleteTeam(teamId);
+
+    if (result.success) {
+      // Refetch teams for the expanded organization to update the cache
+      if (expandedOrganizationId) {
+        const teamsResult = await getTeamsByOrganizationId(
+          expandedOrganizationId,
+        );
+        if (teamsResult.success) {
+          queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+            if (!old) return old;
+            return old.map((o) =>
+              o.id === expandedOrganizationId
+                ? {
+                    ...o,
+                    teams: teamsResult.data,
+                    teams_count: teamsResult.data.length,
+                  }
+                : o,
+            );
+          });
+        }
+      }
+      toast.success('Team deleted successfully');
+    } else {
+      toast.error(result.error || 'Failed to delete team');
+    }
+  };
+
   const displayOrganizations = organizations || [];
 
   const contextValue = {
@@ -326,6 +584,23 @@ export default function OrganizationsPage() {
     handleSaveNewOrg,
     handleCancelNewOrg,
     handleDelete,
+    // Teams
+    expandedOrganizationId,
+    handleExpandToggle,
+    editingTeam,
+    editingTeamValue,
+    setEditingTeamValue,
+    handleTeamEdit,
+    handleTeamBlur,
+    handleTeamCancel,
+    handleTeamCreate,
+    handleTeamDelete,
+    creatingTeam,
+    savingTeam,
+    newTeamData,
+    setNewTeamData,
+    handleSaveNewTeam,
+    handleCancelNewTeam,
   };
 
   return (

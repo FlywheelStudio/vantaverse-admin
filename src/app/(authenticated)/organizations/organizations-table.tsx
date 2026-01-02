@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -32,6 +32,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from './context';
 import { CreateRowImageCell } from './create-row-image-cell';
+import { TeamsExpandedRow } from './teams-expanded-row';
 
 function DeleteOrganizationButton({
   organization,
@@ -40,7 +41,6 @@ function DeleteOrganizationButton({
   organization: Organization;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const { onEdit } = useOrganizationsTable();
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -58,14 +58,6 @@ function DeleteOrganizationButton({
 
   return (
     <div className="flex gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onEdit(organization)}
-        className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold"
-      >
-        Edit
-      </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogTrigger asChild>
           <Button
@@ -116,6 +108,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     handleSaveNewOrg,
     handleCancelNewOrg,
     handleDelete,
+    expandedOrganizationId,
+    handleExpandToggle,
   } = useOrganizationsTable();
 
   const isMobile = useIsMobile();
@@ -158,6 +152,14 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
       },
     },
   });
+
+  // Close expanded view when pagination changes
+  useEffect(() => {
+    if (expandedOrganizationId) {
+      handleExpandToggle(expandedOrganizationId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.getState().pagination.pageIndex]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -268,38 +270,55 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
               </tr>
             )}
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index, array) => (
-                <tr
-                  key={row.id}
-                  className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
-                    index === array.length - 1 ? 'border-b-0' : ''
-                  }`}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const isDescription = cell.column.id === 'description';
-                    const isCreated = cell.column.id === 'created_at';
-                    return (
-                      <td
-                        key={cell.id}
-                        className={`py-5 px-4 ${
-                          isDescription ? 'hidden lg:table-cell' : ''
-                        } ${isCreated ? 'hidden md:table-cell' : ''}`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+              table.getRowModel().rows.map((row, index, array) => {
+                const org = row.original;
+                const isExpanded = expandedOrganizationId === org.id;
+                const teams = org.teams || [];
+                const columnCount = columns.length + 1; // +1 for Actions column
+
+                return (
+                  <React.Fragment key={row.id}>
+                    <tr
+                      className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
+                        index === array.length - 1 && !isExpanded
+                          ? 'border-b-0'
+                          : ''
+                      }`}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const isDescription = cell.column.id === 'description';
+                        const isCreated = cell.column.id === 'created_at';
+                        return (
+                          <td
+                            key={cell.id}
+                            className={`py-5 px-4 ${
+                              isDescription ? 'hidden lg:table-cell' : ''
+                            } ${isCreated ? 'hidden md:table-cell' : ''}`}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="py-5 px-4">
+                        <DeleteOrganizationButton
+                          organization={row.original}
+                          onDelete={handleDelete}
+                        />
                       </td>
-                    );
-                  })}
-                  <td className="py-5 px-4">
-                    <DeleteOrganizationButton
-                      organization={row.original}
-                      onDelete={handleDelete}
-                    />
-                  </td>
-                </tr>
-              ))
+                    </tr>
+                    {isExpanded && (
+                      <TeamsExpandedRow
+                        organizationId={org.id}
+                        teams={teams}
+                        columnCount={columnCount}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })
             ) : (
               <tr>
                 <td

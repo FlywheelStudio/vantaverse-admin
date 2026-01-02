@@ -21,7 +21,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, username))',
+        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, username, email)), teams(id)',
       )
       .order('created_at', { ascending: false });
 
@@ -50,18 +50,20 @@ export class OrganizationsQuery extends SupabaseQuery {
         first_name: string | null;
         last_name: string | null;
         username: string | null;
+        email: string | null;
       } | null;
     };
 
     type RawOrganization = Omit<
       Organization,
-      'members_count' | 'member_ids' | 'members'
+      'members_count' | 'member_ids' | 'members' | 'teams_count'
     > & {
       organization_members: RawOrganizationMember[] | null;
+      teams: { id: string }[] | null;
     };
 
     const transformedData = (data as RawOrganization[]).map((org) => {
-      const { organization_members, ...orgData } = org;
+      const { organization_members, teams, ...orgData } = org;
       // Filter to only active members and transform to include profile data
       const members =
         Array.isArray(organization_members) && organization_members.length > 0
@@ -77,16 +79,19 @@ export class OrganizationsQuery extends SupabaseQuery {
                       first_name: m.profiles.first_name,
                       last_name: m.profiles.last_name,
                       username: m.profiles.username,
+                      email: m.profiles.email,
                     }
                   : null,
               }))
           : [];
       const memberIds = members.map((m) => m.id);
+      const teamsCount = Array.isArray(teams) ? teams.length : 0;
       return {
         ...orgData,
         members_count: members.length,
         member_ids: memberIds.length > 0 ? memberIds : undefined,
         members: members.length > 0 ? members : undefined,
+        teams_count: teamsCount,
       };
     });
 
