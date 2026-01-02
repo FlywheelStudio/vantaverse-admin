@@ -2,6 +2,7 @@
 
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { createClient } from '@/lib/supabase/core/server';
+import { createAdminClient } from '@/lib/supabase/core/admin';
 
 /**
  * Get users with stats
@@ -179,4 +180,104 @@ export async function uploadUsersExcel(file: File) {
     success: false as const,
     error: 'Not implemented',
   };
+}
+
+/**
+ * Create a user quickly with email, name, and optional org/team assignment
+ */
+export async function createUserQuickAdd(data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId?: string;
+  teamId?: string;
+}): Promise<
+  | { success: true; data: { userId: string } }
+  | { success: false; error: string }
+> {
+  const adminClient = await createAdminClient();
+  const supabase = await createClient();
+  const profilesQuery = new ProfilesQuery();
+
+  try {
+    // Create auth user (OTP-based, no password)
+    const { data: authUser, error: authError } =
+      await adminClient.auth.admin.createUser({
+        email: data.email.toLowerCase().trim(),
+        email_confirm: true,
+      });
+
+    if (authError || !authUser.user) {
+      return {
+        success: false,
+        error: authError?.message || 'Failed to create auth user',
+      };
+    }
+
+    const userId = authUser.user.id;
+
+    // Create profile
+    const profileResult = await profilesQuery.create({
+      id: userId,
+      email: data.email.toLowerCase().trim(),
+      first_name: data.firstName.trim(),
+      last_name: data.lastName.trim(),
+      journey_phase: 'discovery',
+    });
+
+    if (!profileResult.success) {
+      // Clean up auth user if profile creation fails
+      await adminClient.auth.admin.deleteUser(userId);
+      return {
+        success: false,
+        error: profileResult.error,
+      };
+    }
+
+    // Add to organization if provided
+    if (data.organizationId) {
+      const { error: orgError } = await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: data.organizationId,
+          user_id: userId,
+          role: 'member',
+          is_active: true,
+        });
+
+      if (orgError) {
+        return {
+          success: false,
+          error: `Failed to add user to organization: ${orgError.message}`,
+        };
+      }
+    }
+
+    // Add to team if provided
+    if (data.teamId) {
+      const { error: teamError } = await supabase
+        .from('team_membership')
+        .insert({
+          team_id: data.teamId,
+          user_id: userId,
+        });
+
+      if (teamError) {
+        return {
+          success: false,
+          error: `Failed to add user to team: ${teamError.message}`,
+        };
+      }
+    }
+
+    return {
+      success: true,
+      data: { userId },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create user',
+    };
+  }
 }

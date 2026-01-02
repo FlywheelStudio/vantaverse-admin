@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,11 +16,18 @@ import {
   uploadUsersExcel,
 } from './actions';
 import toast from 'react-hot-toast';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-export function ImportMenu() {
+interface AddUserMenuProps {
+  onQuickAdd?: () => void;
+}
+
+export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
+  const isMobile = useIsMobile();
   const csvInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
 
   const handleDownloadCSV = async () => {
     const result = await downloadTemplateCSV();
@@ -70,6 +77,11 @@ export function ImportMenu() {
     e.target.value = '';
   };
 
+  const handleQuickAdd = () => {
+    setOpen(false);
+    onQuickAdd?.();
+  };
+
   return (
     <>
       <input
@@ -86,16 +98,18 @@ export function ImportMenu() {
         onChange={handleExcelFileChange}
         className="hidden"
       />
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="bg-white border-[#2454FF]/20 rounded-xl text-[#1E3A5F] hover:bg-[#F5F7FA]"
-          >
-            Import
+          <Button className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer">
+            {isMobile ? <Plus className="h-4 w-4" /> : 'Add User'}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleQuickAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Quick add
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleDownloadCSV}>
             <Download className="h-4 w-4 mr-2" />
             Template CSV
@@ -118,3 +132,6 @@ export function ImportMenu() {
     </>
   );
 }
+
+// Keep the old export for backward compatibility during migration
+export const ImportMenu = AddUserMenu;
