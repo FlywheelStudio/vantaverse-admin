@@ -136,38 +136,6 @@ export async function revokeSuperAdmin(userId: string) {
 }
 
 /**
- * Check if user is super admin
- */
-export async function isUserSuperAdmin(userId: string) {
-  const orgResult = await getSuperAdminOrganizationId();
-  if (!orgResult.success) {
-    return { success: false as const, error: orgResult.error };
-  }
-
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('id')
-    .eq('organization_id', orgResult.data)
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (error) {
-    return {
-      success: false as const,
-      error: `Failed to check super admin status: ${error.message}`,
-    };
-  }
-
-  return {
-    success: true as const,
-    data: !!data,
-  };
-}
-
-/**
  * Download CSV template (placeholder - UI only)
  */
 export async function downloadTemplateCSV() {
