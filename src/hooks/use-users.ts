@@ -9,8 +9,15 @@ export function useUsers(filters?: {
   team_id?: string;
   journey_phase?: string;
 }) {
+  // Normalize undefined to null for stable queryKey serialization
+  const orgId = filters?.organization_id ?? null;
+  const teamId = filters?.team_id ?? null;
+  const journeyPhase = filters?.journey_phase ?? null;
+
+  const queryKey = ['users', orgId, teamId, journeyPhase];
+
   return useQuery<ProfileWithStats[], Error>({
-    queryKey: ['users', filters],
+    queryKey,
     queryFn: async () => {
       const result = await getUsersWithStats(filters);
 
@@ -20,5 +27,7 @@ export function useUsers(filters?: {
 
       return result.data;
     },
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }

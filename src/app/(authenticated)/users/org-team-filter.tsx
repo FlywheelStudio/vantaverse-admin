@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -19,16 +20,22 @@ import type { Team } from '@/lib/supabase/schemas/teams';
 
 interface OrgTeamFilterProps {
   selectedOrgId?: string;
+  selectedOrgName?: string;
   selectedTeamId?: string;
-  onOrgSelect: (orgId?: string) => void;
-  onTeamSelect: (teamId?: string) => void;
+  selectedTeamName?: string;
+  onOrgSelect: (orgId?: string, orgName?: string) => void;
+  onTeamSelect: (teamId?: string, teamName?: string) => void;
+  onClear: () => void;
 }
 
 export function OrgTeamFilter({
   selectedOrgId,
+  selectedOrgName,
   selectedTeamId,
+  selectedTeamName,
   onOrgSelect,
   onTeamSelect,
+  onClear,
 }: OrgTeamFilterProps) {
   const { data: organizations } = useOrganizations();
   const [teamsByOrg, setTeamsByOrg] = React.useState<Record<string, Team[]>>(
@@ -52,19 +59,42 @@ export function OrgTeamFilter({
     [teamsByOrg, loadingTeams],
   );
 
-  const selectedOrg = organizations?.find((o) => o.id === selectedOrgId);
-  const selectedTeam = selectedOrgId
-    ? teamsByOrg[selectedOrgId]?.find((t) => t.id === selectedTeamId)
-    : undefined;
+  const displayText =
+    selectedTeamId && selectedTeamName
+      ? `${selectedOrgName || ''} / ${selectedTeamName}`
+      : selectedOrgId && selectedOrgName
+        ? selectedOrgName
+        : 'All Organizations / Teams';
 
-  const displayText = selectedTeam
-    ? `${selectedOrg?.name} / ${selectedTeam.name}`
-    : selectedOrg
-      ? selectedOrg.name
-      : 'All Organizations / Teams';
+  // Load teams for selected org if not already loaded (needed for highlighting and display)
+  React.useEffect(() => {
+    if (
+      selectedOrgId &&
+      !teamsByOrg[selectedOrgId] &&
+      !loadingTeams[selectedOrgId]
+    ) {
+      loadTeams(selectedOrgId);
+    }
+  }, [selectedOrgId, teamsByOrg, loadingTeams, loadTeams]);
+
+  // Also ensure teams are loaded when dropdown might open (on open state change)
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (
+      isOpen &&
+      selectedOrgId &&
+      !teamsByOrg[selectedOrgId] &&
+      !loadingTeams[selectedOrgId]
+    ) {
+      loadTeams(selectedOrgId);
+    }
+  }, [isOpen, selectedOrgId, teamsByOrg, loadingTeams, loadTeams]);
+
+  const isAllSelected = !selectedOrgId && !selectedTeamId;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
@@ -77,9 +107,12 @@ export function OrgTeamFilter({
       <DropdownMenuContent align="start" className="min-w-[200px]">
         <DropdownMenuItem
           onClick={() => {
-            onOrgSelect(undefined);
-            onTeamSelect(undefined);
+            onClear();
+
+            setIsOpen(false);
           }}
+          data-selected={isAllSelected}
+          className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
         >
           All Organizations / Teams
         </DropdownMenuItem>
@@ -88,39 +121,43 @@ export function OrgTeamFilter({
           <DropdownMenuSub key={org.id}>
             <DropdownMenuSubTrigger
               onMouseEnter={() => loadTeams(org.id)}
-              onClick={() => {
-                onOrgSelect(org.id);
-                onTeamSelect(undefined);
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOrgSelect(org.id, org.name);
+                setIsOpen(false);
               }}
+              data-selected={selectedOrgId === org.id && !selectedTeamId}
+              className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10! data-[selected=true]:data-[state=open]:bg-[#2454FF]/10!`}
             >
               {org.name}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuItem
-                onClick={() => {
-                  onOrgSelect(org.id);
-                  onTeamSelect(undefined);
-                }}
-              >
-                All Teams
-              </DropdownMenuItem>
+              <DropdownMenuLabel>Teams</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {loadingTeams[org.id] ? (
                 <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
               ) : teamsByOrg[org.id]?.length === 0 ? (
                 <DropdownMenuItem disabled>No teams</DropdownMenuItem>
               ) : (
-                teamsByOrg[org.id]?.map((team) => (
-                  <DropdownMenuItem
-                    key={team.id}
-                    onClick={() => {
-                      onOrgSelect(org.id);
-                      onTeamSelect(team.id);
-                    }}
-                  >
-                    {team.name}
-                  </DropdownMenuItem>
-                ))
+                teamsByOrg[org.id]?.map((team) => {
+                  const isSelected =
+                    selectedOrgId === org.id && selectedTeamId === team.id;
+                  return (
+                    <DropdownMenuItem
+                      key={team.id}
+                      onClick={() => {
+                        onOrgSelect(org.id, org.name);
+                        onTeamSelect(team.id, team.name);
+                        setIsOpen(false);
+                      }}
+                      data-selected={isSelected}
+                      className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+                    >
+                      {team.name}
+                    </DropdownMenuItem>
+                  );
+                })
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>

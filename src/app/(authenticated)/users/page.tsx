@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useUsers } from '@/hooks/use-users';
@@ -32,16 +32,27 @@ export default function UsersPage() {
     team_id?: string;
     journey_phase?: string;
   }>({});
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const loadedOnceRef = useRef(false);
   const { data: users, isLoading } = useUsers(filters);
 
   const displayUsers = users || [];
+
+  // Track if we've loaded data at least once
+  useEffect(() => {
+    if (!isLoading && displayUsers.length > 0 && !loadedOnceRef.current) {
+      loadedOnceRef.current = true;
+      setHasLoadedOnce(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, displayUsers.length]);
 
   return (
     <PageWrapper
       subheader={<h1 className="text-2xl font-medium">Users Management</h1>}
     >
       <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
-        {!isLoading && (
+        {hasLoadedOnce && (
           <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
             <div className="p-6 sm:p-8">
               <AnimatePresence mode="wait">

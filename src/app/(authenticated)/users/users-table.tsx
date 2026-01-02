@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import {
   flexRender,
@@ -12,11 +10,13 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useOrganizations } from '@/hooks/use-organizations';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import { OrgTeamFilter } from './org-team-filter';
 import { JourneyPhaseFilter } from './journey-phase-filter';
@@ -35,6 +35,7 @@ interface UsersTableProps {
     team_id?: string;
     journey_phase?: string;
   }) => void;
+  isLoading?: boolean;
 }
 
 export function UsersTable({
@@ -42,14 +43,18 @@ export function UsersTable({
   data,
   filters = {},
   onFiltersChange,
+  isLoading = false,
 }: UsersTableProps) {
-  'use no memo';
-
   const isMobile = useIsMobile();
+  const { data: organizations } = useOrganizations();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [selectedOrgName, setSelectedOrgName] = useState<string | undefined>();
+  const [selectedTeamName, setSelectedTeamName] = useState<
+    string | undefined
+  >();
 
   useEffect(() => {
     setColumnFilters((prev) => {
@@ -98,6 +103,31 @@ export function UsersTable({
     });
   }, [filters.journey_phase]);
 
+  // Update org name when org filter changes
+  useEffect(() => {
+    if (filters.organization_id) {
+      const org = organizations?.find((o) => o.id === filters.organization_id);
+      setSelectedOrgName(org?.name);
+    } else {
+      setSelectedOrgName(undefined);
+    }
+  }, [filters.organization_id, organizations]);
+
+  // Clear team name when team filter is cleared
+  useEffect(() => {
+    if (!filters.team_id) {
+      setSelectedTeamName(undefined);
+    }
+  }, [filters.team_id]);
+
+  // Get filter display names for empty state
+  const emptyStateMessage =
+    filters.team_id && selectedTeamName
+      ? `No users assigned to this team`
+      : filters.organization_id && selectedOrgName
+        ? `No users assigned to this organization`
+        : 'No results.';
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-row gap-4 mb-6 flex-wrap">
@@ -111,12 +141,54 @@ export function UsersTable({
         </div>
         <OrgTeamFilter
           selectedOrgId={filters.organization_id}
+          selectedOrgName={selectedOrgName}
           selectedTeamId={filters.team_id}
-          onOrgSelect={(orgId) => {
-            onFiltersChange?.({ ...filters, organization_id: orgId });
+          selectedTeamName={selectedTeamName}
+          onOrgSelect={(orgId, orgName) => {
+            setSelectedOrgName(orgName);
+            setSelectedTeamName(undefined);
+            const newFilters: {
+              organization_id?: string;
+              team_id?: string;
+              journey_phase?: string;
+            } = {
+              ...(orgId && { organization_id: orgId }),
+              ...(filters.journey_phase && {
+                journey_phase: filters.journey_phase,
+              }),
+            };
+            onFiltersChange?.(newFilters);
           }}
-          onTeamSelect={(teamId) => {
-            onFiltersChange?.({ ...filters, team_id: teamId });
+          onTeamSelect={(teamId, teamName) => {
+            setSelectedTeamName(teamName);
+            const newFilters: {
+              organization_id?: string;
+              team_id?: string;
+              journey_phase?: string;
+            } = {
+              ...(filters.organization_id && {
+                organization_id: filters.organization_id,
+              }),
+              ...(teamId && { team_id: teamId }),
+              ...(filters.journey_phase && {
+                journey_phase: filters.journey_phase,
+              }),
+            };
+            onFiltersChange?.(newFilters);
+          }}
+          onClear={() => {
+            setSelectedOrgName(undefined);
+            setSelectedTeamName(undefined);
+            const newFilters: {
+              organization_id?: string;
+              team_id?: string;
+              journey_phase?: string;
+            } = {
+              ...(filters.journey_phase && {
+                journey_phase: filters.journey_phase,
+              }),
+            };
+            onFiltersChange?.(newFilters);
           }}
         />
         <JourneyPhaseFilter
@@ -152,10 +224,29 @@ export function UsersTable({
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="h-24 text-center py-5 px-4"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
+                    <span className="text-[#64748B]">Loading users...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row, index, array) => (
-                <tr
+                <motion.tr
                   key={row.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.03,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
                   className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
                     index === array.length - 1 ? 'border-b-0' : ''
                   }`}
@@ -168,7 +259,7 @@ export function UsersTable({
                       )}
                     </td>
                   ))}
-                </tr>
+                </motion.tr>
               ))
             ) : (
               <tr>
@@ -176,7 +267,7 @@ export function UsersTable({
                   colSpan={columns.length}
                   className="h-24 text-center py-5 px-4"
                 >
-                  No results.
+                  {emptyStateMessage}
                 </td>
               </tr>
             )}

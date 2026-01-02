@@ -51,6 +51,7 @@ export const profileWithStatsSchema = profileSchema.extend({
   points_required_for_next_level: z.number().nullable(),
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
+  is_super_admin: z.boolean().optional(),
 });
 
 export type ProfileWithStats = z.infer<typeof profileWithStatsSchema>;

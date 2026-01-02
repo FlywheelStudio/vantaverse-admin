@@ -23,12 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-import {
-  isUserSuperAdmin,
-  deleteUser,
-  makeSuperAdmin,
-  revokeSuperAdmin,
-} from './actions';
+import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from './actions';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
@@ -196,15 +191,8 @@ function DeleteUserButton({
 function ActionsCell({ profile }: { profile: ProfileWithStats }) {
   const queryClient = useQueryClient();
   const [isTogglingAdmin, setIsTogglingAdmin] = React.useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState<boolean | null>(null);
 
-  React.useEffect(() => {
-    isUserSuperAdmin(profile.id).then((result) => {
-      if (result.success) {
-        setIsSuperAdmin(result.data);
-      }
-    });
-  }, [profile.id]);
+  const isSuperAdmin = profile.is_super_admin ?? false;
 
   const handleDelete = async (userId: string) => {
     const result = await deleteUser(userId);
@@ -224,7 +212,6 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
         : await makeSuperAdmin(profile.id);
 
       if (result.success) {
-        setIsSuperAdmin(!isSuperAdmin);
         queryClient.invalidateQueries({ queryKey: ['users'] });
         toast.success(
           isSuperAdmin
@@ -250,7 +237,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
             variant="ghost"
             size="sm"
             onClick={handleToggleAdmin}
-            disabled={isTogglingAdmin || isSuperAdmin === null}
+            disabled={isTogglingAdmin}
             className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold cursor-pointer disabled:opacity-50"
           >
             {isSuperAdmin ? (

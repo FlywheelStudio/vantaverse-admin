@@ -280,6 +280,15 @@ export class ProfilesQuery extends SupabaseQuery {
   }): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
+    // Get super admin organization ID
+    const { data: superAdminOrg } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('is_super_admin', true)
+      .maybeSingle();
+
+    const superAdminOrgId = superAdminOrg?.id;
+
     let userIds: string[] | null = null;
 
     // Filter by organization_id via organization_members
@@ -358,7 +367,32 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileWithStatsSchema.array().safeParse(data);
+    // Get super admin user IDs if super admin org exists
+    let superAdminUserIds: Set<string> = new Set();
+    if (superAdminOrgId) {
+      const { data: superAdminMembers } = await supabase
+        .from('organization_members')
+        .select('user_id')
+        .eq('organization_id', superAdminOrgId)
+        .eq('is_active', true);
+
+      if (superAdminMembers) {
+        superAdminUserIds = new Set(superAdminMembers.map((m) => m.user_id));
+      }
+    }
+
+    // Add is_super_admin field to each profile
+    const profilesWithAdminStatus = data.map((profile) => {
+      const profileRecord = profile as Record<string, unknown>;
+      return {
+        ...profileRecord,
+        is_super_admin: superAdminUserIds.has(profileRecord.id as string),
+      };
+    });
+
+    const result = profileWithStatsSchema
+      .array()
+      .safeParse(profilesWithAdminStatus);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
