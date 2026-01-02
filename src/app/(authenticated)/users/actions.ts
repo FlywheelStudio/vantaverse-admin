@@ -17,25 +17,6 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
- * Create a new user
- */
-export async function createUser(profileData: Partial<Profile>) {
-  const query = new ProfilesQuery();
-  return query.create(profileData);
-}
-
-/**
- * Update a user
- */
-export async function updateUser(
-  userId: string,
-  profileData: Partial<Profile>,
-) {
-  const query = new ProfilesQuery();
-  return query.update(userId, profileData);
-}
-
-/**
  * Delete a user
  */
 export async function deleteUser(userId: string) {
