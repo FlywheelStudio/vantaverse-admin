@@ -2,7 +2,6 @@
 
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { createClient } from '@/lib/supabase/core/server';
-import type { Profile } from '@/lib/supabase/schemas/profiles';
 
 /**
  * Get users with stats
