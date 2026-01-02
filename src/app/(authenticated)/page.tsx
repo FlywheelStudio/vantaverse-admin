@@ -1,5 +1,3 @@
-'use client';
-
 import { useProfile } from '@/hooks/use-profile';
 import { PageWrapper } from '@/components/page-wrapper';
 

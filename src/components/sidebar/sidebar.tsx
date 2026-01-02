@@ -71,7 +71,7 @@ export function Sidebar() {
               duration: SIDEBAR_CONFIG.animation.duration,
               ease: SIDEBAR_CONFIG.animation.ease,
             }}
-            className={`${isMobile ? 'relative' : 'fixed'} shadow-xl ${isMobile ? 'z-10' : 'z-50'} rounded-lg overflow-hidden`}
+            className={`${isMobile ? 'relative' : 'fixed'} shadow-xl z-10 rounded-lg overflow-hidden`}
             style={{
               top: isMobile ? 'auto' : vantabuddyY,
               left: isMobile ? 'auto' : vantabuddyX,

@@ -76,6 +76,71 @@ export function TeamsExpandedRow({
   return (
     <>
       <AnimatePresence mode="popLayout">
+        {creatingTeam && (
+          <motion.tr
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="border-b border-[#E5E9F0] bg-[#F5F7FA]/50"
+          >
+            <td className="py-3 px-4" colSpan={1}>
+              <div className="flex items-center justify-center h-full">
+                <ArrowUpRight className="h-4 w-4 text-[#2454FF]" />
+              </div>
+            </td>
+            <td className="py-3 px-4">
+              <Input
+                value={newTeamData.name}
+                onChange={(e) =>
+                  setNewTeamData((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="Team name"
+                className="font-semibold text-[#1E3A5F] text-sm"
+              />
+            </td>
+            <td className="py-3 px-4 hidden lg:table-cell">
+              <Textarea
+                value={newTeamData.description}
+                onChange={(e) =>
+                  setNewTeamData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Description"
+                className="text-[#64748B] min-h-[40px] text-sm"
+              />
+            </td>
+            <td className="py-3 px-4" colSpan={3} />
+            <td className="py-3 px-4" colSpan={1}>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  onClick={() => handleSaveNewTeam(newTeamData.organizationId)}
+                  disabled={
+                    !newTeamData.name.trim() ||
+                    newTeamData.organizationId !== organizationId ||
+                    savingTeam
+                  }
+                  className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="h-3 w-3" />
+                </Button>
+                <Button
+                  onClick={handleCancelNewTeam}
+                  variant="outline"
+                  disabled={savingTeam}
+                  className="text-[#64748B] border-[#E5E9F0] font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </td>
+          </motion.tr>
+        )}
         {teams.map((team) => {
           const isEditingName =
             editingTeam?.id === team.id && editingTeam?.field === 'name';
@@ -248,71 +313,6 @@ export function TeamsExpandedRow({
           );
         })}
       </AnimatePresence>
-      {creatingTeam && (
-        <motion.tr
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          className="border-b border-[#E5E9F0] bg-[#F5F7FA]/50"
-        >
-          <td className="py-3 px-4" colSpan={1}>
-            <div className="flex items-center justify-center h-full">
-              <ArrowUpRight className="h-4 w-4 text-[#2454FF]" />
-            </div>
-          </td>
-          <td className="py-3 px-4">
-            <Input
-              value={newTeamData.name}
-              onChange={(e) =>
-                setNewTeamData((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
-              placeholder="Team name"
-              className="font-semibold text-[#1E3A5F] text-sm"
-            />
-          </td>
-          <td className="py-3 px-4 hidden lg:table-cell">
-            <Textarea
-              value={newTeamData.description}
-              onChange={(e) =>
-                setNewTeamData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="Description"
-              className="text-[#64748B] min-h-[40px] text-sm"
-            />
-          </td>
-          <td className="py-3 px-4" colSpan={3} />
-          <td className="py-3 px-4" colSpan={1}>
-            <div className="flex gap-2 justify-end">
-              <Button
-                onClick={() => handleSaveNewTeam(newTeamData.organizationId)}
-                disabled={
-                  !newTeamData.name.trim() ||
-                  newTeamData.organizationId !== organizationId ||
-                  savingTeam
-                }
-                className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="h-3 w-3" />
-              </Button>
-              <Button
-                onClick={handleCancelNewTeam}
-                variant="outline"
-                disabled={savingTeam}
-                className="text-[#64748B] border-[#E5E9F0] font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          </td>
-        </motion.tr>
-      )}
       {teams.length === 0 && !creatingTeam && (
         <tr className="border-b border-[#E5E9F0] bg-[#F5F7FA]/30">
           <td
