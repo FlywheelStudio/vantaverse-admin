@@ -72,7 +72,7 @@ export class ProfilesQuery extends SupabaseQuery {
   public async getAllWithMemberships(): Promise<
     SupabaseSuccess<ProfileWithMemberships[]> | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
       .from('profiles')

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
   SheetContent,
@@ -24,6 +24,7 @@ import {
 } from './actions';
 import { getTeamMemberUserIds, updateTeamMembers } from './teams-actions';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
+import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 interface AddMembersModalProps {
   open: boolean;
@@ -32,8 +33,6 @@ interface AddMembersModalProps {
   id: string;
   name: string;
   organizationId?: string;
-  currentMemberCount: number;
-  onSuccess: () => void;
 }
 
 type GroupedProfile = {
@@ -59,9 +58,8 @@ export function AddMembersModal({
   id,
   name,
   organizationId,
-  currentMemberCount,
-  onSuccess,
 }: AddMembersModalProps) {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set(),
@@ -72,6 +70,7 @@ export function AddMembersModal({
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedThisOrg, setExpandedThisOrg] = useState(true);
+  const [expandedUnassigned, setExpandedUnassigned] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const { data: profilesData, isLoading: profilesLoading } = useQuery({
@@ -127,14 +126,25 @@ export function AddMembersModal({
   }, [profilesData, searchQuery]);
 
   const groupedProfiles = useMemo(() => {
-    if (!filteredProfiles.length) return { orgGroups: [], thisOrgMembers: [] };
+    if (!filteredProfiles.length)
+      return { orgGroups: [], thisOrgMembers: [], unassigned: [] };
 
     const thisOrgMembers: GroupedProfile[] = [];
+    const unassigned: GroupedProfile[] = [];
     const orgMap = new Map<string, OrgGroup>();
 
     filteredProfiles.forEach((profile) => {
       const isCurrentMember = initialMemberIds.has(profile.id);
       const groupedProfile: GroupedProfile = { profile, isCurrentMember };
+
+      // Check if profile has no memberships
+      if (
+        profile.orgMemberships.length === 0 &&
+        profile.teamMemberships.length === 0
+      ) {
+        unassigned.push(groupedProfile);
+        return;
+      }
 
       if (type === 'team' && organizationId) {
         const isOrgMember = profile.orgMemberships.some(
@@ -193,6 +203,7 @@ export function AddMembersModal({
     return {
       orgGroups: Array.from(orgMap.values()),
       thisOrgMembers,
+      unassigned,
     };
   }, [filteredProfiles, initialMemberIds, type, organizationId]);
 
@@ -219,13 +230,110 @@ export function AddMembersModal({
     return false;
   }, [selectedUserIds, initialMemberIds]);
 
+  const initialCount = initialMemberIds.size;
   const newMemberCount = selectedUserIds.size;
-  const countChange = newMemberCount - currentMemberCount;
+  const countChange = newMemberCount - initialCount;
 
   const handleSave = async () => {
     if (!hasChanges || isSaving) return;
 
     setIsSaving(true);
+
+    // Get current organizations data for optimistic update
+    const previousData = queryClient.getQueryData<Organization[]>([
+      'organizations',
+    ]);
+
+    // Build member objects from profiles data
+    const profilesMap = new Map(
+      profilesData?.success && profilesData.data
+        ? profilesData.data.map((p) => [p.id, p])
+        : [],
+    );
+
+    // Optimistically update cache
+    if (previousData) {
+      queryClient.setQueryData<Organization[]>(['organizations'], (old) => {
+        if (!old) return old;
+
+        return old.map((org) => {
+          if (type === 'organization' && org.id === id) {
+            // Update organization members
+            const newMemberIds = Array.from(selectedUserIds);
+            const newMembers = newMemberIds
+              .map((userId) => {
+                const profile = profilesMap.get(userId);
+                if (!profile) return null;
+                return {
+                  id: `temp-${userId}`, // Temporary ID, will be replaced on refetch
+                  user_id: userId,
+                  profile: profile
+                    ? {
+                        id: profile.id,
+                        avatar_url: profile.avatar_url,
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        username: profile.username,
+                        email: profile.email,
+                      }
+                    : null,
+                };
+              })
+              .filter((m): m is NonNullable<typeof m> => m !== null);
+
+            return {
+              ...org,
+              members: newMembers.length > 0 ? newMembers : undefined,
+              members_count: newMembers.length,
+              member_ids: newMemberIds.length > 0 ? newMemberIds : undefined,
+            };
+          } else if (type === 'team' && org.id === organizationId) {
+            // Update team members within organization
+            const updatedTeams = org.teams?.map((team) => {
+              if (team.id === id) {
+                const newMemberIds = Array.from(selectedUserIds);
+                const newMembers = newMemberIds
+                  .map((userId) => {
+                    const profile = profilesMap.get(userId);
+                    if (!profile) return null;
+                    return {
+                      id: `temp-${userId}`, // Temporary ID
+                      user_id: userId,
+                      profile: profile
+                        ? {
+                            id: profile.id,
+                            avatar_url: profile.avatar_url,
+                            first_name: profile.first_name,
+                            last_name: profile.last_name,
+                            username: profile.username,
+                            email: profile.email,
+                          }
+                        : null,
+                    };
+                  })
+                  .filter((m): m is NonNullable<typeof m> => m !== null);
+
+                return {
+                  ...team,
+                  members: newMembers.length > 0 ? newMembers : undefined,
+                  members_count: newMembers.length,
+                  member_ids:
+                    newMemberIds.length > 0 ? newMemberIds : undefined,
+                };
+              }
+              return team;
+            });
+
+            return {
+              ...org,
+              teams: updatedTeams,
+            };
+          }
+          return org;
+        });
+      });
+    }
+
     try {
       const userIds = Array.from(selectedUserIds);
       const result =
@@ -245,12 +353,25 @@ export function AddMembersModal({
         }
 
         toast.success(message);
-        onSuccess();
+
+        // Invalidate to get fresh data (optimistic update already shows correct state)
+        queryClient.invalidateQueries({
+          queryKey: ['organizations'],
+        });
+
         onOpenChange(false);
       } else if (!result.success) {
+        // Rollback on error
+        if (previousData) {
+          queryClient.setQueryData(['organizations'], previousData);
+        }
         toast.error(result.error || 'Failed to update members');
       }
     } catch (error) {
+      // Rollback on error
+      if (previousData) {
+        queryClient.setQueryData(['organizations'], previousData);
+      }
       console.error('Error updating members:', error);
       toast.error('Failed to update members');
     } finally {
@@ -290,15 +411,38 @@ export function AddMembersModal({
   const renderProfile = (groupedProfile: GroupedProfile) => {
     const { profile } = groupedProfile;
     const isSelected = selectedUserIds.has(profile.id);
-    const displayName =
+
+    // Calculate avatar ID for consistent color generation
+    const avatarId =
+      profile.email || profile.id || profile.username || undefined;
+
+    // Build display name with proper formatting
+    const fullName =
       profile.first_name && profile.last_name
         ? `${profile.first_name} ${profile.last_name}`
-        : profile.username || profile.email || 'Unknown';
+        : null;
+
+    let displayName = '';
+    if (fullName && profile.username) {
+      displayName = `${fullName} (${profile.username})`;
+    } else if (fullName) {
+      displayName = fullName;
+    } else if (profile.username) {
+      displayName = profile.username;
+    }
+
+    const avatarAlt = displayName || profile.email || 'Unknown';
+    const initials = getInitials(
+      profile.first_name,
+      profile.last_name,
+      profile.username,
+      displayName || avatarAlt,
+    );
 
     return (
       <div
         key={profile.id}
-        className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 cursor-pointer"
+        className="flex items-center gap-4 px-4 py-2 hover:bg-muted/50 cursor-pointer"
         onClick={() => handleToggleUser(profile.id)}
       >
         <Checkbox
@@ -306,27 +450,25 @@ export function AddMembersModal({
           onCheckedChange={() => handleToggleUser(profile.id)}
           onClick={(e) => e.stopPropagation()}
         />
-        <Avatar
-          src={profile.avatar_url || null}
-          alt={displayName}
-          size={32}
-          initials={getInitials(
-            profile.first_name,
-            profile.last_name,
-            profile.username,
-            displayName,
-          )}
-        />
+        <div className="size-8 shrink-0 flex items-center justify-center">
+          <Avatar
+            src={profile.avatar_url || null}
+            alt={avatarAlt}
+            id={avatarId}
+            size={32}
+            initials={initials}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm text-foreground truncate">
             {displayName}
           </div>
-          {profile.username && (
-            <div className="text-xs text-muted-foreground truncate">
-              @{profile.username}
-            </div>
-          )}
         </div>
+        {profile.email && (
+          <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+            {profile.email}
+          </div>
+        )}
       </div>
     );
   };
@@ -337,26 +479,26 @@ export function AddMembersModal({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl flex flex-col p-0"
+        className="w-full sm:max-w-[35vw] flex flex-col p-0"
         style={{ zIndex: 60 }}
       >
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-semibold">
               <div className="flex items-center gap-2">
-                <span>{currentMemberCount}</span>
-                <ArrowRight className="h-4 w-4" />
-                <span
-                  className={
-                    countChange !== 0
-                      ? countChange > 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                      : ''
-                  }
-                >
-                  {newMemberCount}
-                </span>
+                <span>{initialCount}</span>
+                {countChange !== 0 && (
+                  <>
+                    <ArrowRight className="h-4 w-4" />
+                    <span
+                      className={
+                        countChange > 0 ? 'text-green-600' : 'text-red-600'
+                      }
+                    >
+                      {newMemberCount}
+                    </span>
+                  </>
+                )}
                 <span className="text-muted-foreground">members in {name}</span>
               </div>
             </SheetTitle>
@@ -369,7 +511,7 @@ export function AddMembersModal({
           />
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className="flex-1 min-h-0 px-4">
           {isLoading ? (
             <div className="py-8 text-center text-muted-foreground">
               Loading...
@@ -389,7 +531,10 @@ export function AddMembersModal({
                       ) : (
                         <ChevronRight className="h-4 w-4" />
                       )}
-                      <span>This organization&apos;s members</span>
+                      <span>
+                        This organization&apos;s members
+                        {type === 'team' && organizationId ? ' (current)' : ''}
+                      </span>
                       <span className="ml-auto text-muted-foreground text-xs">
                         ({groupedProfiles.thisOrgMembers.length})
                       </span>
@@ -415,7 +560,12 @@ export function AddMembersModal({
                     ) : (
                       <ChevronRight className="h-4 w-4" />
                     )}
-                    <span>{org.orgName}</span>
+                    <span>
+                      {org.orgName}
+                      {type === 'organization' && org.orgId === id
+                        ? ' (current)'
+                        : ''}
+                    </span>
                     <span className="ml-auto text-muted-foreground text-xs">
                       (
                       {org.teams.reduce(
@@ -439,7 +589,12 @@ export function AddMembersModal({
                             ) : (
                               <ChevronRight className="h-4 w-4" />
                             )}
-                            <span className="font-medium">{team.teamName}</span>
+                            <span className="font-medium">
+                              {team.teamName}
+                              {type === 'team' && team.teamId === id
+                                ? ' (current)'
+                                : ''}
+                            </span>
                             <span className="ml-auto text-muted-foreground text-xs">
                               ({team.profiles.length})
                             </span>
@@ -460,11 +615,38 @@ export function AddMembersModal({
                   )}
                 </div>
               ))}
+
+              {groupedProfiles.unassigned &&
+                groupedProfiles.unassigned.length > 0 && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setExpandedUnassigned(!expandedUnassigned)}
+                      className="flex items-center gap-2 w-full px-2 py-2 font-semibold text-sm hover:bg-muted/50 rounded"
+                    >
+                      {expandedUnassigned ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      <span>Unassigned</span>
+                      <span className="ml-auto text-muted-foreground text-xs">
+                        ({groupedProfiles.unassigned.length})
+                      </span>
+                    </button>
+                    {expandedUnassigned && (
+                      <div className="ml-6">
+                        {groupedProfiles.unassigned.map((groupedProfile) =>
+                          renderProfile(groupedProfile),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
           )}
         </ScrollArea>
 
-        <SheetFooter className="px-6 py-4 border-t shrink-0 gap-2">
+        <SheetFooter className="px-6 py-4 border-t shrink-0 gap-2 flex-row justify-start mt-auto">
           <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
             Cancel
           </Button>

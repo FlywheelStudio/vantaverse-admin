@@ -703,15 +703,8 @@ export default function OrganizationsPage() {
                       ? targetTeam?.organization_id
                       : undefined
                   }
-                  currentMemberCount={
-                    addingMembersTo.type === 'organization'
-                      ? targetOrg?.members_count || 0
-                      : targetTeam?.members_count || 0
-                  }
                   onSuccess={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ['organizations'],
-                    });
+                    // Invalidation is handled in the modal with optimistic updates
                   }}
                 />
               );
