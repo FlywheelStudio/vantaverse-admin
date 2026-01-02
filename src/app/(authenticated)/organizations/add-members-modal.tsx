@@ -288,7 +288,7 @@ export function AddMembersModal({
   };
 
   const renderProfile = (groupedProfile: GroupedProfile) => {
-    const { profile, isCurrentMember } = groupedProfile;
+    const { profile } = groupedProfile;
     const isSelected = selectedUserIds.has(profile.id);
     const displayName =
       profile.first_name && profile.last_name
