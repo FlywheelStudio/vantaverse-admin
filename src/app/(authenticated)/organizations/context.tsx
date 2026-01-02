@@ -55,6 +55,7 @@ interface OrganizationsTableContextValue {
   setNewOrgData: React.Dispatch<React.SetStateAction<NewOrgData>>;
   uploadingImage: string | null;
   setUploadingImage: React.Dispatch<React.SetStateAction<string | null>>;
+  savingOrg: boolean;
   handleImageUpload: (file: File, orgId?: string) => Promise<void>;
   handleSaveNewOrg: () => Promise<void>;
   handleCancelNewOrg: () => void;

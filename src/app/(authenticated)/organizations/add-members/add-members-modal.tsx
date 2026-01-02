@@ -34,7 +34,7 @@ export function AddMembersModal({
   const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedThisOrg, setExpandedThisOrg] = useState(true);
-  const [expandedUnassigned, setExpandedUnassigned] = useState(true);
+  const [expandedUnassigned, setExpandedUnassigned] = useState(false);
 
   const { profilesData, profilesLoading, membersLoading, initialMemberIds } =
     useMemberData(open, type, id);
@@ -42,6 +42,7 @@ export function AddMembersModal({
   const {
     selectedUserIds,
     handleToggleUser,
+    handleToggleGroup,
     hasChanges,
     initialCount,
     newMemberCount,
@@ -147,7 +148,7 @@ export function AddMembersModal({
               Loading...
             </div>
           ) : (
-            <div className="py-4">
+            <div className="py-4 min-w-0">
               {type === 'team' &&
                 organizationId &&
                 groupedProfiles.thisOrgMembers.length > 0 && (
@@ -159,6 +160,7 @@ export function AddMembersModal({
                     organizationId={organizationId}
                     selectedUserIds={selectedUserIds}
                     onToggleUser={handleToggleUser}
+                    onToggleGroup={handleToggleGroup}
                   />
                 )}
 
@@ -174,6 +176,7 @@ export function AddMembersModal({
                   currentId={id}
                   selectedUserIds={selectedUserIds}
                   onToggleUser={handleToggleUser}
+                  onToggleGroup={handleToggleGroup}
                 />
               ))}
 
@@ -184,6 +187,7 @@ export function AddMembersModal({
                   onToggle={() => setExpandedUnassigned(!expandedUnassigned)}
                   selectedUserIds={selectedUserIds}
                   onToggleUser={handleToggleUser}
+                  onToggleGroup={handleToggleGroup}
                 />
               )}
             </div>

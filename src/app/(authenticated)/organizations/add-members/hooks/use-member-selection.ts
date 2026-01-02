@@ -37,6 +37,22 @@ export function useMemberSelection(initialMemberIds: Set<string>) {
     });
   };
 
+  const handleToggleGroup = (userIds: string[]) => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = userIds.every((id) => next.has(id));
+
+      if (allSelected) {
+        // Deselect all
+        userIds.forEach((id) => next.delete(id));
+      } else {
+        // Select all
+        userIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
   const hasChanges = useMemo(() => {
     if (selectedUserIds.size !== initialMemberIds.size) return true;
     for (const id of selectedUserIds) {
@@ -59,6 +75,7 @@ export function useMemberSelection(initialMemberIds: Set<string>) {
   return {
     selectedUserIds,
     handleToggleUser,
+    handleToggleGroup,
     hasChanges,
     initialCount,
     newMemberCount,

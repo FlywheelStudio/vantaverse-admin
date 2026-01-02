@@ -111,6 +111,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     expandedOrganizationId,
     handleExpandToggle,
     rowZIndex,
+    uploadingImage,
+    savingOrg,
   } = useOrganizationsTable();
 
   const isMobile = useIsMobile();
@@ -267,7 +269,9 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleSaveNewOrg}
-                      disabled={!newOrgData.name.trim() || creatingRow}
+                      disabled={
+                        !newOrgData.name.trim() || !!uploadingImage || savingOrg
+                      }
                       className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-2 rounded-lg cursor-pointer"
                     >
                       <Save className="h-4 w-4" />
@@ -275,7 +279,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                     <Button
                       onClick={handleCancelNewOrg}
                       variant="outline"
-                      disabled={creatingRow}
+                      disabled={!!uploadingImage || savingOrg}
                       className="text-[#64748B] border-[#E5E9F0] font-semibold py-2 rounded-lg cursor-pointer"
                     >
                       <X className="h-4 w-4" />

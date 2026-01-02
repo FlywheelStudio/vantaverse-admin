@@ -283,7 +283,7 @@ export function TeamsExpandedRow({
                         size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer p-0"
                       >
-                        <Trash2 className="ml-3 h-3 w-3" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

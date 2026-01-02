@@ -57,6 +57,7 @@ export default function OrganizationsPage() {
   } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [savingOrg, setSavingOrg] = useState(false);
   const [newOrgData, setNewOrgData] = useState<{
     name: string;
     description: string;
@@ -265,6 +266,7 @@ export default function OrganizationsPage() {
       return;
     }
 
+    setSavingOrg(true);
     try {
       // Create organization
       const createResult = await createOrganization(
@@ -326,6 +328,8 @@ export default function OrganizationsPage() {
     } catch (error) {
       console.error('Error creating organization:', error);
       toast.error('Failed to create organization');
+    } finally {
+      setSavingOrg(false);
     }
   };
 
@@ -599,6 +603,7 @@ export default function OrganizationsPage() {
     setNewOrgData,
     uploadingImage,
     setUploadingImage,
+    savingOrg,
     handleImageUpload,
     handleSaveNewOrg,
     handleCancelNewOrg,
