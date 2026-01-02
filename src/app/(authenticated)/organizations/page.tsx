@@ -703,9 +703,6 @@ export default function OrganizationsPage() {
                       ? targetTeam?.organization_id
                       : undefined
                   }
-                  onSuccess={() => {
-                    // Invalidation is handled in the modal with optimistic updates
-                  }}
                 />
               );
             })()}
