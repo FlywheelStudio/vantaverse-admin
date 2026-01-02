@@ -81,6 +81,12 @@ interface OrganizationsTableContextValue {
   setNewTeamData: React.Dispatch<React.SetStateAction<NewTeamData>>;
   handleSaveNewTeam: (organizationId: string) => Promise<void>;
   handleCancelNewTeam: () => void;
+  // Add members modal
+  addingMembersTo: { type: 'organization' | 'team'; id: string } | null;
+  rowZIndex: string | null;
+  handleOpenAddMembers: (type: 'organization' | 'team', id: string) => void;
+  handleCloseAddMembers: () => void;
+  setRowZIndex: (rowId: string | null) => void;
 }
 
 const OrganizationsTableContext =

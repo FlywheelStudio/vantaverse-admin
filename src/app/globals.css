@@ -186,3 +186,13 @@
     transform: rotate(1turn);
   }
 }
+
+/* Ensure highlighted rows appear above Sheet overlays */
+.highlighted-row {
+  position: relative !important;
+  z-index: 50 !important;
+  background-color: white !important;
+  border-radius: 8px !important;
+  border: 6px solid rgba(22, 227, 22, 0.52) !important;
+  border-style: outset !important;
+}

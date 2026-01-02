@@ -110,6 +110,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     handleDelete,
     expandedOrganizationId,
     handleExpandToggle,
+    rowZIndex,
   } = useOrganizationsTable();
 
   const isMobile = useIsMobile();
@@ -297,7 +298,16 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                         index === array.length - 1 && !isExpanded
                           ? 'border-b-0'
                           : ''
-                      }`}
+                      } ${rowZIndex === org.id ? 'highlighted-row' : ''}`}
+                      style={
+                        rowZIndex === org.id
+                          ? {
+                              position: 'relative',
+                              zIndex: 9999,
+                              backgroundColor: 'white',
+                            }
+                          : undefined
+                      }
                     >
                       {row.getVisibleCells().map((cell) => {
                         const isDescription = cell.column.id === 'description';

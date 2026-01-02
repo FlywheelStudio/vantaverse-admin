@@ -47,6 +47,8 @@ export function TeamsExpandedRow({
     handleSaveNewTeam,
     handleCancelNewTeam,
     inputRef,
+    handleOpenAddMembers,
+    rowZIndex,
   } = useOrganizationsTable();
 
   const handleDelete = async (teamId: string) => {
@@ -106,7 +108,18 @@ export function TeamsExpandedRow({
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="border-b border-[#E5E9F0] bg-[#F5F7FA]/30"
+              className={`border-b border-[#E5E9F0] bg-[#F5F7FA]/30 ${
+                rowZIndex === team.id ? 'highlighted-row' : ''
+              }`}
+              style={
+                rowZIndex === team.id
+                  ? {
+                      position: 'relative',
+                      zIndex: 9999,
+                      backgroundColor: 'white',
+                    }
+                  : undefined
+              }
             >
               <td className="py-3 px-4" colSpan={1}>
                 <div className="flex items-center justify-center h-full">
@@ -178,7 +191,11 @@ export function TeamsExpandedRow({
                 )}
               </td>
               <td className="py-3 px-4">
-                <AvatarGroup avatars={avatars} maxVisible={5} />
+                <AvatarGroup
+                  avatars={avatars}
+                  maxVisible={5}
+                  onAddClick={() => handleOpenAddMembers('team', team.id)}
+                />
               </td>
               <td className="py-3 px-4">
                 {/* Teams column - empty for teams */}

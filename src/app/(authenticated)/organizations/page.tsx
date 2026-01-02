@@ -23,6 +23,7 @@ import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
 import { Card } from '@/components/ui/card';
 import { OrganizationsTableProvider } from './context';
+import { AddMembersModal } from './add-members-modal';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { EditableField, EditableTeamField } from './context';
 import type { Team } from '@/lib/supabase/schemas/teams';
@@ -89,6 +90,23 @@ export default function OrganizationsPage() {
     name: '',
     description: '',
   });
+
+  // Add members modal state
+  const [addingMembersTo, setAddingMembersTo] = useState<{
+    type: 'organization' | 'team';
+    id: string;
+  } | null>(null);
+  const [rowZIndex, setRowZIndex] = useState<string | null>(null);
+
+  const handleOpenAddMembers = (type: 'organization' | 'team', id: string) => {
+    setAddingMembersTo({ type, id });
+    setRowZIndex(id);
+  };
+
+  const handleCloseAddMembers = () => {
+    setAddingMembersTo(null);
+    setRowZIndex(null);
+  };
 
   const handleCreate = () => {
     setCreatingRow(true);
@@ -602,6 +620,11 @@ export default function OrganizationsPage() {
     setNewTeamData,
     handleSaveNewTeam,
     handleCancelNewTeam,
+    addingMembersTo,
+    rowZIndex,
+    handleOpenAddMembers,
+    handleCloseAddMembers,
+    setRowZIndex,
   };
 
   return (
@@ -610,10 +633,18 @@ export default function OrganizationsPage() {
         <h1 className="text-2xl font-medium">Organizations & Teams</h1>
       }
     >
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto glass-background h-full slim-scrollbar">
+      <div
+        className={`p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar ${
+          !addingMembersTo ? 'glass-background' : ''
+        }`}
+      >
         <OrganizationsTableProvider value={contextValue}>
           {!isLoading && (
-            <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 backdrop-blur-sm rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden">
+            <Card
+              className={`text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden ${
+                !addingMembersTo ? 'backdrop-blur-sm' : ''
+              }`}
+            >
               <div className="p-6 sm:p-8">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -632,6 +663,59 @@ export default function OrganizationsPage() {
               </div>
             </Card>
           )}
+          {addingMembersTo &&
+            (() => {
+              const targetOrg =
+                addingMembersTo.type === 'organization'
+                  ? displayOrganizations.find(
+                      (o) => o.id === addingMembersTo.id,
+                    )
+                  : undefined;
+              const targetTeam =
+                addingMembersTo.type === 'team'
+                  ? displayOrganizations
+                      .flatMap((o) => o.teams || [])
+                      .find((t) => t.id === addingMembersTo.id)
+                  : undefined;
+
+              if (
+                (addingMembersTo.type === 'organization' && !targetOrg) ||
+                (addingMembersTo.type === 'team' && !targetTeam)
+              ) {
+                return null;
+              }
+
+              return (
+                <AddMembersModal
+                  open={!!addingMembersTo}
+                  onOpenChange={(open) => {
+                    if (!open) handleCloseAddMembers();
+                  }}
+                  type={addingMembersTo.type}
+                  id={addingMembersTo.id}
+                  name={
+                    addingMembersTo.type === 'organization'
+                      ? targetOrg?.name || ''
+                      : targetTeam?.name || ''
+                  }
+                  organizationId={
+                    addingMembersTo.type === 'team'
+                      ? targetTeam?.organization_id
+                      : undefined
+                  }
+                  currentMemberCount={
+                    addingMembersTo.type === 'organization'
+                      ? targetOrg?.members_count || 0
+                      : targetTeam?.members_count || 0
+                  }
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({
+                      queryKey: ['organizations'],
+                    });
+                  }}
+                />
+              );
+            })()}
         </OrganizationsTableProvider>
       </div>
     </PageWrapper>

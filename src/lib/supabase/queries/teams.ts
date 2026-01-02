@@ -214,4 +214,34 @@ export class TeamsQuery extends SupabaseQuery {
       data: undefined,
     };
   }
+
+  /**
+   * Get current member user IDs for a team
+   * @param teamId - The team ID
+   * @returns Success with array of user IDs or error
+   */
+  public async getMemberUserIds(
+    teamId: string,
+  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('team_membership')
+      .select('user_id')
+      .eq('team_id', teamId);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get team member user IDs',
+      );
+    }
+
+    const userIds = (data || []).map((member) => member.user_id);
+
+    return {
+      success: true,
+      data: userIds,
+    };
+  }
 }

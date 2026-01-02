@@ -181,6 +181,35 @@ function PictureCell({ org }: { org: Organization }) {
   );
 }
 
+function MembersCell({ org }: { org: Organization }) {
+  const { handleOpenAddMembers } = useOrganizationsTable();
+  const members = org.members || [];
+  const avatars = members.map((member) => {
+    const profile = member.profile;
+    let label = '';
+    if (profile?.first_name && profile?.last_name) {
+      label = `${profile.first_name} ${profile.last_name}`;
+    } else if (profile?.username) {
+      label = profile.username;
+    }
+    const avatarId =
+      profile?.email || profile?.id || profile?.username || undefined;
+    return {
+      src: profile?.avatar_url || undefined,
+      alt: label || undefined,
+      label: label || undefined,
+      id: avatarId,
+    };
+  });
+  return (
+    <AvatarGroup
+      avatars={avatars}
+      maxVisible={5}
+      onAddClick={() => handleOpenAddMembers('organization', org.id)}
+    />
+  );
+}
+
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
@@ -259,28 +288,7 @@ export const columns: ColumnDef<Organization>[] = [
         </button>
       );
     },
-    cell: ({ row }) => {
-      const org = row.original;
-      const members = org.members || [];
-      const avatars = members.map((member) => {
-        const profile = member.profile;
-        let label = '';
-        if (profile?.first_name && profile?.last_name) {
-          label = `${profile.first_name} ${profile.last_name}`;
-        } else if (profile?.username) {
-          label = profile.username;
-        }
-        const avatarId =
-          profile?.email || profile?.id || profile?.username || undefined;
-        return {
-          src: profile?.avatar_url || undefined,
-          alt: label || undefined,
-          label: label || undefined,
-          id: avatarId,
-        };
-      });
-      return <AvatarGroup avatars={avatars} maxVisible={5} />;
-    },
+    cell: ({ row }) => <MembersCell org={row.original} />,
   },
   {
     accessorKey: 'teams_count',

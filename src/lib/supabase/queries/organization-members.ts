@@ -96,4 +96,35 @@ export class OrganizationMembers extends SupabaseQuery {
       data: result.data.role === 'admin',
     };
   }
+
+  /**
+   * Get current member user IDs for an organization
+   * @param organizationId - The organization ID
+   * @returns Success with array of user IDs or error
+   */
+  public async getMemberUserIds(
+    organizationId: string,
+  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get organization member user IDs',
+      );
+    }
+
+    const userIds = (data || []).map((member) => member.user_id);
+
+    return {
+      success: true,
+      data: userIds,
+    };
+  }
 }

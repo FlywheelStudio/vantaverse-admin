@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, getInitials } from '@/components/ui/avatar';
+import { PlusIcon } from 'lucide-react';
 
 interface SingleAvatarProps {
   src?: string;
@@ -99,6 +100,7 @@ export interface AvatarGroupProps {
   maxVisible?: number;
   size?: number;
   overlap?: number;
+  onAddClick?: () => void;
 }
 
 const AvatarGroup = ({
@@ -106,6 +108,7 @@ const AvatarGroup = ({
   maxVisible = 5,
   size = 40,
   overlap = 14,
+  onAddClick,
 }: AvatarGroupProps) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const visibleAvatars = avatars.slice(0, maxVisible);
@@ -145,6 +148,22 @@ const AvatarGroup = ({
           >
             +{extraCount}
           </div>
+        )}
+        {onAddClick && (
+          <button
+            onClick={onAddClick}
+            className="flex items-center justify-center bg-emerald-500 text-white font-semibold border-4 border-background rounded-full cursor-pointer hover:bg-emerald-600 transition-colors"
+            style={{
+              width: size,
+              height: size,
+              marginLeft: overlap + (extraCount > 0 ? overlap : 0),
+              zIndex: 0,
+              fontSize: size * 0.4,
+            }}
+            type="button"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
         )}
       </div>
     </div>

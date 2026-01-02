@@ -1,7 +1,10 @@
 'use server';
 
 import { OrganizationsQuery } from '@/lib/supabase/queries/organizations';
+import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { SupabaseStorage } from '@/lib/supabase/storage';
+import { createClient } from '@/lib/supabase/core/server';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 /**
@@ -106,4 +109,92 @@ export async function updateOrganizationPicture(
 export async function deleteOrganization(id: string) {
   const query = new OrganizationsQuery();
   return query.delete(id);
+}
+
+/**
+ * Get all profiles with their memberships
+ */
+export async function getAllProfilesWithMemberships() {
+  const query = new ProfilesQuery();
+  return query.getAllWithMemberships();
+}
+
+/**
+ * Get current member user IDs for an organization
+ */
+export async function getOrganizationMemberUserIds(organizationId: string) {
+  const query = new OrganizationMembers();
+  return query.getMemberUserIds(organizationId);
+}
+
+/**
+ * Update organization members (add and remove)
+ */
+export async function updateOrganizationMembers(
+  organizationId: string,
+  userIds: string[],
+) {
+  const membersQuery = new OrganizationMembers();
+  const supabase = await createClient();
+
+  // Get current member user IDs
+  const currentResult = await membersQuery.getMemberUserIds(organizationId);
+  if (!currentResult.success) {
+    return currentResult;
+  }
+
+  const currentUserIds = currentResult.data;
+  const currentUserIdsSet = new Set(currentUserIds);
+
+  // Calculate additions and removals
+  const newUserIdsSet = new Set(userIds);
+  const toAdd = userIds.filter((id) => !currentUserIdsSet.has(id));
+  const toRemove = currentUserIds.filter((id) => !newUserIdsSet.has(id));
+
+  let added = 0;
+  let removed = 0;
+
+  // Add new members
+  if (toAdd.length > 0) {
+    const { error: insertError } = await supabase
+      .from('organization_members')
+      .insert(
+        toAdd.map((user_id) => ({
+          organization_id: organizationId,
+          user_id,
+          role: 'member',
+          is_active: true,
+        })),
+      );
+
+    if (insertError) {
+      return {
+        success: false as const,
+        error: `Failed to add members: ${insertError.message}`,
+      };
+    }
+    added = toAdd.length;
+  }
+
+  // Remove members (hard delete)
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('organization_id', organizationId)
+      .in('user_id', toRemove);
+
+    if (deleteError) {
+      return {
+        success: false as const,
+        error: `Failed to remove members: ${deleteError.message}`,
+      };
+    }
+    removed = toRemove.length;
+  }
+
+  return {
+    success: true as const,
+    data: { added, removed },
+  };
 }
