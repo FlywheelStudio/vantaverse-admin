@@ -24,7 +24,7 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col overflow-hidden rounded-lg bg-gray-900 transition-transform hover:scale-[1.02] cursor-pointer"
+      className="group relative flex w-full flex-col overflow-hidden rounded-xl bg-gray-900 shadow-lg transition-transform hover:scale-[1.02] cursor-pointer"
     >
       {/* Video Thumbnail */}
       <div className="relative aspect-video w-full overflow-hidden bg-gray-800">
@@ -52,13 +52,6 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
             <span className="text-gray-500">No video</span>
           </div>
         )}
-
-        {/* MEDVANTA Branding Overlay - Top Left */}
-        <div className="absolute left-2 top-2 z-10">
-          <div className="rounded bg-blue-600 px-2 py-1">
-            <span className="text-xs font-semibold text-white">MEDVANTA</span>
-          </div>
-        </div>
       </div>
 
       {/* Exercise Name */}

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageWrapper } from '@/components/page-wrapper';
+import { Button } from '@/components/ui/button';
 import { useExercises } from '@/hooks/use-exercises';
 import { ExerciseCard } from './exercise-card';
 import { ExerciseModal } from './exercise-modal';
@@ -30,10 +31,47 @@ const contentVariants = {
   },
 };
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
 export default function ExercisesPage() {
   const { data: exercises, isLoading } = useExercises();
   const [searchValue, setSearchValue] = useState('');
-  const debouncedSearch = useDebounce(searchValue, 300);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 16;
+
+  // Reset to page 1 when search changes
+  const handleSearchChange = useCallback(() => {
+    setCurrentPage(1);
+  }, []);
+
+  const debouncedSearch = useDebounce(searchValue, 300, handleSearchChange);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
     null,
   );
@@ -49,7 +87,22 @@ export default function ExercisesPage() {
       .includes(debouncedSearch.toLowerCase());
   });
 
-  const displayExercises = filteredExercises || [];
+  // Paginate filtered exercises
+  const { paginatedExercises, totalPages, totalCount } = useMemo(() => {
+    const allFiltered = filteredExercises || [];
+    const total = allFiltered.length;
+    const pages = Math.ceil(total / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginated = allFiltered.slice(startIndex, endIndex);
+    return {
+      paginatedExercises: paginated,
+      totalPages: pages,
+      totalCount: total,
+    };
+  }, [filteredExercises, currentPage, pageSize]);
+
+  const displayExercises = paginatedExercises;
 
   // Track if we've loaded data at least once
   useEffect(() => {
@@ -75,40 +128,22 @@ export default function ExercisesPage() {
   };
 
   return (
-    <PageWrapper subheader={<h1 className="text-2xl font-medium">Exercise Library</h1>}>
+    <PageWrapper
+      subheader={<h1 className="text-2xl font-medium">Exercise Library</h1>}
+    >
       <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
         {hasLoadedOnce && (
           <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
             <div className="p-6 sm:p-8">
-              {/* Search and Filters */}
-              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-                {/* Search Bar */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search exercises..."
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    className="pl-10 bg-white border-gray-200"
-                  />
-                </div>
-
-                {/* Filter Dropdowns - UI Only for now */}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    All Muscles
-                  </button>
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    All Levels
-                  </button>
-                </div>
+              {/* Search */}
+              <div className="mb-6 max-w-md">
+                <Input
+                  type="text"
+                  placeholder="Search exercises..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="bg-white border-gray-200"
+                />
               </div>
 
               {/* Exercises Grid */}
@@ -129,15 +164,70 @@ export default function ExercisesPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {displayExercises.map((exercise) => (
-                        <ExerciseCard
-                          key={exercise.id}
-                          exercise={exercise}
-                          onClick={() => handleCardClick(exercise)}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <motion.div
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {displayExercises.map((exercise) => (
+                            <motion.div
+                              key={exercise.id}
+                              variants={cardVariants}
+                              exit="exit"
+                              layout
+                            >
+                              <ExerciseCard
+                                exercise={exercise}
+                                onClick={() => handleCardClick(exercise)}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </motion.div>
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
+                          <p className="text-sm text-gray-600">
+                            Showing {(currentPage - 1) * pageSize + 1}-
+                            {Math.min(currentPage * pageSize, totalCount)} of{' '}
+                            {totalCount} exercises
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCurrentPage((p) => Math.max(1, p - 1))
+                              }
+                              disabled={currentPage === 1}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                              Previous
+                            </Button>
+                            <span className="px-3 text-sm text-gray-700">
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCurrentPage((p) =>
+                                  Math.min(totalPages, p + 1),
+                                )
+                              }
+                              disabled={currentPage === totalPages}
+                            >
+                              Next
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </motion.div>
               </AnimatePresence>

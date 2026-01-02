@@ -20,20 +20,29 @@ interface ExerciseModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type EditableField = 'exercise_name' | 'library_tip' | 'library_check_in_question';
+type EditableField =
+  | 'exercise_name'
+  | 'library_tip'
+  | 'library_check_in_question';
 
 export function ExerciseModal({
-  exercise,
+  exercise: exerciseProp,
   open,
   onOpenChange,
 }: ExerciseModalProps) {
   const queryClient = useQueryClient();
+  const [localExercise, setLocalExercise] = useState<Exercise | null>(
+    exerciseProp,
+  );
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-  // Reset editing state when exercise changes (using key in parent component)
-  // Reset when modal closes via onOpenChange handler
+  // Sync local state when prop changes (new exercise selected)
+  useEffect(() => {
+    setLocalExercise(exerciseProp);
+  }, [exerciseProp]);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -44,9 +53,12 @@ export function ExerciseModal({
     }
   }, [editingField]);
 
-  if (!exercise) return null;
+  if (!localExercise) return null;
+
+  const exercise = localExercise;
 
   const handleEdit = (field: EditableField) => {
+    if (isSaving) return;
     const value =
       field === 'exercise_name'
         ? exercise.exercise_name
@@ -57,31 +69,21 @@ export function ExerciseModal({
     setEditingValue(value);
   };
 
-  const handleBlur = async (
-    field: EditableField,
-    newValue: string,
-    originalValue: string | null,
-  ) => {
-    const normalizedNew = newValue.trim();
+  const handleSave = async (field: EditableField) => {
+    if (isSaving) return;
+
+    const originalValue =
+      field === 'exercise_name'
+        ? exercise.exercise_name
+        : field === 'library_tip'
+          ? exercise.library_tip
+          : exercise.library_check_in_question;
+
+    const normalizedNew = editingValue.trim();
     const normalizedOriginal = originalValue?.trim() || '';
 
     if (normalizedNew !== normalizedOriginal) {
-      // Optimistic update
-      const previousData = queryClient.getQueryData<Exercise[]>(['exercises']);
-
-      if (previousData) {
-        queryClient.setQueryData<Exercise[]>(['exercises'], (old) => {
-          if (!old) return old;
-          return old.map((ex) =>
-            ex.id === exercise.id
-              ? {
-                  ...ex,
-                  [field]: normalizedNew || null,
-                }
-              : ex,
-          );
-        });
-      }
+      setIsSaving(true);
 
       const updateData: Partial<Exercise> = {
         [field]: normalizedNew || null,
@@ -90,21 +92,28 @@ export function ExerciseModal({
       const result = await updateExercise(exercise.id, updateData);
 
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ['exercises'] });
-        setEditingField(null);
-        setEditingValue('');
+        // Update local state immediately
+        setLocalExercise((prev) =>
+          prev ? { ...prev, [field]: normalizedNew || null } : prev,
+        );
+        // Update query cache
+        queryClient.setQueryData<Exercise[]>(['exercises'], (old) => {
+          if (!old) return old;
+          return old.map((ex) =>
+            ex.id === exercise.id
+              ? { ...ex, [field]: normalizedNew || null }
+              : ex,
+          );
+        });
         toast.success('Exercise updated successfully');
       } else {
-        // Rollback on error
-        if (previousData) {
-          queryClient.setQueryData<Exercise[]>(['exercises'], previousData);
-        }
         toast.error(result.error || 'Failed to update exercise');
       }
-    } else {
-      setEditingField(null);
-      setEditingValue('');
+      setIsSaving(false);
     }
+
+    setEditingField(null);
+    setEditingValue('');
   };
 
   const handleCancel = () => {
@@ -134,17 +143,14 @@ export function ExerciseModal({
                 ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={editingValue}
                 onChange={(e) => setEditingValue(e.target.value)}
-                onBlur={() =>
-                  handleBlur(
-                    'exercise_name',
-                    editingValue,
-                    exercise.exercise_name,
-                  )
-                }
+                onBlur={() => handleSave('exercise_name')}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     e.preventDefault();
                     handleCancel();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSave('exercise_name');
                   }
                 }}
                 className="bg-gray-800 text-white border-gray-700"
@@ -193,13 +199,14 @@ export function ExerciseModal({
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
               value={editingValue}
               onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() =>
-                handleBlur('library_tip', editingValue, exercise.library_tip)
-              }
+              onBlur={() => handleSave('library_tip')}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   handleCancel();
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSave('library_tip');
                 }
               }}
               className="bg-gray-800 text-white border-gray-700 min-h-[100px]"
@@ -223,17 +230,14 @@ export function ExerciseModal({
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
               value={editingValue}
               onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() =>
-                handleBlur(
-                  'library_check_in_question',
-                  editingValue,
-                  exercise.library_check_in_question,
-                )
-              }
+              onBlur={() => handleSave('library_check_in_question')}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   handleCancel();
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSave('library_check_in_question');
                 }
               }}
               className="bg-gray-800 text-white border-gray-700 min-h-[100px]"
