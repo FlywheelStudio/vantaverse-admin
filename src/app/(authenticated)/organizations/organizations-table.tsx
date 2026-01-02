@@ -131,8 +131,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     });
   }, [debouncedSearch]);
 
-  // React Compiler: useReactTable returns non-memoizable functions, which is expected
-  // eslint-disable-next-line
   const table = useReactTable({
     data,
     columns,

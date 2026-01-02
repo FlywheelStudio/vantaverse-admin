@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext } from 'react';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import type { Team } from '@/lib/supabase/schemas/teams';
 
 export type EditableField = 'name' | 'description';
 export type EditableTeamField = 'name' | 'description';
