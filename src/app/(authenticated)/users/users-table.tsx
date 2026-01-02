@@ -43,6 +43,8 @@ export function UsersTable({
   filters = {},
   onFiltersChange,
 }: UsersTableProps) {
+  'use no memo';
+
   const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');

@@ -214,6 +214,7 @@ export async function downloadTemplateExcel() {
  */
 export async function uploadUsersCSV(file: File) {
   // Placeholder function - implementation later
+  console.log('uploadUsersCSV', file);
   return {
     success: false as const,
     error: 'Not implemented',
@@ -224,6 +225,7 @@ export async function uploadUsersCSV(file: File) {
  * Upload users Excel (placeholder - UI only)
  */
 export async function uploadUsersExcel(file: File) {
+  console.log('uploadUsersExcel', file);
   // Placeholder function - implementation later
   return {
     success: false as const,
