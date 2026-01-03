@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { OrgTeamFilter } from '../../org-team-filter';
 import { JourneyPhaseFilter } from '../../journey-phase-filter';
+import { RoleFilter } from '../../role-filter';
 import { AddUserMenu } from '../../import-menu';
 import type { UsersTableFilters } from '../types';
 
@@ -48,6 +49,7 @@ export function UsersTableFilters({
                 ...(filters.journey_phase && {
                   journey_phase: filters.journey_phase,
                 }),
+                ...(filters.role && { role: filters.role }),
               };
               onFiltersChange?.(newFilters);
             }}
@@ -61,6 +63,7 @@ export function UsersTableFilters({
                 ...(filters.journey_phase && {
                   journey_phase: filters.journey_phase,
                 }),
+                ...(filters.role && { role: filters.role }),
               };
               onFiltersChange?.(newFilters);
             }}
@@ -70,6 +73,7 @@ export function UsersTableFilters({
                 ...(filters.journey_phase && {
                   journey_phase: filters.journey_phase,
                 }),
+                ...(filters.role && { role: filters.role }),
               };
               onFiltersChange?.(newFilters);
             }}
@@ -78,6 +82,12 @@ export function UsersTableFilters({
             selectedPhase={filters.journey_phase}
             onPhaseSelect={(phase) => {
               onFiltersChange?.({ ...filters, journey_phase: phase });
+            }}
+          />
+          <RoleFilter
+            selectedRole={filters.role}
+            onRoleSelect={(role) => {
+              onFiltersChange?.({ ...filters, role });
             }}
           />
         </div>
@@ -95,6 +105,7 @@ export function UsersTableFilters({
               ...(filters.journey_phase && {
                 journey_phase: filters.journey_phase,
               }),
+              ...(filters.role && { role: filters.role }),
             };
             onFiltersChange?.(newFilters);
           }}
@@ -108,6 +119,7 @@ export function UsersTableFilters({
               ...(filters.journey_phase && {
                 journey_phase: filters.journey_phase,
               }),
+              ...(filters.role && { role: filters.role }),
             };
             onFiltersChange?.(newFilters);
           }}
@@ -117,6 +129,7 @@ export function UsersTableFilters({
               ...(filters.journey_phase && {
                 journey_phase: filters.journey_phase,
               }),
+              ...(filters.role && { role: filters.role }),
             };
             onFiltersChange?.(newFilters);
           }}
@@ -127,6 +140,14 @@ export function UsersTableFilters({
           selectedPhase={filters.journey_phase}
           onPhaseSelect={(phase) => {
             onFiltersChange?.({ ...filters, journey_phase: phase });
+          }}
+        />
+      </div>
+      <div className="md:hidden">
+        <RoleFilter
+          selectedRole={filters.role}
+          onRoleSelect={(role) => {
+            onFiltersChange?.({ ...filters, role });
           }}
         />
       </div>

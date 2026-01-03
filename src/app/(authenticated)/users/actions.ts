@@ -197,13 +197,16 @@ export async function createUserQuickAdd(data: {
 > {
   const adminClient = await createAdminClient();
   const supabase = await createClient();
-  const profilesQuery = new ProfilesQuery();
 
   try {
     // Create auth user (OTP-based, no password)
     const { data: authUser, error: authError } =
       await adminClient.auth.admin.createUser({
         email: data.email.toLowerCase().trim(),
+        user_metadata: {
+          first_name: data.firstName.trim(),
+          last_name: data.lastName.trim(),
+        },
         email_confirm: true,
       });
 
@@ -215,24 +218,6 @@ export async function createUserQuickAdd(data: {
     }
 
     const userId = authUser.user.id;
-
-    // Create profile
-    const profileResult = await profilesQuery.create({
-      id: userId,
-      email: data.email.toLowerCase().trim(),
-      first_name: data.firstName.trim(),
-      last_name: data.lastName.trim(),
-      journey_phase: 'discovery',
-    });
-
-    if (!profileResult.success) {
-      // Clean up auth user if profile creation fails
-      await adminClient.auth.admin.deleteUser(userId);
-      return {
-        success: false,
-        error: profileResult.error,
-      };
-    }
 
     // Add to organization if provided
     if (data.organizationId) {

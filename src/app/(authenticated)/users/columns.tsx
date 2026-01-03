@@ -311,6 +311,19 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
     },
   },
   {
+    id: 'is_super_admin',
+    accessorFn: (row) => row.is_super_admin ?? false,
+    header: () => null,
+    cell: () => null,
+    enableSorting: false,
+    enableHiding: true,
+    filterFn: (row, id, value) => {
+      const isSuperAdmin = row.original.is_super_admin ?? false;
+      if (value === undefined || value === null) return true;
+      return isSuperAdmin === value;
+    },
+  },
+  {
     id: 'actions',
     header: () => (
       <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>

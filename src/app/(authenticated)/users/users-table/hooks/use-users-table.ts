@@ -57,6 +57,26 @@ export function useUsersTable({
     });
   }, [filters.journey_phase]);
 
+  // Update role filter in table when prop changes
+  useEffect(() => {
+    setColumnFilters((prev) => {
+      const existing = prev.find((f) => f.id === 'is_super_admin');
+      const roleValue =
+        filters.role === 'admin'
+          ? true
+          : filters.role === 'user'
+            ? false
+            : undefined;
+      if (existing && existing.value === roleValue) {
+        return prev;
+      }
+      const filtered = prev.filter((f) => f.id !== 'is_super_admin');
+      return roleValue !== undefined
+        ? [...filtered, { id: 'is_super_admin', value: roleValue }]
+        : filtered;
+    });
+  }, [filters.role]);
+
   const table = useReactTable({
     data,
     columns,

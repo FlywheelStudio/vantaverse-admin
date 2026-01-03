@@ -5,6 +5,7 @@ export interface UsersTableFilters {
   organization_id?: string;
   team_id?: string;
   journey_phase?: string;
+  role?: 'admin' | 'user';
 }
 
 export interface UsersTableProps {

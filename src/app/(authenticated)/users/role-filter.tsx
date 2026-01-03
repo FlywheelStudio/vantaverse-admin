@@ -9,23 +9,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface JourneyPhaseFilterProps {
-  selectedPhase?: string;
-  onPhaseSelect: (phase?: string) => void;
+interface RoleFilterProps {
+  selectedRole?: 'admin' | 'user';
+  onRoleSelect: (role?: 'admin' | 'user') => void;
 }
 
-export function JourneyPhaseFilter({
-  selectedPhase,
-  onPhaseSelect,
-}: JourneyPhaseFilterProps) {
+export function RoleFilter({ selectedRole, onRoleSelect }: RoleFilterProps) {
   const displayText =
-    selectedPhase === 'discovery'
-      ? 'Discovery'
-      : selectedPhase === 'onboarding'
-        ? 'Onboarding'
-        : selectedPhase === 'scaffolding'
-          ? 'Scaffolding'
-          : 'All Phases';
+    selectedRole === 'admin'
+      ? 'Admin'
+      : selectedRole === 'user'
+        ? 'Users'
+        : 'All Roles';
 
   return (
     <DropdownMenu>
@@ -40,32 +35,25 @@ export function JourneyPhaseFilter({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[150px]">
         <DropdownMenuItem
-          onClick={() => onPhaseSelect(undefined)}
-          data-selected={!selectedPhase}
+          onClick={() => onRoleSelect(undefined)}
+          data-selected={!selectedRole}
           className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
         >
-          All Phases
+          All Roles
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => onPhaseSelect('discovery')}
-          data-selected={selectedPhase === 'discovery'}
+          onClick={() => onRoleSelect('admin')}
+          data-selected={selectedRole === 'admin'}
           className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
         >
-          Discovery
+          Admin
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => onPhaseSelect('onboarding')}
-          data-selected={selectedPhase === 'onboarding'}
+          onClick={() => onRoleSelect('user')}
+          data-selected={selectedRole === 'user'}
           className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
         >
-          Onboarding
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => onPhaseSelect('scaffolding')}
-          data-selected={selectedPhase === 'scaffolding'}
-          className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
-        >
-          Scaffolding
+          Users
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
