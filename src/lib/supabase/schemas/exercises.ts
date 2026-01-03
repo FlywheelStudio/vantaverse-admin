@@ -13,6 +13,7 @@ export const exerciseSchema = z.object({
   matched_library_exercise_name: z.string().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  assigned_count: z.number().optional(),
 });
 
 export type Exercise = z.infer<typeof exerciseSchema>;

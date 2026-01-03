@@ -10,25 +10,20 @@ export class ExercisesQuery extends SupabaseQuery {
    * Get all exercises with video (youtube with video_url or file with video_url)
    * @returns Success with exercises array or error
    */
-  public async getList(): Promise<
-    SupabaseSuccess<Exercise[]> | SupabaseError
-  > {
-    const supabase = await this.getClient('service_role');
+  public async getList(): Promise<SupabaseSuccess<Exercise[]> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
 
     // Query: (video_type = 'youtube' AND video_url IS NOT NULL)
     //     OR (video_type = 'file' AND video_url IS NOT NULL)
     // Fetch exercises with video_url not null, then filter by video_type
     const { data, error } = await supabase
-      .from('exercises')
+      .from('exercises_with_stats')
       .select('*')
       .not('video_url', 'is', null)
       .order('created_at', { ascending: false });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercises',
-      );
+      return this.parseResponsePostgresError(error, 'Failed to get exercises');
     }
 
     if (!data) {
@@ -61,9 +56,9 @@ export class ExercisesQuery extends SupabaseQuery {
    * @param id - The exercise id
    * @returns Success with exercise data or error
    */
-  public async getById(id: number): Promise<
-    SupabaseSuccess<Exercise> | SupabaseError
-  > {
+  public async getById(
+    id: number,
+  ): Promise<SupabaseSuccess<Exercise> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
@@ -73,10 +68,7 @@ export class ExercisesQuery extends SupabaseQuery {
       .maybeSingle();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise',
-      );
+      return this.parseResponsePostgresError(error, 'Failed to get exercise');
     }
 
     if (!data) {
