@@ -46,16 +46,16 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
     let relativeDate: string;
 
     if (diffDays === 0) {
-      relativeDate = 'Today';
+      relativeDate = 'today';
     } else if (diffDays === 1) {
-      relativeDate = 'Yesterday';
+      relativeDate = 'yesterday';
     } else if (diffDays < 30) {
       relativeDate = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
     } else if (diffDays < 365) {
       const months = Math.floor(diffDays / 30);
       relativeDate = `${months} month${months === 1 ? '' : 's'} ago`;
     } else {
-      relativeDate = 'More than a year ago';
+      relativeDate = 'more than a year ago';
     }
 
     return `${label} ${relativeDate}`;
