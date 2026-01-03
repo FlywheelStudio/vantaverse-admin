@@ -244,4 +244,38 @@ export class TeamsQuery extends SupabaseQuery {
       data: userIds,
     };
   }
+
+  /**
+   * Get all teams with their names and organization IDs for case-sensitive lookup (for import validation)
+   * @returns Success with Map of "orgId:teamName" to team data or error
+   */
+  public async getAllForImport(): Promise<
+    | SupabaseSuccess<Map<string, { id: string; organizationId: string }>>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('teams')
+      .select('id, name, organization_id');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get teams for import',
+      );
+    }
+
+    const teamMap = new Map<string, { id: string; organizationId: string }>();
+    if (data) {
+      for (const team of data) {
+        const key = `${team.organization_id}:${team.name}`;
+        teamMap.set(key, { id: team.id, organizationId: team.organization_id });
+      }
+    }
+
+    return {
+      success: true,
+      data: teamMap,
+    };
+  }
 }

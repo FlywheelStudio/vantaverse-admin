@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Upload, FileSpreadsheet, Plus } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,10 +11,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   downloadTemplateCSV,
-  downloadTemplateExcel,
+  getTemplateExcelUrl,
   uploadUsersCSV,
   uploadUsersExcel,
+  type ImportValidationResult,
 } from './actions';
+import { ImportValidationModal } from './users-table/components/import-validation-modal';
 import toast from 'react-hot-toast';
 import { useRef, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,6 +30,10 @@ export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [validationModalOpen, setValidationModalOpen] = useState(false);
+  const [validationResult, setValidationResult] =
+    useState<ImportValidationResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   const handleDownloadCSV = async () => {
     const result = await downloadTemplateCSV();
@@ -37,9 +43,15 @@ export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
   };
 
   const handleDownloadExcel = async () => {
-    const result = await downloadTemplateExcel();
-    if (!result.success) {
-      toast.error(result.error || 'Template download not implemented');
+    const result = await getTemplateExcelUrl();
+    if (result.success) {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = result.data;
+      link.download = 'Medvanta - Bulk User Template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -70,11 +82,30 @@ export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const result = await uploadUsersExcel(file);
-    if (!result.success) {
-      toast.error(result.error || 'Excel upload not implemented');
+    setIsValidating(true);
+    try {
+      // Read file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await uploadUsersExcel(arrayBuffer);
+
+      if (result.success) {
+        setValidationResult(result.data);
+        setValidationModalOpen(true);
+      } else {
+        toast.error(result.error || 'Failed to validate Excel file');
+      }
+    } catch {
+      toast.error('Failed to read Excel file');
+    } finally {
+      setIsValidating(false);
     }
     e.target.value = '';
+  };
+
+  const handleAcceptImport = () => {
+    // Placeholder: Close modal for now
+    setValidationModalOpen(false);
+    setValidationResult(null);
   };
 
   const handleQuickAdd = () => {
@@ -123,12 +154,22 @@ export function AddUserMenu({ onQuickAdd }: AddUserMenuProps) {
             <FileSpreadsheet className="h-4 w-4 mr-2" />
             Template Excel
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleUploadExcel}>
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Excel
+          <DropdownMenuItem onClick={handleUploadExcel} disabled={isValidating}>
+            {isValidating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-2" />
+            )}
+            {isValidating ? 'Validating...' : 'Upload Excel'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ImportValidationModal
+        open={validationModalOpen}
+        onOpenChange={setValidationModalOpen}
+        validationResult={validationResult}
+        onAccept={handleAcceptImport}
+      />
     </>
   );
 }

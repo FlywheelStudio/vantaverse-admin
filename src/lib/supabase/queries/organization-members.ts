@@ -127,4 +127,104 @@ export class OrganizationMembers extends SupabaseQuery {
       data: userIds,
     };
   }
+
+  /**
+   * Make a user a super admin
+   * @param userId - The user ID
+   * @returns Success or error
+   */
+  public async makeSuperAdmin(
+    userId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const { OrganizationsQuery } = await import('./organizations');
+    const orgQuery = new OrganizationsQuery();
+    const orgResult = await orgQuery.getSuperAdminOrganizationId();
+
+    if (!orgResult.success) {
+      return orgResult;
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    // Check if user is already a member
+    const { data: existingMember } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', orgResult.data)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingMember) {
+      // User is already a member, just ensure they're active
+      const { error } = await supabase
+        .from('organization_members')
+        .update({ is_active: true, role: 'admin' })
+        .eq('id', existingMember.id);
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to update super admin membership',
+        );
+      }
+    } else {
+      // Add user as member
+      const { error } = await supabase.from('organization_members').insert({
+        organization_id: orgResult.data,
+        user_id: userId,
+        role: 'admin',
+        is_active: true,
+      });
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to add super admin',
+        );
+      }
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Revoke super admin status from a user
+   * @param userId - The user ID
+   * @returns Success or error
+   */
+  public async revokeSuperAdmin(
+    userId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const { OrganizationsQuery } = await import('./organizations');
+    const orgQuery = new OrganizationsQuery();
+    const orgResult = await orgQuery.getSuperAdminOrganizationId();
+
+    if (!orgResult.success) {
+      return orgResult;
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    // Remove user from super admin organization
+    const { error } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('organization_id', orgResult.data)
+      .eq('user_id', userId);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to revoke super admin',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
 }

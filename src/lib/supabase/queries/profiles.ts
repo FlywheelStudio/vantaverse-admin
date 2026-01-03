@@ -509,4 +509,123 @@ export class ProfilesQuery extends SupabaseQuery {
       data: undefined,
     };
   }
+
+  /**
+   * Get all user emails for case-insensitive lookup (for import validation)
+   * @returns Success with Set of lowercase emails or error
+   */
+  public async getAllEmailsForImport(): Promise<
+    SupabaseSuccess<Set<string>> | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+    const { data, error } = await supabase.from('profiles').select('email');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get user emails for import',
+      );
+    }
+
+    const emailSet = new Set<string>();
+    if (data) {
+      for (const profile of data) {
+        if (profile.email) {
+          emailSet.add(profile.email.toLowerCase());
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: emailSet,
+    };
+  }
+
+  /**
+   * Create a user quickly with email, name, and optional org/team assignment
+   * @param data - User creation data
+   * @returns Success with userId or error
+   */
+  public async createQuickAdd(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationId?: string;
+    teamId?: string;
+  }): Promise<SupabaseSuccess<{ userId: string }> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const adminClient = supabase as Awaited<
+      ReturnType<typeof import('../core/admin').createAdminClient>
+    >;
+
+    try {
+      // Create auth user (OTP-based, no password)
+      const { data: authUser, error: authError } =
+        await adminClient.auth.admin.createUser({
+          email: data.email.toLowerCase().trim(),
+          user_metadata: {
+            first_name: data.firstName.trim(),
+            last_name: data.lastName.trim(),
+          },
+          email_confirm: true,
+        });
+
+      if (authError || !authUser.user) {
+        return {
+          success: false,
+          error: authError?.message || 'Failed to create auth user',
+        };
+      }
+
+      const userId = authUser.user.id;
+
+      // Add to organization if provided
+      if (data.organizationId) {
+        const { error: orgError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: data.organizationId,
+            user_id: userId,
+            role: 'member',
+            is_active: true,
+          });
+
+        if (orgError) {
+          return {
+            success: false,
+            error: `Failed to add user to organization: ${orgError.message}`,
+          };
+        }
+      }
+
+      // Add to team if provided
+      if (data.teamId) {
+        const { error: teamError } = await supabase
+          .from('team_membership')
+          .insert({
+            team_id: data.teamId,
+            user_id: userId,
+          });
+
+        if (teamError) {
+          return {
+            success: false,
+            error: `Failed to add user to team: ${teamError.message}`,
+          };
+        }
+      }
+
+      return {
+        success: true,
+        data: { userId },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create user',
+      };
+    }
+  }
 }
