@@ -161,7 +161,7 @@ export function UserProfileCard({
       >
         <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
           {/* Header Section with Horizontal Layout */}
-          <div className="relative bg-gradient-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
+          <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
             <div className="flex items-center gap-6">
               {/* Avatar */}
               <div
@@ -285,7 +285,7 @@ export function UserProfileCard({
             {/* Quick Actions */}
             <div className="pt-6 border-t-2 border-dashed">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <div className="w-1 h-6 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
+                <div className="w-1 h-6 bg-linear-to-b from-primary to-primary/50 rounded-full" />
                 Quick Actions
               </h3>
               <div className="flex flex-wrap gap-3">
