@@ -28,7 +28,7 @@ export function UserProfileCard({
 }: UserProfileCardProps) {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [avatarUrl,] = useState(initialAvatarUrl);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
 
