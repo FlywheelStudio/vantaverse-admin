@@ -64,7 +64,7 @@ export function Avatar({
 
   return src ? (
     <div
-      className={`relative w-full h-full rounded-full bg-gray-200 overflow-hidden ${className}`}
+      className={`relative w-full h-full bg-gray-200 overflow-hidden rounded-full ${className}`}
     >
       <Image
         src={src}

@@ -110,24 +110,25 @@ export function UserProfileCard({
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="flex-1"
       >
-        <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-background via-background to-primary/5">
+        <Card className="overflow-hidden shadow-xl bg-white/60 dark:bg-black/40 backdrop-blur-xl border border-white/20">
           {/* Header Section with Horizontal Layout */}
-          <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background p-8 border-b">
+          <div className="relative bg-gradient-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
             <div className="flex items-center gap-6">
               {/* Avatar */}
               <div
-                className="relative group cursor-pointer"
+                className="relative group cursor-pointer flex-shrink-0"
                 onClick={handleAvatarClick}
                 onMouseEnter={() => setIsHoveringAvatar(true)}
                 onMouseLeave={() => setIsHoveringAvatar(false)}
               >
-                <div className="w-28 h-28 rounded-2xl overflow-hidden border-4 border-background shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105">
+                <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
                   <Avatar
                     src={avatarUrl}
                     alt={`${firstName} ${lastName}`}
                     initials={initials}
                     id={userId}
-                    size={112}
+                    size={128}
+                    className="!rounded-none w-full h-full"
                   />
                 </div>
                 {/* Upload Overlay */}
@@ -137,7 +138,7 @@ export function UserProfileCard({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/70 rounded-2xl flex items-center justify-center backdrop-blur-sm"
+                      className="absolute inset-0 bg-black/70 rounded-3xl flex items-center justify-center backdrop-blur-sm z-10"
                     >
                       <div className="text-center">
                         <motion.div
