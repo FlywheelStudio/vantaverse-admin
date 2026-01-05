@@ -111,7 +111,7 @@ export function UserProfileCard({
   };
 
   return (
-    <div className="relative flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
+    <>
       {/* Chat Interface - First on mobile, left side on desktop */}
       <AnimatePresence>
         {isChatOpen && (
@@ -152,182 +152,125 @@ export function UserProfileCard({
       </AnimatePresence>
 
       {/* Main Profile Card */}
-      <motion.div
-        layout
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="flex-1 order-last lg:order-last"
-      >
-        <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
-          {/* Header Section with Horizontal Layout */}
-          <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
-            <div className="flex items-center gap-6">
-              {/* Avatar */}
-              <div
-                className="relative group cursor-pointer shrink-0"
-                onClick={handleAvatarClick}
-                onMouseEnter={() => setIsHoveringAvatar(true)}
-                onMouseLeave={() => setIsHoveringAvatar(false)}
-                style={{
-                  width: '128px',
-                  height: '128px',
-                  minWidth: '128px',
-                  minHeight: '128px',
-                  flexShrink: 0,
-                }}
-              >
-                <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
-                  <Avatar
-                    src={avatarUrl}
-                    alt={`${firstName} ${lastName}`}
-                    initials={initials}
-                    id={userId}
-                    size={128}
-                  />
-                </div>
-                {/* Upload Overlay */}
-                <AnimatePresence>
-                  {isHoveringAvatar && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10"
-                    >
-                      <div className="flex flex-col items-center justify-center">
-                        <motion.div
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex flex-col items-center justify-center"
-                        >
-                          <Camera className="w-10 h-10 text-white mb-2" />
-                          <p className="text-sm text-white font-semibold">
-                            Upload Photo
-                          </p>
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              {/* User Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  {editingField === 'firstName' ? (
-                    <Input
-                      ref={inputRef as React.RefObject<HTMLInputElement>}
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => handleFieldBlur('firstName')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          e.preventDefault();
-                          handleFieldCancel();
-                        } else if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleFieldBlur('firstName');
-                        }
-                      }}
-                      className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      onClick={() => handleFieldEdit('firstName')}
-                      className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
-                    >
-                      {firstName || 'Unknown'}
-                    </span>
-                  )}
-                  {editingField === 'lastName' ? (
-                    <Input
-                      ref={inputRef as React.RefObject<HTMLInputElement>}
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => handleFieldBlur('lastName')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          e.preventDefault();
-                          handleFieldCancel();
-                        } else if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleFieldBlur('lastName');
-                        }
-                      }}
-                      className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      onClick={() => handleFieldEdit('lastName')}
-                      className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
-                    >
-                      {lastName || 'User'}
-                    </span>
-                  )}
-                  <Badge
-                    variant={getRoleBadgeVariant(role)}
-                    className="text-xs font-semibold px-3 py-1 capitalize"
-                  >
-                    {role}
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground mb-3 text-sm cursor-default">
-                  {email}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <CardContent className="p-8">
-            {/* Quick Actions */}
-            <div className="pt-6 border-t-2 border-dashed">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <div className="w-1 h-6 bg-linear-to-b from-primary to-primary/50 rounded-full" />
-                Quick Actions
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="destructive"
-                  size="lg"
-                  onClick={handleDeleteUser}
-                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete User
-                </Button>
-                <Button
-                  variant="default"
-                  size="lg"
-                  onClick={handleMakeAdmin}
-                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <Shield className="w-4 h-4" />
-                  Make Admin
-                </Button>
-                <Button
-                  variant={isChatOpen ? 'secondary' : 'default'}
-                  size="lg"
-                  onClick={handleChatToggle}
-                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  {isChatOpen ? (
-                    <>
-                      <X className="w-4 h-4" />
-                      Close Chat
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare className="w-4 h-4" />
-                      Chat
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+      {/* Header Section with Horizontal Layout */}
+      <div className="flex items-center gap-6">
+        {/* Avatar */}
+        <div
+          className="relative group cursor-pointer shrink-0"
+          onClick={handleAvatarClick}
+          onMouseEnter={() => setIsHoveringAvatar(true)}
+          onMouseLeave={() => setIsHoveringAvatar(false)}
+          style={{
+            width: '128px',
+            height: '128px',
+            minWidth: '128px',
+            minHeight: '128px',
+            flexShrink: 0,
+          }}
+        >
+          <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
+            <Avatar
+              src={avatarUrl}
+              alt={`${firstName} ${lastName}`}
+              initials={initials}
+              id={userId}
+              size={128}
+            />
+          </div>
+          {/* Upload Overlay */}
+          <AnimatePresence>
+            {isHoveringAvatar && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10"
+              >
+                <div className="flex flex-col items-center justify-center">
+                  <motion.div
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col items-center justify-center"
+                  >
+                    <Camera className="w-10 h-10 text-white mb-2" />
+                    <p className="text-sm text-white font-semibold">
+                      Upload Photo
+                    </p>
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        {/* User Info */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            {editingField === 'firstName' ? (
+              <Input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                onBlur={() => handleFieldBlur('firstName')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleFieldCancel();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleFieldBlur('firstName');
+                  }
+                }}
+                className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={() => handleFieldEdit('firstName')}
+                className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+              >
+                {firstName || 'Unknown'}
+              </span>
+            )}
+            {editingField === 'lastName' ? (
+              <Input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                onBlur={() => handleFieldBlur('lastName')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleFieldCancel();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleFieldBlur('lastName');
+                  }
+                }}
+                className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={() => handleFieldEdit('lastName')}
+                className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+              >
+                {lastName || 'User'}
+              </span>
+            )}
+            <Badge
+              variant={getRoleBadgeVariant(role)}
+              className="text-xs font-semibold px-3 py-1 capitalize"
+            >
+              {role}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mb-3 text-sm cursor-default">
+            {email}
+          </p>
+        </div>
+      </div>
+    </>
   );
 }
