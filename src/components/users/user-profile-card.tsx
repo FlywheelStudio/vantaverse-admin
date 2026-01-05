@@ -80,9 +80,8 @@ export function UserProfileCard({
   };
 
   const handleFieldBlur = async (field: 'firstName' | 'lastName') => {
-    const originalValue =
-      field === 'firstName' ? initialFirstName : initialLastName;
-    if (editingValue === originalValue) {
+    const currentValue = field === 'firstName' ? firstName : lastName;
+    if (editingValue === currentValue) {
       setEditingField(null);
       return;
     }
@@ -100,15 +99,14 @@ export function UserProfileCard({
       toast.success(`${field === 'firstName' ? 'First' : 'Last'} name updated`);
     } else {
       toast.error(result.error);
-      setEditingValue(originalValue);
+      setEditingValue(currentValue);
     }
     setEditingField(null);
   };
 
   const handleFieldCancel = () => {
-    const originalValue =
-      editingField === 'firstName' ? initialFirstName : initialLastName;
-    setEditingValue(originalValue);
+    const currentValue = editingField === 'firstName' ? firstName : lastName;
+    setEditingValue(currentValue);
     setEditingField(null);
   };
 
