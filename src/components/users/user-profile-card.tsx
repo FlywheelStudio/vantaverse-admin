@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import * as React from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Trash2, Shield, MessageSquare, X } from 'lucide-react';
 import { Avatar, getInitials } from '@/components/ui/avatar';
@@ -8,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { updateUserProfile } from '@/app/(authenticated)/users/actions';
+import toast from 'react-hot-toast';
 
 interface UserProfileCardProps {
   userId: string;
@@ -28,9 +31,16 @@ export function UserProfileCard({
 }: UserProfileCardProps) {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
-  const [avatarUrl,] = useState(initialAvatarUrl);
+  const [avatarUrl] = useState(initialAvatarUrl);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+
+  // Inline editing state
+  const [editingField, setEditingField] = useState<
+    'firstName' | 'lastName' | null
+  >(null);
+  const [editingValue, setEditingValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const initials = getInitials(firstName, lastName, email, undefined);
 
@@ -63,20 +73,59 @@ export function UserProfileCard({
     }
   };
 
+  const handleFieldEdit = (field: 'firstName' | 'lastName') => {
+    setEditingField(field);
+    setEditingValue(field === 'firstName' ? firstName : lastName);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleFieldBlur = async (field: 'firstName' | 'lastName') => {
+    const originalValue =
+      field === 'firstName' ? initialFirstName : initialLastName;
+    if (editingValue === originalValue) {
+      setEditingField(null);
+      return;
+    }
+
+    const result = await updateUserProfile(userId, {
+      [field === 'firstName' ? 'first_name' : 'last_name']: editingValue,
+    });
+
+    if (result.success) {
+      if (field === 'firstName') {
+        setFirstName(editingValue);
+      } else {
+        setLastName(editingValue);
+      }
+      toast.success(`${field === 'firstName' ? 'First' : 'Last'} name updated`);
+    } else {
+      toast.error(result.error);
+      setEditingValue(originalValue);
+    }
+    setEditingField(null);
+  };
+
+  const handleFieldCancel = () => {
+    const originalValue =
+      editingField === 'firstName' ? initialFirstName : initialLastName;
+    setEditingValue(originalValue);
+    setEditingField(null);
+  };
+
   return (
     <div className="relative flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
-      {/* Chat Interface - First on mobile, right side on desktop */}
+      {/* Chat Interface - First on mobile, left side on desktop */}
       <AnimatePresence>
         {isChatOpen && (
           <motion.div
-            initial={{ opacity: 0, x: 100 }}
+            initial={{ opacity: 0, x: -100 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
+            exit={{ opacity: 0, x: -100 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full lg:w-96 order-first lg:order-last"
+            className="w-full lg:w-96 order-first lg:order-first"
           >
-            <Card className="h-full border-0 shadow-xl bg-gradient-to-br from-background via-background to-primary/5">
-              <CardHeader className="border-b bg-gradient-to-r from-primary/10 to-primary/5">
+            <Card className="h-full border-0 shadow-xl bg-linear-to-br from-background via-background to-primary/5">
+              <CardHeader className="border-b bg-linear-to-r from-primary/10 to-primary/5">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-primary" />
@@ -108,27 +157,33 @@ export function UserProfileCard({
       <motion.div
         layout
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="flex-1"
+        className="flex-1 order-last lg:order-last"
       >
-        <Card className="overflow-hidden shadow-xl bg-white/60 dark:bg-black/40 backdrop-blur-xl border border-white/20">
+        <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
           {/* Header Section with Horizontal Layout */}
           <div className="relative bg-gradient-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
             <div className="flex items-center gap-6">
               {/* Avatar */}
               <div
-                className="relative group cursor-pointer flex-shrink-0"
+                className="relative group cursor-pointer shrink-0"
                 onClick={handleAvatarClick}
                 onMouseEnter={() => setIsHoveringAvatar(true)}
                 onMouseLeave={() => setIsHoveringAvatar(false)}
+                style={{
+                  width: '128px',
+                  height: '128px',
+                  minWidth: '128px',
+                  minHeight: '128px',
+                  flexShrink: 0,
+                }}
               >
-                <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-white shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
+                <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
                   <Avatar
                     src={avatarUrl}
                     alt={`${firstName} ${lastName}`}
                     initials={initials}
                     id={userId}
                     size={128}
-                    className="!rounded-none w-full h-full"
                   />
                 </div>
                 {/* Upload Overlay */}
@@ -138,16 +193,19 @@ export function UserProfileCard({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-black/70 rounded-3xl flex items-center justify-center backdrop-blur-sm z-10"
+                      className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10"
                     >
-                      <div className="text-center">
+                      <div className="flex flex-col items-center justify-center">
                         <motion.div
                           initial={{ scale: 0.8 }}
                           animate={{ scale: 1 }}
                           transition={{ duration: 0.2 }}
+                          className="flex flex-col items-center justify-center"
                         >
-                          <Camera className="w-10 h-10 text-white mx-auto mb-2" />
-                          <p className="text-sm text-white font-semibold">Upload Photo</p>
+                          <Camera className="w-10 h-10 text-white mb-2" />
+                          <p className="text-sm text-white font-semibold">
+                            Upload Photo
+                          </p>
                         </motion.div>
                       </div>
                     </motion.div>
@@ -156,108 +214,117 @@ export function UserProfileCard({
               </div>
               {/* User Info */}
               <div className="flex-1">
-                <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-                  {firstName || 'Unknown'} {lastName || 'User'}
-                </h2>
-                <p className="text-muted-foreground mb-3 text-base">{email}</p>
-                <Badge
-                  variant={getRoleBadgeVariant(role)}
-                  className="text-xs font-semibold px-3 py-1 capitalize"
-                >
-                  {role}
-                </Badge>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {editingField === 'firstName' ? (
+                    <Input
+                      ref={inputRef as React.RefObject<HTMLInputElement>}
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={() => handleFieldBlur('firstName')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          handleFieldCancel();
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleFieldBlur('firstName');
+                        }
+                      }}
+                      className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      onClick={() => handleFieldEdit('firstName')}
+                      className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+                    >
+                      {firstName || 'Unknown'}
+                    </span>
+                  )}
+                  {editingField === 'lastName' ? (
+                    <Input
+                      ref={inputRef as React.RefObject<HTMLInputElement>}
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={() => handleFieldBlur('lastName')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          handleFieldCancel();
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleFieldBlur('lastName');
+                        }
+                      }}
+                      className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      onClick={() => handleFieldEdit('lastName')}
+                      className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+                    >
+                      {lastName || 'User'}
+                    </span>
+                  )}
+                  <Badge
+                    variant={getRoleBadgeVariant(role)}
+                    className="text-xs font-semibold px-3 py-1 capitalize"
+                  >
+                    {role}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mb-3 text-sm cursor-default">
+                  {email}
+                </p>
               </div>
             </div>
           </div>
 
           <CardContent className="p-8">
-            {/* User Details */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <div className="w-1 h-6 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
-                  Profile Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-muted-foreground">
-                      First Name
-                    </label>
-                    <Input
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First name"
-                      className="h-12 border-2 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-muted-foreground">
-                      Last Name
-                    </label>
-                    <Input
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Last name"
-                      className="h-12 border-2 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-semibold text-muted-foreground">
-                      Email Address
-                    </label>
-                    <Input
-                      value={email}
-                      disabled
-                      className="bg-muted/50 h-12 cursor-not-allowed border-2"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="pt-6 border-t-2 border-dashed">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <div className="w-1 h-6 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
-                  Quick Actions
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant="destructive"
-                    size="lg"
-                    onClick={handleDeleteUser}
-                    className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete User
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="lg"
-                    onClick={handleMakeAdmin}
-                    className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                  >
-                    <Shield className="w-4 h-4" />
-                    Make Admin
-                  </Button>
-                  <Button
-                    variant={isChatOpen ? 'secondary' : 'default'}
-                    size="lg"
-                    onClick={handleChatToggle}
-                    className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
-                  >
-                    {isChatOpen ? (
-                      <>
-                        <X className="w-4 h-4" />
-                        Close Chat
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare className="w-4 h-4" />
-                        Chat
-                      </>
-                    )}
-                  </Button>
-                </div>
+            {/* Quick Actions */}
+            <div className="pt-6 border-t-2 border-dashed">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <div className="w-1 h-6 bg-gradient-to-b from-primary to-primary/50 rounded-full" />
+                Quick Actions
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  onClick={handleDeleteUser}
+                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete User
+                </Button>
+                <Button
+                  variant="default"
+                  size="lg"
+                  onClick={handleMakeAdmin}
+                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <Shield className="w-4 h-4" />
+                  Make Admin
+                </Button>
+                <Button
+                  variant={isChatOpen ? 'secondary' : 'default'}
+                  size="lg"
+                  onClick={handleChatToggle}
+                  className="gap-2 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  {isChatOpen ? (
+                    <>
+                      <X className="w-4 h-4" />
+                      Close Chat
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4" />
+                      Chat
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>

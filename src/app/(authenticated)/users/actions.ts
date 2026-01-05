@@ -58,6 +58,17 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
+ * Update user profile
+ */
+export async function updateUserProfile(
+  userId: string,
+  profileData: { first_name?: string; last_name?: string },
+) {
+  const query = new ProfilesQuery();
+  return query.update(userId, profileData);
+}
+
+/**
  * Delete a user
  */
 export async function deleteUser(userId: string) {
