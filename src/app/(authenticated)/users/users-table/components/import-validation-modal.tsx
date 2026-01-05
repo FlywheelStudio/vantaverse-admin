@@ -8,6 +8,7 @@ import {
   Building2,
   Users2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import {
   Dialog,
@@ -30,6 +31,7 @@ interface ImportValidationModalProps {
   onOpenChange: (open: boolean) => void;
   validationResult: ImportValidationResult | null;
   onAccept?: () => void;
+  isImporting?: boolean;
 }
 
 interface CollapsibleSectionProps {
@@ -186,6 +188,7 @@ export function ImportValidationModal({
   onOpenChange,
   validationResult,
   onAccept,
+  isImporting = false,
 }: ImportValidationModalProps) {
   if (!validationResult) return null;
 
@@ -197,7 +200,11 @@ export function ImportValidationModal({
     errors,
   } = validationResult;
   const hasErrors = errors.length > 0;
-  const hasData = usersToAdd.length > 0 || usersToUpdate.length > 0;
+  const hasData =
+    usersToAdd.length > 0 ||
+    usersToUpdate.length > 0 ||
+    organizationsToCreate.length > 0 ||
+    teamsToCreate.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,41 +225,49 @@ export function ImportValidationModal({
               <ErrorList errors={errors} />
             </CollapsibleSection>
 
-            {/* Users to Add */}
-            <CollapsibleSection
-              title="users to be added"
-              count={usersToAdd.length}
-              icon={<Users className="h-4 w-4 text-green-600" />}
-            >
-              <UserList users={usersToAdd} showEmail />
-            </CollapsibleSection>
+            {!hasData ? (
+              <div className="text-center py-8 text-[#64748B]">
+                <p className="text-sm">No data to import</p>
+              </div>
+            ) : (
+              <>
+                {/* Users to Add */}
+                <CollapsibleSection
+                  title="users to be added"
+                  count={usersToAdd.length}
+                  icon={<Users className="h-4 w-4 text-green-600" />}
+                >
+                  <UserList users={usersToAdd} showEmail />
+                </CollapsibleSection>
 
-            {/* Users to Update */}
-            <CollapsibleSection
-              title="users to be updated"
-              count={usersToUpdate.length}
-              icon={<Users className="h-4 w-4 text-blue-600" />}
-            >
-              <UserList users={usersToUpdate} showEmail />
-            </CollapsibleSection>
+                {/* Users to Update */}
+                <CollapsibleSection
+                  title="users to be updated"
+                  count={usersToUpdate.length}
+                  icon={<Users className="h-4 w-4 text-blue-600" />}
+                >
+                  <UserList users={usersToUpdate} showEmail />
+                </CollapsibleSection>
 
-            {/* Organizations to Create */}
-            <CollapsibleSection
-              title="organizations to be created"
-              count={organizationsToCreate.length}
-              icon={<Building2 className="h-4 w-4 text-purple-600" />}
-            >
-              <OrganizationList organizations={organizationsToCreate} />
-            </CollapsibleSection>
+                {/* Organizations to Create */}
+                <CollapsibleSection
+                  title="organizations to be created"
+                  count={organizationsToCreate.length}
+                  icon={<Building2 className="h-4 w-4 text-purple-600" />}
+                >
+                  <OrganizationList organizations={organizationsToCreate} />
+                </CollapsibleSection>
 
-            {/* Teams to Create */}
-            <CollapsibleSection
-              title="teams to be created"
-              count={teamsToCreate.length}
-              icon={<Users2 className="h-4 w-4 text-orange-600" />}
-            >
-              <TeamList teams={teamsToCreate} />
-            </CollapsibleSection>
+                {/* Teams to Create */}
+                <CollapsibleSection
+                  title="teams to be created"
+                  count={teamsToCreate.length}
+                  icon={<Users2 className="h-4 w-4 text-orange-600" />}
+                >
+                  <TeamList teams={teamsToCreate} />
+                </CollapsibleSection>
+              </>
+            )}
           </div>
         </ScrollArea>
 
@@ -261,16 +276,24 @@ export function ImportValidationModal({
             <Button
               variant="outline"
               className="border-[#2454FF] text-[#2454FF]"
+              disabled={isImporting}
             >
               Cancel
             </Button>
           </DialogClose>
           <Button
             onClick={onAccept}
-            disabled={hasErrors || !hasData}
+            disabled={hasErrors || !hasData || isImporting}
             className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white"
           >
-            Accept
+            {isImporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              'Accept'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

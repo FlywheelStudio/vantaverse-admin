@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useUsers } from '@/hooks/use-users';
 import { UsersTable } from './users-table';
-import { columns } from './columns';
+import { columns } from './users-table/components/columns';
 import { Card } from '@/components/ui/card';
 
 const contentVariants = {

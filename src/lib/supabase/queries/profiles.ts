@@ -543,6 +543,46 @@ export class ProfilesQuery extends SupabaseQuery {
   }
 
   /**
+   * Get user profile by email (case-insensitive)
+   * @param email - The email to search for
+   * @returns Success with user profile data or error
+   */
+  public async getByEmail(email: string): Promise<
+    | SupabaseSuccess<{
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get user by email',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'User not found',
+      };
+    }
+
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  /**
    * Create a user quickly with email, name, and optional org/team assignment
    * @param data - User creation data
    * @returns Success with userId or error

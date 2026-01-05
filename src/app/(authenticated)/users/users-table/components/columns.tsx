@@ -23,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from './actions';
+import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 

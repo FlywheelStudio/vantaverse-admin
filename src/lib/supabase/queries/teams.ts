@@ -278,4 +278,51 @@ export class TeamsQuery extends SupabaseQuery {
       data: teamMap,
     };
   }
+
+  /**
+   * Add user to team (idempotent - skips if already a member)
+   * @param userId - The user ID
+   * @param teamId - The team ID
+   * @returns Success or error
+   */
+  public async addUserToTeam(
+    userId: string,
+    teamId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    // Check if user is already a member
+    const { data: existingMembership } = await supabase
+      .from('team_membership')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('team_id', teamId)
+      .maybeSingle();
+
+    if (existingMembership) {
+      // Already a member, skip
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    // Add to team
+    const { error } = await supabase.from('team_membership').insert({
+      user_id: userId,
+      team_id: teamId,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to add user to team',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
 }

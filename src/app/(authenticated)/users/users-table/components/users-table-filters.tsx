@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input';
 import { OrgTeamFilter } from '../../org-team-filter';
 import { JourneyPhaseFilter } from '../../journey-phase-filter';
 import { RoleFilter } from '../../role-filter';
-import { AddUserMenu } from '../../import-menu';
+import { AddUserMenu } from './add-user-menu';
 import type { UsersTableFilters } from '../types';
 
 interface UsersTableFiltersProps {
