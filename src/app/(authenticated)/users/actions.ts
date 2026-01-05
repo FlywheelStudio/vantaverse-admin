@@ -592,7 +592,7 @@ export async function createUserQuickAdd(data: {
 // Bulk Import Types and Functions
 // ============================================================================
 
-export interface BulkImportResult {
+interface BulkImportResult {
   created: {
     organizations: number;
     teams: number;
