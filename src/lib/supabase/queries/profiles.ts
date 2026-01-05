@@ -71,6 +71,49 @@ export class ProfilesQuery extends SupabaseQuery {
   }
 
   /**
+   * Get a user profile by ID
+   * @param id - The user ID to fetch
+   * @returns Success with profile data or error
+   */
+  public async getUserById(
+    id: string,
+  ): Promise<SupabaseSuccess<Profile> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get user profile by ID',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'User not found',
+      };
+    }
+
+    const result = profileSchema.safeParse(data);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  }
+
+
+  /**
    * Get all profiles with their organization and team memberships
    * @returns Success with profiles array including memberships or error
    */
