@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Trash2, Shield, MessageSquare, X } from 'lucide-react';
+import { Camera, MessageSquare, X } from 'lucide-react';
 import { Avatar, getInitials } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,16 +47,6 @@ export function UserProfileCard({
   const handleAvatarClick = () => {
     // TODO: Implement file upload logic for Supabase bucket
     console.log('Avatar upload clicked');
-  };
-
-  const handleDeleteUser = () => {
-    // TODO: Implement delete user logic
-    console.log('Delete user:', userId);
-  };
-
-  const handleMakeAdmin = () => {
-    // TODO: Implement make admin logic
-    console.log('Make admin:', userId);
   };
 
   const handleChatToggle = () => {

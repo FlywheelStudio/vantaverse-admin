@@ -309,7 +309,7 @@ export function AppointmentCard({ title, color, appointments }: AppointmentCardP
 
                                             {histAppt.status === 'canceled' && histAppt.cancellation_reason && (
                                                 <div className="text-xs mt-1 text-red-400">
-                                                    "{histAppt.cancellation_reason}"
+                                                    &quot;{histAppt.cancellation_reason}&quot;
                                                 </div>
                                             )}
                                         </div>
