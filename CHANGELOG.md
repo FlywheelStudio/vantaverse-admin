@@ -1,5 +1,29 @@
 # Changelog
 
+# 0.3.0 (2026-01-06)
+
+
+### Bug Fixes
+
+* update admin verification logic and enhance client role definitions ([d4850e3](https://github.com/FlywheelStudio/vantaverse-admin/commit/d4850e36592461b2aa57f44c3b3c055387e134e7))
+
+
+### Features
+
+* added side modal for quick adding and removing members from teams and orgs ([8e8c5da](https://github.com/FlywheelStudio/vantaverse-admin/commit/8e8c5da806f3d74fe142acf3066017805f96e61b))
+* **cursor command:** added a quick cursor command to merge branch into develop ([d504103](https://github.com/FlywheelStudio/vantaverse-admin/commit/d5041031ff160a6d9a4f8624bc9b8ab9d26dbf59))
+* Define detailed project requirements for the physiologist panel and configure initial development environment. ([fccc5e8](https://github.com/FlywheelStudio/vantaverse-admin/commit/fccc5e84fe706005da4714587d1e03e7deba64b4))
+* **exercises:** enhance exercise management UI with pagination, improved state handling, and visual transitions ([4bbbe59](https://github.com/FlywheelStudio/vantaverse-admin/commit/4bbbe596e88e01b9e9c3bbc7fe74029421eb5c4d))
+* **exercises:** implement exercise management features with CRUD operations and UI components ([5a6e665](https://github.com/FlywheelStudio/vantaverse-admin/commit/5a6e6658cb6a39e75c182f6526db1e9c9010845f))
+* **exercises:** implement exercise management features with CRUD operations and UI components ([2dbb019](https://github.com/FlywheelStudio/vantaverse-admin/commit/2dbb019705a5b0a8d2ab708f5d01ddb604aeac13))
+* fresh starter ([c9d0795](https://github.com/FlywheelStudio/vantaverse-admin/commit/c9d079534ad268f4ce4286fe9247a3c617d30fc8))
+* **organizations:** added checkboxes for bulk member assignment ([5f880e3](https://github.com/FlywheelStudio/vantaverse-admin/commit/5f880e3840fe31679d5a96078ff1adc814881476))
+* **organizations:** enhance add members modal with unassigned profiles and optimistic updates ([f382e14](https://github.com/FlywheelStudio/vantaverse-admin/commit/f382e1451d75667d196305c229a7357353c54c65))
+* **organizations:** enhance add members modal with unassigned profiles and optimistic updates ([94a9057](https://github.com/FlywheelStudio/vantaverse-admin/commit/94a90576e301b89cb61c846d63498edf9436fe0e))
+* **organizations:** moved the team creation to the first row ([e7b6a19](https://github.com/FlywheelStudio/vantaverse-admin/commit/e7b6a19ab1825ba96d3abdc94a279b973bf8b785))
+* **organizations:** optimize member selection hook with transition for state updates ([5cd558a](https://github.com/FlywheelStudio/vantaverse-admin/commit/5cd558ad94185ef77a5b3417564617124df4b88c))
+* **organizations:** refactor add members modal into separate directory with improved structure and hooks ([cef39ff](https://github.com/FlywheelStudio/vantaverse-admin/commit/cef39ff5af14de3ced10ef73042cc02f39aefefd))
+
 # 0.2.0 (2025-12-23)
 
 ### Bug Fixes
