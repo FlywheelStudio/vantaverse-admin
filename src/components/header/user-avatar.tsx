@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/use-profile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, getInitials } from '@/components/ui/avatar';
+import { useRouter } from 'next/navigation';
 
 interface UserAvatarProps {
   showName?: boolean;
@@ -13,6 +14,7 @@ interface UserAvatarProps {
 export function UserAvatar({ showName = true }: UserAvatarProps) {
   const { data: profile, isLoading, error } = useProfile();
   const isMobile = useIsMobile();
+  const router = useRouter();
 
   const userName =
     profile?.first_name && profile?.last_name
@@ -83,6 +85,9 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
+      onClick={() => {
+        router.push(`/users/${profile?.id}`);
+      }}
     >
       <motion.span
         className="relative flex size-9 shrink-0 overflow-visible rounded-full"
