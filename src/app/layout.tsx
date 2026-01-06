@@ -1,5 +1,7 @@
 import { AuthProvider } from '@/context/auth';
 import { ThemeProvider } from '@/context/theme';
+import { QueryProvider } from '@/components/providers/query-provider';
+import { Toaster } from 'react-hot-toast';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
@@ -72,27 +74,19 @@ const satoshi = localFont({
   display: 'swap',
 });
 
-const gas = localFont({
-  src: '../fonts/GAS.TTF',
-  variable: '--font-gas',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
-  title: 'Flywheel Starter for Next.js and Supabase',
-  description: 'Flywheel Starter for Next.js and Supabase',
+  title: 'VantaVerse Admin',
+  description: 'VantaVerse Admin panel for the VantaVerse application',
   icons: {
-    icon: '/static/favicons/favicon.ico',
-    apple: '/static/favicons/apple-touch-icon.png',
-    shortcut: '/static/favicons/favicon.ico',
-    other: {
-      rel: 'icon',
-      url: '/static/favicons/favicon.ico',
-    },
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico',
   },
   openGraph: {
-    title: 'Flywheel Starter for Next.js and Supabase',
-    description: 'Flywheel Starter for Next.js and Supabase',
+    title: 'VantaVerse Admin',
+    description: 'VantaVerse Admin panel for the VantaVerse application',
     url: process.env.APP_URL,
     type: 'website',
     images: [
@@ -100,21 +94,21 @@ export const metadata: Metadata = {
         url: `${process.env.APP_URL}/og-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'Flywheel Starter for Next.js and Supabase',
+        alt: 'VantaVerse Admin',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@flywheelstudio',
-    title: 'Flywheel Starter for Next.js and Supabase',
-    description: 'Flywheel Starter for Next.js and Supabase',
+    title: 'VantaVerse Admin',
+    description: 'VantaVerse Admin panel for the VantaVerse application',
     images: [
       {
         url: `${process.env.APP_URL}/twitter-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'Flywheel Starter for Next.js and Supabase',
+        alt: 'VantaVerse Admin',
       },
     ],
   },
@@ -128,11 +122,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${satoshi.variable} ${gas.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${satoshi.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </AuthProvider>
+        <div>
+          <Toaster position="bottom-right" reverseOrder={false} />
+        </div>
+        <QueryProvider>
+          <AuthProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

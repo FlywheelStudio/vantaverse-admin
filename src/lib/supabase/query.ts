@@ -1,7 +1,7 @@
-import { PostgrestError } from '@supabase/supabase-js';
+import { PostgrestError, type User } from '@supabase/supabase-js';
 import { ZodError } from 'zod';
-import { createAnonymousClient } from './core/anonymous';
 import { createClient } from './core/server';
+import { createAdminClient } from './core/admin';
 
 export type SupabaseError = {
   success: false;
@@ -13,55 +13,104 @@ export type SupabaseSuccess<T> = {
   data: T;
 };
 
+export type ClientRole = 'authenticated_user' | 'service_role';
+
+type SupabaseClientType =
+  | Awaited<ReturnType<typeof createClient>>
+  | Awaited<ReturnType<typeof createAdminClient>>;
+
+let adminClientInstance: Awaited<ReturnType<typeof createAdminClient>> | null =
+  null;
+
 export abstract class SupabaseQuery {
   /**
-   * The supabase client
+   * The supabase client (lazy initialized)
    */
-  protected supabase!:
-    | Awaited<ReturnType<typeof createClient>>
-    | ReturnType<typeof createAnonymousClient>;
+  private _supabase: SupabaseClientType | null = null;
 
   /**
-   * The user
+   * The user (lazy initialized)
    */
-  protected user:
-    | Awaited<ReturnType<typeof this.supabase.auth.getUser>>['data']['user']
-    | null = null;
+  private _user: User | null = null;
+
+  /**
+   * Current client role
+   */
+  private _clientRole: ClientRole | null = null;
 
   constructor() {}
 
   /**
-   * Initialize the query
-   * @param auth - Whether authentication is required
+   * Get the supabase client with the specified role
+   * @param role - The client role ('authenticated_user' or 'service_role')
+   * @returns The supabase client
    */
-  public async init(auth: boolean = true) {
-    if (auth) {
-      // Use authenticated client
-      this.supabase = await createClient();
-      const {
-        data: { user },
-        error,
-      } = await this.supabase.auth.getUser();
-
-      if (!user) {
-        console.error(`Error: Unauthenticated - ${error}`);
-        throw new Error('Unauthenticated');
-      }
-
-      this.user = user;
-    } else {
-      // Use anonymous client for public data
-      this.supabase = createAnonymousClient();
-      this.user = null;
+  protected async getClient(
+    role: ClientRole = 'authenticated_user',
+  ): Promise<
+    | Awaited<ReturnType<typeof createClient>>
+    | Awaited<ReturnType<typeof createAdminClient>>
+  > {
+    // Return cached client if role matches
+    if (this._supabase && this._clientRole === role) {
+      return this._supabase;
     }
+
+    if (role === 'service_role') {
+      // Use singleton admin client
+      if (!adminClientInstance) {
+        adminClientInstance = await createAdminClient();
+      }
+      this._supabase = adminClientInstance;
+      this._user = null;
+      this._clientRole = 'service_role';
+      return this._supabase;
+    }
+
+    // Use authenticated client
+    this._supabase = await createClient();
+    const {
+      data: { user },
+      error,
+    } = await this._supabase.auth.getUser();
+
+    if (!user) {
+      console.error(`Error: Unauthenticated - ${error}`);
+      throw new Error('Unauthenticated');
+    }
+
+    this._user = user;
+    this._clientRole = 'authenticated_user';
+    return this._supabase;
   }
 
   /**
-   * Get the user
+   * Get the user (only available when using 'user' role)
    * @returns The user
    */
   public async getUser() {
-    return this.user;
+    if (this._clientRole !== 'authenticated_user') {
+      await this.getClient('authenticated_user');
+    }
+    return this._user;
+  }
+
+  /**
+   * Execute a query with the specified client role
+   * @param role - The client role to use
+   * @param queryFn - The query function to execute
+   * @returns The result of the query
+   */
+  protected async withClient<T>(
+    role: ClientRole = 'authenticated_user',
+    queryFn: (
+      client:
+        | Awaited<ReturnType<typeof createClient>>
+        | Awaited<ReturnType<typeof createAdminClient>>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.getClient(role);
+    return queryFn(client);
   }
 
   /**

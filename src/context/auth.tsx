@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (error) {
       console.error('Error signing out:', error);
     }
-    redirect('/sign-in');
+    redirect('/login');
   };
 
   useEffect(() => {
