@@ -2,7 +2,7 @@
   "name": "flywheel-starter-nextjs-supabase",
   "description": "Flywheel Starter for Next.js and Supabase",
   "author": "Flywheel Studio, Ender Puentes <endpuent@gmail.com>",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -36,7 +36,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.2.0",
