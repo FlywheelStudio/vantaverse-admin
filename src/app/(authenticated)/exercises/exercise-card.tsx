@@ -125,7 +125,7 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
           </span>
 
           {dateDisplay && (
-            <p className="text-sm text-[#64748B]">Created at {dateDisplay}</p>
+            <p className="text-sm text-[#64748B]">{dateDisplay}</p>
           )}
         </div>
       </CardContent>
