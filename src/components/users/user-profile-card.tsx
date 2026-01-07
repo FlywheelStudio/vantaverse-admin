@@ -164,7 +164,7 @@ export function UserProfileCard({
               src={avatarUrl}
               alt={`${firstName} ${lastName}`}
               initials={initials}
-              id={userId}
+              userid:={userId}
               size={128}
             />
           </div>

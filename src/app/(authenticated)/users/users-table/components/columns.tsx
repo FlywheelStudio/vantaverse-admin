@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Trash2, Shield, ShieldOff, CheckCircle } from 'lucide-react';
-import { Avatar, getInitials } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -28,44 +28,25 @@ import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
-  const avatarId = profile.email || profile.id || profile.username || undefined;
-
   const fullName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : null;
-
-  let displayName = '';
-  if (fullName && profile.username) {
-    displayName = `${fullName}`;
-  } else if (fullName) {
-    displayName = fullName;
-  } else if (profile.username) {
-    displayName = profile.username;
-  }
-
-  const avatarAlt = displayName || profile.email || 'Unknown';
-  const initials = getInitials(
-    profile.first_name,
-    profile.last_name,
-    profile.username,
-    displayName || avatarAlt,
-  );
 
   return (
     <div className="flex items-center gap-3">
       <div className="size-10 shrink-0 flex items-center justify-center">
         <Avatar
           src={profile.avatar_url || null}
-          alt={avatarAlt}
-          id={avatarId}
+          firstName={profile.first_name || ''}
+          lastName={profile.last_name || ''}
+          userId={profile.id}
           size={40}
-          initials={initials}
         />
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium text-sm text-[#1E3A5F] truncate">
-          {displayName || 'Unknown'}
+          {fullName || 'Unknown'}
         </div>
         {profile.email && (
           <div className="text-xs text-[#64748B] truncate">{profile.email}</div>
@@ -147,11 +128,6 @@ function DeleteUserButton({
     }
   };
 
-  const displayName =
-    profile.first_name && profile.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile.username || profile.email || 'this user';
-
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
@@ -167,8 +143,8 @@ function DeleteUserButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete User</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &ldquo;{displayName}&rdquo;? This
-            action cannot be undone.
+            Are you sure you want to delete &ldquo;{profile.first_name}{' '}
+            {profile.last_name}&rdquo;? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -271,7 +247,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
         profile.first_name && profile.last_name
           ? `${profile.first_name} ${profile.last_name}`
           : null;
-      const displayName = fullName || profile.username || '';
+      const displayName = fullName || '';
       const email = profile.email || '';
 
       return (

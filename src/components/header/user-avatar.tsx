@@ -1,10 +1,9 @@
 'use client';
 
-import * as React from 'react';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/use-profile';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Avatar, getInitials } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 
 interface UserAvatarProps {
@@ -15,22 +14,6 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
   const { data: profile, isLoading, error } = useProfile();
   const isMobile = useIsMobile();
   const router = useRouter();
-
-  const userName =
-    profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile?.username;
-
-  const userAvatar = profile?.avatar_url;
-  const initials = getInitials(
-    profile?.first_name,
-    profile?.last_name,
-    profile?.username,
-  );
-
-  // Use email as id if available, fallback to ID or username for consistent color seed
-  const avatarId =
-    profile?.email || profile?.id || profile?.username || undefined;
 
   if (isLoading) {
     return (
@@ -68,7 +51,13 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Avatar src={null} initials={initials} id={avatarId} size={36} />
+          <Avatar
+            src={profile?.avatar_url}
+            firstName={profile?.first_name || ''}
+            lastName={profile?.last_name || ''}
+            userId={profile?.id || ''}
+            size={36}
+          />
         </motion.span>
         {showName && !isMobile && (
           <span className="text-sm font-medium">User</span>
@@ -95,7 +84,13 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
-        <Avatar src={userAvatar} initials={initials} id={avatarId} size={36} />
+        <Avatar
+          src={profile?.avatar_url}
+          firstName={profile?.first_name || ''}
+          lastName={profile?.last_name || ''}
+          userId={profile?.id || ''}
+          size={36}
+        />
       </motion.span>
       {showName && !isMobile && (
         <motion.span
@@ -104,7 +99,7 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          {userName}
+          {profile?.first_name} {profile?.last_name}
         </motion.span>
       )}
     </motion.button>

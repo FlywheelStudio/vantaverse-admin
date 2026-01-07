@@ -6,7 +6,7 @@ import { PageWrapper } from '@/components/page-wrapper';
 export default function HomePage() {
   const { data: profile } = useProfile();
 
-  const firstName = profile?.first_name || profile?.username;
+  const firstName = profile?.first_name;
 
   return (
     <PageWrapper

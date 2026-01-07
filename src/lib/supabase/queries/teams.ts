@@ -19,7 +19,7 @@ export class TeamsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('teams')
       .select(
-        '*, team_membership(id, user_id, profiles!inner(id, avatar_url, first_name, last_name, username, email))',
+        '*, team_membership(id, user_id, profiles!inner(id, avatar_url, first_name, last_name, email))',
       )
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -44,7 +44,6 @@ export class TeamsQuery extends SupabaseQuery {
         avatar_url: string | null;
         first_name: string | null;
         last_name: string | null;
-        username: string | null;
         email: string | null;
       } | null;
     };
@@ -67,7 +66,6 @@ export class TeamsQuery extends SupabaseQuery {
                     avatar_url: m.profiles.avatar_url,
                     first_name: m.profiles.first_name,
                     last_name: m.profiles.last_name,
-                    username: m.profiles.username,
                     email: m.profiles.email,
                   }
                 : null,

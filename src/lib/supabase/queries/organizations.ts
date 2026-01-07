@@ -21,7 +21,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, username, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
       )
       .order('created_at', { ascending: false });
 
@@ -49,7 +49,6 @@ export class OrganizationsQuery extends SupabaseQuery {
         avatar_url: string | null;
         first_name: string | null;
         last_name: string | null;
-        username: string | null;
         email: string | null;
       } | null;
     };
@@ -78,7 +77,6 @@ export class OrganizationsQuery extends SupabaseQuery {
                       avatar_url: m.profiles.avatar_url,
                       first_name: m.profiles.first_name,
                       last_name: m.profiles.last_name,
-                      username: m.profiles.username,
                       email: m.profiles.email,
                     }
                   : null,

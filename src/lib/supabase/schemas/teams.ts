@@ -9,7 +9,6 @@ const teamMemberSchema = z.object({
       avatar_url: z.string().nullable(),
       first_name: z.string().nullable(),
       last_name: z.string().nullable(),
-      username: z.string().nullable(),
       email: z.string().nullable(),
     })
     .nullable(),
