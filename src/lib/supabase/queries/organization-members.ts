@@ -127,4 +127,168 @@ export class OrganizationMembers extends SupabaseQuery {
       data: userIds,
     };
   }
+
+  /**
+   * Make a user a super admin
+   * @param userId - The user ID
+   * @returns Success or error
+   */
+  public async makeSuperAdmin(
+    userId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const { OrganizationsQuery } = await import('./organizations');
+    const orgQuery = new OrganizationsQuery();
+    const orgResult = await orgQuery.getSuperAdminOrganizationId();
+
+    if (!orgResult.success) {
+      return orgResult;
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    // Check if user is already a member
+    const { data: existingMember } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', orgResult.data)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingMember) {
+      // User is already a member, just ensure they're active
+      const { error } = await supabase
+        .from('organization_members')
+        .update({ is_active: true, role: 'admin' })
+        .eq('id', existingMember.id);
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to update super admin membership',
+        );
+      }
+    } else {
+      // Add user as member
+      const { error } = await supabase.from('organization_members').insert({
+        organization_id: orgResult.data,
+        user_id: userId,
+        role: 'admin',
+        is_active: true,
+      });
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to add super admin',
+        );
+      }
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Revoke super admin status from a user
+   * @param userId - The user ID
+   * @returns Success or error
+   */
+  public async revokeSuperAdmin(
+    userId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const { OrganizationsQuery } = await import('./organizations');
+    const orgQuery = new OrganizationsQuery();
+    const orgResult = await orgQuery.getSuperAdminOrganizationId();
+
+    if (!orgResult.success) {
+      return orgResult;
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    // Remove user from super admin organization
+    const { error } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('organization_id', orgResult.data)
+      .eq('user_id', userId);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to revoke super admin',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Add or update organization membership
+   * @param userId - The user ID
+   * @param organizationId - The organization ID
+   * @param role - The role to set ('admin' or 'patient')
+   * @returns Success or error
+   */
+  public async addOrUpdateMembership(
+    userId: string,
+    organizationId: string,
+    role: 'admin' | 'patient',
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    // Check if user is already a member
+    const { data: existingMembership } = await supabase
+      .from('organization_members')
+      .select('id, role')
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    if (existingMembership) {
+      // Already a member, update role if needed
+      if (existingMembership.role !== role) {
+        const { error } = await supabase
+          .from('organization_members')
+          .update({ role, is_active: true })
+          .eq('id', existingMembership.id);
+
+        if (error) {
+          return this.parseResponsePostgresError(
+            error,
+            'Failed to update organization membership role',
+          );
+        }
+      }
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    // Add to organization
+    const { error } = await supabase.from('organization_members').insert({
+      user_id: userId,
+      organization_id: organizationId,
+      role,
+      is_active: true,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to add organization membership',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
 }

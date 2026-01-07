@@ -24,7 +24,7 @@ alwaysApply: false
 ### **profiles**
 ```sql
 id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
-username TEXT UNIQUE
+description TEXT
 full_name TEXT
 email TEXT UNIQUE
 phone TEXT UNIQUE

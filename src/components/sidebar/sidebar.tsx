@@ -132,14 +132,14 @@ export function Sidebar() {
                     >
                       <Link
                         href={link.href}
-                        className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 transition-colors text-white ${
+                        className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} rounded-r-lg py-3 transition-colors text-white ${
                           isCollapsed
                             ? isActive
-                              ? 'rounded-lg bg-[#2454FF]/70'
-                              : 'rounded-lg hover:bg-[#2454FF]/40'
+                              ? 'bg-[#2454FF]/70'
+                              : 'hover:bg-[#2454FF]/40'
                             : isActive
-                              ? 'rounded-r-lg bg-[#2454FF]/70'
-                              : 'rounded-r-lg hover:bg-[#2454FF]/40'
+                              ? 'bg-[#2454FF]/70'
+                              : 'hover:bg-[#2454FF]/40'
                         }`}
                         title={isCollapsed ? link.label : undefined}
                       >

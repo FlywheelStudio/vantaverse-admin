@@ -19,7 +19,7 @@ export class TeamsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('teams')
       .select(
-        '*, team_membership(id, user_id, profiles!inner(id, avatar_url, first_name, last_name, username, email))',
+        '*, team_membership(id, user_id, profiles!inner(id, avatar_url, first_name, last_name, email))',
       )
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -44,7 +44,6 @@ export class TeamsQuery extends SupabaseQuery {
         avatar_url: string | null;
         first_name: string | null;
         last_name: string | null;
-        username: string | null;
         email: string | null;
       } | null;
     };
@@ -67,7 +66,6 @@ export class TeamsQuery extends SupabaseQuery {
                     avatar_url: m.profiles.avatar_url,
                     first_name: m.profiles.first_name,
                     last_name: m.profiles.last_name,
-                    username: m.profiles.username,
                     email: m.profiles.email,
                   }
                 : null,
@@ -242,6 +240,87 @@ export class TeamsQuery extends SupabaseQuery {
     return {
       success: true,
       data: userIds,
+    };
+  }
+
+  /**
+   * Get all teams with their names and organization IDs for case-sensitive lookup (for import validation)
+   * @returns Success with Map of "orgId:teamName" to team data or error
+   */
+  public async getAllForImport(): Promise<
+    | SupabaseSuccess<Map<string, { id: string; organizationId: string }>>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('teams')
+      .select('id, name, organization_id');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get teams for import',
+      );
+    }
+
+    const teamMap = new Map<string, { id: string; organizationId: string }>();
+    if (data) {
+      for (const team of data) {
+        const key = `${team.organization_id}:${team.name}`;
+        teamMap.set(key, { id: team.id, organizationId: team.organization_id });
+      }
+    }
+
+    return {
+      success: true,
+      data: teamMap,
+    };
+  }
+
+  /**
+   * Add user to team (idempotent - skips if already a member)
+   * @param userId - The user ID
+   * @param teamId - The team ID
+   * @returns Success or error
+   */
+  public async addUserToTeam(
+    userId: string,
+    teamId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    // Check if user is already a member
+    const { data: existingMembership } = await supabase
+      .from('team_membership')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('team_id', teamId)
+      .maybeSingle();
+
+    if (existingMembership) {
+      // Already a member, skip
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    // Add to team
+    const { error } = await supabase.from('team_membership').insert({
+      user_id: userId,
+      team_id: teamId,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to add user to team',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
     };
   }
 }

@@ -1,15 +1,15 @@
 'use client';
 
-import * as React from 'react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Avatar, getInitials } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { PlusIcon } from 'lucide-react';
 
 interface SingleAvatarProps {
   src?: string;
-  label?: string;
-  id?: string;
+  firstName: string;
+  lastName: string;
+  userId: string;
   size: number;
   overlap: number;
   index: number;
@@ -20,8 +20,9 @@ interface SingleAvatarProps {
 
 const SingleAvatar = ({
   src,
-  label,
-  id,
+  firstName,
+  lastName,
+  userId,
   size,
   overlap,
   index,
@@ -29,8 +30,6 @@ const SingleAvatar = ({
   onMouseEnter,
   onMouseLeave,
 }: SingleAvatarProps) => {
-  const initials = getInitials(undefined, undefined, undefined, label);
-
   return (
     <div
       className="cursor-pointer border-4 border-background rounded-full bg-background transition-all duration-300 relative"
@@ -49,13 +48,13 @@ const SingleAvatar = ({
     >
       <Avatar
         src={src || null}
-        alt={label || `Avatar ${index + 1}`}
-        initials={initials}
-        id={id}
+        firstName={firstName}
+        lastName={lastName}
+        userId={userId}
         size={size}
       />
       <AnimatePresence>
-        {isHovered && label && (
+        {isHovered && firstName && lastName && (
           <motion.div
             key="tooltip"
             initial={{
@@ -87,7 +86,7 @@ const SingleAvatar = ({
               left: '50%',
             }}
           >
-            {label}
+            {firstName} {lastName}
           </motion.div>
         )}
       </AnimatePresence>
@@ -96,7 +95,12 @@ const SingleAvatar = ({
 };
 
 export interface AvatarGroupProps {
-  avatars: { src?: string; alt?: string; label?: string; id?: string }[];
+  avatars: {
+    src?: string;
+    firstName: string;
+    lastName: string;
+    userId: string;
+  }[];
   maxVisible?: number;
   size?: number;
   overlap?: number;
@@ -123,8 +127,9 @@ const AvatarGroup = ({
             <SingleAvatar
               key={idx}
               src={avatar.src}
-              label={avatar.label}
-              id={avatar.id}
+              firstName={avatar.firstName}
+              lastName={avatar.lastName}
+              userId={avatar.userId}
               size={size}
               overlap={overlap}
               index={visibleAvatars.length - idx}

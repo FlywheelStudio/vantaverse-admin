@@ -135,7 +135,7 @@ export function AddMembersModal({
             </SheetTitle>
           </div>
           <Input
-            placeholder="Search by username, name, org, or team..."
+            placeholder="Search by email, name, org, or team..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="mt-4"
