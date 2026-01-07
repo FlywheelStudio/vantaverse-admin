@@ -1,60 +1,61 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  Trophy,
-  TrendingUp,
-  Award,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Zap, TrendingUp, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import Image from 'next/image';
 
-interface HpCardProps {
-  currentLevel: number | null;
-  hpPoints: number | null;
-  pointsRequiredForNextLevel: number | null;
-  currentPhase: string | null;
-  levelDescription: string | null;
-  levelImageUrl: string | null;
+interface IpCardProps {
+  empowerment: number | null;
+  empowermentTitle: string | null;
+  currentEffect: string | null;
+  gateTitle: string | null;
+  gateDescription: string | null;
+  pointsMissingForNextLevel: number | null;
+  basePower: number | null;
+  topPower: number | null;
   transactions: Array<{
     created_at: string | null;
-    points_earned: number;
+    amount: number;
     transaction_type: string;
     description: string | null;
   }>;
 }
 
-export function HpCard({
-  currentLevel,
-  hpPoints,
-  pointsRequiredForNextLevel,
-  currentPhase,
-  levelDescription,
-  levelImageUrl,
+export function IpCard({
+  empowerment,
+  empowermentTitle,
+  currentEffect,
+  gateTitle,
+  gateDescription,
+  pointsMissingForNextLevel,
+  basePower,
+  topPower,
   transactions,
-}: HpCardProps) {
+}: IpCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const level = currentLevel ?? 1;
-  const points = hpPoints ?? 0;
-  const pointsNeeded = pointsRequiredForNextLevel;
-  const isMaxLevel = pointsNeeded === null;
+  const empowermentValue = empowerment ?? 0;
+  const pointsMissing = pointsMissingForNextLevel;
+  const isMaxLevel = pointsMissing === null;
 
-  // Calculate progress percentage
+  // Calculate progress percentage toward next level
   const calculateProgress = () => {
-    if (isMaxLevel || pointsNeeded === null) return 100;
-    if (pointsNeeded === 0) return 100;
-    // Get current level's minimum points from transactions or use 0
-    const currentLevelMinPoints = 0; // This would ideally come from hp_level_thresholds
-    const progressPoints = points - currentLevelMinPoints;
+    if (isMaxLevel || pointsMissing === null) return 100;
+    if (basePower === null || topPower === null) return 0;
+
+    // Calculate next threshold base power
+    const nextBasePower = empowermentValue + pointsMissing;
+    const totalRange = nextBasePower - basePower;
+
+    if (totalRange === 0) return 100;
+
+    const currentProgress = empowermentValue - basePower;
     const progressPercentage = Math.min(
-      (progressPoints / pointsNeeded) * 100,
+      (currentProgress / totalRange) * 100,
       100,
     );
     return Math.max(progressPercentage, 0);
@@ -82,7 +83,7 @@ export function HpCard({
       .join(' ');
   };
 
-  const color = 'var(--color-purple-600)';
+  const color = 'var(--color-orange-600)';
 
   return (
     <Card
@@ -108,11 +109,11 @@ export function HpCard({
                 style={{ backgroundColor: color }}
               />
               <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
-                Vanta Points
+                Empowerment
               </h3>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {!isExpanded && (
+              {empowermentTitle && !isExpanded && (
                 <Badge
                   variant="outline"
                   className="font-semibold border"
@@ -122,7 +123,7 @@ export function HpCard({
                     borderColor: `${color}4D`,
                   }}
                 >
-                  Level {level}
+                  {empowermentTitle}
                 </Badge>
               )}
               <button
@@ -145,16 +146,16 @@ export function HpCard({
         {!isExpanded && (
           <div className="p-5 pt-4 px-2 space-y-2">
             <div className="flex items-center gap-2 text-sm text-[#64748B]">
-              <Trophy className="h-4 w-4" style={{ color }} />
+              <Zap className="h-4 w-4" style={{ color }} />
               <span className="font-semibold text-[#1E3A5F]">
-                {points.toLocaleString()} VP
+                {empowermentValue}% -&gt; {gateTitle}
               </span>
             </div>
-            {!isMaxLevel && pointsNeeded !== null && (
+            {!isMaxLevel && pointsMissing !== null && (
               <div className="flex items-center gap-2 text-sm text-[#64748B]">
                 <TrendingUp className="h-4 w-4" />
                 <span>
-                  {pointsNeeded.toLocaleString()} points needed for next level
+                  {pointsMissing.toLocaleString()} points needed for next level
                 </span>
               </div>
             )}
@@ -185,22 +186,14 @@ export function HpCard({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.05 }}
             >
-              {/* Level Icon and Description */}
-              {levelImageUrl && (
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="relative w-16 h-16 shrink-0">
-                    <Image
-                      src={levelImageUrl}
-                      alt={`Level ${level} icon`}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  </div>
-                  {levelDescription && (
-                    <p className="text-sm text-[#64748B] flex-1">
-                      {levelDescription}
-                    </p>
+              {/* Gate Title and Description */}
+              {gateTitle && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-[#1E3A5F] mb-1">
+                    {gateTitle}
+                  </h4>
+                  {gateDescription && (
+                    <p className="text-sm text-[#64748B]">{gateDescription}</p>
                   )}
                 </div>
               )}
@@ -209,49 +202,45 @@ export function HpCard({
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium text-[#64748B]">
-                    Current Level:
+                    Empowerment:
                   </span>
                   <span className="text-sm font-semibold text-[#1E3A5F]">
-                    Level {level}
+                    {empowermentValue}%
                   </span>
                 </div>
 
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-[#64748B]">
-                    Vanta Points:
-                  </span>
-                  <span className="text-sm font-semibold text-[#1E3A5F]">
-                    {points.toLocaleString()}
-                  </span>
-                </div>
-
-                {currentPhase && (
+                {empowermentTitle && (
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-sm font-medium text-[#64748B]">
-                      Current Phase:
+                      Empowerment Title:
                     </span>
                     <span className="text-sm font-semibold text-[#1E3A5F]">
-                      {currentPhase
-                        .split('_')
-                        .map(
-                          (word) =>
-                            word.charAt(0).toUpperCase() + word.slice(1),
-                        )
-                        .join(' ')}
+                      {empowermentTitle}
+                    </span>
+                  </div>
+                )}
+
+                {currentEffect && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-[#64748B]">
+                      Current Effect:
+                    </span>
+                    <span className="text-sm font-semibold text-[#1E3A5F]">
+                      {currentEffect}
                     </span>
                   </div>
                 )}
 
                 {/* Progress Bar */}
-                {!isMaxLevel && pointsNeeded !== null && (
+                {!isMaxLevel && pointsMissing !== null && (
                   <div className="space-y-2 pt-2">
                     <div className="flex items-center justify-between text-xs text-[#64748B]">
-                      <span>Progress to Level {level + 1}</span>
+                      <span>Progress to Next Level</span>
                       <span>{Math.round(progressPercentage)}%</span>
                     </div>
                     <Progress value={progressPercentage} className="h-2" />
                     <p className="text-xs text-[#64748B]">
-                      {pointsNeeded.toLocaleString()} points needed
+                      {pointsMissing.toLocaleString()} points needed
                     </p>
                   </div>
                 )}
@@ -324,7 +313,8 @@ export function HpCard({
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>
                           <span className="text-sm font-semibold text-[#1E3A5F]">
-                            +{tx.points_earned.toLocaleString()} HP
+                            {tx.amount > 0 ? '+' : ''}
+                            {tx.amount.toLocaleString()} IP
                           </span>
                         </div>
                         {tx.description && (

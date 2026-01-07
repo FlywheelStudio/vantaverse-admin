@@ -6,6 +6,7 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { Appointment } from '@/lib/supabase/queries/appointments';
 import { AppointmentCard } from './appointment-card';
 import { HpCard } from './hp-card';
+import { IpCard } from './ip-card';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function UserProfilePageUI({
@@ -13,6 +14,10 @@ export function UserProfilePageUI({
   appointments,
   hpLevelThreshold,
   hpTransactions,
+  empowermentThreshold,
+  gateInfo,
+  ipTransactions,
+  pointsMissingForNextLevel,
 }: {
   user: ProfileWithStats;
   appointments: Appointment[];
@@ -26,6 +31,23 @@ export function UserProfilePageUI({
     transaction_type: string;
     description: string | null;
   }>;
+  empowermentThreshold: {
+    title: string;
+    base_power: number;
+    top_power: number;
+    effects: string | null;
+  } | null;
+  gateInfo: {
+    title: string;
+    description: string | null;
+  } | null;
+  ipTransactions: Array<{
+    created_at: string | null;
+    amount: number;
+    transaction_type: string;
+    description: string | null;
+  }>;
+  pointsMissingForNextLevel: number | null;
 }) {
   // Filter screening and consultation appointments
   const screeningAppointments = appointments.filter(
@@ -77,6 +99,17 @@ export function UserProfilePageUI({
                 levelDescription={hpLevelThreshold?.description ?? null}
                 levelImageUrl={hpLevelThreshold?.image_url ?? null}
                 transactions={hpTransactions}
+              />
+              <IpCard
+                empowerment={user.empowerment}
+                empowermentTitle={user.empowerment_title}
+                currentEffect={empowermentThreshold?.effects ?? null}
+                gateTitle={gateInfo?.title ?? null}
+                gateDescription={gateInfo?.description ?? null}
+                pointsMissingForNextLevel={pointsMissingForNextLevel}
+                basePower={empowermentThreshold?.base_power ?? null}
+                topPower={empowermentThreshold?.top_power ?? null}
+                transactions={ipTransactions}
               />
             </div>
           </CardContent>
