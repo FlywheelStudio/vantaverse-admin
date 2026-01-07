@@ -1,5 +1,35 @@
 # Changelog
 
+# [0.4.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.3.0...0.4.0) (2026-01-07)
+
+
+### Bug Fixes
+
+* **user-profile-card:** adress bug where name and last name were being compared to props instead of state ([26f495c](https://github.com/FlywheelStudio/vantaverse-admin/commit/26f495c378428290ec01e335e4afcd0599f22834))
+* **user:** removed unused set avatar url ([4113aca](https://github.com/FlywheelStudio/vantaverse-admin/commit/4113aca5660ed1c9c7eaeacd21cc7230b47aab65))
+* **users:** remove unused export keyword from BulkImportResult interface ([2c08b68](https://github.com/FlywheelStudio/vantaverse-admin/commit/2c08b68f73f5b8bd873fa376119109cb4b3f9abe))
+* **users:** removed unused function ([1ba3710](https://github.com/FlywheelStudio/vantaverse-admin/commit/1ba3710340578ec0d8af30f28ad2c8f61d326ad0))
+
+
+### Features
+
+* add Avatar and UserProfileCard components for user display and management ([69596da](https://github.com/FlywheelStudio/vantaverse-admin/commit/69596da3ec9cb1135a531f18802731f51e9e7211))
+* add user appointment card and user profile card components ([0bcb8a5](https://github.com/FlywheelStudio/vantaverse-admin/commit/0bcb8a57067ddf678b33e85b463c97e34e09631e))
+* **exercises:** add exercises page with grid layout and editable modal ([b207fb0](https://github.com/FlywheelStudio/vantaverse-admin/commit/b207fb0741bb24974ffab5038da86659a42c0f5a))
+* **profiles:** add getUserById method to fetch user profile by ID with validation ([93f007e](https://github.com/FlywheelStudio/vantaverse-admin/commit/93f007e3164305fc580c06bf00834c555ff8a9bf))
+* **user-profile-card:** added appointment cards ([d28bef4](https://github.com/FlywheelStudio/vantaverse-admin/commit/d28bef446d9c73e32c07d6f24d4973353073c329))
+* **user-profile:** enhance user profile page with HP level and transaction details ([54a1097](https://github.com/FlywheelStudio/vantaverse-admin/commit/54a1097582a7f2f2fd099de17bbc874d7aa8dd76))
+* **user-profile:** integrate IP points and empowerment details into user profile page ([c2a91bf](https://github.com/FlywheelStudio/vantaverse-admin/commit/c2a91bfbb40bc447f8fa7b6756230bd21bf5f213))
+* **users:** add updateUserProfile function and inline editing for user profile in UserProfileCard ([4968357](https://github.com/FlywheelStudio/vantaverse-admin/commit/496835751089f385efdbb520e6349cd5405f16b5))
+* **users:** enhance user creation process and add role filtering in users table ([1d25d59](https://github.com/FlywheelStudio/vantaverse-admin/commit/1d25d59cb8710c5c54921cc6888e5c1d707e2a3b))
+* **users:** implement bulk user import functionality with validation and enhance user management features ([889db69](https://github.com/FlywheelStudio/vantaverse-admin/commit/889db699a8a3c43aa6ca30b02ac1d36dbb6b0fe4))
+* **users:** implement Excel import validation and enhance user management functionality ([2eb64b0](https://github.com/FlywheelStudio/vantaverse-admin/commit/2eb64b0a192749c190a8be7145fd12d75d067c2e))
+* **users:** implement quick user addition and enhance organization/team selection with new combobox components ([f347999](https://github.com/FlywheelStudio/vantaverse-admin/commit/f34799962d68ed0cb9415c1d78ba2147c34f2b79))
+* **users:** implement quick user addition and enhance organization/team selection with new combobox components ([0aa0605](https://github.com/FlywheelStudio/vantaverse-admin/commit/0aa06054ef72afda3102fee5b909a2e32597a1f0))
+* **users:** implement users management page with CRUD operations, filters, and import/export functionality ([d6d0295](https://github.com/FlywheelStudio/vantaverse-admin/commit/d6d029549525afa466293212b0e29b2c5b8bed6a))
+* **users:** implement users management page with CRUD operations, filters, and import/export functionality ([7b9f46e](https://github.com/FlywheelStudio/vantaverse-admin/commit/7b9f46ecaae297c0c0b008260f3298bb73b2d3d1))
+* **users:** streamline user actions and enhance organization/team filter functionality ([4d8371e](https://github.com/FlywheelStudio/vantaverse-admin/commit/4d8371e97af27ddec335aad5022cf878ff28c879))
+
 # 0.3.0 (2026-01-06)
 
 
