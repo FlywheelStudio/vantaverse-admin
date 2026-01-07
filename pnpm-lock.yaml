@@ -54,6 +54,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      blurhash:
+        specifier: ^2.0.5
+        version: 2.0.5
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -78,6 +81,9 @@ importers:
       react:
         specifier: 19.2.3
         version: 19.2.3
+      react-blurhash:
+        specifier: ^0.3.0
+        version: 0.3.0(blurhash@2.0.5)(react@19.2.3)
       react-dom:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
@@ -1816,6 +1822,9 @@ packages:
     resolution: {integrity: sha512-X4CiKlcV2GjnCMwnKAfbVWpHa++65th9TuzAEYtZoATiOE2DQKhSp4CJlyLoTqdhBKlXjpXjCTYPNNFS33Fi6w==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
+  blurhash@2.0.5:
+    resolution: {integrity: sha512-cRygWd7kGBQO3VEhPiTgq4Wc43ctsM+o46urrmPOiuAe+07fzlSB9OJVdpgDL0jPqXUVQ9ht7aq7kxOeJHRK+w==}
+
   brace-expansion@1.1.12:
     resolution: {integrity: sha512-9T9UjW3r0UW5c1Q7GTwllptXwhvYmEzFhzMfZ9H7FQWt+uZePjZPjBP/W1ZEyZ1twGWom5/56TF4lPcqjnDHcg==}
 
@@ -3384,6 +3393,12 @@ packages:
 
   rc9@2.1.2:
     resolution: {integrity: sha512-btXCnMmRIBINM2LDZoEmOogIZU7Qe7zn4BpomSKZ/ykbLObuBdvG+mFq11DL6fjH1DRwHhrlgtYWG96bJiC7Cg==}
+
+  react-blurhash@0.3.0:
+    resolution: {integrity: sha512-XlKr4Ns1iYFRnk6DkAblNbAwN/bTJvxTVoxMvmTcURdc5oLoXZwqAF9N3LZUh/HT+QFlq5n6IS6VsDGsviYAiQ==}
+    peerDependencies:
+      blurhash: ^2.0.3
+      react: '>=15'
 
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
@@ -5661,6 +5676,8 @@ snapshots:
       read-cmd-shim: 6.0.0
       write-file-atomic: 7.0.0
 
+  blurhash@2.0.5: {}
+
   brace-expansion@1.1.12:
     dependencies:
       balanced-match: 1.0.2
@@ -7370,6 +7387,11 @@ snapshots:
     dependencies:
       defu: 6.1.4
       destr: 2.0.5
+
+  react-blurhash@0.3.0(blurhash@2.0.5)(react@19.2.3):
+    dependencies:
+      blurhash: 2.0.5
+      react: 19.2.3
 
   react-dom@19.2.3(react@19.2.3):
     dependencies:

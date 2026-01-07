@@ -87,7 +87,7 @@ export function HpCard({
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 border-2 transition-all gap-0 duration-300 overflow-hidden hover:shadow-xl bg-white',
+        'rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden hover:shadow-xl bg-white',
       )}
       style={{ borderColor: color, minHeight: '166px' }}
     >

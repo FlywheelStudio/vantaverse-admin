@@ -88,7 +88,7 @@ export function IpCard({
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 border-2 transition-all gap-0 duration-300 overflow-hidden hover:shadow-xl bg-white',
+        'rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden hover:shadow-xl bg-white',
       )}
       style={{ borderColor: color, minHeight: '166px' }}
     >
@@ -148,7 +148,7 @@ export function IpCard({
             <div className="flex items-center gap-2 text-sm text-[#64748B]">
               <Zap className="h-4 w-4" style={{ color }} />
               <span className="font-semibold text-[#1E3A5F]">
-                {empowermentValue}% -&gt; {gateTitle}
+                {empowermentValue}% {gateTitle ? `-> ${gateTitle}` : ''}
               </span>
             </div>
             {!isMaxLevel && pointsMissing !== null && (
