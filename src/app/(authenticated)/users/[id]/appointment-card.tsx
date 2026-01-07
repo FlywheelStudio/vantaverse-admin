@@ -155,12 +155,12 @@ export function AppointmentCard({
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 border-2 transition-all duration-300 overflow-hidden',
+        'rounded-3xl p-2 gap-0 border-2 transition-all duration-300 overflow-hidden',
         isDisabled
           ? 'opacity-40! hover:opacity-50! cursor-not-allowed! bg-white/50! shadow-none!'
           : 'hover:shadow-xl bg-white',
       )}
-      style={{ borderColor: color, minHeight: '146px' }}
+      style={{ borderColor: color, minHeight: '166px' }}
     >
       {/* Card Header */}
       <div
@@ -169,7 +169,7 @@ export function AppointmentCard({
       >
         {/* Title and Badge Section */}
         <div
-          className="p-4 cursor-pointer border-b-2"
+          className={cn('p-4 border-b-2', !isDisabled && 'cursor-pointer')}
           style={{ borderColor: color }}
         >
           <div className="flex items-start justify-between gap-3">

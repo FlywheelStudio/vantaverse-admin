@@ -2,17 +2,30 @@
 
 import { PageWrapper } from '@/components/page-wrapper';
 import { UserProfileCard } from '@/components/users/user-profile-card';
-import type { Profile } from '@/lib/supabase/schemas/profiles';
+import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { Appointment } from '@/lib/supabase/queries/appointments';
 import { AppointmentCard } from './appointment-card';
+import { HpCard } from './hp-card';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function UserProfilePageUI({
   user,
   appointments,
+  hpLevelThreshold,
+  hpTransactions,
 }: {
-  user: Profile;
+  user: ProfileWithStats;
   appointments: Appointment[];
+  hpLevelThreshold: {
+    description: string;
+    image_url: string | null;
+  } | null;
+  hpTransactions: Array<{
+    created_at: string | null;
+    points_earned: number;
+    transaction_type: string;
+    description: string | null;
+  }>;
 }) {
   // Filter screening and consultation appointments
   const screeningAppointments = appointments.filter(
@@ -43,7 +56,7 @@ export function UserProfilePageUI({
             />
           </div>
 
-          {/* Appointment Cards Section */}
+          {/* Cards Section */}
           <CardContent className="p-8">
             <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
               <AppointmentCard
@@ -55,6 +68,15 @@ export function UserProfilePageUI({
                 title="Consultation"
                 color="var(--color-green-600)"
                 appointments={consultationAppointments}
+              />
+              <HpCard
+                currentLevel={user.current_level}
+                hpPoints={user.hp_points}
+                pointsRequiredForNextLevel={user.points_required_for_next_level}
+                currentPhase={user.current_phase}
+                levelDescription={hpLevelThreshold?.description ?? null}
+                levelImageUrl={hpLevelThreshold?.image_url ?? null}
+                transactions={hpTransactions}
               />
             </div>
           </CardContent>

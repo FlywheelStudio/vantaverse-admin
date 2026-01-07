@@ -39,7 +39,7 @@ export class ProfilesQuery extends SupabaseQuery {
     }
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profiles_with_stats')
       .select('*')
       .eq('id', user.id)
       .maybeSingle();
@@ -77,11 +77,11 @@ export class ProfilesQuery extends SupabaseQuery {
    */
   public async getUserById(
     id: string,
-  ): Promise<SupabaseSuccess<Profile> | SupabaseError> {
+  ): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profiles_with_stats')
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -100,7 +100,7 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileSchema.safeParse(data);
+    const result = profileWithStatsSchema.safeParse(data);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -111,7 +111,6 @@ export class ProfilesQuery extends SupabaseQuery {
       data: result.data,
     };
   }
-
 
   /**
    * Get all profiles with their organization and team memberships
@@ -710,5 +709,97 @@ export class ProfilesQuery extends SupabaseQuery {
         error: error instanceof Error ? error.message : 'Failed to create user',
       };
     }
+  }
+
+  /**
+   * Get HP level threshold by level number
+   * @param level - The level number to fetch
+   * @returns Success with level threshold data or error
+   */
+  public async getHpLevelThresholdByLevel(level: number): Promise<
+    | SupabaseSuccess<{
+        description: string;
+        image_url: string | null;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase
+      .from('hp_level_thresholds')
+      .select('description, image_url')
+      .eq('level', level)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get HP level threshold',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'Level threshold not found',
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        description: data.description,
+        image_url: data.image_url,
+      },
+    };
+  }
+
+  /**
+   * Get HP transactions for a user
+   * @param userId - The user ID to fetch transactions for
+   * @returns Success with transactions array or error
+   */
+  public async getHpTransactionsByUserId(userId: string): Promise<
+    | SupabaseSuccess<
+        Array<{
+          created_at: string | null;
+          points_earned: number;
+          transaction_type: string;
+          description: string | null;
+        }>
+      >
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase
+      .from('hp_transactions')
+      .select('created_at, points_earned, transaction_type, description')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get HP transactions',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    return {
+      success: true,
+      data: data.map((tx) => ({
+        created_at: tx.created_at,
+        points_earned: tx.points_earned,
+        transaction_type: tx.transaction_type,
+        description: tx.description,
+      })),
+    };
   }
 }

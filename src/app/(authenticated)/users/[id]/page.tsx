@@ -4,32 +4,53 @@ import { AppointmentsQuery } from '@/lib/supabase/queries/appointments';
 import { UserProfilePageUI } from './ui';
 
 export default async function UserProfilePage({
-    params,
+  params,
 }: {
-    params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }) {
-    const { id } = await params;
+  const { id } = await params;
 
-    const profilesQuery = new ProfilesQuery();
-    const appointmentsQuery = new AppointmentsQuery();
+  const profilesQuery = new ProfilesQuery();
+  const appointmentsQuery = new AppointmentsQuery();
 
-    // Fetch user profile and appointments in parallel
-    const [userResult, appointmentsResult] = await Promise.all([
-        profilesQuery.getUserById(id),
-        appointmentsQuery.getAppointmentsByUserId(id),
+  // First, validate that the user exists
+  const userResult = await profilesQuery.getUserById(id);
+
+  if (!userResult.success) {
+    notFound();
+  }
+
+  const user = userResult.data;
+
+  // Bulk query remaining data in parallel
+  const [appointmentsResult, hpLevelThresholdResult, hpTransactionsResult] =
+    await Promise.all([
+      appointmentsQuery.getAppointmentsByUserId(id),
+      user.current_level !== null
+        ? profilesQuery.getHpLevelThresholdByLevel(user.current_level)
+        : Promise.resolve({
+            success: false,
+            error: 'No current level',
+          } as const),
+      profilesQuery.getHpTransactionsByUserId(id),
     ]);
 
-    if (!userResult.success) {
-        notFound();
-    }
+  const appointments = appointmentsResult.success
+    ? appointmentsResult.data
+    : [];
+  const hpLevelThreshold = hpLevelThresholdResult.success
+    ? hpLevelThresholdResult.data
+    : null;
+  const hpTransactions = hpTransactionsResult.success
+    ? hpTransactionsResult.data
+    : [];
 
-    const user = userResult.data;
-    const appointments = appointmentsResult.success ? appointmentsResult.data : [];
-
-    return (
-        <UserProfilePageUI
-            user={user}
-            appointments={appointments}
-        />
-    );
+  return (
+    <UserProfilePageUI
+      user={user}
+      appointments={appointments}
+      hpLevelThreshold={hpLevelThreshold}
+      hpTransactions={hpTransactions}
+    />
+  );
 }

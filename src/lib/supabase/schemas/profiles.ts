@@ -13,7 +13,7 @@ export const journeyPhaseSchema = z.enum(journeyPhaseValues, {
 
 export const profileSchema = z.object({
   id: z.uuid(),
-  username: z.string().nullable(),
+  description: z.string().nullable(),
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
   email: z.email().nullable(),
