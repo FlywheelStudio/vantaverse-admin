@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, MessageSquare, X } from 'lucide-react';
-import { Avatar, getInitials } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,8 +41,6 @@ export function UserProfileCard({
   >(null);
   const [editingValue, setEditingValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const initials = getInitials(firstName, lastName, email, undefined);
 
   const handleAvatarClick = () => {
     // TODO: Implement file upload logic for Supabase bucket
@@ -162,9 +160,9 @@ export function UserProfileCard({
           <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
             <Avatar
               src={avatarUrl}
-              alt={`${firstName} ${lastName}`}
-              initials={initials}
-              userid:={userId}
+              firstName={firstName}
+              lastName={lastName}
+              userId={userId}
               size={128}
             />
           </div>
