@@ -28,9 +28,8 @@ export const NAV_LINKS = [
   { href: '/', label: 'Dashboard', icon: '📊' },
   { href: '/organizations', label: 'Organizations', icon: '🏢' },
   { href: '/users', label: 'Users', icon: '👥' },
-  { href: '/workouts', label: 'Workouts', icon: '💪' },
+  { href: '/workouts', label: 'Programs', icon: '💪' },
   { href: '/exercises', label: 'Exercises', icon: '🏋️' },
   { href: '/schedules', label: 'Schedules', icon: '📅' },
-  { href: '/analytics', label: 'Analytics', icon: '📈' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ] as const;

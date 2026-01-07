@@ -186,19 +186,11 @@ function MembersCell({ org }: { org: Organization }) {
   const members = org.members || [];
   const avatars = members.map((member) => {
     const profile = member.profile;
-    let label = '';
-    if (profile?.first_name && profile?.last_name) {
-      label = `${profile.first_name} ${profile.last_name}`;
-    } else if (profile?.username) {
-      label = profile.username;
-    }
-    const avatarId =
-      profile?.email || profile?.id || profile?.username || undefined;
     return {
       src: profile?.avatar_url || undefined,
-      alt: label || undefined,
-      label: label || undefined,
-      id: avatarId,
+      firstName: profile?.first_name || '',
+      lastName: profile?.last_name || '',
+      userId: profile?.id || '',
     };
   });
   return (

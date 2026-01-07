@@ -72,7 +72,6 @@ export function useSaveMembers({
                         avatar_url: profile.avatar_url,
                         first_name: profile.first_name,
                         last_name: profile.last_name,
-                        username: profile.username,
                         email: profile.email,
                       }
                     : null,
@@ -104,7 +103,6 @@ export function useSaveMembers({
                             avatar_url: profile.avatar_url,
                             first_name: profile.first_name,
                             last_name: profile.last_name,
-                            username: profile.username,
                             email: profile.email,
                           }
                         : null,

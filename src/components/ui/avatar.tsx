@@ -18,8 +18,6 @@ export function generateColorFromSeed(seed: string): string {
 export function getInitials(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
-  username: string | null | undefined,
-  label?: string,
 ): string {
   if (firstName && lastName) {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -27,48 +25,38 @@ export function getInitials(
   if (firstName) {
     return firstName[0].toUpperCase();
   }
-  if (username) {
-    return username[0].toUpperCase();
-  }
-  if (label) {
-    const parts = label.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    }
-    return label[0].toUpperCase();
-  }
-  return 'A';
+  return '??';
 }
 
 interface AvatarProps {
+  firstName: string;
+  lastName: string;
   src?: string | null;
-  alt?: string;
-  initials?: string;
-  id?: string;
+  userId: string;
   size?: number;
   className?: string;
 }
 
 export function Avatar({
   src,
-  alt = '',
-  initials,
-  id,
+  firstName,
+  lastName,
+  userId,
   size = 36,
   className = '',
 }: AvatarProps) {
-  // Calculate seed: use id if available, fallback to alt (label), then default
-  const colorSeed = id || alt || 'default';
+  const colorSeed = userId;
   const avatarColor = generateColorFromSeed(colorSeed);
   const fontSize = size * 0.35;
+  const initials = getInitials(firstName, lastName);
 
   return src ? (
     <div
-      className={`relative w-full h-full rounded-full bg-gray-200 overflow-hidden ${className}`}
+      className={`relative w-full h-full bg-gray-200 overflow-hidden rounded-full ${className}`}
     >
       <Image
         src={src}
-        alt={alt}
+        alt={`${firstName} ${lastName}`}
         fill
         className="aspect-square size-full object-cover"
       />

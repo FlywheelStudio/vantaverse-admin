@@ -1,0 +1,8 @@
+,,,,,
+User assignment csv template for the VantaVerse app. ,,,,,
+1. Organizations & Teams match by name.,,,,,
+2. Teams must have an organization field. ,,,,,
+3. Email is the only required field.,,,,,
+"4. If a user already exists, they will be assigned to the organization/team.",,,,,
+,,,,,
+First Name,Last Name,Email*,Organization Name (exact),"Team Name (exact, must have organization)",Role (admin or user)

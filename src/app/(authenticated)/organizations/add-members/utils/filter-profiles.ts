@@ -10,10 +10,10 @@ export function filterProfiles(
   if (!query) return profiles;
 
   return profiles.filter((profile) => {
-    const username = profile.username?.toLowerCase() || '';
     const firstName = profile.first_name?.toLowerCase() || '';
     const lastName = profile.last_name?.toLowerCase() || '';
     const fullName = `${firstName} ${lastName}`.trim();
+    const email = profile.email?.toLowerCase() || '';
     const orgNames = profile.orgMemberships
       .map((m) => m.orgName.toLowerCase())
       .join(' ');
@@ -22,10 +22,10 @@ export function filterProfiles(
       .join(' ');
 
     return (
-      username.includes(query) ||
       firstName.includes(query) ||
       lastName.includes(query) ||
       fullName.includes(query) ||
+      email.includes(query) ||
       orgNames.includes(query) ||
       teamNames.includes(query)
     );

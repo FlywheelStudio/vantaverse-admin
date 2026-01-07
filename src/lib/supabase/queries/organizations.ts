@@ -21,7 +21,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, username, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
       )
       .order('created_at', { ascending: false });
 
@@ -49,7 +49,6 @@ export class OrganizationsQuery extends SupabaseQuery {
         avatar_url: string | null;
         first_name: string | null;
         last_name: string | null;
-        username: string | null;
         email: string | null;
       } | null;
     };
@@ -78,7 +77,6 @@ export class OrganizationsQuery extends SupabaseQuery {
                       avatar_url: m.profiles.avatar_url,
                       first_name: m.profiles.first_name,
                       last_name: m.profiles.last_name,
-                      username: m.profiles.username,
                       email: m.profiles.email,
                     }
                   : null,
@@ -227,6 +225,65 @@ export class OrganizationsQuery extends SupabaseQuery {
     return {
       success: true,
       data: undefined,
+    };
+  }
+
+  /**
+   * Get super admin organization ID
+   * @returns Success with organization ID or error
+   */
+  public async getSuperAdminOrganizationId(): Promise<
+    SupabaseSuccess<string> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('is_super_admin', true)
+      .single();
+
+    if (error || !data) {
+      return {
+        success: false,
+        error: 'Super admin organization not found',
+      };
+    }
+
+    return {
+      success: true,
+      data: data.id,
+    };
+  }
+
+  /**
+   * Get all organizations with their names for case-sensitive lookup (for import validation)
+   * @returns Success with Map of organization name to ID or error
+   */
+  public async getAllForImport(): Promise<
+    SupabaseSuccess<Map<string, string>> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get organizations for import',
+      );
+    }
+
+    const orgMap = new Map<string, string>();
+    if (data) {
+      for (const org of data) {
+        orgMap.set(org.name, org.id);
+      }
+    }
+
+    return {
+      success: true,
+      data: orgMap,
     };
   }
 }
