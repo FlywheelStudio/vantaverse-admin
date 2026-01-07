@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Blurhash } from 'react-blurhash';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
@@ -100,11 +101,14 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
                   <>
                     {/* Blurhash placeholder */}
                     {!photoLoaded && pledge.photo.blur_hash && (
-                      <div
-                        className="absolute inset-0 bg-gray-200"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect fill='%23e5e7eb' width='400' height='300'/%3E%3C/svg%3E")`,
-                        }}
+                      <Blurhash
+                        hash={pledge.photo.blur_hash}
+                        width="100%"
+                        height="100%"
+                        resolutionX={32}
+                        resolutionY={32}
+                        punch={1}
+                        className="absolute inset-0"
                       />
                     )}
                     <Image
@@ -132,28 +136,34 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
 
                 {/* Signature Overlay - Bottom Right */}
                 {pledge.signature?.image_url && (
-                  <>
-                    {!signatureLoaded && pledge.signature.blur_hash && (
-                      <div className="absolute bottom-6 right-6 w-48 h-20 bg-white/90 backdrop-blur-sm rounded z-10" />
-                    )}
-                    <div className="absolute bottom-6 right-6 z-10">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-                        <div className="relative w-48 h-20">
-                          <Image
-                            src={pledge.signature.image_url}
-                            alt="Signature"
-                            fill
-                            className={cn(
-                              'object-contain transition-opacity duration-300',
-                              signatureLoaded ? 'opacity-100' : 'opacity-0',
-                            )}
-                            onLoad={() => setSignatureLoaded(true)}
-                            priority
+                  <div className="absolute bottom-6 right-6 z-10">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+                      <div className="relative w-48 h-20">
+                        {!signatureLoaded && pledge.signature.blur_hash && (
+                          <Blurhash
+                            hash={pledge.signature.blur_hash}
+                            width={192}
+                            height={80}
+                            resolutionX={32}
+                            resolutionY={32}
+                            punch={1}
+                            className="absolute inset-0 rounded"
                           />
-                        </div>
+                        )}
+                        <Image
+                          src={pledge.signature.image_url}
+                          alt="Signature"
+                          fill
+                          className={cn(
+                            'object-contain transition-opacity duration-300',
+                            signatureLoaded ? 'opacity-100' : 'opacity-0',
+                          )}
+                          onLoad={() => setSignatureLoaded(true)}
+                          priority
+                        />
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </motion.div>
