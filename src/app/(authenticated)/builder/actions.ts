@@ -22,22 +22,6 @@ export async function getProgramAssignmentById(id: string) {
 }
 
 /**
- * Get all program templates (legacy - kept for backward compatibility if needed)
- */
-export async function getProgramTemplates() {
-  const query = new ProgramTemplatesQuery();
-  return query.getList();
-}
-
-/**
- * Get a single program template by ID (legacy - kept for backward compatibility if needed)
- */
-export async function getProgramTemplateById(id: string) {
-  const query = new ProgramTemplatesQuery();
-  return query.getById(id);
-}
-
-/**
  * Create a new program template and program assignment
  */
 export async function createProgramTemplate(

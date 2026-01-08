@@ -32,8 +32,6 @@ export const SIDEBAR_CONFIG = {
 // Header height
 export const HEADER_HEIGHT = 64; // h-16 = 64px
 
-export type NavLinkIcon = typeof LayoutDashboard;
-
 // Navigation links
 export const NAV_LINKS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
