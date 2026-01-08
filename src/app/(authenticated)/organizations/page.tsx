@@ -22,10 +22,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { OrganizationsTable } from './organizations-table';
 import { columns } from './columns';
 import { Card } from '@/components/ui/card';
-import { OrganizationsTableProvider } from './context';
+import { OrganizationsTableProvider } from '../../../context/organizations';
 import { AddMembersModal } from './add-members/add-members-modal';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import type { EditableField, EditableTeamField } from './context';
+import type {
+  EditableField,
+  EditableTeamField,
+} from '../../../context/organizations';
 import type { Team } from '@/lib/supabase/schemas/teams';
 
 const contentVariants = {

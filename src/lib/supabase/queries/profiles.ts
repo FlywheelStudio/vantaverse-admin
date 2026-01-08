@@ -655,6 +655,7 @@ export class ProfilesQuery extends SupabaseQuery {
         });
 
       if (authError || !authUser.user) {
+        console.error('Error creating auth user:', authError);
         return {
           success: false,
           error: authError?.message || 'Failed to create auth user',

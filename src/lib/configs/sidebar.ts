@@ -1,4 +1,13 @@
 // Sidebar configuration constants
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  Dumbbell,
+  Activity,
+  Calendar,
+  Settings,
+} from 'lucide-react';
 
 // Vantabuddy trigger position and dimensions
 export const VANTABUDDY_CONFIG = {
@@ -23,13 +32,15 @@ export const SIDEBAR_CONFIG = {
 // Header height
 export const HEADER_HEIGHT = 64; // h-16 = 64px
 
+export type NavLinkIcon = typeof LayoutDashboard;
+
 // Navigation links
 export const NAV_LINKS = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/organizations', label: 'Organizations', icon: '🏢' },
-  { href: '/users', label: 'Users', icon: '👥' },
-  { href: '/workouts', label: 'Programs', icon: '💪' },
-  { href: '/exercises', label: 'Exercises', icon: '🏋️' },
-  { href: '/schedules', label: 'Schedules', icon: '📅' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/users', label: 'Users', icon: Users },
+  { href: '/builder', label: 'Programs', icon: Dumbbell },
+  { href: '/exercises', label: 'Exercises', icon: Activity },
+  { href: '/schedules', label: 'Schedules', icon: Calendar },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;

@@ -110,6 +110,7 @@ export function Sidebar() {
                 {NAV_LINKS.map((link, index) => {
                   const isActive = pathname === link.href;
                   const isCollapsed = isMobile || !isExpanded;
+                  const Icon = link.icon;
 
                   return (
                     <motion.div
@@ -143,7 +144,7 @@ export function Sidebar() {
                         }`}
                         title={isCollapsed ? link.label : undefined}
                       >
-                        <span className="text-xl">{link.icon}</span>
+                        <Icon className="w-5 h-5" />
                         {!isMobile && isExpanded && (
                           <span className="font-medium">{link.label}</span>
                         )}

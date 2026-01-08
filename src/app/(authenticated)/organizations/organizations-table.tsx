@@ -30,7 +30,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import { useOrganizationsTable } from './context';
+import { useOrganizationsTable } from '../../../context/organizations';
 import { CreateRowImageCell } from './create-row-image-cell';
 import { TeamsExpandedRow } from './teams-expanded-row';
 
