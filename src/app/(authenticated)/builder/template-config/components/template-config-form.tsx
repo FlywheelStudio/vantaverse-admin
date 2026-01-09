@@ -22,7 +22,6 @@ export function TemplateConfigForm({
   onValueChange,
   onBlur,
 }: TemplateConfigFormProps) {
-  console.log('formData', formData);
   const currentRep =
     activeTab === 'all' ? formData.rep : formData.rep_override[currentSetIndex];
   const currentTime =

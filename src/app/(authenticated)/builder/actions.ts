@@ -7,6 +7,10 @@ import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-template
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createClient } from '@/lib/supabase/core/server';
+import { DatabaseSchedule, formatScheduleDB } from './workout-schedule/utils';
+import type { Group } from '@/lib/supabase/schemas/exercise-templates';
+import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 /**
  * Get all program assignments with status='template' (joined with program_template)
@@ -311,15 +315,82 @@ export async function upsertExerciseTemplate(data: {
   );
 
   if (error) {
+    console.error('Error calling upsert_exercise_template RPC:', error);
     return {
       success: false as const,
       error: error.message || 'Failed to upsert exercise template',
     };
   }
 
+  if (!result || result.success === false) {
+    const errorMessage =
+      result?.message || result?.error || 'Failed to upsert exercise template';
+    console.error('Error from upsert_exercise_template SQL function:', result);
+    return {
+      success: false as const,
+      error: errorMessage,
+    };
+  }
+
   return {
     success: true as const,
     data: result,
+  };
+}
+
+/**
+ * Upsert group via RPC function
+ * Returns either success with group data or error
+ */
+export async function upsertGroup(data: {
+  p_title: string;
+  p_exercise_template_ids?: string[];
+  p_is_superset?: boolean;
+  p_note?: string;
+}): Promise<
+  | {
+      success: true;
+      data: {
+        id: string;
+        group_hash: string;
+        cloned: boolean;
+        reference_count: number;
+        original_id?: string;
+      };
+    }
+  | { success: false; error: string }
+> {
+  const supabase = await createClient();
+
+  const { data: result, error } = await supabase.rpc('upsert_group', data);
+
+  if (error) {
+    console.error('Error calling upsert_group RPC:', error);
+    return {
+      success: false as const,
+      error: error.message || 'Failed to upsert group',
+    };
+  }
+
+  if (!result || result.success === false) {
+    const errorMessage =
+      result?.message || result?.error || 'Failed to upsert group';
+    console.error('Error from upsert_group SQL function:', result);
+    return {
+      success: false as const,
+      error: errorMessage,
+    };
+  }
+
+  return {
+    success: true as const,
+    data: {
+      id: result.id,
+      group_hash: result.group_hash,
+      cloned: result.cloned,
+      reference_count: result.reference_count,
+      original_id: result.original_id,
+    },
   };
 }
 
@@ -335,14 +406,17 @@ export async function getProgramAssignmentByTemplateId(templateId: string) {
  * Upsert workout schedule via RPC function
  */
 export async function upsertWorkoutSchedule(
-  schedule: unknown[][][],
+  schedule: DatabaseSchedule,
   isDraft: boolean = true,
   notes?: string,
 ) {
   const supabase = await createClient();
 
-  // Convert schedule to JSONB format
-  const scheduleJsonb = schedule as unknown;
+  // Convert DatabaseSchedule to 3D array format expected by normalize_schedule_structure
+  const schedule3D = formatScheduleDB(schedule);
+  const scheduleJsonb = schedule3D as unknown;
+
+  console.log('scheduleJsonb', JSON.stringify(scheduleJsonb, null, 2));
 
   const { data: result, error } = await supabase.rpc(
     'upsert_workout_schedule',
@@ -354,6 +428,7 @@ export async function upsertWorkoutSchedule(
   );
 
   if (error) {
+    console.error('Error calling upsert_workout_schedule RPC:', error);
     return {
       success: false as const,
       error: error.message || 'Failed to upsert workout schedule',
@@ -362,12 +437,17 @@ export async function upsertWorkoutSchedule(
 
   if (!result || (result as { success?: boolean }).success === false) {
     const errorResult = result as { error?: string; message?: string };
+    const errorMessage =
+      errorResult.message ||
+      errorResult.error ||
+      'Failed to upsert workout schedule';
+    console.error(
+      'Error from upsert_workout_schedule SQL function:',
+      errorResult,
+    );
     return {
       success: false as const,
-      error:
-        errorResult.error ||
-        errorResult.message ||
-        'Failed to upsert workout schedule',
+      error: errorMessage,
     };
   }
 
@@ -552,14 +632,6 @@ export async function convertScheduleToSelectedItems(
   const templatesMap = templatesResult.data;
   const groupsMap = groupsResult.data;
 
-  // Import types
-  type SelectedItem =
-    | { type: 'template'; data: unknown }
-    | {
-        type: 'group';
-        data: { name: string; isSuperset: boolean; items: unknown[] };
-      };
-
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];
 
@@ -575,14 +647,16 @@ export async function convertScheduleToSelectedItems(
           if (template) {
             convertedDay.push({
               type: 'template',
-              data: template,
+              data: template as ExerciseTemplate,
             });
           }
         } else if (exercise.type === 'group') {
           const group = groupsMap.get(exercise.id);
           if (group) {
             // Fetch exercise templates for this group
-            const groupTemplates: SelectedItem[] = [];
+            const groupTemplates: Array<
+              Extract<SelectedItem, { type: 'template' }>
+            > = [];
             if (
               group.exercise_template_ids &&
               group.exercise_template_ids.length > 0
@@ -592,20 +666,23 @@ export async function convertScheduleToSelectedItems(
                 if (template) {
                   groupTemplates.push({
                     type: 'template',
-                    data: template,
+                    data: template as ExerciseTemplate,
                   });
                 }
               }
             }
 
-            convertedDay.push({
+            const groupData: Group = {
+              id: group.id,
+              name: group.title,
+              isSuperset: group.is_superset || false,
+              items: groupTemplates,
+            };
+            const selectedItem: SelectedItem = {
               type: 'group',
-              data: {
-                name: group.title,
-                isSuperset: group.is_superset || false,
-                items: groupTemplates,
-              },
-            });
+              data: groupData,
+            };
+            convertedDay.push(selectedItem);
           }
         }
       }

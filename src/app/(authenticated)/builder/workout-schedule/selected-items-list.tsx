@@ -142,11 +142,37 @@ export function SelectedItemsList({
           // Revert optimistic update on error
           onUpdate(modalState.itemIndex, previousItem);
           toast.error(result.error || 'Failed to save exercise template');
+          return;
         }
-        // On success, do nothing (already optimistically updated)
+
+        // Extract ID and template_hash from the SQL function response
+        // The response structure is: { success: true, id: UUID, template_hash: TEXT, ... }
+        const responseData = result.data as {
+          id: string;
+          template_hash: string;
+          cloned?: boolean;
+          original_id?: string;
+          reference_count?: number;
+        };
+
+        // Update with the returned template data (includes ID from database)
+        const updatedTemplate: ExerciseTemplate = {
+          ...optimisticTemplate,
+          id: responseData.id,
+          template_hash: responseData.template_hash,
+        };
+
+        const updatedItem: SelectedItem = {
+          type: 'template',
+          data: updatedTemplate,
+        };
+
+        // Update with the actual saved template (with correct ID)
+        onUpdate(modalState.itemIndex, updatedItem);
       } catch (error) {
         // Revert optimistic update on exception
         onUpdate(modalState.itemIndex, previousItem);
+        console.error('Error saving exercise template:', error);
         toast.error(
           error instanceof Error
             ? error.message

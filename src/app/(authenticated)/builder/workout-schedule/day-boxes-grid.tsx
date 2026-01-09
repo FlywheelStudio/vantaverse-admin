@@ -9,7 +9,9 @@ import { useBuilder } from '@/context/builder-context';
 import {
   upsertWorkoutSchedule,
   updateProgramAssignmentWorkoutSchedule,
+  upsertGroup,
 } from '@/app/(authenticated)/builder/actions';
+import { convertSelectedItemsToDatabaseSchedule } from './utils';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { getDayOfWeek } from '@/lib/utils';
@@ -85,20 +87,52 @@ export function DayBoxesGrid() {
       setScheduleItem(week, day, items);
 
       // Create updated schedule array
+      // Ensure week 0 exists (database expects 1-indexed weeks, but arrays are 0-indexed)
       const updatedSchedule = [...schedule];
+      if (updatedSchedule.length === 0) {
+        updatedSchedule.push(Array.from({ length: 7 }, () => []));
+      }
       while (updatedSchedule.length <= week) {
         updatedSchedule.push(Array.from({ length: 7 }, () => []));
       }
-      while (updatedSchedule[week].length <= day) {
-        updatedSchedule[week].push([]);
+      // Ensure each week has all 7 days
+      for (let w = 0; w < updatedSchedule.length; w++) {
+        while (updatedSchedule[w].length < 7) {
+          updatedSchedule[w].push([]);
+        }
       }
       updatedSchedule[week] = [...updatedSchedule[week]];
       updatedSchedule[week][day] = items;
 
+      // Convert to database format (upserts groups without IDs)
+      const conversionResult = await convertSelectedItemsToDatabaseSchedule(
+        updatedSchedule,
+        upsertGroup,
+      );
+
+      if (!conversionResult.success) {
+        console.error('Error converting schedule:', conversionResult.error);
+        toast.error(conversionResult.error || 'Failed to convert schedule');
+        return;
+      }
+
+      // Update context with IDs (from the updated schedule returned by conversion)
+      for (let w = 0; w < conversionResult.updatedSchedule.length; w++) {
+        const week = conversionResult.updatedSchedule[w];
+        if (!week) continue;
+        for (let d = 0; d < week.length; d++) {
+          const day = week[d];
+          if (day && day.length > 0) {
+            setScheduleItem(w, d, day);
+          }
+        }
+      }
+
       // Save to database
-      const result = await upsertWorkoutSchedule(updatedSchedule, true);
+      const result = await upsertWorkoutSchedule(conversionResult.data, true);
 
       if (!result.success) {
+        console.error('Error saving workout schedule:', result.error);
         toast.error(result.error || 'Failed to save draft');
         return;
       }
@@ -111,11 +145,13 @@ export function DayBoxesGrid() {
       );
 
       if (!updateResult.success) {
+        console.error('Error updating program assignment:', updateResult.error);
         toast.error(
           updateResult.error || 'Failed to update program assignment',
         );
       }
-    } catch {
+    } catch (error) {
+      console.error('Error saving draft:', error);
       toast.error('An unexpected error occurred');
     }
   };
@@ -173,7 +209,7 @@ export function DayBoxesGrid() {
     <>
       <div className="mt-6 overflow-x-auto slim-scrollbar">
         <div className="flex gap-4">
-          {days.map((day) => {
+          {days.map((day, index) => {
             const items = dayItems(day);
             const hasItems = items.length > 0;
             const templateCount = items.filter(
@@ -215,7 +251,7 @@ export function DayBoxesGrid() {
                       className="w-full h-full flex flex-col items-center justify-center gap-1"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: 0.1 }}
+                      transition={{ duration: 0.3, delay: 0.1 * index }}
                     >
                       {totalExerciseCount > 0 && (
                         <motion.p
@@ -223,7 +259,7 @@ export function DayBoxesGrid() {
                           className="cursor-default text-sm text-gray-600"
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: 0.2 }}
+                          transition={{ duration: 0.3, delay: 0.1 * index }}
                         >
                           {totalExerciseCount} exercise
                           {totalExerciseCount !== 1 ? 's' : ''}
@@ -235,7 +271,10 @@ export function DayBoxesGrid() {
                           className="cursor-default text-sm text-gray-600"
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: 0.25 }}
+                          transition={{
+                            duration: 0.3,
+                            delay: 0.1 * index,
+                          }}
                         >
                           {groupCount} group{groupCount !== 1 ? 's' : ''}
                         </motion.p>
@@ -247,7 +286,7 @@ export function DayBoxesGrid() {
                       className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: 0.15 }}
+                      transition={{ duration: 0.3, delay: 0.1 * index }}
                     >
                       Rest Day
                     </motion.p>

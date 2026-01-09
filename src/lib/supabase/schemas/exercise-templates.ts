@@ -28,6 +28,7 @@ export const exerciseTemplateSchema = z.object({
 
 export type ExerciseTemplate = z.infer<typeof exerciseTemplateSchema>;
 export type Group = {
+  id?: string;
   name: string;
   isSuperset: boolean;
   items: SelectedItem[];

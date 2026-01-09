@@ -330,7 +330,7 @@ export function ExerciseBuilderModal({
           </div>
 
           {/* Right Panel - Selected Items */}
-          <div className="w-1/3 flex flex-col overflow-y-auto px-6">
+          <div className="w-1/3 flex flex-col overflow-y-auto px-6 slim-scrollbar">
             <h4 className="font-semibold mb-4">Selected Items</h4>
             {!showGroupInput ? (
               <button

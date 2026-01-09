@@ -2204,7 +2204,20 @@ export type Database = {
           p_weight?: string;
           p_weight_override?: string[];
         };
-        Returns: Json;
+        Returns:
+          | {
+              success: true;
+              id: string;
+              template_hash: string;
+              cloned: boolean;
+              reference_count: number;
+              original_id?: string;
+            }
+          | {
+              success: false;
+              error: string;
+              message: string;
+            };
       };
       upsert_group: {
         Args: {
@@ -2213,7 +2226,20 @@ export type Database = {
           p_note?: string;
           p_title: string;
         };
-        Returns: Json;
+        Returns:
+          | {
+              success: true;
+              id: string;
+              group_hash: string;
+              cloned: boolean;
+              reference_count: number;
+              original_id?: string;
+            }
+          | {
+              success: false;
+              error: string;
+              message: string;
+            };
       };
       upsert_workout_schedule: {
         Args: { p_is_draft?: boolean; p_notes?: string; p_schedule: Json };
