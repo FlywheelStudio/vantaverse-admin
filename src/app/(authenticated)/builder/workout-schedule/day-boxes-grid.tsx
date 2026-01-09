@@ -11,6 +11,8 @@ import {
   updateProgramAssignmentWorkoutSchedule,
 } from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { getDayOfWeek } from '@/lib/utils';
 
 export function DayBoxesGrid() {
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
@@ -162,32 +164,93 @@ export function DayBoxesGrid() {
     setModalOpen(open);
   };
 
-  const dayItems = (day: number) => getDayItems(currentWeek, day - 1);
+  const dayItems = useMemo(
+    () => (day: number) => getDayItems(currentWeek, day - 1),
+    [currentWeek, getDayItems],
+  );
 
   return (
     <>
-      <div className="mt-6 overflow-x-auto scrollbar-hide">
+      <div className="mt-6 overflow-x-auto slim-scrollbar">
         <div className="flex gap-4">
           {days.map((day) => {
             const items = dayItems(day);
             const hasItems = items.length > 0;
+            const templateCount = items.filter(
+              (item) => item.type === 'template',
+            ).length;
+            const exerciseCount = items.filter(
+              (item) => item.type === 'exercise',
+            ).length;
+            const totalExerciseCount = templateCount + exerciseCount;
+            const groupCount = items.filter(
+              (item) => item.type === 'group',
+            ).length;
+            const dayDate = calculateDayDate(
+              programStartDate,
+              currentWeek,
+              day,
+            );
+            const formattedDate = dayDate
+              ? dayDate.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : null;
 
             return (
               <div key={day} className="flex flex-col flex-1 min-w-[160px]">
-                <h3 className="text-base font-semibold text-[#1E3A5F] mb-3 text-center">
-                  Day {day}
+                <h3 className="text-base font-semibold text-[#1E3A5F] mb-1 text-center">
+                  {getDayOfWeek(day)}
                 </h3>
+                {formattedDate && (
+                  <p className="text-xs text-gray-500 mb-3 text-center">
+                    {formattedDate}
+                  </p>
+                )}
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
                   {hasItems ? (
-                    <div className="w-full">
-                      <p className="text-sm text-gray-600 mb-2">
-                        {items.length} item{items.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
+                    <motion.div
+                      key={`week-${currentWeek}-day-${day}-items`}
+                      className="w-full h-full flex flex-col items-center justify-center gap-1"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                      {totalExerciseCount > 0 && (
+                        <motion.p
+                          key={`week-${currentWeek}-day-${day}-exercises`}
+                          className="cursor-default text-sm text-gray-600"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: 0.2 }}
+                        >
+                          {totalExerciseCount} exercise
+                          {totalExerciseCount !== 1 ? 's' : ''}
+                        </motion.p>
+                      )}
+                      {groupCount > 0 && (
+                        <motion.p
+                          key={`week-${currentWeek}-day-${day}-groups`}
+                          className="cursor-default text-sm text-gray-600"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: 0.25 }}
+                        >
+                          {groupCount} group{groupCount !== 1 ? 's' : ''}
+                        </motion.p>
+                      )}
+                    </motion.div>
                   ) : (
-                    <p className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default">
+                    <motion.p
+                      key={`week-${currentWeek}-day-${day}-rest`}
+                      className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.15 }}
+                    >
                       Rest Day
-                    </p>
+                    </motion.p>
                   )}
                   <Button
                     variant="outline"

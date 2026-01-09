@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import { useBuilder } from '@/context/builder-context';
 import { useProgramTemplate } from '@/hooks/use-program-template';
 import { ProgramDetailsSection } from '../program/ui';
@@ -14,6 +14,14 @@ export function WorkoutBuilder() {
   const { selectedTemplateId, clearSelectedTemplate, initializeSchedule } =
     useBuilder();
   const { data: template, isLoading } = useProgramTemplate(selectedTemplateId);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure component only renders after hydration
+  useEffect(() => {
+    startTransition(() => {
+      setIsMounted(true);
+    });
+  }, []);
 
   // Initialize schedule when template loads
   useEffect(() => {
@@ -22,9 +30,23 @@ export function WorkoutBuilder() {
     }
   }, [template, initializeSchedule]);
 
+  if (!isMounted) {
+    return (
+      <div
+        suppressHydrationWarning
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+      >
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center">
+      <div
+        suppressHydrationWarning
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+      >
         <p className="text-gray-500">Loading...</p>
       </div>
     );
@@ -32,14 +54,20 @@ export function WorkoutBuilder() {
 
   if (!template) {
     return (
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center">
+      <div
+        suppressHydrationWarning
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+      >
         <p className="text-gray-500">Template not found</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
+    <div
+      suppressHydrationWarning
+      className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background"
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

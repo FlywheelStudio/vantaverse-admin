@@ -8,7 +8,12 @@ import React, {
   useCallback,
 } from 'react';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
-import { getProgramAssignmentByTemplateId } from '@/app/(authenticated)/builder/actions';
+import {
+  getProgramAssignmentByTemplateId,
+  getWorkoutScheduleData,
+  convertScheduleToSelectedItems,
+} from '@/app/(authenticated)/builder/actions';
+import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
 
 interface BuilderContextValue {
   selectedTemplateId: string | null;
@@ -105,6 +110,8 @@ export function BuilderContextProvider({
 
   // Initialize as hydrated if on client, false on server
   const [isHydrated] = useState(() => typeof window !== 'undefined');
+  const isLoadingScheduleRef = React.useRef(false);
+  const hasLoadedScheduleRef = React.useRef(false);
 
   // Fetch program assignment when template ID changes
   useEffect(() => {
@@ -117,14 +124,21 @@ export function BuilderContextProvider({
               PROGRAM_ASSIGNMENT_STORAGE_KEY,
               result.data.id,
             );
+            // Reset schedule loading refs when assignment changes
+            isLoadingScheduleRef.current = false;
+            hasLoadedScheduleRef.current = false;
           } else {
             setProgramAssignmentIdState(null);
             sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
+            isLoadingScheduleRef.current = false;
+            hasLoadedScheduleRef.current = false;
           }
         })
         .catch(() => {
           setProgramAssignmentIdState(null);
           sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
+          isLoadingScheduleRef.current = false;
+          hasLoadedScheduleRef.current = false;
         });
     } else {
       if (typeof window !== 'undefined') {
@@ -133,14 +147,105 @@ export function BuilderContextProvider({
       setTimeout(() => {
         setProgramAssignmentIdState(null);
       }, 0);
+      isLoadingScheduleRef.current = false;
+      hasLoadedScheduleRef.current = false;
     }
   }, [selectedTemplateId]);
+
+  // Load schedule from database on page load if programAssignmentId exists
+  useEffect(() => {
+    if (
+      !programAssignmentId ||
+      !isHydrated ||
+      isLoadingScheduleRef.current ||
+      typeof window === 'undefined' ||
+      hasLoadedScheduleRef.current
+    ) {
+      return;
+    }
+
+    // Always load from database when programAssignmentId exists
+    isLoadingScheduleRef.current = true;
+
+    getWorkoutScheduleData(programAssignmentId)
+      .then((result) => {
+        if (!result.success) {
+          console.error('Failed to load workout schedule:', result.error);
+          isLoadingScheduleRef.current = false;
+          hasLoadedScheduleRef.current = true;
+          return;
+        }
+
+        const { schedule: dbSchedule, patientOverride } = result.data;
+
+        // Handle null schedule - mark as loaded even if empty
+        if (!dbSchedule && !patientOverride) {
+          isLoadingScheduleRef.current = false;
+          hasLoadedScheduleRef.current = true;
+          return;
+        }
+
+        // Type assertion for schedule data
+        type DatabaseScheduleDay = {
+          exercises: Array<{ id: string; type: 'exercise_template' | 'group' }>;
+        };
+        type DatabaseSchedule = DatabaseScheduleDay[][];
+
+        // Merge schedule with patient override
+        const mergedSchedule = mergeScheduleWithOverride(
+          (dbSchedule as DatabaseSchedule) || null,
+          (patientOverride as DatabaseSchedule) || null,
+        );
+
+        // If merged schedule is empty, mark as loaded and return
+        if (!mergedSchedule || mergedSchedule.length === 0) {
+          isLoadingScheduleRef.current = false;
+          hasLoadedScheduleRef.current = true;
+          return;
+        }
+
+        // Convert to SelectedItem format using server action
+        convertScheduleToSelectedItems(mergedSchedule)
+          .then((result) => {
+            if (!result.success) {
+              console.error('Failed to convert schedule:', result.error);
+              isLoadingScheduleRef.current = false;
+              hasLoadedScheduleRef.current = true;
+              return;
+            }
+
+            const convertedSchedule = result.data as SelectedItem[][][];
+            setScheduleState(convertedSchedule);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem(
+                SCHEDULE_STORAGE_KEY,
+                JSON.stringify(convertedSchedule),
+              );
+            }
+            isLoadingScheduleRef.current = false;
+            hasLoadedScheduleRef.current = true;
+          })
+          .catch((error) => {
+            console.error('Failed to convert schedule:', error);
+            isLoadingScheduleRef.current = false;
+            hasLoadedScheduleRef.current = true;
+          });
+      })
+      .catch((error) => {
+        console.error('Failed to load workout schedule:', error);
+        isLoadingScheduleRef.current = false;
+        hasLoadedScheduleRef.current = true;
+      });
+  }, [programAssignmentId, isHydrated]);
 
   const setSelectedTemplateId = (id: string | null) => {
     setSelectedTemplateIdState(id);
     if (typeof window !== 'undefined') {
       if (id) {
         sessionStorage.setItem(STORAGE_KEY, id);
+        // Reset schedule loading refs when template changes
+        isLoadingScheduleRef.current = false;
+        hasLoadedScheduleRef.current = false;
       } else {
         sessionStorage.removeItem(STORAGE_KEY);
         sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
@@ -151,6 +256,8 @@ export function BuilderContextProvider({
         setCurrentWeekState(0);
         setProgramAssignmentIdState(null);
         setProgramStartDateState(null);
+        isLoadingScheduleRef.current = false;
+        hasLoadedScheduleRef.current = false;
       }
     }
   };

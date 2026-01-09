@@ -140,4 +140,136 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       },
     };
   }
+
+  /**
+   * Get exercise template by ID
+   * @param id - The exercise template ID
+   * @returns Success with exercise template or error
+   */
+  public async getById(
+    id: string,
+  ): Promise<SupabaseSuccess<ExerciseTemplate> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('exercise_templates')
+      .select(
+        `
+        *,
+        exercises!exercise_templates_exercise_id_fkey (
+          exercise_name,
+          video_type,
+          video_url
+        )
+      `,
+      )
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get exercise template',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'Exercise template not found',
+      };
+    }
+
+    // Transform data to include exercise_name, video_type, video_url
+    const exercise = Array.isArray(data.exercises)
+      ? data.exercises[0]
+      : data.exercises;
+    const transformedData = {
+      ...data,
+      exercise_name: exercise?.exercise_name || '',
+      video_type: exercise?.video_type || undefined,
+      video_url: exercise?.video_url || undefined,
+    };
+
+    const result = exerciseTemplateSchema.safeParse(transformedData);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  }
+
+  /**
+   * Get multiple exercise templates by IDs
+   * @param ids - Array of exercise template IDs
+   * @returns Success with exercise templates map or error
+   */
+  public async getByIds(
+    ids: string[],
+  ): Promise<SupabaseSuccess<Map<string, ExerciseTemplate>> | SupabaseError> {
+    if (ids.length === 0) {
+      return {
+        success: true,
+        data: new Map(),
+      };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('exercise_templates')
+      .select(
+        `
+        *,
+        exercises!exercise_templates_exercise_id_fkey (
+          exercise_name,
+          video_type,
+          video_url
+        )
+      `,
+      )
+      .in('id', ids);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get exercise templates',
+      );
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        success: true,
+        data: new Map(),
+      };
+    }
+
+    // Transform data and create map
+    const templatesMap = new Map<string, ExerciseTemplate>();
+    for (const item of data) {
+      const exercise = Array.isArray(item.exercises)
+        ? item.exercises[0]
+        : item.exercises;
+      const transformedData = {
+        ...item,
+        exercise_name: exercise?.exercise_name || '',
+        video_type: exercise?.video_type || undefined,
+        video_url: exercise?.video_url || undefined,
+      };
+
+      const result = exerciseTemplateSchema.safeParse(transformedData);
+      if (result.success) {
+        templatesMap.set(item.id, result.data);
+      }
+    }
+
+    return {
+      success: true,
+      data: templatesMap,
+    };
+  }
 }

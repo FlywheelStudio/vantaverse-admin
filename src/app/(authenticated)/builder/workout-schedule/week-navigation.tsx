@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import type { MouseEvent } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -51,22 +52,69 @@ function DraggableWeekButton({
     isDragging,
   } = useSortable({ id: week.id });
 
+  const hasDraggedRef = useRef(false);
+  const pointerDownRef = useRef(false);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
+  useEffect(() => {
+    if (isDragging) {
+      hasDraggedRef.current = true;
+    } else {
+      // Reset after drag ends
+      setTimeout(() => {
+        hasDraggedRef.current = false;
+        pointerDownRef.current = false;
+      }, 0);
+    }
+  }, [isDragging]);
+
+  const handleClick = (e: MouseEvent) => {
+    // Only handle click if no drag occurred
+    if (!hasDraggedRef.current && !isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }
+    hasDraggedRef.current = false;
+  };
+
+  const handleMouseUp = (e: MouseEvent) => {
+    // Handle click on mouse up if no drag occurred
+    if (!hasDraggedRef.current && !isDragging && pointerDownRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }
+    pointerDownRef.current = false;
+    hasDraggedRef.current = false;
+  };
+
+  const handlePointerDown = () => {
+    pointerDownRef.current = true;
+    hasDraggedRef.current = false;
+  };
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onPointerDown={handlePointerDown}
+    >
       <Button
         variant={isDragging ? 'outline' : isCurrent ? 'default' : 'outline'}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
+        onClick={handleClick}
+        onMouseUp={handleMouseUp}
         className={`min-w-[100px] ${
-          isDragging ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
+          isDragging
+            ? 'cursor-grabbing'
+            : 'cursor-pointer active:cursor-grabbing'
         } ${
           !isDragging && isCurrent
             ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white'
@@ -103,7 +151,11 @@ export function WeekNavigation({
   }, [currentWeek, weeks.length, setCurrentWeek]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),

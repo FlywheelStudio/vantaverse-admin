@@ -13,3 +13,15 @@ export function formatDate(
     new Date(date),
   );
 }
+
+export function getDayOfWeek(day_index: number) {
+  return [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ][day_index - 1];
+}

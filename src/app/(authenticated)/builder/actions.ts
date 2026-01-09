@@ -4,6 +4,7 @@ import { ProgramTemplatesQuery } from '@/lib/supabase/queries/program-templates'
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { ExercisesQuery } from '@/lib/supabase/queries/exercises';
 import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
+import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createClient } from '@/lib/supabase/core/server';
 
@@ -377,6 +378,63 @@ export async function upsertWorkoutSchedule(
 }
 
 /**
+ * Get workout schedule data for a program assignment
+ * Fetches program_assignment with patient_override and workout_schedules.schedule
+ */
+export async function getWorkoutScheduleData(programAssignmentId: string) {
+  const supabase = await createClient();
+
+  // Fetch program assignment with workout_schedule_id and patient_override
+  const { data: assignment, error: assignmentError } = await supabase
+    .from('program_assignment')
+    .select('workout_schedule_id, patient_override')
+    .eq('id', programAssignmentId)
+    .single();
+
+  if (assignmentError) {
+    return {
+      success: false as const,
+      error: assignmentError.message || 'Failed to fetch program assignment',
+    };
+  }
+
+  if (!assignment) {
+    return {
+      success: false as const,
+      error: 'Program assignment not found',
+    };
+  }
+
+  let schedule = null;
+
+  // If workout_schedule_id exists, fetch the schedule
+  if (assignment.workout_schedule_id) {
+    const { data: workoutSchedule, error: scheduleError } = await supabase
+      .from('workout_schedules')
+      .select('schedule')
+      .eq('id', assignment.workout_schedule_id)
+      .single();
+
+    if (scheduleError) {
+      return {
+        success: false as const,
+        error: scheduleError.message || 'Failed to fetch workout schedule',
+      };
+    }
+
+    schedule = workoutSchedule?.schedule || null;
+  }
+
+  return {
+    success: true as const,
+    data: {
+      schedule: schedule as unknown,
+      patientOverride: assignment.patient_override as unknown,
+    },
+  };
+}
+
+/**
  * Update program assignment workout schedule ID (only if currently null)
  */
 export async function updateProgramAssignmentWorkoutSchedule(
@@ -422,5 +480,144 @@ export async function updateProgramAssignmentWorkoutSchedule(
   return {
     success: true as const,
     data: undefined,
+  };
+}
+
+/**
+ * Convert database schedule format to SelectedItem[][][] format
+ * Server action version that uses server-side query classes
+ */
+export async function convertScheduleToSelectedItems(
+  schedule: unknown,
+): Promise<
+  { success: true; data: unknown } | { success: false; error: string }
+> {
+  type DatabaseScheduleDay = {
+    exercises: Array<{ id: string; type: 'exercise_template' | 'group' }>;
+  };
+  type DatabaseSchedule = DatabaseScheduleDay[][];
+
+  const dbSchedule = schedule as DatabaseSchedule | null;
+
+  if (!dbSchedule || dbSchedule.length === 0) {
+    return {
+      success: true as const,
+      data: [],
+    };
+  }
+
+  // Extract all IDs from schedule
+  const exerciseTemplateIds = new Set<string>();
+  const groupIds = new Set<string>();
+
+  for (const week of dbSchedule) {
+    for (const day of week) {
+      for (const exercise of day.exercises) {
+        if (exercise.type === 'exercise_template') {
+          exerciseTemplateIds.add(exercise.id);
+        } else if (exercise.type === 'group') {
+          groupIds.add(exercise.id);
+        }
+      }
+    }
+  }
+
+  // Fetch all exercise templates and groups in parallel
+  const templatesQuery = new ExerciseTemplatesQuery();
+  const groupsQuery = new GroupsQuery();
+
+  const [templatesResult, groupsResult] = await Promise.all([
+    exerciseTemplateIds.size > 0
+      ? templatesQuery.getByIds(Array.from(exerciseTemplateIds))
+      : Promise.resolve({ success: true as const, data: new Map() }),
+    groupIds.size > 0
+      ? groupsQuery.getByIds(Array.from(groupIds))
+      : Promise.resolve({ success: true as const, data: new Map() }),
+  ]);
+
+  if (!templatesResult.success) {
+    return {
+      success: false as const,
+      error: templatesResult.error || 'Failed to fetch exercise templates',
+    };
+  }
+
+  if (!groupsResult.success) {
+    return {
+      success: false as const,
+      error: groupsResult.error || 'Failed to fetch groups',
+    };
+  }
+
+  const templatesMap = templatesResult.data;
+  const groupsMap = groupsResult.data;
+
+  // Import types
+  type SelectedItem =
+    | { type: 'template'; data: unknown }
+    | {
+        type: 'group';
+        data: { name: string; isSuperset: boolean; items: unknown[] };
+      };
+
+  // Convert schedule to SelectedItem format
+  const convertedSchedule: SelectedItem[][][] = [];
+
+  for (const week of dbSchedule) {
+    const convertedWeek: SelectedItem[][] = [];
+
+    for (const day of week) {
+      const convertedDay: SelectedItem[] = [];
+
+      for (const exercise of day.exercises) {
+        if (exercise.type === 'exercise_template') {
+          const template = templatesMap.get(exercise.id);
+          if (template) {
+            convertedDay.push({
+              type: 'template',
+              data: template,
+            });
+          }
+        } else if (exercise.type === 'group') {
+          const group = groupsMap.get(exercise.id);
+          if (group) {
+            // Fetch exercise templates for this group
+            const groupTemplates: SelectedItem[] = [];
+            if (
+              group.exercise_template_ids &&
+              group.exercise_template_ids.length > 0
+            ) {
+              for (const templateId of group.exercise_template_ids) {
+                const template = templatesMap.get(templateId);
+                if (template) {
+                  groupTemplates.push({
+                    type: 'template',
+                    data: template,
+                  });
+                }
+              }
+            }
+
+            convertedDay.push({
+              type: 'group',
+              data: {
+                name: group.title,
+                isSuperset: group.is_superset || false,
+                items: groupTemplates,
+              },
+            });
+          }
+        }
+      }
+
+      convertedWeek.push(convertedDay);
+    }
+
+    convertedSchedule.push(convertedWeek);
+  }
+
+  return {
+    success: true as const,
+    data: convertedSchedule,
   };
 }
