@@ -1,7 +1,7 @@
 /**
  * Database schedule format: {exercises: [{id: string, type: "exercise_template" | "group"}]}[][]
  */
-export type DatabaseScheduleDay = {
+type DatabaseScheduleDay = {
   exercises: Array<{ id: string; type: 'exercise_template' | 'group' }>;
 };
 
