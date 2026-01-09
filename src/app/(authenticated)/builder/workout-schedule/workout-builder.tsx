@@ -2,8 +2,8 @@
 
 import { useBuilder } from '@/context/builder-context';
 import { useProgramTemplate } from '@/hooks/use-program-template';
-import { ProgramDetailsSection } from '../program/program-details-section';
-import { BuildWorkoutSection } from '../workout-schedule/build-workout-section';
+import { ProgramDetailsSection } from '../program/ui';
+import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

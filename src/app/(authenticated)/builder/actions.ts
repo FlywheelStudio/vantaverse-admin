@@ -2,6 +2,8 @@
 
 import { ProgramTemplatesQuery } from '@/lib/supabase/queries/program-templates';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { ExercisesQuery } from '@/lib/supabase/queries/exercises';
+import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createClient } from '@/lib/supabase/core/server';
 
@@ -251,4 +253,71 @@ export async function updateProgramTemplateImage(
 ) {
   const query = new ProgramTemplatesQuery();
   return query.update(templateId, { image_url: imageUrl as unknown });
+}
+
+/**
+ * Get paginated exercises with search and sort
+ */
+export async function getExercisesPaginated(
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  sortBy: string = 'updated_at',
+  sortOrder: 'asc' | 'desc' = 'desc',
+) {
+  const query = new ExercisesQuery();
+  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+}
+
+/**
+ * Get paginated exercise templates with search and sort
+ */
+export async function getExerciseTemplatesPaginated(
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  sortBy: string = 'updated_at',
+  sortOrder: 'asc' | 'desc' = 'desc',
+) {
+  const query = new ExerciseTemplatesQuery();
+  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+}
+
+/**
+ * Upsert exercise template via RPC function
+ */
+export async function upsertExerciseTemplate(data: {
+  p_exercise_id: number;
+  p_sets?: number;
+  p_rep?: number;
+  p_time?: number;
+  p_distance?: string;
+  p_weight?: string;
+  p_rest_time?: number;
+  p_rep_override?: number[];
+  p_time_override?: number[];
+  p_distance_override?: string[];
+  p_weight_override?: string[];
+  p_rest_time_override?: number[];
+  p_equipment_ids?: number[];
+  p_notes?: string;
+}) {
+  const supabase = await createClient();
+
+  const { data: result, error } = await supabase.rpc(
+    'upsert_exercise_template',
+    data,
+  );
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message || 'Failed to upsert exercise template',
+    };
+  }
+
+  return {
+    success: true as const,
+    data: result,
+  };
 }

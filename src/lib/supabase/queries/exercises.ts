@@ -4,6 +4,7 @@ import {
   type SupabaseError,
 } from '../query';
 import { exerciseSchema, type Exercise } from '../schemas/exercises';
+import type { PaginatedResult } from './exercise-templates';
 
 export class ExercisesQuery extends SupabaseQuery {
   /**
@@ -135,6 +136,82 @@ export class ExercisesQuery extends SupabaseQuery {
     return {
       success: true,
       data: result.data,
+    };
+  }
+
+  /**
+   * Get paginated exercises with search and sort
+   * @param page - Page number (1-indexed)
+   * @param pageSize - Number of items per page
+   * @param search - Search term for exercise name
+   * @param sortBy - Sort field (default: 'updated_at')
+   * @param sortOrder - Sort order ('asc' or 'desc', default: 'desc')
+   * @returns Success with paginated data or error
+   */
+  public async getListPaginated(
+    page: number = 1,
+    pageSize: number = 20,
+    search?: string,
+    sortBy: string = 'updated_at',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<SupabaseSuccess<PaginatedResult<Exercise>> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    let query = supabase
+      .from('exercises')
+      .select('*', { count: 'exact' })
+      .not('video_url', 'is', null);
+
+    // Apply search filter if provided
+    if (search) {
+      query = query.ilike('exercise_name', `%${search}%`);
+    }
+
+    // Apply sorting
+    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return this.parseResponsePostgresError(error, 'Failed to get exercises');
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: {
+          data: [],
+          page,
+          pageSize,
+          total: 0,
+          hasMore: false,
+        },
+      };
+    }
+
+    const result = exerciseSchema.array().safeParse(data);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    const total = count || 0;
+    const hasMore = from + result.data.length < total;
+
+    return {
+      success: true,
+      data: {
+        data: result.data,
+        page,
+        pageSize,
+        total,
+        hasMore,
+      },
     };
   }
 }
