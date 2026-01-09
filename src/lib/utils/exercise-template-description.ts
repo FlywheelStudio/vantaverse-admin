@@ -43,34 +43,60 @@ export function generateExerciseTemplateDescription(
 
   const parts: string[] = [`${sets} set${sets !== 1 ? 's' : ''}`];
 
-  const setDescriptions: string[] = [];
+  // Check if all sets are the same (no overrides or all overrides are identical)
+  const hasOverrides =
+    template.rep_override?.length ||
+    template.time_override?.length ||
+    template.distance_override?.length ||
+    template.weight_override?.length ||
+    template.rest_time_override?.length;
 
-  for (let i = 0; i < sets; i++) {
-    const setParts: string[] = [`Set ${i + 1}`];
+  let allSetsSame = !hasOverrides;
 
-    // Get values for this set (using override if available)
-    const reps = getSetValue(template.rep, template.rep_override, i) as
-      | number
-      | null;
-    const time = getSetValue(template.time, template.time_override, i) as
-      | number
-      | null;
-    const distance = getSetValue(
-      template.distance,
-      template.distance_override,
-      i,
-    ) as string | null;
-    const weight = getSetValue(template.weight, template.weight_override, i) as
-      | string
-      | null;
-    const restTime = getSetValue(
-      template.rest_time,
-      template.rest_time_override,
-      i,
-    ) as number | null;
+  if (hasOverrides) {
+    // Check if all sets have the same values
+    const firstSetValues = {
+      reps: getSetValue(template.rep, template.rep_override, 0),
+      time: getSetValue(template.time, template.time_override, 0),
+      distance: getSetValue(template.distance, template.distance_override, 0),
+      weight: getSetValue(template.weight, template.weight_override, 0),
+      restTime: getSetValue(template.rest_time, template.rest_time_override, 0),
+    };
 
-    // Build set description
+    for (let i = 1; i < sets; i++) {
+      const currentSetValues = {
+        reps: getSetValue(template.rep, template.rep_override, i),
+        time: getSetValue(template.time, template.time_override, i),
+        distance: getSetValue(template.distance, template.distance_override, i),
+        weight: getSetValue(template.weight, template.weight_override, i),
+        restTime: getSetValue(
+          template.rest_time,
+          template.rest_time_override,
+          i,
+        ),
+      };
+
+      if (
+        firstSetValues.reps !== currentSetValues.reps ||
+        firstSetValues.time !== currentSetValues.time ||
+        firstSetValues.distance !== currentSetValues.distance ||
+        firstSetValues.weight !== currentSetValues.weight ||
+        firstSetValues.restTime !== currentSetValues.restTime
+      ) {
+        allSetsSame = false;
+        break;
+      }
+    }
+  }
+
+  // If all sets are the same, show coalesced format
+  if (allSetsSame) {
     const setValues: string[] = [];
+    const reps = template.rep;
+    const time = template.time;
+    const distance = template.distance;
+    const weight = template.weight;
+    const restTime = template.rest_time;
 
     if (reps !== null && reps !== undefined) {
       setValues.push(formatValue(reps, ' reps'));
@@ -89,15 +115,66 @@ export function generateExerciseTemplateDescription(
     }
 
     if (setValues.length > 0) {
-      setParts.push(` - ${setValues.join(', ')}`);
-      setDescriptions.push(setParts.join(''));
-    } else {
-      setDescriptions.push(`Set ${i + 1}`);
+      parts.push(`: ${setValues.join(', ')}`);
     }
-  }
+  } else {
+    // Sets differ, show each set individually
+    const setDescriptions: string[] = [];
 
-  if (setDescriptions.length > 0) {
-    parts.push(`: ${setDescriptions.join(' | ')}`);
+    for (let i = 0; i < sets; i++) {
+      const setParts: string[] = [`Set ${i + 1}`];
+
+      const reps = getSetValue(template.rep, template.rep_override, i) as
+        | number
+        | null;
+      const time = getSetValue(template.time, template.time_override, i) as
+        | number
+        | null;
+      const distance = getSetValue(
+        template.distance,
+        template.distance_override,
+        i,
+      ) as string | null;
+      const weight = getSetValue(
+        template.weight,
+        template.weight_override,
+        i,
+      ) as string | null;
+      const restTime = getSetValue(
+        template.rest_time,
+        template.rest_time_override,
+        i,
+      ) as number | null;
+
+      const setValues: string[] = [];
+
+      if (reps !== null && reps !== undefined) {
+        setValues.push(formatValue(reps, ' reps'));
+      }
+      if (time !== null && time !== undefined) {
+        setValues.push(formatValue(time, 's'));
+      }
+      if (distance !== null && distance !== undefined && distance !== '') {
+        setValues.push(formatValue(distance, ''));
+      }
+      if (weight !== null && weight !== undefined && weight !== '') {
+        setValues.push(formatValue(weight, ''));
+      }
+      if (restTime !== null && restTime !== undefined) {
+        setValues.push(formatValue(restTime, 's rest'));
+      }
+
+      if (setValues.length > 0) {
+        setParts.push(` - ${setValues.join(', ')}`);
+        setDescriptions.push(setParts.join(''));
+      } else {
+        setDescriptions.push(`Set ${i + 1}`);
+      }
+    }
+
+    if (setDescriptions.length > 0) {
+      parts.push(`: ${setDescriptions.join(' | ')}`);
+    }
   }
 
   return parts.join('');

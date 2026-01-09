@@ -1,21 +1,8 @@
 'use client';
 
 import { generateExerciseTemplateDescription } from '@/lib/utils/exercise-template-description';
-import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type {
-  ExerciseTemplate,
-  Group,
-} from '@/lib/supabase/schemas/exercise-templates';
 import { PlayButton } from '@/components/ui/play-button';
-
-type SelectedItem =
-  | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate }
-  | {
-      type: 'group';
-      data: Group;
-    };
-
+import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 interface SelectedItemProps {
   item: SelectedItem;
   index: number;

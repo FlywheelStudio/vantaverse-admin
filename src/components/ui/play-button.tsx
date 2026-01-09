@@ -45,7 +45,7 @@ export function PlayButton({
     <Popover open={isVideoOpen} onOpenChange={setIsVideoOpen}>
       <PopoverTrigger asChild>
         <div
-          className="w-5 h-5 mx-5 text-gray-500 hover:text-blue-600 cursor-pointer"
+          className="w-5 h-5 mx-3 text-gray-500 hover:text-blue-600 cursor-pointer"
           onMouseEnter={() => setIsVideoOpen(true)}
           onMouseLeave={() => setIsVideoOpen(false)}
           onClick={(e) => {
