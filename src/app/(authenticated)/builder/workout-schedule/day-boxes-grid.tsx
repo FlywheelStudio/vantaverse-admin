@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ExerciseBuilderModal } from './exercise-builder-modal';
-import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
-
-type SelectedItem =
-  | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate };
+import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 
 export function DayBoxesGrid() {
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
