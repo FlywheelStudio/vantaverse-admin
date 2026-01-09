@@ -22,6 +22,7 @@ export function TemplateConfigForm({
   onValueChange,
   onBlur,
 }: TemplateConfigFormProps) {
+  console.log('formData', formData);
   const currentRep =
     activeTab === 'all' ? formData.rep : formData.rep_override[currentSetIndex];
   const currentTime =
@@ -56,7 +57,9 @@ export function TemplateConfigForm({
         <Input
           className="flex-1 px-2 py-1 border rounded text-xs"
           min="0"
-          placeholder=""
+          placeholder={
+            activeTab === 'set' && formData.rep ? String(formData.rep) : ''
+          }
           type="number"
           value={currentRep ?? ''}
           onChange={(e) =>
@@ -82,7 +85,11 @@ export function TemplateConfigForm({
           className="flex-3 min-w-0 px-2 py-1 border rounded text-xs"
           min="0"
           step="0.1"
-          placeholder=""
+          placeholder={
+            activeTab === 'set' && formData.distance
+              ? String(formData.distance)
+              : ''
+          }
           type="number"
           value={currentDistance ?? ''}
           onChange={(e) => {
@@ -140,7 +147,11 @@ export function TemplateConfigForm({
           className="flex-3 min-w-0 px-2 py-1 border rounded text-xs"
           min="0"
           step="0.1"
-          placeholder=""
+          placeholder={
+            activeTab === 'set' && formData.weight
+              ? String(formData.weight)
+              : ''
+          }
           type="number"
           value={currentWeight ?? ''}
           onChange={(e) => {
@@ -195,7 +206,9 @@ export function TemplateConfigForm({
         <Input
           className="flex-1 px-2 py-1 border rounded text-xs"
           min="0"
-          placeholder=""
+          placeholder={
+            activeTab === 'set' && formData.time ? String(formData.time) : ''
+          }
           type="number"
           value={currentTime ?? ''}
           onChange={(e) =>
@@ -220,7 +233,11 @@ export function TemplateConfigForm({
         <Input
           className="flex-1 px-2 py-1 border rounded text-xs"
           min="0"
-          placeholder=""
+          placeholder={
+            activeTab === 'set' && formData.rest_time
+              ? String(formData.rest_time)
+              : ''
+          }
           type="number"
           value={currentRest ?? ''}
           onChange={(e) =>

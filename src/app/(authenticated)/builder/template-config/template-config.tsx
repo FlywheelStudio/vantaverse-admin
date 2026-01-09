@@ -14,6 +14,13 @@ export const TemplateConfigOffsets = {
   y: 80,
 };
 
+export const TemplateConfigDefaultValues = {
+  sets: 3,
+  rep: 10,
+  time: 60,
+  rest_time: 10,
+};
+
 export function TemplateConfig({
   item,
   position,
@@ -36,6 +43,7 @@ export function TemplateConfig({
     handleBlur,
     handleCopy,
     handlePaste,
+    handleSave,
   } = useTemplateForm(item, onSave, onClose, copiedData);
 
   if (!item) return null;
@@ -87,6 +95,7 @@ export function TemplateConfig({
         onCopy={() => handleCopy(onCopy)}
         onPaste={handlePaste}
         canPaste={!!copiedData}
+        onSave={handleSave}
       />
     </div>
   );

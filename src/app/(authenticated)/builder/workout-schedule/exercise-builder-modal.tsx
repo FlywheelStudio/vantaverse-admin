@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Check, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { useExerciseTemplatesInfinite } from '@/hooks/use-exercise-templates-inf
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import { ExerciseTabSwitcher } from './exercise-tab-switcher';
 import { ExerciseSearchControls } from './exercise-search-controls';
 import { ExerciseLibraryCard } from './exercise-library-card';
@@ -22,10 +24,6 @@ import { ExerciseTemplateCard } from './exercise-template-card';
 import { SelectedItemsList } from './selected-items-list';
 
 type TabType = 'library' | 'templates';
-
-type SelectedItem =
-  | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate };
 
 interface ExerciseBuilderModalProps {
   open: boolean;
@@ -43,6 +41,8 @@ export function ExerciseBuilderModal({
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [showGroupInput, setShowGroupInput] = useState(false);
+  const [groupNameInput, setGroupNameInput] = useState('');
 
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
@@ -121,17 +121,63 @@ export function ExerciseBuilderModal({
     onOpenChange(false);
     setSelectedItems([]);
     setSearch('');
+    setShowGroupInput(false);
+    setGroupNameInput('');
   };
 
   const handleCancel = () => {
     onOpenChange(false);
     setSelectedItems([]);
     setSearch('');
+    setShowGroupInput(false);
+    setGroupNameInput('');
   };
 
   const handleSortChange = (by: string, order: 'asc' | 'desc') => {
     setSortBy(by);
     setSortOrder(order);
+  };
+
+  const handleAddGroup = () => {
+    if (groupNameInput.trim()) {
+      const newGroup: SelectedItem = {
+        type: 'group',
+        data: {
+          name: groupNameInput.trim(),
+          isSuperset: false,
+          items: [],
+        },
+      };
+      setSelectedItems((prev) => [...prev, newGroup]);
+      setGroupNameInput('');
+      setShowGroupInput(false);
+    }
+  };
+
+  const handleRemoveGroup = (index: number) => {
+    setSelectedItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleSuperset = (index: number) => {
+    setSelectedItems((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      if (item && item.type === 'group') {
+        updated[index] = {
+          ...item,
+          data: {
+            ...item.data,
+            isSuperset: !item.data.isSuperset,
+          },
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleCancelGroupInput = () => {
+    setGroupNameInput('');
+    setShowGroupInput(false);
   };
 
   const allExercises = exercisesQuery.data?.pages.flat() || [];
@@ -246,13 +292,50 @@ export function ExerciseBuilderModal({
           {/* Right Panel - Selected Items */}
           <div className="w-1/3 flex flex-col overflow-y-auto px-6">
             <h4 className="font-semibold mb-4">Selected Items</h4>
-            <button className="mb-4 p-2 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 hover:bg-blue-50 text-gray-600 hover:text-blue-600">
-              + Add Group
-            </button>
+            {!showGroupInput ? (
+              <button
+                onClick={() => setShowGroupInput(true)}
+                className="cursor-pointer mb-4 p-2 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+              >
+                + Add Group
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="text"
+                  value={groupNameInput}
+                  onChange={(e) => setGroupNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddGroup();
+                    } else if (e.key === 'Escape') {
+                      handleCancelGroupInput();
+                    }
+                  }}
+                  placeholder="Group name..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddGroup}
+                  className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleCancelGroupInput}
+                  className="p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <SelectedItemsList
               items={selectedItems}
               onRemove={handleRemoveItem}
               onUpdate={handleUpdateItem}
+              onRemoveGroup={handleRemoveGroup}
+              onToggleSuperset={handleToggleSuperset}
             />
           </div>
         </div>

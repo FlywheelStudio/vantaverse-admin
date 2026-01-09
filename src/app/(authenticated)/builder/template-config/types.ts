@@ -1,12 +1,19 @@
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type {
+  ExerciseTemplate,
+  Group,
+} from '@/lib/supabase/schemas/exercise-templates';
 
 export type SelectedItem =
   | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate };
+  | { type: 'template'; data: ExerciseTemplate }
+  | {
+      type: 'group';
+      data: Group;
+    };
 
 export interface TemplateConfigProps {
-  item: SelectedItem | null;
+  item: Exclude<SelectedItem, { type: 'group' }> | null;
   position: { x: number; y: number };
   onClose: () => void;
   onSave: (data: Partial<ExerciseTemplate>) => Promise<void>;

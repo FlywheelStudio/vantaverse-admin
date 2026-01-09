@@ -3,16 +3,29 @@ import type { SelectedItem } from '../types';
 import type { TemplateFormData, TabType } from '../types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import { parseValueWithUnit, formatValueWithUnit } from '../utils';
+import { TemplateConfigDefaultValues } from '../template-config';
+
+type ValidTemplateItem = Exclude<SelectedItem, { type: 'group' }>;
+
+const isValidTemplateItem = (
+  item: SelectedItem | null,
+): item is ValidTemplateItem => {
+  return item !== null && item.type !== 'group';
+};
+
+const getExerciseId = (item: ValidTemplateItem): number => {
+  return item.type === 'exercise' ? item.data.id : item.data.exercise_id;
+};
 
 const getDefaultFormData = (): TemplateFormData => ({
-  sets: 1,
-  rep: null,
-  time: null,
+  sets: TemplateConfigDefaultValues.sets,
+  rep: TemplateConfigDefaultValues.rep,
+  time: TemplateConfigDefaultValues.time,
   distance: null,
   distanceUnit: 'm',
   weight: null,
   weightUnit: 'kg',
-  rest_time: null,
+  rest_time: TemplateConfigDefaultValues.rest_time,
   rep_override: [],
   time_override: [],
   distance_override: [],
@@ -22,7 +35,7 @@ const getDefaultFormData = (): TemplateFormData => ({
   rest_time_override: [],
 });
 
-function initializeFormData(item: SelectedItem | null): TemplateFormData {
+function initializeFormData(item: ValidTemplateItem | null): TemplateFormData {
   if (!item || item.type === 'exercise') {
     return getDefaultFormData();
   }
@@ -79,14 +92,16 @@ export function useTemplateForm(
   copiedData: Partial<ExerciseTemplate> | null,
 ) {
   const [formData, setFormData] = useState<TemplateFormData>(() =>
-    initializeFormData(item),
+    initializeFormData(isValidTemplateItem(item) ? item : null),
   );
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const newFormData = initializeFormData(item);
+    const newFormData = initializeFormData(
+      isValidTemplateItem(item) ? item : null,
+    );
     startTransition(() => {
       setFormData(newFormData);
       setActiveTab('all');
@@ -208,10 +223,9 @@ export function useTemplateForm(
         return;
       }
 
-      if (!item) return;
+      if (!isValidTemplateItem(item)) return;
 
-      const exerciseId =
-        item.type === 'exercise' ? item.data.id : item.data.exercise_id;
+      const exerciseId = getExerciseId(item);
 
       const distanceValue = formatValueWithUnit(
         formData.distance,
@@ -465,6 +479,75 @@ export function useTemplateForm(
     });
   };
 
+  const handleSave = async () => {
+    if (!isValidTemplateItem(item)) return;
+
+    const exerciseId = getExerciseId(item);
+
+    const distanceValue = formatValueWithUnit(
+      formData.distance,
+      formData.distanceUnit,
+    );
+    const weightValue = formatValueWithUnit(
+      formData.weight,
+      formData.weightUnit,
+    );
+
+    const distanceOverrides = formData.distance_override.map((val, idx) =>
+      formatValueWithUnit(val, formData.distance_override_units[idx] || 'm'),
+    );
+
+    const weightOverrides = formData.weight_override.map((val, idx) =>
+      formatValueWithUnit(val, formData.weight_override_units[idx] || 'kg'),
+    );
+
+    const repOverrides: number[] = formData.rep_override.map((v) =>
+      v !== null && v !== undefined ? v : -1,
+    );
+    const timeOverrides: number[] = formData.time_override.map((v) =>
+      v !== null && v !== undefined ? v : -1,
+    );
+    const distanceOverridesFormatted: string[] = distanceOverrides.map(
+      (v) => v ?? '-1',
+    );
+    const weightOverridesFormatted: string[] = weightOverrides.map(
+      (v) => v ?? '-1',
+    );
+    const restTimeOverrides: number[] = formData.rest_time_override.map((v) =>
+      v !== null && v !== undefined ? v : -1,
+    );
+
+    const hasRepOverrides = repOverrides.some((v) => v !== -1);
+    const hasTimeOverrides = timeOverrides.some((v) => v !== -1);
+    const hasDistanceOverrides = distanceOverridesFormatted.some(
+      (v) => v !== '-1',
+    );
+    const hasWeightOverrides = weightOverridesFormatted.some((v) => v !== '-1');
+    const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
+
+    const templateData: Partial<ExerciseTemplate> = {
+      exercise_id: exerciseId,
+      sets: formData.sets ?? undefined,
+      rep: formData.rep ?? undefined,
+      time: formData.time ?? undefined,
+      distance: distanceValue ?? undefined,
+      weight: weightValue ?? undefined,
+      rest_time: formData.rest_time ?? undefined,
+      rep_override: hasRepOverrides ? repOverrides : undefined,
+      time_override: hasTimeOverrides ? timeOverrides : undefined,
+      distance_override: hasDistanceOverrides
+        ? distanceOverridesFormatted
+        : undefined,
+      weight_override: hasWeightOverrides
+        ? weightOverridesFormatted
+        : undefined,
+      rest_time_override: hasRestTimeOverrides ? restTimeOverrides : undefined,
+    };
+
+    await onSave(templateData);
+    onClose();
+  };
+
   return {
     formData,
     setFormData,
@@ -477,5 +560,6 @@ export function useTemplateForm(
     handleBlur,
     handleCopy,
     handlePaste,
+    handleSave,
   };
 }

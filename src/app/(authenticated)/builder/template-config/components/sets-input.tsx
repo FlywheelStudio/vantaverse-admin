@@ -17,8 +17,8 @@ export function SetsInput({ sets, onChange }: SetsInputProps) {
           min="1"
           placeholder="0"
           type="number"
-          value={sets || ''}
-          onChange={(e) => onChange(parseInt(e.target.value) || 1)}
+          value={sets}
+          onChange={(e) => onChange(parseInt(e.target.value))}
         />
       </div>
     </div>

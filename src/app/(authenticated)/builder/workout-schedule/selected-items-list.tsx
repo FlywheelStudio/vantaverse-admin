@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type {
+  ExerciseTemplate,
+  Group,
+} from '@/lib/supabase/schemas/exercise-templates';
 import { cn } from '@/lib/utils';
 import { SelectedItemComponent } from './selected-item';
+import { SelectedGroupComponent } from './selected-group';
 import {
   TemplateConfig,
   TemplateConfigOffsets,
@@ -15,23 +18,31 @@ import toast from 'react-hot-toast';
 
 type SelectedItem =
   | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate };
+  | { type: 'template'; data: ExerciseTemplate }
+  | {
+      type: 'group';
+      data: Group;
+    };
 
 interface SelectedItemsListProps {
   items: SelectedItem[];
   onRemove: (index: number) => void;
   onUpdate: (index: number, item: SelectedItem) => void;
+  onRemoveGroup?: (index: number) => void;
+  onToggleSuperset?: (index: number) => void;
 }
 
 export function SelectedItemsList({
   items,
   onRemove,
   onUpdate,
+  onRemoveGroup,
+  onToggleSuperset,
 }: SelectedItemsListProps) {
   const [modalState, setModalState] = useState<{
     open: boolean;
     position: { x: number; y: number };
-    item: SelectedItem | null;
+    item: Exclude<SelectedItem, { type: 'group' }> | null;
     itemIndex: number | null;
   }>({
     open: false,
@@ -46,7 +57,7 @@ export function SelectedItemsList({
   const handleItemClick = useCallback(
     (index: number, event: React.MouseEvent) => {
       const item = items[index];
-      if (!item) return;
+      if (!item || item.type === 'group') return;
 
       setModalState({
         open: true,
@@ -74,8 +85,7 @@ export function SelectedItemsList({
     async (templateData: Partial<ExerciseTemplate>) => {
       if (modalState.itemIndex === null || !modalState.item) return;
 
-      const currentItem = items[modalState.itemIndex];
-      if (!currentItem) return;
+      const currentItem = modalState.item;
 
       const exerciseId =
         currentItem.type === 'exercise'
@@ -169,15 +179,28 @@ export function SelectedItemsList({
           </div>
         ) : (
           <div className="space-y-3 mb-6">
-            {items.map((item, index) => (
-              <SelectedItemComponent
-                key={`${item.type}-${item.data.id}-${index}`}
-                item={item}
-                index={index}
-                onRemove={() => onRemove(index)}
-                onClick={(e) => handleItemClick(index, e)}
-              />
-            ))}
+            {items.map((item, index) => {
+              if (item.type === 'group') {
+                return (
+                  <SelectedGroupComponent
+                    key={`group-${index}`}
+                    group={item.data}
+                    index={index}
+                    onRemove={() => onRemoveGroup?.(index) ?? onRemove(index)}
+                    onToggleSuperset={() => onToggleSuperset?.(index)}
+                  />
+                );
+              }
+              return (
+                <SelectedItemComponent
+                  key={`${item.type}-${item.data.id}-${index}`}
+                  item={item}
+                  index={index}
+                  onRemove={() => onRemove(index)}
+                  onClick={(e) => handleItemClick(index, e)}
+                />
+              );
+            })}
           </div>
         )}
       </div>

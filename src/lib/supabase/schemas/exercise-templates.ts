@@ -1,3 +1,4 @@
+import { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import { z } from 'zod';
 
 export const exerciseTemplateSchema = z.object({
@@ -26,3 +27,8 @@ export const exerciseTemplateSchema = z.object({
 });
 
 export type ExerciseTemplate = z.infer<typeof exerciseTemplateSchema>;
+export type Group = {
+  name: string;
+  isSuperset: boolean;
+  items: SelectedItem[];
+};

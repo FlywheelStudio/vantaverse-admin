@@ -7,8 +7,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Play } from 'lucide-react';
-
 interface PlayButtonProps {
   videoUrl: string | null;
   videoType?: string;
@@ -46,18 +44,22 @@ export function PlayButton({
   return (
     <Popover open={isVideoOpen} onOpenChange={setIsVideoOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0"
+        <div
+          className="w-5 h-5 mx-5 text-gray-500 hover:text-blue-600 cursor-pointer"
           onMouseEnter={() => setIsVideoOpen(true)}
           onMouseLeave={() => setIsVideoOpen(false)}
           onClick={(e) => {
             e.stopPropagation();
           }}
         >
-          <Play className="h-4 w-4" />
-        </Button>
+          <svg
+            className="w-5 h-5 text-gray-500 hover:text-blue-600 cursor-pointer"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+          </svg>
+        </div>
       </PopoverTrigger>
       <PopoverContent
         className="w-[300px] min-w-[300px] max-w-[300px] p-0"

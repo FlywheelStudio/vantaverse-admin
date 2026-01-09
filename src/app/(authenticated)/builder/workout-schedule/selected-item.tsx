@@ -2,12 +2,19 @@
 
 import { generateExerciseTemplateDescription } from '@/lib/utils/exercise-template-description';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type {
+  ExerciseTemplate,
+  Group,
+} from '@/lib/supabase/schemas/exercise-templates';
 import { PlayButton } from '@/components/ui/play-button';
 
 type SelectedItem =
   | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate };
+  | { type: 'template'; data: ExerciseTemplate }
+  | {
+      type: 'group';
+      data: Group;
+    };
 
 interface SelectedItemProps {
   item: SelectedItem;
@@ -22,13 +29,20 @@ export function SelectedItemComponent({
   onRemove,
   onClick,
 }: SelectedItemProps) {
+  if (item.type === 'group') {
+    return null;
+  }
+
+  // TypeScript now knows item is either 'exercise' or 'template'
   const exerciseName =
     item.type === 'exercise'
       ? item.data.exercise_name
       : item.data.exercise_name || 'Unnamed Exercise';
 
   const hasVideo =
-    item.type === 'template' && item.data.video_url && item.data.video_type;
+    (item.type === 'exercise' || item.type === 'template') &&
+    item.data.video_url &&
+    item.data.video_type;
 
   const isPlainExercise = item.type === 'exercise';
 
@@ -39,24 +53,13 @@ export function SelectedItemComponent({
       onClick={onClick}
     >
       <div className="flex-1 flex items-center gap-3">
-        {hasVideo && (
+        {hasVideo && (item.type === 'exercise' || item.type === 'template') && (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <PlayButton
               videoUrl={item.data.video_url || null}
               videoType={item.data.video_type}
               exerciseName={exerciseName}
             />
-          </div>
-        )}
-        {!hasVideo && (
-          <div className="relative">
-            <svg
-              className="w-5 h-5 text-gray-500 hover:text-blue-600 cursor-pointer"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-            </svg>
           </div>
         )}
         <div className="flex-1">
@@ -76,7 +79,7 @@ export function SelectedItemComponent({
           e.stopPropagation();
           onRemove();
         }}
-        className="text-red-500 hover:text-red-700 text-lg leading-none"
+        className="text-red-500 hover:text-red-700 text-lg leading-none cursor-pointer"
       >
         ×
       </button>
