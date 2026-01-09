@@ -154,7 +154,7 @@ export function SelectedItemsList({
         );
       }
     },
-    [modalState.itemIndex, modalState.item, items, onUpdate],
+    [modalState.itemIndex, modalState.item, onUpdate],
   );
 
   const handleCopy = useCallback((data: Partial<ExerciseTemplate>) => {
