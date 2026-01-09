@@ -42,9 +42,10 @@ export default function UsersPage() {
   useEffect(() => {
     if (!isLoading && displayUsers.length > 0 && !loadedOnceRef.current) {
       loadedOnceRef.current = true;
-      setHasLoadedOnce(true);
+      setTimeout(() => {
+        setHasLoadedOnce(true);
+      }, 0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, displayUsers.length]);
 
   return (
