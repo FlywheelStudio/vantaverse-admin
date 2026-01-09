@@ -14,6 +14,7 @@ import {
 import { useExercisesInfinite } from '@/hooks/use-exercises-infinite';
 import { useExerciseTemplatesInfinite } from '@/hooks/use-exercise-templates-infinite';
 import { useDebounce } from '@/hooks/use-debounce';
+import { format } from 'date-fns';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
@@ -29,20 +30,40 @@ interface ExerciseBuilderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone?: (selectedItems: SelectedItem[]) => void;
+  initialItems?: SelectedItem[];
+  onItemsChange?: (selectedItems: SelectedItem[]) => void;
+  weekIndex?: number;
+  dayIndex?: number;
+  date?: Date | null;
 }
 
 export function ExerciseBuilderModal({
   open,
   onOpenChange,
   onDone,
+  initialItems = [],
+  onItemsChange,
+  weekIndex,
+  dayIndex,
+  date,
 }: ExerciseBuilderModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('library');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [selectedItems, setSelectedItems] =
+    useState<SelectedItem[]>(initialItems);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
+
+  // Reset selected items when weekday changes (initialItems prop changes)
+  // Use key prop on modal to force remount, but also sync when modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedItems(initialItems);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, weekIndex, dayIndex]);
 
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
@@ -96,30 +117,38 @@ export function ExerciseBuilderModal({
     currentQuery,
   ]);
 
+  const updateSelectedItems = (newItems: SelectedItem[]) => {
+    setSelectedItems(newItems);
+    onItemsChange?.(newItems);
+  };
+
   const handleAddExercise = (exercise: Exercise) => {
-    setSelectedItems((prev) => [...prev, { type: 'exercise', data: exercise }]);
+    updateSelectedItems([
+      ...selectedItems,
+      { type: 'exercise', data: exercise },
+    ]);
   };
 
   const handleAddTemplate = (template: ExerciseTemplate) => {
-    setSelectedItems((prev) => [...prev, { type: 'template', data: template }]);
+    updateSelectedItems([
+      ...selectedItems,
+      { type: 'template', data: template },
+    ]);
   };
 
   const handleRemoveItem = (index: number) => {
-    setSelectedItems((prev) => prev.filter((_, i) => i !== index));
+    updateSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
   const handleUpdateItem = (index: number, item: SelectedItem) => {
-    setSelectedItems((prev) => {
-      const updated = [...prev];
-      updated[index] = item;
-      return updated;
-    });
+    const updated = [...selectedItems];
+    updated[index] = item;
+    updateSelectedItems(updated);
   };
 
   const handleDone = () => {
     onDone?.(selectedItems);
     onOpenChange(false);
-    setSelectedItems([]);
     setSearch('');
     setShowGroupInput(false);
     setGroupNameInput('');
@@ -127,7 +156,6 @@ export function ExerciseBuilderModal({
 
   const handleCancel = () => {
     onOpenChange(false);
-    setSelectedItems([]);
     setSearch('');
     setShowGroupInput(false);
     setGroupNameInput('');
@@ -148,31 +176,29 @@ export function ExerciseBuilderModal({
           items: [],
         },
       };
-      setSelectedItems((prev) => [...prev, newGroup]);
+      updateSelectedItems([...selectedItems, newGroup]);
       setGroupNameInput('');
       setShowGroupInput(false);
     }
   };
 
   const handleRemoveGroup = (index: number) => {
-    setSelectedItems((prev) => prev.filter((_, i) => i !== index));
+    updateSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
   const handleToggleSuperset = (index: number) => {
-    setSelectedItems((prev) => {
-      const updated = [...prev];
-      const item = updated[index];
-      if (item && item.type === 'group') {
-        updated[index] = {
-          ...item,
-          data: {
-            ...item.data,
-            isSuperset: !item.data.isSuperset,
-          },
-        };
-      }
-      return updated;
-    });
+    const updated = [...selectedItems];
+    const item = updated[index];
+    if (item && item.type === 'group') {
+      updated[index] = {
+        ...item,
+        data: {
+          ...item.data,
+          isSuperset: !item.data.isSuperset,
+        },
+      };
+      updateSelectedItems(updated);
+    }
   };
 
   const handleCancelGroupInput = () => {
@@ -183,11 +209,25 @@ export function ExerciseBuilderModal({
   const allExercises = exercisesQuery.data?.pages.flat() || [];
   const allTemplates = templatesQuery.data?.pages.flat() || [];
 
+  // Format header title with week, day, and date
+  const getHeaderTitle = () => {
+    if (
+      weekIndex !== undefined &&
+      dayIndex !== undefined &&
+      date !== null &&
+      date !== undefined
+    ) {
+      const formattedDate = format(date, 'MM-dd-yyyy');
+      return `Add Exercises or Groups - Week ${weekIndex + 1}, Day ${dayIndex + 1} (${formattedDate})`;
+    }
+    return 'Add Exercises or Groups';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] h-[85vh] max-w-[90vw] flex flex-col p-0">
         <DialogHeader className="p-6 border-b">
-          <DialogTitle>Add Exercises or Groups</DialogTitle>
+          <DialogTitle>{getHeaderTitle()}</DialogTitle>
           <DialogDescription>
             Select exercises from the library or templates
           </DialogDescription>

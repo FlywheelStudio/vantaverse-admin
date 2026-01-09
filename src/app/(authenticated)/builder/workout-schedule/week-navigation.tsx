@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useBuilder } from '@/context/builder-context';
 
 interface Week {
   id: string;
@@ -32,7 +33,15 @@ interface WeekNavigationProps {
   onWeeksChange?: (weeks: Week[]) => void;
 }
 
-function DraggableWeekButton({ week }: { week: Week }) {
+function DraggableWeekButton({
+  week,
+  isCurrent,
+  onClick,
+}: {
+  week: Week;
+  isCurrent: boolean;
+  onClick: () => void;
+}) {
   const {
     attributes,
     listeners,
@@ -51,10 +60,18 @@ function DraggableWeekButton({ week }: { week: Week }) {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Button
-        variant={isDragging ? 'outline' : 'default'}
+        variant={isDragging ? 'outline' : isCurrent ? 'default' : 'outline'}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
         className={`min-w-[100px] ${
           isDragging ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
-        } ${!isDragging ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white' : ''}`}
+        } ${
+          !isDragging && isCurrent
+            ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white'
+            : ''
+        }`}
       >
         Week {week.number}
       </Button>
@@ -66,6 +83,7 @@ export function WeekNavigation({
   initialWeeks,
   onWeeksChange,
 }: WeekNavigationProps) {
+  const { currentWeek, setCurrentWeek } = useBuilder();
   const [weeks, setWeeks] = useState<Week[]>(() =>
     Array.from({ length: initialWeeks }, (_, i) => ({
       id: `week-${i + 1}`,
@@ -76,6 +94,13 @@ export function WeekNavigation({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Initialize current week to 0 if not set
+  useEffect(() => {
+    if (currentWeek === 0 && weeks.length > 0) {
+      setCurrentWeek(0);
+    }
+  }, [currentWeek, weeks.length, setCurrentWeek]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -174,7 +199,12 @@ export function WeekNavigation({
           >
             <div className="flex gap-2 min-w-max">
               {weeks.map((week) => (
-                <DraggableWeekButton key={week.id} week={week} />
+                <DraggableWeekButton
+                  key={week.id}
+                  week={week}
+                  isCurrent={week.number - 1 === currentWeek}
+                  onClick={() => setCurrentWeek(week.number - 1)}
+                />
               ))}
             </div>
           </SortableContext>

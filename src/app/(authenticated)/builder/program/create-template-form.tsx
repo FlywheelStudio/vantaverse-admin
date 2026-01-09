@@ -20,6 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
+import { useBuilder } from '@/context/builder-context';
 
 interface CreateTemplateFormProps {
   onSuccess?: () => void;
@@ -33,6 +34,7 @@ export function CreateTemplateForm({
   initialData,
 }: CreateTemplateFormProps) {
   const queryClient = useQueryClient();
+  const { setProgramStartDate } = useBuilder();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -90,6 +92,8 @@ export function CreateTemplateForm({
                 from: startOfDay(startDate),
                 to: endDate ? startOfDay(endDate) : undefined,
               });
+              // Store start date in builder context
+              setProgramStartDate(formatDateForDB(startDate));
             }
           }
         } catch (error) {
@@ -162,6 +166,15 @@ export function CreateTemplateForm({
     }
   }, [formData.weeks, dateRange?.from]);
 
+  // Store start date in builder context when date changes (only in edit mode)
+  useEffect(() => {
+    if (initialData && dateRange?.from) {
+      setProgramStartDate(formatDateForDB(dateRange.from));
+    } else if (!dateRange?.from) {
+      setProgramStartDate(null);
+    }
+  }, [dateRange?.from, initialData, setProgramStartDate]);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -197,10 +210,17 @@ export function CreateTemplateForm({
         from: normalizedFrom,
         to: endDate,
       });
+      // Store start date in builder context (only in edit mode)
+      if (initialData) {
+        setProgramStartDate(formatDateForDB(normalizedFrom));
+      }
       // Reset the ref so useEffect can process this new date
       lastProcessedRef.current = null;
     } else {
       setDateRange(undefined);
+      if (initialData) {
+        setProgramStartDate(null);
+      }
       lastProcessedRef.current = null;
     }
   };

@@ -321,3 +321,106 @@ export async function upsertExerciseTemplate(data: {
     data: result,
   };
 }
+
+/**
+ * Get program assignment by program template ID
+ */
+export async function getProgramAssignmentByTemplateId(templateId: string) {
+  const query = new ProgramAssignmentsQuery();
+  return query.getByTemplateId(templateId);
+}
+
+/**
+ * Upsert workout schedule via RPC function
+ */
+export async function upsertWorkoutSchedule(
+  schedule: unknown[][][],
+  isDraft: boolean = true,
+  notes?: string,
+) {
+  const supabase = await createClient();
+
+  // Convert schedule to JSONB format
+  const scheduleJsonb = schedule as unknown;
+
+  const { data: result, error } = await supabase.rpc(
+    'upsert_workout_schedule',
+    {
+      p_schedule: scheduleJsonb,
+      p_is_draft: isDraft,
+      p_notes: notes || null,
+    },
+  );
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message || 'Failed to upsert workout schedule',
+    };
+  }
+
+  if (!result || (result as { success?: boolean }).success === false) {
+    const errorResult = result as { error?: string; message?: string };
+    return {
+      success: false as const,
+      error:
+        errorResult.error ||
+        errorResult.message ||
+        'Failed to upsert workout schedule',
+    };
+  }
+
+  return {
+    success: true as const,
+    data: result as { id: string; schedule_hash: string },
+  };
+}
+
+/**
+ * Update program assignment workout schedule ID (only if currently null)
+ */
+export async function updateProgramAssignmentWorkoutSchedule(
+  assignmentId: string,
+  workoutScheduleId: string,
+) {
+  const supabase = await createClient();
+
+  // First check if workout_schedule_id is null
+  const { data: assignment, error: fetchError } = await supabase
+    .from('program_assignment')
+    .select('workout_schedule_id')
+    .eq('id', assignmentId)
+    .single();
+
+  if (fetchError) {
+    return {
+      success: false as const,
+      error: fetchError.message || 'Failed to fetch program assignment',
+    };
+  }
+
+  // Only update if workout_schedule_id is null
+  if (assignment.workout_schedule_id !== null) {
+    return {
+      success: true as const,
+      data: undefined,
+    };
+  }
+
+  const { error } = await supabase
+    .from('program_assignment')
+    .update({ workout_schedule_id: workoutScheduleId })
+    .eq('id', assignmentId);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message || 'Failed to update program assignment',
+    };
+  }
+
+  return {
+    success: true as const,
+    data: undefined,
+  };
+}

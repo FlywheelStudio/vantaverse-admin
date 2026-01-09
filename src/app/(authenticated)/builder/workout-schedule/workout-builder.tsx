@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useBuilder } from '@/context/builder-context';
 import { useProgramTemplate } from '@/hooks/use-program-template';
 import { ProgramDetailsSection } from '../program/ui';
@@ -10,8 +11,16 @@ import { ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function WorkoutBuilder() {
-  const { selectedTemplateId, clearSelectedTemplate } = useBuilder();
+  const { selectedTemplateId, clearSelectedTemplate, initializeSchedule } =
+    useBuilder();
   const { data: template, isLoading } = useProgramTemplate(selectedTemplateId);
+
+  // Initialize schedule when template loads
+  useEffect(() => {
+    if (template) {
+      initializeSchedule(template.weeks);
+    }
+  }, [template, initializeSchedule]);
 
   if (isLoading) {
     return (

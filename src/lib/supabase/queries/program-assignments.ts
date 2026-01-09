@@ -176,6 +176,50 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Get program assignment by program template ID
+   * @param programTemplateId - The program template ID
+   * @returns Success with program assignment or error
+   */
+  public async getByTemplateId(
+    programTemplateId: string,
+  ): Promise<SupabaseSuccess<ProgramAssignment | null> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('program_assignment')
+      .select('*')
+      .eq('program_template_id', programTemplateId)
+      .eq('status', 'template')
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get program assignment',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    const result = programAssignmentSchema.safeParse(data);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  }
+
+  /**
    * Delete a program assignment
    * @param id - The assignment ID
    * @returns Success or error

@@ -1,59 +1,219 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ExerciseBuilderModal } from './exercise-builder-modal';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import { useBuilder } from '@/context/builder-context';
+import {
+  upsertWorkoutSchedule,
+  updateProgramAssignmentWorkoutSchedule,
+} from '@/app/(authenticated)/builder/actions';
+import toast from 'react-hot-toast';
 
 export function DayBoxesGrid() {
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
+
+  const {
+    currentWeek,
+    programAssignmentId,
+    programStartDate,
+    resetProgramAssignmentId,
+    setScheduleItem,
+    getDayItems,
+    schedule,
+  } = useBuilder();
+
+  const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
+
+  // Calculate the actual date for a specific week and day
+  const calculateDayDate = (
+    startDate: string | null,
+    weekIndex: number,
+    dayIndex: number,
+  ): Date | null => {
+    if (!startDate) return null;
+    const start = new Date(startDate);
+    const dayDate = new Date(start);
+    dayDate.setDate(dayDate.getDate() + weekIndex * 7 + dayIndex);
+    return dayDate;
+  };
+
+  // Calculate date for currently selected day
+  const selectedDayDate = useMemo(() => {
+    if (selectedDay === null) return null;
+    return calculateDayDate(programStartDate, currentWeek, selectedDay - 1);
+  }, [programStartDate, currentWeek, selectedDay]);
 
   const handleAddExercise = (day: number) => {
+    const dayIndex = day - 1;
+
+    // Check if weekday changed (different week or day) and reset program assignment ID
+    const previous = previousWeekDayRef.current;
+    if (
+      previous !== null &&
+      (previous.week !== currentWeek || previous.day !== dayIndex)
+    ) {
+      resetProgramAssignmentId();
+    }
+
     setSelectedDay(day);
+    previousWeekDayRef.current = { week: currentWeek, day: dayIndex };
+    // Load existing items for this day
+    setPendingItems(getDayItems(currentWeek, dayIndex));
     setModalOpen(true);
   };
 
-  const handleModalDone = (selectedItems: SelectedItem[]) => {
-    // TODO: Handle selected items (save to workout schedule)
-    console.log('Selected items for day', selectedDay, ':', selectedItems);
+  const saveDraft = async (
+    items: SelectedItem[],
+    week: number,
+    day: number,
+  ) => {
+    if (!programAssignmentId) {
+      toast.error('No program assignment found');
+      return;
+    }
+
+    try {
+      // Update schedule in context first
+      setScheduleItem(week, day, items);
+
+      // Create updated schedule array
+      const updatedSchedule = [...schedule];
+      while (updatedSchedule.length <= week) {
+        updatedSchedule.push(Array.from({ length: 7 }, () => []));
+      }
+      while (updatedSchedule[week].length <= day) {
+        updatedSchedule[week].push([]);
+      }
+      updatedSchedule[week] = [...updatedSchedule[week]];
+      updatedSchedule[week][day] = items;
+
+      // Save to database
+      const result = await upsertWorkoutSchedule(updatedSchedule, true);
+
+      if (!result.success) {
+        toast.error(result.error || 'Failed to save draft');
+        return;
+      }
+
+      // Update program assignment if it doesn't have a workout_schedule_id
+      // The function will check and only update if null
+      const updateResult = await updateProgramAssignmentWorkoutSchedule(
+        programAssignmentId,
+        result.data.id,
+      );
+
+      if (!updateResult.success) {
+        toast.error(
+          updateResult.error || 'Failed to update program assignment',
+        );
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleModalDone = async (selectedItems: SelectedItem[]) => {
+    if (selectedDay === null) return;
+
+    const dayIndex = selectedDay - 1;
+    const previousItems = getDayItems(currentWeek, dayIndex);
+    const hasChanges =
+      selectedItems.length > 0 ||
+      JSON.stringify(previousItems) !== JSON.stringify(selectedItems);
+
+    if (hasChanges) {
+      await saveDraft(selectedItems, currentWeek, dayIndex);
+    }
+
     setModalOpen(false);
     setSelectedDay(null);
+    previousWeekDayRef.current = null;
+    setPendingItems([]);
   };
+
+  const handleItemsChange = (items: SelectedItem[]) => {
+    setPendingItems(items);
+  };
+
+  const handleModalClose = async (open: boolean) => {
+    if (!open && selectedDay !== null) {
+      // Modal is closing, check if there are pending items
+      const dayIndex = selectedDay - 1;
+      if (pendingItems.length > 0) {
+        const previousItems = getDayItems(currentWeek, dayIndex);
+        const hasChanges =
+          pendingItems.length > 0 ||
+          JSON.stringify(previousItems) !== JSON.stringify(pendingItems);
+
+        if (hasChanges) {
+          await saveDraft(pendingItems, currentWeek, dayIndex);
+        }
+      }
+      setSelectedDay(null);
+      previousWeekDayRef.current = null;
+      setPendingItems([]);
+    }
+    setModalOpen(open);
+  };
+
+  const dayItems = (day: number) => getDayItems(currentWeek, day - 1);
 
   return (
     <>
       <div className="mt-6 overflow-x-auto scrollbar-hide">
         <div className="flex gap-4">
-          {days.map((day) => (
-            <div key={day} className="flex flex-col flex-1 min-w-[160px]">
-              <h3 className="text-base font-semibold text-[#1E3A5F] mb-3 text-center">
-                Day {day}
-              </h3>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
-                <p className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default">
-                  Rest Day
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => handleAddExercise(day)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Exercise
-                </Button>
+          {days.map((day) => {
+            const items = dayItems(day);
+            const hasItems = items.length > 0;
+
+            return (
+              <div key={day} className="flex flex-col flex-1 min-w-[160px]">
+                <h3 className="text-base font-semibold text-[#1E3A5F] mb-3 text-center">
+                  Day {day}
+                </h3>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
+                  {hasItems ? (
+                    <div className="w-full">
+                      <p className="text-sm text-gray-600 mb-2">
+                        {items.length} item{items.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default">
+                      Rest Day
+                    </p>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleAddExercise(day)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {hasItems ? 'Edit' : 'Add Exercise'}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <ExerciseBuilderModal
+        key={`modal-${currentWeek}-${selectedDay}`}
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalClose}
         onDone={handleModalDone}
+        initialItems={pendingItems}
+        onItemsChange={handleItemsChange}
+        weekIndex={selectedDay !== null ? currentWeek : undefined}
+        dayIndex={selectedDay !== null ? selectedDay - 1 : undefined}
+        date={selectedDayDate}
       />
     </>
   );
