@@ -3,6 +3,8 @@
 import { generateExerciseTemplateDescription } from '@/lib/utils/exercise-template-description';
 import { PlayButton } from '@/components/ui/play-button';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import { cn } from '@/lib/utils';
+
 interface SelectedItemProps {
   item: SelectedItem;
   index: number;
@@ -16,6 +18,8 @@ export function SelectedItemComponent({
   onRemove,
   onClick,
 }: SelectedItemProps) {
+  const isPlainExercise = item.type === 'exercise';
+
   if (item.type === 'group') {
     return null;
   }
@@ -31,12 +35,12 @@ export function SelectedItemComponent({
     item.data.video_url &&
     item.data.video_type;
 
-  const isPlainExercise = item.type === 'exercise';
-
   return (
     <div
-      key={`${item.type}-${item.data.id}-${index}`}
-      className="border rounded-lg p-3 cursor-pointer flex items-center gap-2 border-blue-500 bg-blue-50"
+      className={cn(
+        'border rounded-lg p-3 flex items-center gap-2 border-blue-500 bg-blue-50',
+        'cursor-pointer',
+      )}
       onClick={onClick}
     >
       <div className="flex-1 flex items-center gap-3">

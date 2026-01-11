@@ -416,8 +416,6 @@ export async function upsertWorkoutSchedule(
   const schedule3D = formatScheduleDB(schedule);
   const scheduleJsonb = schedule3D as unknown;
 
-  console.log('scheduleJsonb', JSON.stringify(scheduleJsonb, null, 2));
-
   const { data: result, error } = await supabase.rpc(
     'upsert_workout_schedule',
     {

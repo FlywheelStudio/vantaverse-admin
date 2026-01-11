@@ -374,6 +374,7 @@ export function ExerciseBuilderModal({
               items={selectedItems}
               onRemove={handleRemoveItem}
               onUpdate={handleUpdateItem}
+              onItemsReorder={updateSelectedItems}
               onRemoveGroup={handleRemoveGroup}
               onToggleSuperset={handleToggleSuperset}
             />
