@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import type {
-  ExerciseTemplate,
-  Group,
-} from '@/lib/supabase/schemas/exercise-templates';
+import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import { cn } from '@/lib/utils';
 import { SelectedItemComponent } from './selected-item';
 import { SelectedGroupComponent } from './selected-group';
@@ -15,14 +11,7 @@ import {
 } from '../template-config/template-config';
 import { upsertExerciseTemplate } from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
-
-type SelectedItem =
-  | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate }
-  | {
-      type: 'group';
-      data: Group;
-    };
+import type { SelectedItem } from '../template-config/types';
 
 interface SelectedItemsListProps {
   items: SelectedItem[];
