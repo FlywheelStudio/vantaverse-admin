@@ -100,7 +100,14 @@ export function findFlatItemById(
  * Checks if an ID is a droppable group container ID
  */
 export function isDroppableGroupId(id: string): boolean {
-  return id.startsWith('droppable-');
+  return id.startsWith('droppable-') && id !== 'droppable-top-level';
+}
+
+/**
+ * Checks if an ID is the top-level droppable zone
+ */
+export function isTopLevelDroppable(id: string): boolean {
+  return id === 'droppable-top-level';
 }
 
 /**
@@ -461,7 +468,7 @@ export function moveItem(
 /**
  * Creates a custom collision detection function that filters out nested items
  * when dragging a group, ensuring groups can only be dropped on other groups
- * or top-level templates.
+ * or top-level templates. Also handles items dragged from groups to top level.
  */
 export function createGroupCollisionDetection(
   flatItems: FlatItem[],
@@ -470,29 +477,72 @@ export function createGroupCollisionDetection(
     // Use default closestCenter collision detection
     const collisions = closestCenter(args);
 
-    // Check if the active item is a group
     const activeId = args.active.id as string;
     const activeItem = findFlatItemById(flatItems, activeId);
 
-    // If not dragging a group, return all collisions as-is
-    if (!activeItem || activeItem.item.type !== 'group') {
+    if (!activeItem) {
       return collisions;
     }
 
     // When dragging a group, filter collisions to only include top-level items
-    // (items with parentId === null)
-    return collisions.filter((collision) => {
-      const collisionId = collision.id as string;
-      const collisionItem = findFlatItemById(flatItems, collisionId);
+    if (activeItem.item.type === 'group') {
+      return collisions.filter((collision) => {
+        const collisionId = collision.id as string;
+        const collisionItem = findFlatItemById(flatItems, collisionId);
 
-      // If item not found in flatItems (e.g., droppable areas), filter it out
-      if (!collisionItem) {
+        // Allow top-level droppable
+        if (isTopLevelDroppable(collisionId)) {
+          return true;
+        }
+
+        // If item not found in flatItems (e.g., droppable areas), filter it out
+        if (!collisionItem) {
+          return false;
+        }
+
+        // Only allow collisions with top-level items (parentId === null)
+        return collisionItem.parentId === null;
+      });
+    }
+
+    // When dragging an item FROM a group, prioritize top-level items and droppable zones
+    if (activeItem.parentId !== null) {
+      return collisions.filter((collision) => {
+        const collisionId = collision.id as string;
+
+        // Always allow top-level droppable
+        if (isTopLevelDroppable(collisionId)) {
+          return true;
+        }
+
+        // Allow group droppables (for moving to other groups)
+        if (isDroppableGroupId(collisionId)) {
+          return true;
+        }
+
+        const collisionItem = findFlatItemById(flatItems, collisionId);
+
+        // If item not found in flatItems, filter it out (unless it's a droppable we already checked)
+        if (!collisionItem) {
+          return false;
+        }
+
+        // Allow collisions with top-level items (parentId === null)
+        // This allows dropping between top-level items even when groups are present
+        if (collisionItem.parentId === null) {
+          return true;
+        }
+
+        // Allow collisions within the same group (for reordering within group)
+        if (collisionItem.parentId === activeItem.parentId) {
+          return true;
+        }
+
         return false;
-      }
+      });
+    }
 
-      // Only allow collisions with top-level items (parentId === null)
-      // This includes groups and top-level templates, but excludes templates inside groups
-      return collisionItem.parentId === null;
-    });
+    // When dragging a top-level item, return all collisions as-is
+    return collisions;
   };
 }

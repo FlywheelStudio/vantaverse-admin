@@ -1,44 +1,13 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
-import { cn } from '@/lib/utils';
-import { SelectedItemComponent } from './dnd/selected-item';
-import { SelectedGroupComponent } from './dnd/selected-group';
-import {
-  TemplateConfig,
-  TemplateConfigOffsets,
-} from '../template-config/template-config';
+import { TemplateConfigOffsets } from '../template-config/template-config';
 import { upsertExerciseTemplate } from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
 import type { SelectedItem } from '../template-config/types';
-import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-  type DragStartEvent,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { createPortal } from 'react-dom';
-import { SortableItem } from './dnd/sortable-item';
-import {
-  flattenItems,
-  getTopLevelIds,
-  generateItemId,
-  moveItem,
-  moveItemToGroup,
-  findFlatItemById,
-  isDroppableGroupId,
-  getGroupIdFromDroppable,
-  createGroupCollisionDetection,
-} from './dnd/dnd-utils';
 import { DragContextProvider } from './dnd/drag-context';
+import { DragContent } from './dnd/drag-content';
 
 interface SelectedItemsListProps {
   items: SelectedItem[];
@@ -75,88 +44,6 @@ export function SelectedItemsList({
 
   const [copiedTemplateData, setCopiedTemplateData] =
     useState<Partial<ExerciseTemplate> | null>(null);
-
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-  );
-
-  const flatItems = useMemo(() => flattenItems(items), [items]);
-  const topLevelIds = useMemo(() => getTopLevelIds(items), [items]);
-  const collisionDetection = useMemo(
-    () => createGroupCollisionDetection(flatItems),
-    [flatItems],
-  );
-
-  const activeItem = useMemo(() => {
-    if (!activeId) return null;
-    const flatItem = findFlatItemById(flatItems, activeId);
-    return flatItem?.item ?? null;
-  }, [activeId, flatItems]);
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-
-      if (!over || active.id === over.id) {
-        setActiveId(null);
-        return;
-      }
-
-      const overId = over.id as string;
-      const activeIdStr = active.id as string;
-
-      const activeItem = findFlatItemById(flatItems, activeIdStr);
-
-      let newItems: SelectedItem[];
-
-      // Check if dropping on a droppable group container
-      if (isDroppableGroupId(overId)) {
-        // If dragging a group, treat it as reordering instead of moving into group
-        if (activeItem?.item.type === 'group') {
-          const targetGroupId = getGroupIdFromDroppable(overId);
-          if (targetGroupId) {
-            newItems = moveItem(items, activeIdStr, targetGroupId, flatItems);
-          } else {
-            setActiveId(null);
-            return;
-          }
-        } else {
-          const targetGroupId = getGroupIdFromDroppable(overId);
-          if (targetGroupId) {
-            newItems = moveItemToGroup(
-              items,
-              activeIdStr,
-              targetGroupId,
-              flatItems,
-            );
-          } else {
-            setActiveId(null);
-            return;
-          }
-        }
-      } else {
-        newItems = moveItem(items, activeIdStr, overId, flatItems);
-      }
-
-      onItemsReorder(newItems);
-      setActiveId(null);
-    },
-    [items, flatItems, onItemsReorder],
-  );
-
-  const handleDragCancel = useCallback(() => {
-    setActiveId(null);
-  }, []);
 
   const handleItemClick = useCallback(
     (index: number, event: React.MouseEvent) => {
@@ -412,137 +299,22 @@ export function SelectedItemsList({
     // Paste is handled in TemplateConfig component
   }, []);
 
-  const isDragging = activeId !== null;
-
   return (
-    <>
-      <DragContextProvider value={{ isDragging }}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={collisionDetection}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <div
-            className={cn(
-              'border-2 border-dashed rounded-lg p-4 transition-colors border-gray-300 bg-gray-50 min-h-full',
-            )}
-          >
-            {items.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <p>No items selected</p>
-                <p className="text-sm mt-2">Click cards to add items</p>
-              </div>
-            ) : (
-              <SortableContext
-                items={topLevelIds}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3 mb-6">
-                  {items.map((item, index) => {
-                    const itemId = generateItemId(item, index);
-
-                    if (item.type === 'group') {
-                      return (
-                        <SortableItem key={itemId} id={itemId}>
-                          <SelectedGroupComponent
-                            group={item.data}
-                            index={index}
-                            groupId={itemId}
-                            onRemove={() =>
-                              onRemoveGroup?.(index) ?? onRemove(index)
-                            }
-                            onToggleSuperset={() => onToggleSuperset?.(index)}
-                            onUpdateGroup={(updatedGroup) => {
-                              const newItems = [...items];
-                              newItems[index] = {
-                                type: 'group',
-                                data: updatedGroup,
-                              };
-                              onItemsReorder(newItems);
-                            }}
-                            onGroupItemClick={(
-                              groupItem,
-                              groupIdx,
-                              itemIdx,
-                              event,
-                            ) => {
-                              if (groupItem.type === 'template') {
-                                setModalState({
-                                  open: true,
-                                  position: {
-                                    x: event.clientX - TemplateConfigOffsets.x,
-                                    y: event.clientY - TemplateConfigOffsets.y,
-                                  },
-                                  item: groupItem,
-                                  itemIndex: null,
-                                  groupIndex: groupIdx,
-                                  groupItemIndex: itemIdx,
-                                });
-                              }
-                            }}
-                          />
-                        </SortableItem>
-                      );
-                    }
-                    return (
-                      <SortableItem key={itemId} id={itemId}>
-                        <SelectedItemComponent
-                          item={item}
-                          index={index}
-                          onRemove={() => onRemove(index)}
-                          onClick={(e) => handleItemClick(index, e)}
-                        />
-                      </SortableItem>
-                    );
-                  })}
-                </div>
-              </SortableContext>
-            )}
-          </div>
-
-          {typeof document !== 'undefined' &&
-            createPortal(
-              <DragOverlay>
-                {activeId && activeItem ? (
-                  <div className="opacity-80">
-                    {activeItem.type === 'group' ? (
-                      <div className="border rounded-lg p-3 border-purple-300 bg-purple-50/50 shadow-lg">
-                        <div className="font-semibold text-sm">
-                          {activeItem.data.name}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {activeItem.data.items.length} items
-                        </div>
-                      </div>
-                    ) : (
-                      <SelectedItemComponent
-                        item={activeItem}
-                        index={0}
-                        onRemove={() => {}}
-                        onClick={() => {}}
-                      />
-                    )}
-                  </div>
-                ) : null}
-              </DragOverlay>,
-              document.body,
-            )}
-        </DndContext>
-      </DragContextProvider>
-
-      {modalState.open && modalState.item && (
-        <TemplateConfig
-          item={modalState.item}
-          position={modalState.position}
-          onClose={handleCloseModal}
-          onSave={handleSave}
-          copiedData={copiedTemplateData}
-          onCopy={handleCopy}
-          onPaste={handlePaste}
-        />
-      )}
-    </>
+    <DragContextProvider items={items} onItemsReorder={onItemsReorder}>
+      <DragContent
+        items={items}
+        onRemove={onRemove}
+        onRemoveGroup={onRemoveGroup}
+        onToggleSuperset={onToggleSuperset}
+        modalState={modalState}
+        setModalState={setModalState}
+        copiedTemplateData={copiedTemplateData}
+        handleCloseModal={handleCloseModal}
+        handleSave={handleSave}
+        handleCopy={handleCopy}
+        handlePaste={handlePaste}
+        handleItemClick={handleItemClick}
+      />
+    </DragContextProvider>
   );
 }

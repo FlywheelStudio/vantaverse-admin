@@ -1,0 +1,149 @@
+'use client';
+
+import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { createPortal } from 'react-dom';
+import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import { SelectedItemComponent } from './selected-item';
+import { TopLevelDroppable } from './top-level-droppable';
+import {
+  TemplateConfig,
+  TemplateConfigOffsets,
+} from '../../template-config/template-config';
+import { useDragContext } from './drag-context';
+
+interface DragContentProps {
+  items: SelectedItem[];
+  onRemove: (index: number) => void;
+  onRemoveGroup?: (index: number) => void;
+  onToggleSuperset?: (index: number) => void;
+  modalState: {
+    open: boolean;
+    position: { x: number; y: number };
+    item: Exclude<SelectedItem, { type: 'group' }> | null;
+    itemIndex: number | null;
+    groupIndex?: number | null;
+    groupItemIndex?: number | null;
+  };
+  setModalState: React.Dispatch<
+    React.SetStateAction<{
+      open: boolean;
+      position: { x: number; y: number };
+      item: Exclude<SelectedItem, { type: 'group' }> | null;
+      itemIndex: number | null;
+      groupIndex?: number | null;
+      groupItemIndex?: number | null;
+    }>
+  >;
+  copiedTemplateData: Partial<ExerciseTemplate> | null;
+  handleCloseModal: () => void;
+  handleSave: (templateData: Partial<ExerciseTemplate>) => Promise<void>;
+  handleCopy: (data: Partial<ExerciseTemplate>) => void;
+  handlePaste: () => void;
+  handleItemClick: (index: number, event: React.MouseEvent) => void;
+}
+
+export function DragContent({
+  items,
+  onRemove,
+  onRemoveGroup,
+  onToggleSuperset,
+  modalState,
+  setModalState,
+  copiedTemplateData,
+  handleCloseModal,
+  handleSave,
+  handleCopy,
+  handlePaste,
+  handleItemClick,
+}: DragContentProps) {
+  const {
+    activeId,
+    activeItem,
+    isDraggingFromGroup,
+    topLevelIds,
+    sensors,
+    collisionDetection,
+    handleDragStart,
+    handleDragEnd,
+    handleDragCancel,
+  } = useDragContext();
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <TopLevelDroppable
+          isDraggingFromGroup={isDraggingFromGroup}
+          items={items}
+          topLevelIds={topLevelIds}
+          onRemove={onRemove}
+          onRemoveGroup={onRemoveGroup}
+          onToggleSuperset={onToggleSuperset}
+          onItemsReorder={() => {}}
+          onGroupItemClick={(groupItem, groupIdx, itemIdx, event) => {
+            if (groupItem.type === 'template') {
+              setModalState({
+                open: true,
+                position: {
+                  x: event.clientX - TemplateConfigOffsets.x,
+                  y: event.clientY - TemplateConfigOffsets.y,
+                },
+                item: groupItem,
+                itemIndex: null,
+                groupIndex: groupIdx,
+                groupItemIndex: itemIdx,
+              });
+            }
+          }}
+          handleItemClick={handleItemClick}
+        />
+
+        {typeof document !== 'undefined' &&
+          createPortal(
+            <DragOverlay>
+              {activeId && activeItem ? (
+                <div className="opacity-80">
+                  {activeItem.type === 'group' ? (
+                    <div className="border rounded-lg p-3 border-purple-300 bg-purple-50/50 shadow-lg">
+                      <div className="font-semibold text-sm">
+                        {activeItem.data.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {activeItem.data.items.length} items
+                      </div>
+                    </div>
+                  ) : (
+                    <SelectedItemComponent
+                      item={activeItem}
+                      index={0}
+                      onRemove={() => {}}
+                      onClick={() => {}}
+                    />
+                  )}
+                </div>
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )}
+      </DndContext>
+
+      {modalState.open && modalState.item && (
+        <TemplateConfig
+          item={modalState.item}
+          position={modalState.position}
+          onClose={handleCloseModal}
+          onSave={handleSave}
+          copiedData={copiedTemplateData}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+        />
+      )}
+    </>
+  );
+}
