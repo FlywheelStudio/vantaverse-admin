@@ -23,7 +23,7 @@ export function CollapsibleSection({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-t-lg"
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-t-lg cursor-pointer"
       >
         <span className="text-lg font-semibold text-[#1E3A5F]">{title}</span>
         <motion.div
