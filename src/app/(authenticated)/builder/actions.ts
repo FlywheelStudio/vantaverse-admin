@@ -562,6 +562,33 @@ export async function updateProgramAssignmentWorkoutSchedule(
 }
 
 /**
+ * Update program assignment workout schedule ID (always updates, even if already set)
+ */
+export async function updateProgramSchedule(
+  assignmentId: string,
+  workoutScheduleId: string,
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('program_assignment')
+    .update({ workout_schedule_id: workoutScheduleId })
+    .eq('id', assignmentId);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message || 'Failed to update program assignment',
+    };
+  }
+
+  return {
+    success: true as const,
+    data: undefined,
+  };
+}
+
+/**
  * Convert database schedule format to SelectedItem[][][] format
  * Server action version that uses server-side query classes
  */
