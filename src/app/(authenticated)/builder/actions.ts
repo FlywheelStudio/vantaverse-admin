@@ -5,9 +5,9 @@ import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignme
 import { ExercisesQuery } from '@/lib/supabase/queries/exercises';
 import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
+import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
-import { createClient } from '@/lib/supabase/core/server';
-import { DatabaseSchedule, formatScheduleDB } from './workout-schedule/utils';
+import { DatabaseSchedule } from './workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
@@ -220,26 +220,15 @@ export async function updateProgramTemplate(
 
   // Update assignment dates if provided
   if (startDate && endDate) {
-    const supabase = await createClient();
+    const assignmentQuery = new ProgramAssignmentsQuery();
+    const updateDatesResult = await assignmentQuery.updateDatesByTemplateId(
+      templateId,
+      startDate,
+      endDate,
+    );
 
-    // Get assignments with status='template' for this template
-    const { data: assignments, error } = await supabase
-      .from('program_assignment')
-      .select('id')
-      .eq('program_template_id', templateId)
-      .eq('status', 'template');
-
-    if (!error && assignments && assignments.length > 0) {
-      // Update each assignment's dates
-      for (const assignment of assignments) {
-        await supabase
-          .from('program_assignment')
-          .update({
-            start_date: startDate,
-            end_date: endDate,
-          })
-          .eq('id', assignment.id);
-      }
+    if (!updateDatesResult.success) {
+      return updateDatesResult;
     }
   }
 
@@ -307,35 +296,8 @@ export async function upsertExerciseTemplate(data: {
   p_equipment_ids?: number[];
   p_notes?: string;
 }) {
-  const supabase = await createClient();
-
-  const { data: result, error } = await supabase.rpc(
-    'upsert_exercise_template',
-    data,
-  );
-
-  if (error) {
-    console.error('Error calling upsert_exercise_template RPC:', error);
-    return {
-      success: false as const,
-      error: error.message || 'Failed to upsert exercise template',
-    };
-  }
-
-  if (!result || result.success === false) {
-    const errorMessage =
-      result?.message || result?.error || 'Failed to upsert exercise template';
-    console.error('Error from upsert_exercise_template SQL function:', result);
-    return {
-      success: false as const,
-      error: errorMessage,
-    };
-  }
-
-  return {
-    success: true as const,
-    data: result,
-  };
+  const query = new ExerciseTemplatesQuery();
+  return query.upsertExerciseTemplate(data);
 }
 
 /**
@@ -360,38 +322,8 @@ export async function upsertGroup(data: {
     }
   | { success: false; error: string }
 > {
-  const supabase = await createClient();
-
-  const { data: result, error } = await supabase.rpc('upsert_group', data);
-
-  if (error) {
-    console.error('Error calling upsert_group RPC:', error);
-    return {
-      success: false as const,
-      error: error.message || 'Failed to upsert group',
-    };
-  }
-
-  if (!result || result.success === false) {
-    const errorMessage =
-      result?.message || result?.error || 'Failed to upsert group';
-    console.error('Error from upsert_group SQL function:', result);
-    return {
-      success: false as const,
-      error: errorMessage,
-    };
-  }
-
-  return {
-    success: true as const,
-    data: {
-      id: result.id,
-      group_hash: result.group_hash,
-      cloned: result.cloned,
-      reference_count: result.reference_count,
-      original_id: result.original_id,
-    },
-  };
+  const query = new GroupsQuery();
+  return query.upsertGroup(data);
 }
 
 /**
@@ -410,49 +342,8 @@ export async function upsertWorkoutSchedule(
   isDraft: boolean = true,
   notes?: string,
 ) {
-  const supabase = await createClient();
-
-  // Convert DatabaseSchedule to 3D array format expected by normalize_schedule_structure
-  const schedule3D = formatScheduleDB(schedule);
-  const scheduleJsonb = schedule3D as unknown;
-
-  const { data: result, error } = await supabase.rpc(
-    'upsert_workout_schedule',
-    {
-      p_schedule: scheduleJsonb,
-      p_is_draft: isDraft,
-      p_notes: notes || null,
-    },
-  );
-
-  if (error) {
-    console.error('Error calling upsert_workout_schedule RPC:', error);
-    return {
-      success: false as const,
-      error: error.message || 'Failed to upsert workout schedule',
-    };
-  }
-
-  if (!result || (result as { success?: boolean }).success === false) {
-    const errorResult = result as { error?: string; message?: string };
-    const errorMessage =
-      errorResult.message ||
-      errorResult.error ||
-      'Failed to upsert workout schedule';
-    console.error(
-      'Error from upsert_workout_schedule SQL function:',
-      errorResult,
-    );
-    return {
-      success: false as const,
-      error: errorMessage,
-    };
-  }
-
-  return {
-    success: true as const,
-    data: result as { id: string; schedule_hash: string },
-  };
+  const query = new WorkoutSchedulesQuery();
+  return query.upsertWorkoutSchedule(schedule, isDraft, notes);
 }
 
 /**
@@ -460,54 +351,18 @@ export async function upsertWorkoutSchedule(
  * Fetches program_assignment with patient_override and workout_schedules.schedule
  */
 export async function getWorkoutScheduleData(programAssignmentId: string) {
-  const supabase = await createClient();
+  const query = new WorkoutSchedulesQuery();
+  const result = await query.getScheduleDataByAssignmentId(programAssignmentId);
 
-  // Fetch program assignment with workout_schedule_id and patient_override
-  const { data: assignment, error: assignmentError } = await supabase
-    .from('program_assignment')
-    .select('workout_schedule_id, patient_override')
-    .eq('id', programAssignmentId)
-    .single();
-
-  if (assignmentError) {
-    return {
-      success: false as const,
-      error: assignmentError.message || 'Failed to fetch program assignment',
-    };
-  }
-
-  if (!assignment) {
-    return {
-      success: false as const,
-      error: 'Program assignment not found',
-    };
-  }
-
-  let schedule = null;
-
-  // If workout_schedule_id exists, fetch the schedule
-  if (assignment.workout_schedule_id) {
-    const { data: workoutSchedule, error: scheduleError } = await supabase
-      .from('workout_schedules')
-      .select('schedule')
-      .eq('id', assignment.workout_schedule_id)
-      .single();
-
-    if (scheduleError) {
-      return {
-        success: false as const,
-        error: scheduleError.message || 'Failed to fetch workout schedule',
-      };
-    }
-
-    schedule = workoutSchedule?.schedule || null;
+  if (!result.success) {
+    return result;
   }
 
   return {
     success: true as const,
     data: {
-      schedule: schedule as unknown,
-      patientOverride: assignment.patient_override as unknown,
+      schedule: result.data.schedule,
+      patientOverride: result.data.patientOverride,
     },
   };
 }
@@ -519,46 +374,8 @@ export async function updateProgramAssignmentWorkoutSchedule(
   assignmentId: string,
   workoutScheduleId: string,
 ) {
-  const supabase = await createClient();
-
-  // First check if workout_schedule_id is null
-  const { data: assignment, error: fetchError } = await supabase
-    .from('program_assignment')
-    .select('workout_schedule_id')
-    .eq('id', assignmentId)
-    .single();
-
-  if (fetchError) {
-    return {
-      success: false as const,
-      error: fetchError.message || 'Failed to fetch program assignment',
-    };
-  }
-
-  // Only update if workout_schedule_id is null
-  if (assignment.workout_schedule_id !== null) {
-    return {
-      success: true as const,
-      data: undefined,
-    };
-  }
-
-  const { error } = await supabase
-    .from('program_assignment')
-    .update({ workout_schedule_id: workoutScheduleId })
-    .eq('id', assignmentId);
-
-  if (error) {
-    return {
-      success: false as const,
-      error: error.message || 'Failed to update program assignment',
-    };
-  }
-
-  return {
-    success: true as const,
-    data: undefined,
-  };
+  const query = new ProgramAssignmentsQuery();
+  return query.updateWorkoutScheduleId(assignmentId, workoutScheduleId);
 }
 
 /**
@@ -568,24 +385,8 @@ export async function updateProgramSchedule(
   assignmentId: string,
   workoutScheduleId: string,
 ) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from('program_assignment')
-    .update({ workout_schedule_id: workoutScheduleId })
-    .eq('id', assignmentId);
-
-  if (error) {
-    return {
-      success: false as const,
-      error: error.message || 'Failed to update program assignment',
-    };
-  }
-
-  return {
-    success: true as const,
-    data: undefined,
-  };
+  const query = new ProgramAssignmentsQuery();
+  return query.updateWorkoutScheduleIdAlways(assignmentId, workoutScheduleId);
 }
 
 /**

@@ -272,4 +272,62 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       data: templatesMap,
     };
   }
+
+  /**
+   * Upsert exercise template via RPC function
+   * @param data - The exercise template data
+   * @returns Success with result or error
+   */
+  public async upsertExerciseTemplate(data: {
+    p_exercise_id: number;
+    p_sets?: number;
+    p_rep?: number;
+    p_time?: number;
+    p_distance?: string;
+    p_weight?: string;
+    p_rest_time?: number;
+    p_rep_override?: number[];
+    p_time_override?: number[];
+    p_distance_override?: string[];
+    p_weight_override?: string[];
+    p_rest_time_override?: number[];
+    p_equipment_ids?: number[];
+    p_notes?: string;
+  }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data: result, error } = await supabase.rpc(
+      'upsert_exercise_template',
+      data,
+    );
+
+    if (error) {
+      console.error('Error calling upsert_exercise_template RPC:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to upsert exercise template',
+      };
+    }
+
+    if (!result || (result as { success?: boolean }).success === false) {
+      const errorResult = result as { message?: string; error?: string };
+      const errorMessage =
+        errorResult.message ||
+        errorResult.error ||
+        'Failed to upsert exercise template';
+      console.error(
+        'Error from upsert_exercise_template SQL function:',
+        result,
+      );
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
 }

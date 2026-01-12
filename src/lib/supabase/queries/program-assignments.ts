@@ -246,4 +246,188 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       data: undefined,
     };
   }
+
+  /**
+   * Update dates for all program assignments with status='template' for a given template ID
+   * @param templateId - The program template ID
+   * @param startDate - Start date (ISO string)
+   * @param endDate - End date (ISO string)
+   * @returns Success or error
+   */
+  public async updateDatesByTemplateId(
+    templateId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    // Get assignments with status='template' for this template
+    const { data: assignments, error: fetchError } = await supabase
+      .from('program_assignment')
+      .select('id')
+      .eq('program_template_id', templateId)
+      .eq('status', 'template');
+
+    if (fetchError) {
+      return this.parseResponsePostgresError(
+        fetchError,
+        'Failed to fetch program assignments',
+      );
+    }
+
+    if (!assignments || assignments.length === 0) {
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    // Update each assignment's dates
+    for (const assignment of assignments) {
+      const { error } = await supabase
+        .from('program_assignment')
+        .update({
+          start_date: startDate,
+          end_date: endDate,
+        })
+        .eq('id', assignment.id);
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to update program assignment dates',
+        );
+      }
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Update workout schedule ID only if currently null
+   * @param assignmentId - The assignment ID
+   * @param workoutScheduleId - The workout schedule ID
+   * @returns Success or error
+   */
+  public async updateWorkoutScheduleId(
+    assignmentId: string,
+    workoutScheduleId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    // First check if workout_schedule_id is null
+    const { data: assignment, error: fetchError } = await supabase
+      .from('program_assignment')
+      .select('workout_schedule_id')
+      .eq('id', assignmentId)
+      .single();
+
+    if (fetchError) {
+      return this.parseResponsePostgresError(
+        fetchError,
+        'Failed to fetch program assignment',
+      );
+    }
+
+    // Only update if workout_schedule_id is null
+    if (assignment.workout_schedule_id !== null) {
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
+
+    const { error } = await supabase
+      .from('program_assignment')
+      .update({ workout_schedule_id: workoutScheduleId })
+      .eq('id', assignmentId);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to update program assignment',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Update workout schedule ID (always updates, even if already set)
+   * @param assignmentId - The assignment ID
+   * @param workoutScheduleId - The workout schedule ID
+   * @returns Success or error
+   */
+  public async updateWorkoutScheduleIdAlways(
+    assignmentId: string,
+    workoutScheduleId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { error } = await supabase
+      .from('program_assignment')
+      .update({ workout_schedule_id: workoutScheduleId })
+      .eq('id', assignmentId);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to update program assignment',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Get workout schedule fields (workout_schedule_id and patient_override) for a program assignment
+   * @param assignmentId - The assignment ID
+   * @returns Success with workout schedule fields or error
+   */
+  public async getWorkoutScheduleFields(assignmentId: string): Promise<
+    | SupabaseSuccess<{
+        workout_schedule_id: string | null;
+        patient_override: unknown;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data: assignment, error } = await supabase
+      .from('program_assignment')
+      .select('workout_schedule_id, patient_override')
+      .eq('id', assignmentId)
+      .single();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to fetch program assignment',
+      );
+    }
+
+    if (!assignment) {
+      return {
+        success: false,
+        error: 'Program assignment not found',
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        workout_schedule_id: assignment.workout_schedule_id,
+        patient_override: assignment.patient_override as unknown,
+      },
+    };
+  }
 }
