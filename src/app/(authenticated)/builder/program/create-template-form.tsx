@@ -102,7 +102,7 @@ export function CreateTemplateForm({
       };
       loadAssignmentDates();
     }
-  }, [initialData]);
+  }, [initialData, setProgramStartDate]);
 
   // Format date to YYYY-MM-DD in UTC to match Supabase timezone
   // Creates a UTC date from local date components to ensure the date string matches what the user sees
