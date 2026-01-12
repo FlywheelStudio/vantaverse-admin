@@ -5,7 +5,7 @@ import { closestCenter } from '@dnd-kit/core';
 /**
  * Represents a flattened item for drag and drop operations
  */
-export interface FlatItem {
+interface FlatItem {
   id: string;
   parentId: string | null;
   index: number;
@@ -70,56 +70,6 @@ export function flattenItems(items: SelectedItem[]): FlatItem[] {
 }
 
 /**
- * Reconstructs a nested SelectedItem[] array from a flat array
- */
-export function unflattenItems(flatItems: FlatItem[]): SelectedItem[] {
-  const result: SelectedItem[] = [];
-  const groupsMap = new Map<string, FlatItem>();
-
-  // First pass: identify top-level items and groups
-  flatItems.forEach((flatItem) => {
-    if (flatItem.parentId === null) {
-      if (flatItem.item.type === 'group') {
-        groupsMap.set(flatItem.id, flatItem);
-      }
-      result.push(flatItem.item);
-    }
-  });
-
-  // Second pass: populate group items
-  flatItems.forEach((flatItem) => {
-    if (flatItem.parentId !== null) {
-      const parentIndex = result.findIndex((item, idx) => {
-        if (item.type !== 'group') return false;
-        const parentId = generateItemId(item, idx);
-        return parentId === flatItem.parentId;
-      });
-
-      if (parentIndex !== -1) {
-        const parent = result[parentIndex];
-        if (parent.type === 'group') {
-          // Check if item already exists in group to avoid duplicates
-          const existingIdx = parent.data.items.findIndex((existing) => {
-            const existingId = generateItemId(
-              existing,
-              parent.data.items.indexOf(existing),
-              flatItem.parentId || undefined,
-            );
-            return existingId === flatItem.id;
-          });
-
-          if (existingIdx === -1) {
-            parent.data.items.push(flatItem.item);
-          }
-        }
-      }
-    }
-  });
-
-  return result;
-}
-
-/**
  * Gets all sortable IDs for the top level (groups + non-group items)
  */
 export function getTopLevelIds(items: SelectedItem[]): string[] {
@@ -144,30 +94,6 @@ export function findFlatItemById(
   id: string,
 ): FlatItem | undefined {
   return flatItems.find((item) => item.id === id);
-}
-
-/**
- * Checks if an ID belongs to a group container
- */
-export function isGroupId(id: string): boolean {
-  return (
-    id.startsWith('group-') &&
-    !id.includes('-template-') &&
-    !id.includes('-exercise-') &&
-    !id.includes('-item-')
-  );
-}
-
-/**
- * Extracts the parent group ID from a child item ID
- */
-export function getParentGroupId(childId: string): string | null {
-  // Check if the ID contains a parent reference (e.g., "group-0-template-123")
-  const match = childId.match(/^(group-\d+)-/);
-  if (match) {
-    return match[1];
-  }
-  return null;
 }
 
 /**
