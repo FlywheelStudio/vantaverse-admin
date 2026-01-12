@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { ExerciseBuilderModal } from './exercise-builder-modal';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import { useBuilder } from '@/context/builder-context';
+import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import {
   upsertWorkoutSchedule,
   updateProgramAssignmentWorkoutSchedule,
@@ -30,6 +31,10 @@ export function DayBoxesGrid() {
     setScheduleItem,
     getDayItems,
     schedule,
+    copiedDayIndex,
+    copiedDayData,
+    copyDay,
+    pasteDay,
   } = useBuilder();
 
   const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
@@ -234,62 +239,103 @@ export function DayBoxesGrid() {
                 })
               : null;
 
+            const dayIndex = day - 1;
+            const isDayCopied =
+              copiedDayIndex?.week === currentWeek &&
+              copiedDayIndex?.day === dayIndex;
+            const isDayPasteDisabled =
+              !copiedDayData ||
+              (copiedDayIndex?.week === currentWeek &&
+                copiedDayIndex?.day === dayIndex);
+
             return (
               <div key={day} className="flex flex-col flex-1 min-w-[160px]">
-                <h3 className="text-base font-semibold text-[#1E3A5F] mb-1 text-center">
-                  {getDayOfWeek(day)}
-                </h3>
+                <div className="relative mb-1">
+                  <h3 className="text-base font-semibold text-[#1E3A5F] text-center">
+                    {getDayOfWeek(day)}
+                  </h3>
+                </div>
                 {formattedDate && (
                   <p className="text-xs text-gray-500 mb-3 text-center">
                     {formattedDate}
                   </p>
                 )}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
+                <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
                   {hasItems ? (
-                    <motion.div
-                      key={`week-${currentWeek}-day-${day}-items`}
-                      className="w-full h-full flex flex-col items-center justify-center gap-1"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 * index }}
-                    >
-                      {totalExerciseCount > 0 && (
-                        <motion.p
-                          key={`week-${currentWeek}-day-${day}-exercises`}
-                          className="cursor-default text-sm text-gray-600"
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: 0.1 * index }}
-                        >
-                          {totalExerciseCount} exercise
-                          {totalExerciseCount !== 1 ? 's' : ''}
-                        </motion.p>
-                      )}
-                      {groupCount > 0 && (
-                        <motion.p
-                          key={`week-${currentWeek}-day-${day}-groups`}
-                          className="cursor-default text-sm text-gray-600"
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{
-                            duration: 0.3,
-                            delay: 0.1 * index,
-                          }}
-                        >
-                          {groupCount} group{groupCount !== 1 ? 's' : ''}
-                        </motion.p>
-                      )}
-                    </motion.div>
+                    <>
+                      <div className="absolute top-2 right-2">
+                        <CopyPasteButtons
+                          size="sm"
+                          onCopy={() => copyDay(currentWeek, dayIndex)}
+                          onPaste={() => pasteDay(currentWeek, dayIndex)}
+                          isCopied={isDayCopied}
+                          isPasteDisabled={isDayPasteDisabled}
+                          copyTooltip="Copy Day"
+                          pasteTooltip="Paste Day"
+                          copiedTooltip="Day already copied"
+                        />
+                      </div>
+                      <motion.div
+                        key={`week-${currentWeek}-day-${day}-items`}
+                        className="w-full h-full flex flex-col items-center justify-center gap-1"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 * index }}
+                      >
+                        {totalExerciseCount > 0 && (
+                          <motion.p
+                            key={`week-${currentWeek}-day-${day}-exercises`}
+                            className="cursor-default text-sm text-gray-600"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.3, delay: 0.1 * index }}
+                          >
+                            {totalExerciseCount} exercise
+                            {totalExerciseCount !== 1 ? 's' : ''}
+                          </motion.p>
+                        )}
+                        {groupCount > 0 && (
+                          <motion.p
+                            key={`week-${currentWeek}-day-${day}-groups`}
+                            className="cursor-default text-sm text-gray-600"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                              duration: 0.3,
+                              delay: 0.1 * index,
+                            }}
+                          >
+                            {groupCount} group{groupCount !== 1 ? 's' : ''}
+                          </motion.p>
+                        )}
+                      </motion.div>
+                    </>
                   ) : (
-                    <motion.p
-                      key={`week-${currentWeek}-day-${day}-rest`}
-                      className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 * index }}
-                    >
-                      Rest Day
-                    </motion.p>
+                    <>
+                      <div className="absolute top-2 right-2">
+                        <CopyPasteButtons
+                          size="sm"
+                          onCopy={() => copyDay(currentWeek, dayIndex)}
+                          onPaste={() => pasteDay(currentWeek, dayIndex)}
+                          isCopied={isDayCopied}
+                          isPasteDisabled={isDayPasteDisabled}
+                          copyTooltip="Copy Day"
+                          pasteTooltip="Paste Day"
+                          copiedTooltip="Day already copied"
+                          showCopy={false}
+                          showPaste={true}
+                        />
+                      </div>
+                      <motion.p
+                        key={`week-${currentWeek}-day-${day}-rest`}
+                        className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 * index }}
+                      >
+                        Rest Day
+                      </motion.p>
+                    </>
                   )}
                   <Button
                     variant="outline"

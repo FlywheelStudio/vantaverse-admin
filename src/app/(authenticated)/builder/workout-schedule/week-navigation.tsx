@@ -19,19 +19,10 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ClipboardIcon,
-  CopyIcon,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useBuilder } from '@/context/builder-context';
+import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import { cn } from '@/lib/utils';
 
 interface Week {
@@ -262,56 +253,16 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      <div className="flex items-center gap-2 h-9 px-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => copyWeek(currentWeek)}
-              className={cn(
-                'flex items-center justify-center h-full px-2 rounded transition-colors',
-                copiedWeekIndex === currentWeek
-                  ? 'bg-green-500 cursor-not-allowed'
-                  : 'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
-              )}
-            >
-              <CopyIcon className="h-4 w-4 text-white" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {copiedWeekIndex === currentWeek ? (
-              <p>Week already copied</p>
-            ) : (
-              <p>Copy Current Week</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => pasteWeek(currentWeek)}
-              disabled={!copiedWeekData || copiedWeekIndex === currentWeek}
-              className={cn(
-                'flex items-center justify-center h-full px-2 rounded transition-colors',
-                (!copiedWeekData || copiedWeekIndex === currentWeek) &&
-                  'opacity-50 cursor-not-allowed bg-[#2454FF] hover:bg-[#1E3FCC]',
-                copiedWeekData &&
-                  copiedWeekIndex !== currentWeek &&
-                  'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
-              )}
-            >
-              <ClipboardIcon className="h-4 w-4 text-white" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {copiedWeekIndex === currentWeek ? (
-              <p>Week already copied</p>
-            ) : (
-              <p>Paste Week</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </div>
+      <CopyPasteButtons
+        size="md"
+        onCopy={() => copyWeek(currentWeek)}
+        onPaste={() => pasteWeek(currentWeek)}
+        isCopied={copiedWeekIndex === currentWeek}
+        isPasteDisabled={!copiedWeekData || copiedWeekIndex === currentWeek}
+        copyTooltip="Copy Current Week"
+        pasteTooltip="Paste Week"
+        copiedTooltip="Week already copied"
+      />
     </div>
   );
 }

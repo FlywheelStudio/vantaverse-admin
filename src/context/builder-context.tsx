@@ -35,6 +35,10 @@ interface BuilderContextValue {
   copiedWeekData: SelectedItem[][] | null;
   copyWeek: (weekIndex: number) => void;
   pasteWeek: (targetWeekIndex: number) => void;
+  copiedDayIndex: { week: number; day: number } | null;
+  copiedDayData: SelectedItem[] | null;
+  copyDay: (weekIndex: number, dayIndex: number) => void;
+  pasteDay: (targetWeekIndex: number, targetDayIndex: number) => void;
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
@@ -109,6 +113,13 @@ export function BuilderContextProvider({
 
   const [copiedWeekIndex, setCopiedWeekIndex] = useState<number | null>(null);
   const [copiedWeekData, setCopiedWeekData] = useState<SelectedItem[][] | null>(
+    null,
+  );
+  const [copiedDayIndex, setCopiedDayIndex] = useState<{
+    week: number;
+    day: number;
+  } | null>(null);
+  const [copiedDayData, setCopiedDayData] = useState<SelectedItem[] | null>(
     null,
   );
 
@@ -429,6 +440,70 @@ export function BuilderContextProvider({
     [copiedWeekData, copiedWeekIndex],
   );
 
+  const copyDay = useCallback(
+    (weekIndex: number, dayIndex: number) => {
+      if (
+        weekIndex < 0 ||
+        weekIndex >= schedule.length ||
+        dayIndex < 0 ||
+        dayIndex >= 7
+      )
+        return;
+
+      const dayData = schedule[weekIndex]?.[dayIndex];
+      if (dayData) {
+        // Deep copy the day data
+        const copiedData: SelectedItem[] = dayData.map((item) => ({ ...item }));
+        setCopiedDayIndex({ week: weekIndex, day: dayIndex });
+        setCopiedDayData(copiedData);
+      }
+    },
+    [schedule],
+  );
+
+  const pasteDay = useCallback(
+    (targetWeekIndex: number, targetDayIndex: number) => {
+      if (
+        !copiedDayData ||
+        targetWeekIndex < 0 ||
+        targetDayIndex < 0 ||
+        targetDayIndex >= 7 ||
+        (copiedDayIndex?.week === targetWeekIndex &&
+          copiedDayIndex?.day === targetDayIndex)
+      ) {
+        return;
+      }
+
+      setScheduleState((prev) => {
+        const updated = [...prev];
+        // Ensure schedule has enough weeks
+        while (updated.length <= targetWeekIndex) {
+          updated.push(Array.from({ length: 7 }, () => []));
+        }
+        // Ensure each week has all 7 days
+        for (let w = 0; w < updated.length; w++) {
+          while (updated[w].length < 7) {
+            updated[w].push([]);
+          }
+        }
+
+        // Deep copy the day data to the target day
+        updated[targetWeekIndex] = [...updated[targetWeekIndex]];
+        updated[targetWeekIndex][targetDayIndex] = copiedDayData.map(
+          (item) => ({ ...item }),
+        );
+
+        // Persist to sessionStorage
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
+        }
+
+        return updated;
+      });
+    },
+    [copiedDayData, copiedDayIndex],
+  );
+
   // Don't render children until hydrated to avoid hydration mismatch
   if (!isHydrated) {
     return null;
@@ -456,6 +531,10 @@ export function BuilderContextProvider({
         copiedWeekData,
         copyWeek,
         pasteWeek,
+        copiedDayIndex,
+        copiedDayData,
+        copyDay,
+        pasteDay,
       }}
     >
       {children}
