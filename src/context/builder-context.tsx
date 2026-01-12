@@ -30,6 +30,11 @@ interface BuilderContextValue {
   getDayItems: (week: number, day: number) => SelectedItem[];
   hasChanges: (week: number, day: number) => boolean;
   initializeSchedule: (weeks: number) => void;
+  reorderWeeks: (newOrder: number[]) => void;
+  copiedWeekIndex: number | null;
+  copiedWeekData: SelectedItem[][] | null;
+  copyWeek: (weekIndex: number) => void;
+  pasteWeek: (targetWeekIndex: number) => void;
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
@@ -100,6 +105,11 @@ export function BuilderContextProvider({
       }
       return null;
     },
+  );
+
+  const [copiedWeekIndex, setCopiedWeekIndex] = useState<number | null>(null);
+  const [copiedWeekData, setCopiedWeekData] = useState<SelectedItem[][] | null>(
+    null,
   );
 
   // Initialize as hydrated if on client, false on server
@@ -248,6 +258,8 @@ export function BuilderContextProvider({
         setCurrentWeekState(0);
         setProgramAssignmentIdState(null);
         setProgramStartDateState(null);
+        setCopiedWeekIndex(null);
+        setCopiedWeekData(null);
         isLoadingScheduleRef.current = false;
         hasLoadedScheduleRef.current = false;
       }
@@ -343,6 +355,80 @@ export function BuilderContextProvider({
     }
   }, []);
 
+  const reorderWeeks = useCallback((newOrder: number[]) => {
+    // Use functional update to get current state and calculate new values
+    setScheduleState((prev) => {
+      if (newOrder.length !== prev.length) {
+        return prev;
+      }
+
+      // Create new schedule array with weeks in the new order
+      const reorderedSchedule: SelectedItem[][][] = newOrder.map(
+        (oldIndex) => prev[oldIndex],
+      );
+
+      // Persist schedule to sessionStorage
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(
+          SCHEDULE_STORAGE_KEY,
+          JSON.stringify(reorderedSchedule),
+        );
+      }
+
+      return reorderedSchedule;
+    });
+  }, []);
+
+  const copyWeek = useCallback(
+    (weekIndex: number) => {
+      if (weekIndex < 0 || weekIndex >= schedule.length) return;
+
+      const weekData = schedule[weekIndex];
+      if (weekData) {
+        // Deep copy the week data
+        const copiedData: SelectedItem[][] = weekData.map((day) =>
+          day.map((item) => ({ ...item })),
+        );
+        setCopiedWeekIndex(weekIndex);
+        setCopiedWeekData(copiedData);
+      }
+    },
+    [schedule],
+  );
+
+  const pasteWeek = useCallback(
+    (targetWeekIndex: number) => {
+      if (
+        !copiedWeekData ||
+        targetWeekIndex < 0 ||
+        copiedWeekIndex === targetWeekIndex
+      ) {
+        return;
+      }
+
+      setScheduleState((prev) => {
+        const updated = [...prev];
+        // Ensure schedule has enough weeks
+        while (updated.length <= targetWeekIndex) {
+          updated.push(Array.from({ length: 7 }, () => []));
+        }
+
+        // Deep copy the week data to the target week
+        updated[targetWeekIndex] = copiedWeekData.map((day) =>
+          day.map((item) => ({ ...item })),
+        );
+
+        // Persist to sessionStorage
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
+        }
+
+        return updated;
+      });
+    },
+    [copiedWeekData, copiedWeekIndex],
+  );
+
   // Don't render children until hydrated to avoid hydration mismatch
   if (!isHydrated) {
     return null;
@@ -365,6 +451,11 @@ export function BuilderContextProvider({
         getDayItems,
         hasChanges,
         initializeSchedule,
+        reorderWeeks,
+        copiedWeekIndex,
+        copiedWeekData,
+        copyWeek,
+        pasteWeek,
       }}
     >
       {children}

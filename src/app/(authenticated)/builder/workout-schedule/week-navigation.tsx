@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { MouseEvent } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -20,9 +19,20 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardIcon,
+  CopyIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useBuilder } from '@/context/builder-context';
+import { cn } from '@/lib/utils';
 
 interface Week {
   id: string;
@@ -31,7 +41,6 @@ interface Week {
 
 interface WeekNavigationProps {
   initialWeeks: number;
-  onWeeksChange?: (weeks: Week[]) => void;
 }
 
 function DraggableWeekButton({
@@ -53,7 +62,6 @@ function DraggableWeekButton({
   } = useSortable({ id: week.id });
 
   const hasDraggedRef = useRef(false);
-  const pointerDownRef = useRef(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -68,34 +76,15 @@ function DraggableWeekButton({
       // Reset after drag ends
       setTimeout(() => {
         hasDraggedRef.current = false;
-        pointerDownRef.current = false;
-      }, 0);
+      }, 100);
     }
   }, [isDragging]);
 
-  const handleClick = (e: MouseEvent) => {
+  const handleClick = () => {
     // Only handle click if no drag occurred
     if (!hasDraggedRef.current && !isDragging) {
-      e.preventDefault();
-      e.stopPropagation();
       onClick();
     }
-    hasDraggedRef.current = false;
-  };
-
-  const handleMouseUp = (e: MouseEvent) => {
-    // Handle click on mouse up if no drag occurred
-    if (!hasDraggedRef.current && !isDragging && pointerDownRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-    }
-    pointerDownRef.current = false;
-    hasDraggedRef.current = false;
-  };
-
-  const handlePointerDown = () => {
-    pointerDownRef.current = true;
     hasDraggedRef.current = false;
   };
 
@@ -105,33 +94,33 @@ function DraggableWeekButton({
       style={style}
       {...attributes}
       {...listeners}
-      onPointerDown={handlePointerDown}
+      onClick={handleClick}
+      className={cn(
+        'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all min-w-[100px] h-9 px-4 py-2 select-none touch-none',
+        isDragging
+          ? 'cursor-grabbing border bg-background shadow-xs'
+          : 'cursor-pointer active:cursor-grabbing',
+        !isDragging && isCurrent
+          ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white border-none'
+          : 'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+      )}
     >
-      <Button
-        variant={isDragging ? 'outline' : isCurrent ? 'default' : 'outline'}
-        onClick={handleClick}
-        onMouseUp={handleMouseUp}
-        className={`min-w-[100px] ${
-          isDragging
-            ? 'cursor-grabbing'
-            : 'cursor-pointer active:cursor-grabbing'
-        } ${
-          !isDragging && isCurrent
-            ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white'
-            : ''
-        }`}
-      >
-        Week {week.number}
-      </Button>
+      Week {week.number}
     </div>
   );
 }
 
-export function WeekNavigation({
-  initialWeeks,
-  onWeeksChange,
-}: WeekNavigationProps) {
-  const { currentWeek, setCurrentWeek } = useBuilder();
+export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
+  const {
+    currentWeek,
+    setCurrentWeek,
+    reorderWeeks,
+    copiedWeekIndex,
+    copiedWeekData,
+    copyWeek,
+    pasteWeek,
+  } = useBuilder();
+
   const [weeks, setWeeks] = useState<Week[]>(() =>
     Array.from({ length: initialWeeks }, (_, i) => ({
       id: `week-${i + 1}`,
@@ -143,13 +132,6 @@ export function WeekNavigation({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Initialize current week to 0 if not set
-  useEffect(() => {
-    if (currentWeek === 0 && weeks.length > 0) {
-      setCurrentWeek(0);
-    }
-  }, [currentWeek, weeks.length, setCurrentWeek]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -160,10 +142,6 @@ export function WeekNavigation({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  useEffect(() => {
-    onWeeksChange?.(weeks);
-  }, [weeks, onWeeksChange]);
 
   useEffect(() => {
     const checkScroll = () => {
@@ -192,10 +170,27 @@ export function WeekNavigation({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
+      // Calculate indices and new order using current weeks state
+      const oldIndex = weeks.findIndex((item) => item.id === active.id);
+      const newIndex = weeks.findIndex((item) => item.id === over.id);
+
+      // Create array of original indices [0, 1, 2, ...]
+      const originalIndices = weeks.map((_, index) => index);
+      // Apply the same move operation to get the new order
+      const newOrder = arrayMove(originalIndices, oldIndex, newIndex);
+
+      // Call reorderWeeks once, before state update
+      reorderWeeks(newOrder);
+
+      // Update weeks state
       setWeeks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        const reorderedWithNewNumbers = reordered.map((week, index) => ({
+          ...week,
+          number: index + 1,
+        }));
+
+        return reorderedWithNewNumbers;
       });
     }
   };
@@ -209,17 +204,6 @@ export function WeekNavigation({
         behavior: 'smooth',
       });
     }
-  };
-
-  const handleAddWeek = () => {
-    const newWeekNumber = weeks.length + 1;
-    setWeeks([
-      ...weeks,
-      {
-        id: `week-${newWeekNumber}`,
-        number: newWeekNumber,
-      },
-    ]);
   };
 
   return (
@@ -250,14 +234,19 @@ export function WeekNavigation({
             strategy={horizontalListSortingStrategy}
           >
             <div className="flex gap-2 min-w-max">
-              {weeks.map((week) => (
-                <DraggableWeekButton
-                  key={week.id}
-                  week={week}
-                  isCurrent={week.number - 1 === currentWeek}
-                  onClick={() => setCurrentWeek(week.number - 1)}
-                />
-              ))}
+              {weeks.map((week, index) => {
+                const weekIndex = index;
+                return (
+                  <DraggableWeekButton
+                    key={week.id}
+                    week={week}
+                    isCurrent={weekIndex === currentWeek}
+                    onClick={() => {
+                      setCurrentWeek(weekIndex);
+                    }}
+                  />
+                );
+              })}
             </div>
           </SortableContext>
         </DndContext>
@@ -273,13 +262,56 @@ export function WeekNavigation({
         <ChevronRight className="h-4 w-4" />
       </Button>
 
-      <Button
-        onClick={handleAddWeek}
-        className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-4 rounded-xl shadow-lg shrink-0 flex items-center gap-2"
-      >
-        <Plus className="h-4 w-4" />
-        Add Week
-      </Button>
+      <div className="flex items-center gap-2 h-9 px-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => copyWeek(currentWeek)}
+              className={cn(
+                'flex items-center justify-center h-full px-2 rounded transition-colors',
+                copiedWeekIndex === currentWeek
+                  ? 'bg-green-500 cursor-not-allowed'
+                  : 'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
+              )}
+            >
+              <CopyIcon className="h-4 w-4 text-white" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {copiedWeekIndex === currentWeek ? (
+              <p>Week already copied</p>
+            ) : (
+              <p>Copy Current Week</p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => pasteWeek(currentWeek)}
+              disabled={!copiedWeekData || copiedWeekIndex === currentWeek}
+              className={cn(
+                'flex items-center justify-center h-full px-2 rounded transition-colors',
+                (!copiedWeekData || copiedWeekIndex === currentWeek) &&
+                  'opacity-50 cursor-not-allowed bg-[#2454FF] hover:bg-[#1E3FCC]',
+                copiedWeekData &&
+                  copiedWeekIndex !== currentWeek &&
+                  'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
+              )}
+            >
+              <ClipboardIcon className="h-4 w-4 text-white" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {copiedWeekIndex === currentWeek ? (
+              <p>Week already copied</p>
+            ) : (
+              <p>Paste Week</p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }
