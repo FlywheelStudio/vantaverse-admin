@@ -34,7 +34,6 @@ interface BuilderContextValue {
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
 
-const STORAGE_KEY = 'builder-selected-template-id';
 const SCHEDULE_STORAGE_KEY = 'builder-schedule';
 const CURRENT_WEEK_STORAGE_KEY = 'builder-current-week';
 const PROGRAM_ASSIGNMENT_STORAGE_KEY = 'builder-program-assignment-id';
@@ -55,15 +54,10 @@ interface BuilderContextProviderProps {
 export function BuilderContextProvider({
   children,
 }: BuilderContextProviderProps) {
-  // Lazy initialization: read from sessionStorage only on first render
+  // Template ID is now managed via URL routing, not sessionStorage
   const [selectedTemplateId, setSelectedTemplateIdState] = useState<
     string | null
-  >(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem(STORAGE_KEY);
-    }
-    return null;
-  });
+  >(null);
 
   const [schedule, setScheduleState] = useState<SelectedItem[][][]>(() => {
     if (typeof window !== 'undefined') {
@@ -238,16 +232,14 @@ export function BuilderContextProvider({
       });
   }, [programAssignmentId, isHydrated]);
 
-  const setSelectedTemplateId = (id: string | null) => {
+  const setSelectedTemplateId = useCallback((id: string | null) => {
     setSelectedTemplateIdState(id);
     if (typeof window !== 'undefined') {
       if (id) {
-        sessionStorage.setItem(STORAGE_KEY, id);
         // Reset schedule loading refs when template changes
         isLoadingScheduleRef.current = false;
         hasLoadedScheduleRef.current = false;
       } else {
-        sessionStorage.removeItem(STORAGE_KEY);
         sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
         sessionStorage.removeItem(CURRENT_WEEK_STORAGE_KEY);
         sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
@@ -260,11 +252,11 @@ export function BuilderContextProvider({
         hasLoadedScheduleRef.current = false;
       }
     }
-  };
+  }, []);
 
-  const clearSelectedTemplate = () => {
+  const clearSelectedTemplate = useCallback(() => {
     setSelectedTemplateId(null);
-  };
+  }, [setSelectedTemplateId]);
 
   const initializeSchedule = useCallback((weeks: number) => {
     if (weeks <= 0) return;

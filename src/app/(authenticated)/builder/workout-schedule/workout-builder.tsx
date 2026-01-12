@@ -9,12 +9,27 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
-export function WorkoutBuilder() {
-  const { selectedTemplateId, clearSelectedTemplate, initializeSchedule } =
-    useBuilder();
-  const { data: template, isLoading } = useProgramTemplate(selectedTemplateId);
+interface WorkoutBuilderProps {
+  templateId: string | undefined;
+}
+
+export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
+  const { initializeSchedule, setSelectedTemplateId } = useBuilder();
+  const { data: template, isLoading, error } = useProgramTemplate(templateId);
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+
+  // Set template ID in context for programAssignmentId fetching
+  useEffect(() => {
+    if (templateId) {
+      setSelectedTemplateId(templateId);
+    }
+    return () => {
+      setSelectedTemplateId(null);
+    };
+  }, [templateId, setSelectedTemplateId]);
 
   // Ensure component only renders after hydration
   useEffect(() => {
@@ -41,6 +56,17 @@ export function WorkoutBuilder() {
     );
   }
 
+  if (!templateId) {
+    return (
+      <div
+        suppressHydrationWarning
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+      >
+        <p className="text-gray-500">Invalid program ID</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div
@@ -48,6 +74,17 @@ export function WorkoutBuilder() {
         className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
       >
         <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        suppressHydrationWarning
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+      >
+        <p className="text-red-500">Error loading template: {error.message}</p>
       </div>
     );
   }
@@ -76,7 +113,7 @@ export function WorkoutBuilder() {
         <div className="mb-4">
           <Button
             variant="ghost"
-            onClick={clearSelectedTemplate}
+            onClick={() => router.push('/builder')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer glass-background"
           >
             <ArrowLeft className="h-4 w-4" />

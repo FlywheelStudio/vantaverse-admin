@@ -11,8 +11,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useBuilder } from '@/context/builder-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { deleteProgramAssignment } from '../actions';
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
@@ -70,8 +70,8 @@ interface ProgramBuilderProps {
 
 export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
   const { data: assignments, isLoading } = useProgramAssignments();
-  const { setSelectedTemplateId } = useBuilder();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const isMobile = useIsMobile();
   const [searchValue, setSearchValue] = useState('');
   const [weeksFilter, setWeeksFilter] = useState<string>('');
@@ -154,7 +154,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
   const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
     const templateId = assignment.program_template?.id;
     if (templateId) {
-      setSelectedTemplateId(templateId);
+      router.push(`/builder/${templateId}`);
       onTemplateSelect?.(assignment);
     }
   };

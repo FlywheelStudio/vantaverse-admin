@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getProgramTemplateById } from '@/app/(authenticated)/builder/actions';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 
-export function useProgramTemplate(id: string | null) {
+export function useProgramTemplate(id: string | null | undefined) {
   return useQuery<ProgramTemplate | null, Error>({
     queryKey: ['program-template', id],
     queryFn: async () => {
@@ -18,7 +18,7 @@ export function useProgramTemplate(id: string | null) {
 
       return result.data;
     },
-    enabled: !!id,
+    enabled: !!id && typeof id === 'string',
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes
   });

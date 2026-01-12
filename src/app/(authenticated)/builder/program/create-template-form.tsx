@@ -15,9 +15,9 @@ import {
   updateProgramTemplate,
   uploadProgramTemplateImage,
   updateProgramTemplateImage,
-  getProgramAssignments,
 } from '../actions';
 import { useQueryClient } from '@tanstack/react-query';
+import { useProgramAssignments } from '@/hooks/use-program-assignments';
 import Image from 'next/image';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import { useBuilder } from '@/context/builder-context';
@@ -35,6 +35,7 @@ export function CreateTemplateForm({
 }: CreateTemplateFormProps) {
   const queryClient = useQueryClient();
   const { setProgramStartDate } = useBuilder();
+  const { data: assignments } = useProgramAssignments();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -50,10 +51,15 @@ export function CreateTemplateForm({
     fromTime: number;
     weeks: number;
   } | null>(null);
+  const loadedDatesForTemplateIdRef = useRef<string | null>(null);
 
   // Pre-fill form when initialData changes
   useEffect(() => {
     if (initialData) {
+      // Reset the ref when initialData changes to a different template
+      if (loadedDatesForTemplateIdRef.current !== initialData.id) {
+        loadedDatesForTemplateIdRef.current = null;
+      }
       setFormData({
         name: initialData.name || '',
         description: initialData.description || '',
@@ -75,34 +81,30 @@ export function CreateTemplateForm({
         }
       }
 
-      // Load assignment dates if available
-      const loadAssignmentDates = async () => {
-        try {
-          const assignmentsResult = await getProgramAssignments();
-          if (assignmentsResult.success && assignmentsResult.data) {
-            const assignment = assignmentsResult.data.find(
-              (a) => a.program_template?.id === initialData.id,
-            );
-            if (assignment?.start_date) {
-              const startDate = new Date(assignment.start_date);
-              const endDate = assignment.end_date
-                ? new Date(assignment.end_date)
-                : calculateEndDate(startDate, initialData.weeks || 4);
-              setDateRange({
-                from: startOfDay(startDate),
-                to: endDate ? startOfDay(endDate) : undefined,
-              });
-              // Store start date in builder context
-              setProgramStartDate(formatDateForDB(startDate));
-            }
-          }
-        } catch (error) {
-          console.error('Error loading assignment dates:', error);
+      // Load assignment dates if available (only once per template)
+      if (
+        assignments &&
+        loadedDatesForTemplateIdRef.current !== initialData.id
+      ) {
+        const assignment = assignments.find(
+          (a) => a.program_template?.id === initialData.id,
+        );
+        if (assignment?.start_date) {
+          const startDate = new Date(assignment.start_date);
+          const endDate = assignment.end_date
+            ? new Date(assignment.end_date)
+            : calculateEndDate(startDate, initialData.weeks || 4);
+          setDateRange({
+            from: startOfDay(startDate),
+            to: endDate ? startOfDay(endDate) : undefined,
+          });
+          // Store start date in builder context
+          setProgramStartDate(formatDateForDB(startDate));
+          loadedDatesForTemplateIdRef.current = initialData.id;
         }
-      };
-      loadAssignmentDates();
+      }
     }
-  }, [initialData, setProgramStartDate]);
+  }, [initialData, setProgramStartDate, assignments]);
 
   // Format date to YYYY-MM-DD in UTC to match Supabase timezone
   // Creates a UTC date from local date components to ensure the date string matches what the user sees

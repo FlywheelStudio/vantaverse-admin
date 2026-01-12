@@ -426,7 +426,7 @@ export function SelectedItemsList({
         >
           <div
             className={cn(
-              'border-2 border-dashed rounded-lg p-4 transition-colors border-gray-300 bg-gray-50',
+              'border-2 border-dashed rounded-lg p-4 transition-colors border-gray-300 bg-gray-50 min-h-full',
             )}
           >
             {items.length === 0 ? (

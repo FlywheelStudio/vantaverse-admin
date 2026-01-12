@@ -3,14 +3,6 @@
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { ProgramBuilder } from './program/program-builder';
-import { WorkoutBuilder } from './workout-schedule/workout-builder';
-import { useBuilder } from '@/context/builder-context';
-
-function BuilderContent() {
-  const { selectedTemplateId } = useBuilder();
-
-  return <>{selectedTemplateId ? <WorkoutBuilder /> : <ProgramBuilder />}</>;
-}
 
 export default function BuilderPage() {
   return (
@@ -22,7 +14,7 @@ export default function BuilderPage() {
       }
     >
       <BuilderContextProvider>
-        <BuilderContent />
+        <ProgramBuilder />
       </BuilderContextProvider>
     </PageWrapper>
   );
