@@ -26,12 +26,12 @@ export function generateItemId(
   if (item.type === 'template' && item.data.id) {
     return parentId
       ? `${parentId}-template-${item.data.id}`
-      : `template-${item.data.id}`;
+      : `template-${item.data.id}-${index}`;
   }
   if (item.type === 'exercise' && item.data.id) {
     return parentId
       ? `${parentId}-exercise-${item.data.id}`
-      : `exercise-${item.data.id}`;
+      : `exercise-${item.data.id}-${index}`;
   }
   return parentId ? `${parentId}-item-${index}` : `top-${index}`;
 }

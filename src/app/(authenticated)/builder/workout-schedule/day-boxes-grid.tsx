@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ExerciseBuilderModal } from './exercise-builder-modal';
@@ -16,9 +16,9 @@ import { convertSelectedItemsToDatabaseSchedule } from './utils';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { getDayOfWeek } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export function DayBoxesGrid() {
-  const days = Array.from({ length: 7 }, (_, i) => i + 1);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
@@ -39,26 +39,69 @@ export function DayBoxesGrid() {
 
   const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
 
-  // Calculate the actual date for a specific week and day
-  const calculateDayDate = (
-    startDate: string | null,
-    weekIndex: number,
-    dayIndex: number,
-  ): Date | null => {
-    if (!startDate) return null;
-    const start = new Date(startDate);
-    const dayDate = new Date(start);
-    dayDate.setDate(dayDate.getDate() + weekIndex * 7 + dayIndex);
-    return dayDate;
-  };
+  // Parse date string to local date (avoiding timezone issues)
+  const parseLocalDate = useCallback((dateString: string): Date => {
+    // Parse YYYY-MM-DD format to local date
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }, []);
+
+  // Days always show Monday-Sunday (1-7)
+  const days = Array.from({ length: 7 }, (_, i) => i + 1);
+
+  // Get the Monday of the week containing the start date
+  const getWeekStartMonday = useCallback((): Date | null => {
+    if (!programStartDate) return null;
+    const start = parseLocalDate(programStartDate);
+    // getDay() returns 0=Sunday, 1=Monday, ..., 6=Saturday
+    // Convert to 0=Monday, 1=Tuesday, ..., 6=Sunday
+    const dayOfWeek = start.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(start);
+    monday.setDate(monday.getDate() - mondayOffset);
+    return monday;
+  }, [programStartDate, parseLocalDate]);
+
+  // Calculate the actual date for a specific week and day (Monday=0, Tuesday=1, ..., Sunday=6)
+  const calculateDayDate = useCallback(
+    (weekIndex: number, dayOfWeek: number): Date | null => {
+      // dayOfWeek: 1=Monday, 2=Tuesday, ..., 7=Sunday
+      // Convert to 0=Monday, 1=Tuesday, ..., 6=Sunday
+      const dayIndex = dayOfWeek - 1;
+      const weekStartMonday = getWeekStartMonday();
+      if (!weekStartMonday) return null;
+      const dayDate = new Date(weekStartMonday);
+      dayDate.setDate(dayDate.getDate() + weekIndex * 7 + dayIndex);
+      return dayDate;
+    },
+    [getWeekStartMonday],
+  );
+
+  // Check if a day is before start_date
+  const isDayBeforeStart = useCallback(
+    (weekIndex: number, dayOfWeek: number): boolean => {
+      if (!programStartDate) return false;
+
+      const start = parseLocalDate(programStartDate);
+      start.setHours(0, 0, 0, 0);
+
+      const dayDate = calculateDayDate(weekIndex, dayOfWeek);
+      if (!dayDate) return false;
+      dayDate.setHours(0, 0, 0, 0);
+
+      return dayDate.getTime() < start.getTime();
+    },
+    [programStartDate, parseLocalDate, calculateDayDate],
+  );
 
   // Calculate date for currently selected day
   const selectedDayDate = useMemo(() => {
     if (selectedDay === null) return null;
-    return calculateDayDate(programStartDate, currentWeek, selectedDay - 1);
-  }, [programStartDate, currentWeek, selectedDay]);
+    return calculateDayDate(currentWeek, selectedDay);
+  }, [currentWeek, selectedDay, calculateDayDate]);
 
   const handleAddExercise = (day: number) => {
+    // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
     const dayIndex = day - 1;
 
     // Check if weekday changed (different week or day) and reset program assignment ID
@@ -92,7 +135,6 @@ export function DayBoxesGrid() {
       setScheduleItem(week, day, items);
 
       // Create updated schedule array
-      // Ensure week 0 exists (database expects 1-indexed weeks, but arrays are 0-indexed)
       const updatedSchedule = [...schedule];
       if (updatedSchedule.length === 0) {
         updatedSchedule.push(Array.from({ length: 7 }, () => []));
@@ -206,7 +248,11 @@ export function DayBoxesGrid() {
   };
 
   const dayItems = useMemo(
-    () => (day: number) => getDayItems(currentWeek, day - 1),
+    () => (day: number) => {
+      // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
+      const dayIndex = day - 1;
+      return getDayItems(currentWeek, dayIndex);
+    },
     [currentWeek, getDayItems],
   );
 
@@ -215,6 +261,8 @@ export function DayBoxesGrid() {
       <div className="mt-6 overflow-x-auto slim-scrollbar">
         <div className="flex gap-4">
           {days.map((day, index) => {
+            // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
+            const dayIndex = day - 1;
             const items = dayItems(day);
             const hasItems = items.length > 0;
             const templateCount = items.filter(
@@ -227,11 +275,7 @@ export function DayBoxesGrid() {
             const groupCount = items.filter(
               (item) => item.type === 'group',
             ).length;
-            const dayDate = calculateDayDate(
-              programStartDate,
-              currentWeek,
-              day,
-            );
+            const dayDate = calculateDayDate(currentWeek, day);
             const formattedDate = dayDate
               ? dayDate.toLocaleDateString('en-US', {
                   month: 'short',
@@ -239,7 +283,7 @@ export function DayBoxesGrid() {
                 })
               : null;
 
-            const dayIndex = day - 1;
+            const isBeforeStart = isDayBeforeStart(currentWeek, day);
             const isDayCopied =
               copiedDayIndex?.week === currentWeek &&
               copiedDayIndex?.day === dayIndex;
@@ -251,16 +295,33 @@ export function DayBoxesGrid() {
             return (
               <div key={day} className="flex flex-col flex-1 min-w-[160px]">
                 <div className="relative mb-1">
-                  <h3 className="text-base font-semibold text-[#1E3A5F] text-center">
+                  <h3
+                    className={cn(
+                      'text-base font-semibold text-center',
+                      isBeforeStart ? 'text-red-500' : 'text-[#1E3A5F]',
+                    )}
+                  >
                     {getDayOfWeek(day)}
                   </h3>
                 </div>
                 {formattedDate && (
-                  <p className="text-xs text-gray-500 mb-3 text-center">
+                  <p
+                    className={cn(
+                      'text-xs mb-3 text-center',
+                      isBeforeStart ? 'text-red-400' : 'text-gray-500',
+                    )}
+                  >
                     {formattedDate}
                   </p>
                 )}
-                <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4 bg-gray-50/50">
+                <div
+                  className={cn(
+                    'relative border-2 border-dashed rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4',
+                    isBeforeStart
+                      ? 'border-red-400 bg-red-50/50'
+                      : 'border-gray-300 bg-gray-50/50',
+                  )}
+                >
                   {hasItems ? (
                     <>
                       <div className="absolute top-2 right-2">
@@ -269,7 +330,7 @@ export function DayBoxesGrid() {
                           onCopy={() => copyDay(currentWeek, dayIndex)}
                           onPaste={() => pasteDay(currentWeek, dayIndex)}
                           isCopied={isDayCopied}
-                          isPasteDisabled={isDayPasteDisabled}
+                          isPasteDisabled={isDayPasteDisabled || isBeforeStart}
                           copyTooltip="Copy Day"
                           pasteTooltip="Paste Day"
                           copiedTooltip="Day already copied"
@@ -285,7 +346,10 @@ export function DayBoxesGrid() {
                         {totalExerciseCount > 0 && (
                           <motion.p
                             key={`week-${currentWeek}-day-${day}-exercises`}
-                            className="cursor-default text-sm text-gray-600"
+                            className={cn(
+                              'cursor-default text-sm',
+                              isBeforeStart ? 'text-red-400' : 'text-gray-600',
+                            )}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.3, delay: 0.1 * index }}
@@ -297,7 +361,10 @@ export function DayBoxesGrid() {
                         {groupCount > 0 && (
                           <motion.p
                             key={`week-${currentWeek}-day-${day}-groups`}
-                            className="cursor-default text-sm text-gray-600"
+                            className={cn(
+                              'cursor-default text-sm',
+                              isBeforeStart ? 'text-red-400' : 'text-gray-600',
+                            )}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{
@@ -318,7 +385,7 @@ export function DayBoxesGrid() {
                           onCopy={() => copyDay(currentWeek, dayIndex)}
                           onPaste={() => pasteDay(currentWeek, dayIndex)}
                           isCopied={isDayCopied}
-                          isPasteDisabled={isDayPasteDisabled}
+                          isPasteDisabled={isDayPasteDisabled || isBeforeStart}
                           copyTooltip="Copy Day"
                           pasteTooltip="Paste Day"
                           copiedTooltip="Day already copied"
@@ -328,7 +395,10 @@ export function DayBoxesGrid() {
                       </div>
                       <motion.p
                         key={`week-${currentWeek}-day-${day}-rest`}
-                        className="h-full flex flex-col items-center justify-center text-gray-400 text-sm cursor-default"
+                        className={cn(
+                          'h-full flex flex-col items-center justify-center text-sm cursor-default',
+                          isBeforeStart ? 'text-red-400' : 'text-gray-400',
+                        )}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.1 * index }}
@@ -340,7 +410,13 @@ export function DayBoxesGrid() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
+                    disabled={isBeforeStart}
+                    className={cn(
+                      'border-dashed',
+                      isBeforeStart
+                        ? 'border-red-400 text-red-500 cursor-not-allowed bg-red-50/30'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer',
+                    )}
                     onClick={() => handleAddExercise(day)}
                   >
                     <Plus className="h-4 w-4 mr-2" />

@@ -114,6 +114,7 @@ export function BuildWorkoutSection({
           disabled={isDisabled}
           variant="default"
           size="sm"
+          className="bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer"
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

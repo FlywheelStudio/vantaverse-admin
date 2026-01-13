@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -37,10 +37,12 @@ interface WeekNavigationProps {
 function DraggableWeekButton({
   week,
   isCurrent,
+  isDisabled,
   onClick,
 }: {
   week: Week;
   isCurrent: boolean;
+  isDisabled: boolean;
   onClick: () => void;
 }) {
   const {
@@ -72,8 +74,8 @@ function DraggableWeekButton({
   }, [isDragging]);
 
   const handleClick = () => {
-    // Only handle click if no drag occurred
-    if (!hasDraggedRef.current && !isDragging) {
+    // Only handle click if no drag occurred and not disabled
+    if (!hasDraggedRef.current && !isDragging && !isDisabled) {
       onClick();
     }
     hasDraggedRef.current = false;
@@ -88,12 +90,16 @@ function DraggableWeekButton({
       onClick={handleClick}
       className={cn(
         'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all min-w-[100px] h-9 px-4 py-2 select-none touch-none',
-        isDragging
-          ? 'cursor-grabbing border bg-background shadow-xs'
-          : 'cursor-pointer active:cursor-grabbing',
-        !isDragging && isCurrent
+        isDisabled
+          ? 'opacity-70 cursor-not-allowed border-red-400 bg-red-50/50 text-red-500'
+          : isDragging
+            ? 'cursor-grabbing border bg-background shadow-xs'
+            : 'cursor-pointer active:cursor-grabbing',
+        !isDisabled && !isDragging && isCurrent
           ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white border-none'
-          : 'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          : !isDisabled
+            ? 'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50'
+            : '',
       )}
     >
       Week {week.number}
@@ -110,7 +116,39 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     copiedWeekData,
     copyWeek,
     pasteWeek,
+    programStartDate,
   } = useBuilder();
+
+  // Parse date string to local date (avoiding timezone issues)
+  const parseLocalDate = useCallback((dateString: string): Date => {
+    // Parse YYYY-MM-DD format to local date
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }, []);
+
+  // Calculate if all days in a week are before start_date
+  const isWeekBeforeStart = useCallback(
+    (weekIndex: number): boolean => {
+      if (!programStartDate) return false;
+
+      const start = parseLocalDate(programStartDate);
+
+      // Check all 7 days in the week
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const dayDate = new Date(start);
+        dayDate.setDate(dayDate.getDate() + weekIndex * 7 + dayIndex);
+        dayDate.setHours(0, 0, 0, 0);
+
+        // If any day is on or after start, the week is not entirely before start
+        if (dayDate.getTime() >= start.getTime()) {
+          return false;
+        }
+      }
+      // All days are before start
+      return true;
+    },
+    [programStartDate, parseLocalDate],
+  );
 
   const [weeks, setWeeks] = useState<Week[]>(() =>
     Array.from({ length: initialWeeks }, (_, i) => ({
@@ -227,11 +265,13 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
             <div className="flex gap-2 min-w-max">
               {weeks.map((week, index) => {
                 const weekIndex = index;
+                const isDisabled = isWeekBeforeStart(weekIndex);
                 return (
                   <DraggableWeekButton
                     key={week.id}
                     week={week}
                     isCurrent={weekIndex === currentWeek}
+                    isDisabled={isDisabled}
                     onClick={() => {
                       setCurrentWeek(weekIndex);
                     }}
@@ -258,7 +298,11 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
         onCopy={() => copyWeek(currentWeek)}
         onPaste={() => pasteWeek(currentWeek)}
         isCopied={copiedWeekIndex === currentWeek}
-        isPasteDisabled={!copiedWeekData || copiedWeekIndex === currentWeek}
+        isPasteDisabled={
+          !copiedWeekData ||
+          copiedWeekIndex === currentWeek ||
+          isWeekBeforeStart(currentWeek)
+        }
         copyTooltip="Copy Current Week"
         pasteTooltip="Paste Week"
         copiedTooltip="Week already copied"
