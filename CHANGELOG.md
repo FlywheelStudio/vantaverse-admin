@@ -1,5 +1,41 @@
 # Changelog
 
+# [0.5.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.4.0...0.5.0) (2026-01-13)
+
+
+### Bug Fixes
+
+* **builder:** added missing dependency ([08827c8](https://github.com/FlywheelStudio/vantaverse-admin/commit/08827c8ac1e9e40f0f947ad82124d2251349a19a))
+* **builder:** clean up imports and streamline SelectedItemsList component ([a2a4a53](https://github.com/FlywheelStudio/vantaverse-admin/commit/a2a4a53aba8122492314cddcdc4170832642d2b0))
+* **builder:** refactor drag-and-drop context and simplify SelectedItemsList component ([aac558d](https://github.com/FlywheelStudio/vantaverse-admin/commit/aac558d72725c368557b5bed1b48b5137773f773))
+* **builder:** refactored the builder page to accept id as url parameter ([08e5bb3](https://github.com/FlywheelStudio/vantaverse-admin/commit/08e5bb397b1e886cbdfec9294f86ff71ffd081da))
+* **builder:** remove unnecessary dependency from useCallback in SelectedItemsList ([a093d02](https://github.com/FlywheelStudio/vantaverse-admin/commit/a093d0288827fe3b7a8dc7604b670a92decd4a4b))
+* **builder:** remove unused functions and streamline schedule conversion logic ([5aa2680](https://github.com/FlywheelStudio/vantaverse-admin/commit/5aa2680f0d90fd477c8d975e1b5883c0701dd3f1))
+* **builder:** remove unused functions from dnd-utils and simplify interface definitions ([9ccbd32](https://github.com/FlywheelStudio/vantaverse-admin/commit/9ccbd32a665b4e2c37d5b37c6c5d93a77c5cb661))
+* **builder:** removed dnd kit ([f3e79d9](https://github.com/FlywheelStudio/vantaverse-admin/commit/f3e79d99d1fef060b4f71734db251386177b2dac))
+* **builder:** removed unused export ([ab36eca](https://github.com/FlywheelStudio/vantaverse-admin/commit/ab36ecaf48f92beb9179dd8d91aab3affee7b9b8))
+* **exercise-card:** update date display formatting in ExerciseCard component ([f4a78fc](https://github.com/FlywheelStudio/vantaverse-admin/commit/f4a78fc7fe14638e360cad2981849148aac9992a))
+* **users-page:** update loading state handling to ensure proper rendering ([1f575e5](https://github.com/FlywheelStudio/vantaverse-admin/commit/1f575e5bc33ca8809c3d2e14e687f170957837e7))
+
+
+### Features
+
+* **builder:** add copy and paste functionality for daily workout schedule ([98d4105](https://github.com/FlywheelStudio/vantaverse-admin/commit/98d41054ce4e68608be564e830fd4071486c18da))
+* **builder:** add function to retrieve program template by ID ([a1acf6c](https://github.com/FlywheelStudio/vantaverse-admin/commit/a1acf6cc4016b7cf3c58bb7c36317c5be6c569f1))
+* **builder:** add paginated exercise and exercise template retrieval functions ([6a3d011](https://github.com/FlywheelStudio/vantaverse-admin/commit/6a3d011a5093cf61d097966c98f1ddad761a2a79))
+* **builder:** add workout schedule data retrieval and conversion to SelectedItem format ([af3de3f](https://github.com/FlywheelStudio/vantaverse-admin/commit/af3de3f8cc8a709fc9d9e3dca3c589b895d4c5a7))
+* **builder:** added program builder and editing page ([44b8bcb](https://github.com/FlywheelStudio/vantaverse-admin/commit/44b8bcbc0cbfe3d2f426d1b04e24da9d84c9d463))
+* **builder:** enhance template configuration with default values and group management ([4516279](https://github.com/FlywheelStudio/vantaverse-admin/commit/45162790db3391f60ea3e1c3077e1f71c2107842))
+* **builder:** enhance week navigation with copy and paste functionality for weeks ([7773ba4](https://github.com/FlywheelStudio/vantaverse-admin/commit/7773ba4d5e0335ea5da6478f50c8c0ca59d1c067))
+* **builder:** enhance workout schedule UI with date parsing and conditional styling for past days ([0d28eee](https://github.com/FlywheelStudio/vantaverse-admin/commit/0d28eee276b96d244992239262c2c7bb85347163))
+* **builder:** finished dnd functionality ([2797802](https://github.com/FlywheelStudio/vantaverse-admin/commit/2797802302cd5bb10c5aeb2f193cabd28e1ffea3))
+* **builder:** implement upsert functionality for groups and enhance workout schedule conversion logic ([9e3c3e6](https://github.com/FlywheelStudio/vantaverse-admin/commit/9e3c3e6bc95384012b72623c813ea3680c2c1309))
+* **builder:** implement workout schedule management with upsert and assignment updates ([4d45e52](https://github.com/FlywheelStudio/vantaverse-admin/commit/4d45e5282f6628f0e59a4025ecebf408499dd555))
+* **builder:** implement workout schedule saving and program assignment update functionality ([37a5fb8](https://github.com/FlywheelStudio/vantaverse-admin/commit/37a5fb83ffc3620fa1d6890d166a21fc6331776a))
+* **builder:** refactor program assignment and workout schedule handling with new query classes ([a7d7df6](https://github.com/FlywheelStudio/vantaverse-admin/commit/a7d7df603796045bcf06f526721135f5baaabd67))
+* **habit-pledge-card:** integrate Blurhash for improved image loading experience ([eb66f9e](https://github.com/FlywheelStudio/vantaverse-admin/commit/eb66f9eca77b63a4df47d1b7996d9c33d7ed7afe))
+* **user-profile:** add mc intake and habit pledge queries to user profile page ([361cc32](https://github.com/FlywheelStudio/vantaverse-admin/commit/361cc32959686dcbbc59de2ae451872d315d3803))
+
 # [0.4.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.3.0...0.4.0) (2026-01-07)
 
 

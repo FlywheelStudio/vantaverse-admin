@@ -4,9 +4,13 @@ import { PageWrapper } from '@/components/page-wrapper';
 import { UserProfileCard } from '@/components/users/user-profile-card';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { Appointment } from '@/lib/supabase/queries/appointments';
+import type { McIntakeSurvey } from '@/lib/supabase/queries/mc-intake';
+import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
 import { AppointmentCard } from './appointment-card';
 import { HpCard } from './hp-card';
 import { IpCard } from './ip-card';
+import { McIntakeCard } from './mc-intake-card';
+import { HabitPledgeCard } from './habit-pledge-card';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function UserProfilePageUI({
@@ -18,6 +22,8 @@ export function UserProfilePageUI({
   gateInfo,
   ipTransactions,
   pointsMissingForNextLevel,
+  mcIntakeSurvey,
+  habitPledge,
 }: {
   user: ProfileWithStats;
   appointments: Appointment[];
@@ -48,6 +54,8 @@ export function UserProfilePageUI({
     description: string | null;
   }>;
   pointsMissingForNextLevel: number | null;
+  mcIntakeSurvey: McIntakeSurvey | null;
+  habitPledge: HabitPledge | null;
 }) {
   // Filter screening and consultation appointments
   const screeningAppointments = appointments.filter(
@@ -112,6 +120,12 @@ export function UserProfilePageUI({
                 transactions={ipTransactions}
               />
             </div>
+            {(mcIntakeSurvey || habitPledge) && (
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
+                {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
+                {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

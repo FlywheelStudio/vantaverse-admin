@@ -801,6 +801,7 @@ export async function bulkImportUsers(
       });
 
     if (authError || !authUser.user) {
+      console.error('Error creating auth user:', authError);
       result.errors.push({
         type: 'user',
         identifier: email,

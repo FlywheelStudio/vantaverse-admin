@@ -25,7 +25,12 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
       >
         {subheader}
       </div>
-      <div className="pl-4 pt-4 pb-4 flex-1 overflow-hidden">{children}</div>
+      <div
+        suppressHydrationWarning
+        className="pl-4 pt-4 pb-4 flex-1 overflow-hidden"
+      >
+        {children}
+      </div>
     </div>
   );
 }

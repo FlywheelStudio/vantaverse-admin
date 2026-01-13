@@ -3,6 +3,8 @@ import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { AppointmentsQuery } from '@/lib/supabase/queries/appointments';
 import { HpPointsQuery } from '@/lib/supabase/queries/hp-points';
 import { IpPointsQuery } from '@/lib/supabase/queries/ip-points';
+import { McIntakeQuery } from '@/lib/supabase/queries/mc-intake';
+import { HabitPledgeQuery } from '@/lib/supabase/queries/habit-pledge';
 import { UserProfilePageUI } from './ui';
 
 export default async function UserProfilePage({
@@ -16,6 +18,8 @@ export default async function UserProfilePage({
   const appointmentsQuery = new AppointmentsQuery();
   const hpPointsQuery = new HpPointsQuery();
   const ipPointsQuery = new IpPointsQuery();
+  const mcIntakeQuery = new McIntakeQuery();
+  const habitPledgeQuery = new HabitPledgeQuery();
 
   // First, validate that the user exists
   const userResult = await profilesQuery.getUserById(id);
@@ -35,6 +39,8 @@ export default async function UserProfilePage({
     gateInfoResult,
     ipTransactionsResult,
     nextThresholdResult,
+    mcIntakeSurveyResult,
+    habitPledgeResult,
   ] = await Promise.all([
     appointmentsQuery.getAppointmentsByUserId(id),
     user.current_level !== null
@@ -66,6 +72,8 @@ export default async function UserProfilePage({
           success: false,
           error: 'No current threshold',
         } as const),
+    mcIntakeQuery.getSurveyByUserId(id),
+    habitPledgeQuery.getPledgeByUserId(id),
   ]);
 
   const appointments = appointmentsResult.success
@@ -84,6 +92,10 @@ export default async function UserProfilePage({
   const ipTransactions = ipTransactionsResult.success
     ? ipTransactionsResult.data
     : [];
+  const mcIntakeSurvey = mcIntakeSurveyResult.success
+    ? mcIntakeSurveyResult.data
+    : null;
+  const habitPledge = habitPledgeResult.success ? habitPledgeResult.data : null;
 
   // Calculate points missing for next level
   let pointsMissingForNextLevel: number | null = null;
@@ -117,6 +129,8 @@ export default async function UserProfilePage({
       gateInfo={gateInfo}
       ipTransactions={ipTransactions}
       pointsMissingForNextLevel={pointsMissingForNextLevel}
+      mcIntakeSurvey={mcIntakeSurvey}
+      habitPledge={habitPledge}
     />
   );
 }

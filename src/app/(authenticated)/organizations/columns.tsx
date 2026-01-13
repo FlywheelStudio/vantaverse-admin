@@ -8,7 +8,7 @@ import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useOrganizationsTable } from './context';
+import { useOrganizationsTable } from '../../../context/organizations';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from './teams-cell';
 

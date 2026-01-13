@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useOrganizationsTable } from './context';
+import { useOrganizationsTable } from '../../../context/organizations';
 import type { Team } from '@/lib/supabase/schemas/teams';
 
 interface TeamsExpandedRowProps {

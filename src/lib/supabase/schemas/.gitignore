@@ -1,0 +1,4 @@
+upsert_workout_schedule.sql
+upsert_group.sql
+upsert_exercise_template.sql
+normalize_schedule_structure.sql
