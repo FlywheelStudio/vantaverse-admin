@@ -311,7 +311,7 @@ export function DayBoxesGrid() {
                       isBeforeStart ? 'text-red-400' : 'text-gray-500',
                     )}
                   >
-                    {formattedDate}
+                    {formattedDate} {isBeforeStart ? ' (Before Start)' : ''}
                   </p>
                 )}
                 <div
