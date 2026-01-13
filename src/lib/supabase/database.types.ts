@@ -277,6 +277,7 @@ export type Database = {
           rest_time_override: number[] | null;
           sets: number | null;
           template_hash: string;
+          tempo: string[] | null;
           time: number | null;
           time_override: number[] | null;
           updated_at: string | null;
@@ -297,6 +298,7 @@ export type Database = {
           rest_time_override?: number[] | null;
           sets?: number | null;
           template_hash: string;
+          tempo?: string[] | null;
           time?: number | null;
           time_override?: number[] | null;
           updated_at?: string | null;
@@ -317,6 +319,7 @@ export type Database = {
           rest_time_override?: number[] | null;
           sets?: number | null;
           template_hash?: string;
+          tempo?: string[] | null;
           time?: number | null;
           time_override?: number[] | null;
           updated_at?: string | null;
@@ -1631,7 +1634,6 @@ export type Database = {
           group_counts: Json | null;
           group_ids: string[] | null;
           id: string;
-          is_draft: boolean | null;
           notes: string | null;
           schedule: Json[] | null;
           schedule_hash: string;
@@ -1644,7 +1646,6 @@ export type Database = {
           group_counts?: Json | null;
           group_ids?: string[] | null;
           id?: string;
-          is_draft?: boolean | null;
           notes?: string | null;
           schedule?: Json[] | null;
           schedule_hash: string;
@@ -1657,7 +1658,6 @@ export type Database = {
           group_counts?: Json | null;
           group_ids?: string[] | null;
           id?: string;
-          is_draft?: boolean | null;
           notes?: string | null;
           schedule?: Json[] | null;
           schedule_hash?: string;
@@ -2005,13 +2005,13 @@ export type Database = {
       };
     };
     Functions: {
+      _calculate_total_sets_from_exercises: {
+        Args: { p_day_exercises: Json };
+        Returns: number;
+      };
       answer_check_in_question: {
         Args: { p_exercise_template_id: string };
-        Returns: {
-          interval_ip: number;
-          new_ip: number;
-          previous_ip: number;
-        }[];
+        Returns: Json;
       };
       complete_set: {
         Args: {
@@ -2034,6 +2034,7 @@ export type Database = {
           p_rest_time_override?: number[];
           p_sets?: number;
           p_template_id: string;
+          p_tempo?: string[];
           p_time?: number;
           p_time_override?: number[];
           p_weight?: string;
@@ -2055,19 +2056,11 @@ export type Database = {
         Args: { normalized_schedule: Json[] };
         Returns: Json;
       };
-      finalize_workout_schedule: {
-        Args: { p_schedule_id: string };
-        Returns: Json;
-      };
       gate_unlock: {
         Args: { gate_type: Database['public']['Enums']['gate_unlock_type'] };
         Returns: Json;
       };
       get_complete_schema: { Args: never; Returns: Json };
-      get_day_status: {
-        Args: { p_day_date: string; p_user_id: string };
-        Returns: string;
-      };
       get_habit_status: {
         Args: { due_date: string; response: string };
         Returns: string;
@@ -2107,6 +2100,7 @@ export type Database = {
           p_rest_time: number;
           p_rest_time_override: number[];
           p_sets: number;
+          p_tempo: string[];
           p_time: number;
           p_time_override: number[];
           p_weight: string;
@@ -2173,16 +2167,6 @@ export type Database = {
           week_count: number;
         }[];
       };
-      update_workout_schedule_day: {
-        Args: {
-          p_day: number;
-          p_day_items: Json;
-          p_is_draft?: boolean;
-          p_schedule_id: string;
-          p_week: number;
-        };
-        Returns: Json;
-      };
       update_workout_schedule_references: {
         Args: { p_schedule_id: string };
         Returns: undefined;
@@ -2199,25 +2183,13 @@ export type Database = {
           p_rest_time?: number;
           p_rest_time_override?: number[];
           p_sets?: number;
+          p_tempo?: string[];
           p_time?: number;
           p_time_override?: number[];
           p_weight?: string;
           p_weight_override?: string[];
         };
-        Returns:
-          | {
-              success: true;
-              id: string;
-              template_hash: string;
-              cloned: boolean;
-              reference_count: number;
-              original_id?: string;
-            }
-          | {
-              success: false;
-              error: string;
-              message: string;
-            };
+        Returns: Json;
       };
       upsert_group: {
         Args: {
@@ -2226,23 +2198,10 @@ export type Database = {
           p_note?: string;
           p_title: string;
         };
-        Returns:
-          | {
-              success: true;
-              id: string;
-              group_hash: string;
-              cloned: boolean;
-              reference_count: number;
-              original_id?: string;
-            }
-          | {
-              success: false;
-              error: string;
-              message: string;
-            };
+        Returns: Json;
       };
       upsert_workout_schedule: {
-        Args: { p_is_draft?: boolean; p_notes?: string; p_schedule: Json };
+        Args: { p_notes?: string; p_schedule: Json };
         Returns: Json;
       };
       user_can_manage_organization: {

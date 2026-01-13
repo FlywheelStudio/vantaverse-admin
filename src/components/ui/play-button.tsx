@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useDragContext } from '@/app/(authenticated)/builder/workout-schedule/dnd/drag-context';
+import { useDragContextOptional } from '@/app/(authenticated)/builder/workout-schedule/dnd/drag-context';
 
 interface PlayButtonProps {
   videoUrl: string | null;
@@ -21,7 +21,8 @@ export function PlayButton({
   exerciseName,
   disableHover = false,
 }: PlayButtonProps) {
-  const { isDragging } = useDragContext();
+  const dragContext = useDragContextOptional();
+  const isDragging = dragContext?.isDragging ?? false;
   const [isHovered, setIsHovered] = useState(false);
 
   const isVideoOpen = !isDragging && !disableHover && isHovered;

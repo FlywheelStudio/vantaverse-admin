@@ -307,64 +307,12 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
-   * Update workout schedule ID only if currently null
+   * Update workout schedule ID
    * @param assignmentId - The assignment ID
    * @param workoutScheduleId - The workout schedule ID
    * @returns Success or error
    */
   public async updateWorkoutScheduleId(
-    assignmentId: string,
-    workoutScheduleId: string,
-  ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    // First check if workout_schedule_id is null
-    const { data: assignment, error: fetchError } = await supabase
-      .from('program_assignment')
-      .select('workout_schedule_id')
-      .eq('id', assignmentId)
-      .single();
-
-    if (fetchError) {
-      return this.parseResponsePostgresError(
-        fetchError,
-        'Failed to fetch program assignment',
-      );
-    }
-
-    // Only update if workout_schedule_id is null
-    if (assignment.workout_schedule_id !== null) {
-      return {
-        success: true,
-        data: undefined,
-      };
-    }
-
-    const { error } = await supabase
-      .from('program_assignment')
-      .update({ workout_schedule_id: workoutScheduleId })
-      .eq('id', assignmentId);
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to update program assignment',
-      );
-    }
-
-    return {
-      success: true,
-      data: undefined,
-    };
-  }
-
-  /**
-   * Update workout schedule ID (always updates, even if already set)
-   * @param assignmentId - The assignment ID
-   * @param workoutScheduleId - The workout schedule ID
-   * @returns Success or error
-   */
-  public async updateWorkoutScheduleIdAlways(
     assignmentId: string,
     workoutScheduleId: string,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {

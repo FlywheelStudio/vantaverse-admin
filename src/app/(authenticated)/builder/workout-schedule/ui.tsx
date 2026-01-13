@@ -67,8 +67,8 @@ export function BuildWorkoutSection({
         return;
       }
 
-      // Save to database as final (not draft)
-      const result = await upsertWorkoutSchedule(conversionResult.data, false);
+      // Save to database
+      const result = await upsertWorkoutSchedule(conversionResult.data);
 
       if (!result.success) {
         console.error('Error saving workout schedule:', result.error);

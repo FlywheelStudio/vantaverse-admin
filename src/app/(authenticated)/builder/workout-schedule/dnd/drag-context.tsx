@@ -52,6 +52,11 @@ export function useDragContext() {
   return context;
 }
 
+export function useDragContextOptional() {
+  const context = useContext(DragContext);
+  return context;
+}
+
 interface DragContextProviderProps {
   items: SelectedItem[];
   onItemsReorder: (items: SelectedItem[]) => void;

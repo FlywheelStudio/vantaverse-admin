@@ -33,3 +33,18 @@ export type Group = {
   isSuperset: boolean;
   items: SelectedItem[];
 };
+
+export type UpsertExerciseTemplateResult =
+  | {
+      success: true;
+      id: string;
+      template_hash: string;
+      cloned: boolean;
+      reference_count: number;
+      original_id?: string;
+    }
+  | {
+      success: false;
+      error: string;
+      message: string;
+    };

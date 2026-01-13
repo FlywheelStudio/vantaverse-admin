@@ -10,13 +10,11 @@ export class WorkoutSchedulesQuery extends SupabaseQuery {
   /**
    * Upsert workout schedule via RPC function
    * @param schedule - The database schedule
-   * @param isDraft - Whether the schedule is a draft
    * @param notes - Optional notes
    * @returns Success with result or error
    */
   public async upsertWorkoutSchedule(
     schedule: DatabaseSchedule,
-    isDraft: boolean = true,
     notes?: string,
   ): Promise<
     SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
@@ -31,7 +29,6 @@ export class WorkoutSchedulesQuery extends SupabaseQuery {
       'upsert_workout_schedule',
       {
         p_schedule: scheduleJsonb,
-        p_is_draft: isDraft,
         p_notes: notes || null,
       },
     );

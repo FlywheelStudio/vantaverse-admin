@@ -9,7 +9,7 @@ import { useBuilder } from '@/context/builder-context';
 import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import {
   upsertWorkoutSchedule,
-  updateProgramAssignmentWorkoutSchedule,
+  updateProgramSchedule,
   upsertGroup,
 } from '@/app/(authenticated)/builder/actions';
 import { convertSelectedItemsToDatabaseSchedule } from './utils';
@@ -176,7 +176,7 @@ export function DayBoxesGrid() {
       }
 
       // Save to database
-      const result = await upsertWorkoutSchedule(conversionResult.data, true);
+      const result = await upsertWorkoutSchedule(conversionResult.data);
 
       if (!result.success) {
         console.error('Error saving workout schedule:', result.error);
@@ -184,9 +184,8 @@ export function DayBoxesGrid() {
         return;
       }
 
-      // Update program assignment if it doesn't have a workout_schedule_id
-      // The function will check and only update if null
-      const updateResult = await updateProgramAssignmentWorkoutSchedule(
+      // Update program assignment workout_schedule_id
+      const updateResult = await updateProgramSchedule(
         programAssignmentId,
         result.data.id,
       );

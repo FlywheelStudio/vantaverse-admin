@@ -339,11 +339,10 @@ export async function getProgramAssignmentByTemplateId(templateId: string) {
  */
 export async function upsertWorkoutSchedule(
   schedule: DatabaseSchedule,
-  isDraft: boolean = true,
   notes?: string,
 ) {
   const query = new WorkoutSchedulesQuery();
-  return query.upsertWorkoutSchedule(schedule, isDraft, notes);
+  return query.upsertWorkoutSchedule(schedule, notes);
 }
 
 /**
@@ -368,25 +367,14 @@ export async function getWorkoutScheduleData(programAssignmentId: string) {
 }
 
 /**
- * Update program assignment workout schedule ID (only if currently null)
- */
-export async function updateProgramAssignmentWorkoutSchedule(
-  assignmentId: string,
-  workoutScheduleId: string,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.updateWorkoutScheduleId(assignmentId, workoutScheduleId);
-}
-
-/**
- * Update program assignment workout schedule ID (always updates, even if already set)
+ * Update program assignment workout schedule ID
  */
 export async function updateProgramSchedule(
   assignmentId: string,
   workoutScheduleId: string,
 ) {
   const query = new ProgramAssignmentsQuery();
-  return query.updateWorkoutScheduleIdAlways(assignmentId, workoutScheduleId);
+  return query.updateWorkoutScheduleId(assignmentId, workoutScheduleId);
 }
 
 /**
