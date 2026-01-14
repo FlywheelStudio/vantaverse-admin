@@ -15,11 +15,3 @@ export interface UsersTableProps {
   onFiltersChange?: (filters: UsersTableFilters) => void;
   isLoading?: boolean;
 }
-
-export interface QuickAddUserData {
-  organizationId?: string;
-  teamId?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
