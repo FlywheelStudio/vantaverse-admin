@@ -29,7 +29,7 @@ export const profileSchema = z.object({
   avatar_url: z.string().nullable(),
   certificate_url: z.any().nullable(),
   timezone: z.string().nullish(),
-  last_sign_in: z.string().nullable(),
+  last_sign_in: z.string().nullish(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
 });
