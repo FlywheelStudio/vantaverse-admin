@@ -5,8 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
-  Building2,
-  Users2,
   AlertCircle,
   Loader2,
 } from 'lucide-react';
@@ -115,50 +113,6 @@ function UserList({
             {user.firstName} {user.lastName}
           </span>
           {showEmail && <span className="text-[#64748B]">({user.email})</span>}
-          {user.organizationName && (
-            <span className="text-xs bg-[#F5F7FA] px-2 py-0.5 rounded">
-              {user.organizationName}
-            </span>
-          )}
-          {user.teamName && (
-            <span className="text-xs bg-[#E5E9F0] px-2 py-0.5 rounded">
-              {user.teamName}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function OrganizationList({ organizations }: { organizations: string[] }) {
-  return (
-    <ul className="space-y-1 text-sm">
-      {organizations.map((org) => (
-        <li key={org} className="text-[#1E3A5F]">
-          {org}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function TeamList({
-  teams,
-}: {
-  teams: { name: string; organizationName: string }[];
-}) {
-  return (
-    <ul className="space-y-1 text-sm">
-      {teams.map((team) => (
-        <li
-          key={`${team.organizationName}-${team.name}`}
-          className="flex items-center gap-2"
-        >
-          <span className="text-[#1E3A5F]">{team.name}</span>
-          <span className="text-xs text-[#64748B]">
-            in {team.organizationName}
-          </span>
         </li>
       ))}
     </ul>
@@ -192,19 +146,9 @@ export function ImportValidationModal({
 }: ImportValidationModalProps) {
   if (!validationResult) return null;
 
-  const {
-    usersToAdd,
-    usersToUpdate,
-    organizationsToCreate,
-    teamsToCreate,
-    errors,
-  } = validationResult;
+  const { usersToAdd, existingUsers, errors } = validationResult;
   const hasErrors = errors.length > 0;
-  const hasData =
-    usersToAdd.length > 0 ||
-    usersToUpdate.length > 0 ||
-    organizationsToCreate.length > 0 ||
-    teamsToCreate.length > 0;
+  const hasData = usersToAdd.length > 0 || existingUsers.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -240,31 +184,13 @@ export function ImportValidationModal({
                   <UserList users={usersToAdd} showEmail />
                 </CollapsibleSection>
 
-                {/* Users to Update */}
+                {/* Existing Users */}
                 <CollapsibleSection
-                  title="users to be updated"
-                  count={usersToUpdate.length}
-                  icon={<Users className="h-4 w-4 text-blue-600" />}
+                  title="users already in the database"
+                  count={existingUsers.length}
+                  icon={<Users className="h-4 w-4 text-slate-600" />}
                 >
-                  <UserList users={usersToUpdate} showEmail />
-                </CollapsibleSection>
-
-                {/* Organizations to Create */}
-                <CollapsibleSection
-                  title="organizations to be created"
-                  count={organizationsToCreate.length}
-                  icon={<Building2 className="h-4 w-4 text-purple-600" />}
-                >
-                  <OrganizationList organizations={organizationsToCreate} />
-                </CollapsibleSection>
-
-                {/* Teams to Create */}
-                <CollapsibleSection
-                  title="teams to be created"
-                  count={teamsToCreate.length}
-                  icon={<Users2 className="h-4 w-4 text-orange-600" />}
-                >
-                  <TeamList teams={teamsToCreate} />
+                  <UserList users={existingUsers} showEmail />
                 </CollapsibleSection>
               </>
             )}

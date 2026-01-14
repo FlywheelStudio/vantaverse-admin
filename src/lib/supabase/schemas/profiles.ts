@@ -17,6 +17,7 @@ export const profileSchema = z.object({
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
   email: z.email().nullable(),
+  status: z.enum(['pending', 'invited', 'active', 'assigned']).nullish(),
   phone: z.string().nullable(),
   journey_phase: journeyPhaseSchema.nullable(),
   screening_completed: z.boolean().nullable(),
@@ -28,7 +29,7 @@ export const profileSchema = z.object({
   avatar_url: z.string().nullable(),
   certificate_url: z.any().nullable(),
   timezone: z.string().nullish(),
-  last_sign_in_at_testing: z.string().nullish(),
+  last_sign_in: z.string().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
 });

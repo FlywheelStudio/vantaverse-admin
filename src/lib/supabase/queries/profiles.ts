@@ -585,6 +585,47 @@ export class ProfilesQuery extends SupabaseQuery {
   }
 
   /**
+   * Get user profiles by email list (for import display)
+   * NOTE: emails are matched case-sensitively by Supabase `in()`; callers should
+   * pass normalized lowercase emails.
+   */
+  public async getByEmailsForImport(emails: string[]): Promise<
+    | SupabaseSuccess<
+        Array<{
+          id: string;
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          status: string | null;
+        }>
+      >
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+
+    if (emails.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, first_name, last_name, status')
+      .in('email', emails);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get users by emails for import',
+      );
+    }
+
+    return {
+      success: true,
+      data: data ?? [],
+    };
+  }
+
+  /**
    * Get user profile by email (case-insensitive)
    * @param email - The email to search for
    * @returns Success with user profile data or error
@@ -663,6 +704,24 @@ export class ProfilesQuery extends SupabaseQuery {
       }
 
       const userId = authUser.user.id;
+
+      // Ensure profile fields/status are set
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: data.firstName.trim() || null,
+          last_name: data.lastName.trim() || null,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (profileError) {
+        return {
+          success: false,
+          error: `Failed to update profile: ${profileError.message}`,
+        };
+      }
 
       // Add to organization if provided
       if (data.organizationId) {

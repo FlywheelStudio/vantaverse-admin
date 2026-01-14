@@ -16,7 +16,7 @@ export function AddUserMenu() {
         onClick={() => setOpen(true)}
         className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer"
       >
-        {isMobile ? <Plus className="h-4 w-4" /> : 'Add User'}
+        {isMobile ? <Plus className="h-4 w-4" /> : 'Add Member'}
       </Button>
       <AddUserModal open={open} onOpenChange={(next) => setOpen(next)} />
     </>

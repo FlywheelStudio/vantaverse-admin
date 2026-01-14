@@ -42,9 +42,9 @@ export function UsersTable({
   // Get filter display names for empty state
   const emptyStateMessage =
     filters.team_id && selectedTeamName
-      ? `No users assigned to this team`
+      ? `No members assigned to this team`
       : filters.organization_id && selectedOrgName
-        ? `No users assigned to this organization`
+        ? `No members assigned to this organization`
         : 'No results.';
 
   return (
@@ -91,7 +91,7 @@ export function UsersTable({
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                    <span className="text-[#64748B]">Loading users...</span>
+                    <span className="text-[#64748B]">Loading members...</span>
                   </div>
                 </td>
               </tr>

@@ -50,7 +50,7 @@ export default function UsersPage() {
 
   return (
     <PageWrapper
-      subheader={<h1 className="text-2xl font-medium">Users Management</h1>}
+      subheader={<h1 className="text-2xl font-medium">Members Management</h1>}
     >
       <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
         {hasLoadedOnce && (

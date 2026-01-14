@@ -1,8 +1,6 @@
 'use server';
 
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { OrganizationsQuery } from '@/lib/supabase/queries/organizations';
-import { TeamsQuery } from '@/lib/supabase/queries/teams';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import * as XLSX from 'xlsx';
@@ -16,9 +14,6 @@ export interface ImportUserRow {
   firstName: string;
   lastName: string;
   email: string;
-  organizationName: string;
-  teamName: string;
-  role: string;
 }
 
 export interface ValidationError {
@@ -29,21 +24,30 @@ export interface ValidationError {
 
 export interface ImportValidationResult {
   usersToAdd: ImportUserRow[];
-  usersToUpdate: ImportUserRow[];
-  organizationsToCreate: string[];
-  teamsToCreate: { name: string; organizationName: string }[];
+  existingUsers: ImportUserRow[];
+  failedUsers: ImportUserRow[];
   errors: ValidationError[];
 }
 
-// Expected headers in row 8 (0-indexed: row 7)
-const EXPECTED_HEADERS = [
-  'First Name',
-  'Last Name',
-  'Email*',
-  'Organization Name (exact)',
-  'Team Name (exact, must have organization)',
-  'Role (admin or user)',
-];
+const DATA_START_ROW_INDEX = 4; // row 5 (1-indexed), inclusive
+
+function isHeaderRow(row: (string | number | undefined)[] | undefined) {
+  if (!row) return false;
+  const first = String(row[0] ?? '')
+    .trim()
+    .toLowerCase();
+  const last = String(row[1] ?? '')
+    .trim()
+    .toLowerCase();
+  const email = String(row[2] ?? '')
+    .trim()
+    .toLowerCase();
+  return (
+    first === 'first name' &&
+    last === 'last name' &&
+    (email === 'email' || email === 'email*')
+  );
+}
 
 /**
  * Get users with stats
@@ -143,179 +147,74 @@ export async function uploadUsersCSV(
       },
     );
 
-    // Validate header row (row 8, 0-indexed: 7)
-    const headerRowIndex = 7;
-    if (data.length <= headerRowIndex) {
-      return {
-        success: false,
-        error: 'CSV file does not have enough rows. Header expected at row 8.',
-      };
-    }
-
-    const headerRow = data[headerRowIndex];
-    if (!headerRow) {
-      return { success: false, error: 'Header row (row 8) is empty' };
-    }
-
-    // Validate headers match expected
-    for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
-      const expected = EXPECTED_HEADERS[i];
-      const actual = String(headerRow[i] || '').trim();
-      if (actual !== expected) {
-        return {
-          success: false,
-          error: `Invalid header at column ${i + 1}. Expected "${expected}", got "${actual}"`,
-        };
-      }
-    }
-
-    // Fetch existing data from database
-    const orgQuery = new OrganizationsQuery();
-    const teamQuery = new TeamsQuery();
     const profileQuery = new ProfilesQuery();
 
-    const [orgResult, teamResult, emailResult] = await Promise.all([
-      orgQuery.getAllForImport(),
-      teamQuery.getAllForImport(),
-      profileQuery.getAllEmailsForImport(),
-    ]);
-
-    if (!orgResult.success) {
-      return {
-        success: false,
-        error: orgResult.error,
-      };
-    }
-    if (!teamResult.success) {
-      return {
-        success: false,
-        error: teamResult.error,
-      };
-    }
-    if (!emailResult.success) {
-      return {
-        success: false,
-        error: emailResult.error,
-      };
-    }
-
-    const existingOrgs = orgResult.data;
-    const existingTeams = teamResult.data;
+    const emailResult = await profileQuery.getAllEmailsForImport();
+    if (!emailResult.success)
+      return { success: false, error: emailResult.error };
     const existingEmails = emailResult.data;
 
-    // Process data rows (starting from row 9, 0-indexed: 8)
-    const dataStartIndex = 8;
     const usersToAdd: ImportUserRow[] = [];
-    const usersToUpdate: ImportUserRow[] = [];
-    const organizationsToCreate = new Set<string>();
-    const teamsToCreate = new Map<
-      string,
-      { name: string; organizationName: string }
-    >();
+    const existingUsers: ImportUserRow[] = [];
+    const failedUsers: ImportUserRow[] = [];
     const errors: ValidationError[] = [];
 
-    for (let i = dataStartIndex; i < data.length; i++) {
+    const seenEmails = new Set<string>();
+
+    for (let i = DATA_START_ROW_INDEX; i < data.length; i++) {
       const row = data[i];
       if (!row || row.every((cell) => !cell || String(cell).trim() === '')) {
         // Skip empty rows
         continue;
       }
 
+      if (isHeaderRow(row)) continue;
+
       const rowNumber = i + 1; // 1-indexed for user display
       const firstName = String(row[0] || '').trim();
       const lastName = String(row[1] || '').trim();
       const email = String(row[2] || '').trim();
-      const organizationName = String(row[3] || '').trim();
-      const teamName = String(row[4] || '').trim();
-      const role = String(row[5] || '').trim();
 
       const userRow: ImportUserRow = {
         rowNumber,
         firstName,
         lastName,
         email,
-        organizationName,
-        teamName,
-        role,
       };
 
-      // Validate required fields
-      if (!firstName) {
-        errors.push({
-          rowNumber,
-          field: 'First Name',
-          message: 'First name is required',
-        });
-      }
-      if (!lastName) {
-        errors.push({
-          rowNumber,
-          field: 'Last Name',
-          message: 'Last name is required',
-        });
-      }
       if (!email) {
         errors.push({
           rowNumber,
           field: 'Email',
           message: 'Email is required',
         });
-      } else if (!isValidEmail(email)) {
+        failedUsers.push(userRow);
+        continue;
+      }
+
+      const emailLower = email.toLowerCase();
+      if (seenEmails.has(emailLower)) {
+        continue; // silently dedupe within file
+      }
+      seenEmails.add(emailLower);
+
+      if (!isValidEmail(email)) {
         errors.push({
           rowNumber,
           field: 'Email',
           message: 'Invalid email format',
         });
-      }
-
-      // Validate role if provided
-      if (role && !isValidRole(role)) {
-        errors.push({
-          rowNumber,
-          field: 'Role',
-          message: 'Role must be "admin" or "user"',
-        });
-      }
-
-      // Validate team requires organization
-      if (teamName && !organizationName) {
-        errors.push({
-          rowNumber,
-          field: 'Team Name',
-          message: 'Team requires an organization',
-        });
+        failedUsers.push(userRow);
+        continue;
       }
 
       // Check if user exists (case-insensitive email)
-      const emailLower = email.toLowerCase();
       const userExists = existingEmails.has(emailLower);
 
       if (userExists) {
-        usersToUpdate.push(userRow);
-      } else if (email) {
+        existingUsers.push(userRow);
+      } else {
         usersToAdd.push(userRow);
-      }
-
-      // Check if organization exists (case-sensitive)
-      if (organizationName && !existingOrgs.has(organizationName)) {
-        organizationsToCreate.add(organizationName);
-      }
-
-      // Check if team exists (case-sensitive, within organization)
-      if (teamName && organizationName) {
-        const orgId = existingOrgs.get(organizationName);
-        if (orgId) {
-          // Organization exists, check if team exists
-          const teamKey = `${orgId}:${teamName}`;
-          if (!existingTeams.has(teamKey)) {
-            const createKey = `${organizationName}:${teamName}`;
-            teamsToCreate.set(createKey, { name: teamName, organizationName });
-          }
-        } else {
-          // Organization will be created, team also needs creation
-          const createKey = `${organizationName}:${teamName}`;
-          teamsToCreate.set(createKey, { name: teamName, organizationName });
-        }
       }
     }
 
@@ -323,9 +222,8 @@ export async function uploadUsersCSV(
       success: true,
       data: {
         usersToAdd,
-        usersToUpdate,
-        organizationsToCreate: Array.from(organizationsToCreate),
-        teamsToCreate: Array.from(teamsToCreate.values()),
+        existingUsers,
+        failedUsers,
         errors,
       },
     };
@@ -348,14 +246,6 @@ export async function uploadUsersCSV(
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
-
-/**
- * Validate role value
- */
-function isValidRole(role: string): boolean {
-  const normalizedRole = role.toLowerCase().trim();
-  return normalizedRole === 'admin' || normalizedRole === 'user';
 }
 
 /**
@@ -386,180 +276,74 @@ export async function uploadUsersExcel(
       },
     );
 
-    // Validate header row (row 8, 0-indexed: 7)
-    const headerRowIndex = 7;
-    if (data.length <= headerRowIndex) {
-      return {
-        success: false,
-        error:
-          'Excel file does not have enough rows. Header expected at row 8.',
-      };
-    }
-
-    const headerRow = data[headerRowIndex];
-    if (!headerRow) {
-      return { success: false, error: 'Header row (row 8) is empty' };
-    }
-
-    // Validate headers match expected
-    for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
-      const expected = EXPECTED_HEADERS[i];
-      const actual = String(headerRow[i] || '').trim();
-      if (actual !== expected) {
-        return {
-          success: false,
-          error: `Invalid header at column ${i + 1}. Expected "${expected}", got "${actual}"`,
-        };
-      }
-    }
-
-    // Fetch existing data from database
-    const orgQuery = new OrganizationsQuery();
-    const teamQuery = new TeamsQuery();
     const profileQuery = new ProfilesQuery();
 
-    const [orgResult, teamResult, emailResult] = await Promise.all([
-      orgQuery.getAllForImport(),
-      teamQuery.getAllForImport(),
-      profileQuery.getAllEmailsForImport(),
-    ]);
-
-    if (!orgResult.success) {
-      return {
-        success: false,
-        error: orgResult.error,
-      };
-    }
-    if (!teamResult.success) {
-      return {
-        success: false,
-        error: teamResult.error,
-      };
-    }
-    if (!emailResult.success) {
-      return {
-        success: false,
-        error: emailResult.error,
-      };
-    }
-
-    const existingOrgs = orgResult.data;
-    const existingTeams = teamResult.data;
+    const emailResult = await profileQuery.getAllEmailsForImport();
+    if (!emailResult.success)
+      return { success: false, error: emailResult.error };
     const existingEmails = emailResult.data;
 
-    // Process data rows (starting from row 9, 0-indexed: 8)
-    const dataStartIndex = 8;
     const usersToAdd: ImportUserRow[] = [];
-    const usersToUpdate: ImportUserRow[] = [];
-    const organizationsToCreate = new Set<string>();
-    const teamsToCreate = new Map<
-      string,
-      { name: string; organizationName: string }
-    >();
+    const existingUsers: ImportUserRow[] = [];
+    const failedUsers: ImportUserRow[] = [];
     const errors: ValidationError[] = [];
 
-    for (let i = dataStartIndex; i < data.length; i++) {
+    const seenEmails = new Set<string>();
+
+    for (let i = DATA_START_ROW_INDEX; i < data.length; i++) {
       const row = data[i];
       if (!row || row.every((cell) => !cell || String(cell).trim() === '')) {
         // Skip empty rows
         continue;
       }
 
+      if (isHeaderRow(row)) continue;
+
       const rowNumber = i + 1; // 1-indexed for user display
       const firstName = String(row[0] || '').trim();
       const lastName = String(row[1] || '').trim();
       const email = String(row[2] || '').trim();
-      const organizationName = String(row[3] || '').trim();
-      const teamName = String(row[4] || '').trim();
-      const role = String(row[5] || '').trim();
 
       const userRow: ImportUserRow = {
         rowNumber,
         firstName,
         lastName,
         email,
-        organizationName,
-        teamName,
-        role,
       };
 
-      // Validate required fields
-      if (!firstName) {
-        errors.push({
-          rowNumber,
-          field: 'First Name',
-          message: 'First name is required',
-        });
-      }
-      if (!lastName) {
-        errors.push({
-          rowNumber,
-          field: 'Last Name',
-          message: 'Last name is required',
-        });
-      }
       if (!email) {
         errors.push({
           rowNumber,
           field: 'Email',
           message: 'Email is required',
         });
-      } else if (!isValidEmail(email)) {
+        failedUsers.push(userRow);
+        continue;
+      }
+
+      const emailLower = email.toLowerCase();
+      if (seenEmails.has(emailLower)) {
+        continue; // silently dedupe within file
+      }
+      seenEmails.add(emailLower);
+
+      if (!isValidEmail(email)) {
         errors.push({
           rowNumber,
           field: 'Email',
           message: 'Invalid email format',
         });
-      }
-
-      // Validate role if provided
-      if (role && !isValidRole(role)) {
-        errors.push({
-          rowNumber,
-          field: 'Role',
-          message: 'Role must be "admin" or "user"',
-        });
-      }
-
-      // Validate team requires organization
-      if (teamName && !organizationName) {
-        errors.push({
-          rowNumber,
-          field: 'Team Name',
-          message: 'Team requires an organization',
-        });
+        failedUsers.push(userRow);
+        continue;
       }
 
       // Check if user exists (case-insensitive email)
-      const emailLower = email.toLowerCase();
       const userExists = existingEmails.has(emailLower);
 
       if (userExists) {
-        usersToUpdate.push(userRow);
-      } else if (email) {
+        existingUsers.push(userRow);
+      } else {
         usersToAdd.push(userRow);
-      }
-
-      // Check if organization exists (case-sensitive)
-      if (organizationName && !existingOrgs.has(organizationName)) {
-        organizationsToCreate.add(organizationName);
-      }
-
-      // Check if team exists (case-sensitive, within organization)
-      if (teamName && organizationName) {
-        const orgId = existingOrgs.get(organizationName);
-        if (orgId) {
-          // Organization exists, check if team exists
-          const teamKey = `${orgId}:${teamName}`;
-          if (!existingTeams.has(teamKey)) {
-            const createKey = `${organizationName}:${teamName}`;
-            teamsToCreate.set(createKey, { name: teamName, organizationName });
-          }
-        } else {
-          // Organization will be created, team also needs creation
-          const createKey = `${organizationName}:${teamName}`;
-          teamsToCreate.set(createKey, { name: teamName, organizationName });
-        }
       }
     }
 
@@ -567,9 +351,8 @@ export async function uploadUsersExcel(
       success: true,
       data: {
         usersToAdd,
-        usersToUpdate,
-        organizationsToCreate: Array.from(organizationsToCreate),
-        teamsToCreate: Array.from(teamsToCreate.values()),
+        existingUsers,
+        failedUsers,
         errors,
       },
     };
@@ -600,211 +383,55 @@ export async function createUserQuickAdd(data: {
 }
 
 // ============================================================================
-// Bulk Import Types and Functions
+// Bulk Import Types and Functions (simple: first_name, last_name, email)
 // ============================================================================
 
-interface BulkImportResult {
-  created: {
-    organizations: number;
-    teams: number;
-    users: number;
-  };
-  updated: {
-    users: number;
-  };
-  errors: Array<{
-    type: 'organization' | 'team' | 'user';
-    identifier: string;
-    message: string;
-  }>;
+export type ProfileStatus = 'pending' | 'invited' | 'active' | 'assigned';
+
+export interface ImportedUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: ProfileStatus | string;
 }
 
-/**
- * Bulk import users from validated Excel data
- * Creates organizations, teams, and users in order
- * @param validationResult - The validated import data
- * @returns Success with summary or error
- */
-export async function bulkImportUsers(
-  validationResult: ImportValidationResult,
-): Promise<
-  { success: true; data: BulkImportResult } | { success: false; error: string }
-> {
-  const { usersToAdd, usersToUpdate, organizationsToCreate, teamsToCreate } =
-    validationResult;
+export interface ImportUsersResult {
+  createdUsers: ImportedUser[];
+  existingUsers: ImportedUser[];
+  failedUsers: Array<{
+    rowNumber: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }>;
+  errors: ValidationError[];
+}
 
-  const result: BulkImportResult = {
-    created: { organizations: 0, teams: 0, users: 0 },
-    updated: { users: 0 },
-    errors: [],
-  };
-
+async function createPendingUsers(rows: ImportUserRow[]): Promise<{
+  createdUsers: ImportedUser[];
+  errors: ValidationError[];
+}> {
   const supabase = await createAdminClient();
+  const createdUsers: ImportedUser[] = [];
+  const errors: ValidationError[] = [];
 
-  // Track created organizations and teams by name for later reference
-  const orgNameToId = new Map<string, string>();
-  const teamNameToId = new Map<string, string>(); // key: "orgName:teamName"
+  for (const row of rows) {
+    const email = row.email.toLowerCase().trim();
+    const firstName = row.firstName.trim();
+    const lastName = row.lastName.trim();
 
-  // ========================================================================
-  // Step 1: Create Organizations (idempotent)
-  // ========================================================================
-  for (const orgName of organizationsToCreate) {
-    // Check if already exists (race condition handling)
-    const { data: existingOrg } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('name', orgName)
-      .maybeSingle();
-
-    if (existingOrg) {
-      orgNameToId.set(orgName, existingOrg.id);
-      continue; // Skip, already exists
-    }
-
-    // Create organization
-    const { data: newOrg, error } = await supabase
-      .from('organizations')
-      .insert({ name: orgName })
-      .select('id')
-      .single();
-
-    if (error) {
-      result.errors.push({
-        type: 'organization',
-        identifier: orgName,
-        message: error.message,
-      });
-      continue;
-    }
-
-    orgNameToId.set(orgName, newOrg.id);
-    result.created.organizations++;
-  }
-
-  // Fetch all existing organizations to resolve IDs
-  const orgQuery = new OrganizationsQuery();
-  const allOrgsResult = await orgQuery.getAllForImport();
-  if (allOrgsResult.success) {
-    for (const [name, id] of allOrgsResult.data) {
-      if (!orgNameToId.has(name)) {
-        orgNameToId.set(name, id);
-      }
-    }
-  }
-
-  // ========================================================================
-  // Step 2: Create Teams (idempotent)
-  // ========================================================================
-  for (const teamInfo of teamsToCreate) {
-    const orgId = orgNameToId.get(teamInfo.organizationName);
-    if (!orgId) {
-      result.errors.push({
-        type: 'team',
-        identifier: `${teamInfo.organizationName}:${teamInfo.name}`,
-        message: `Organization "${teamInfo.organizationName}" not found`,
-      });
-      continue;
-    }
-
-    // Check if team already exists (race condition handling)
-    const { data: existingTeam } = await supabase
-      .from('teams')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('name', teamInfo.name)
-      .maybeSingle();
-
-    if (existingTeam) {
-      teamNameToId.set(
-        `${teamInfo.organizationName}:${teamInfo.name}`,
-        existingTeam.id,
-      );
-      continue; // Skip, already exists
-    }
-
-    // Create team
-    const { data: newTeam, error } = await supabase
-      .from('teams')
-      .insert({
-        organization_id: orgId,
-        name: teamInfo.name,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      result.errors.push({
-        type: 'team',
-        identifier: `${teamInfo.organizationName}:${teamInfo.name}`,
-        message: error.message,
-      });
-      continue;
-    }
-
-    teamNameToId.set(
-      `${teamInfo.organizationName}:${teamInfo.name}`,
-      newTeam.id,
-    );
-    result.created.teams++;
-  }
-
-  // Fetch all existing teams to resolve IDs
-  const teamQuery = new TeamsQuery();
-  const allTeamsResult = await teamQuery.getAllForImport();
-  if (allTeamsResult.success) {
-    // Need to map org ID back to org name
-    const orgIdToName = new Map<string, string>();
-    for (const [name, id] of orgNameToId) {
-      orgIdToName.set(id, name);
-    }
-    // Also get from allOrgsResult
-    if (allOrgsResult.success) {
-      for (const [name, id] of allOrgsResult.data) {
-        orgIdToName.set(id, name);
-      }
-    }
-
-    for (const [key, teamData] of allTeamsResult.data) {
-      // key is "orgId:teamName", we need "orgName:teamName"
-      const parts = key.split(':');
-      const orgId = parts[0];
-      const teamName = parts.slice(1).join(':');
-      const orgName = orgIdToName.get(orgId);
-      if (orgName) {
-        const teamKey = `${orgName}:${teamName}`;
-        if (!teamNameToId.has(teamKey)) {
-          teamNameToId.set(teamKey, teamData.id);
-        }
-      }
-    }
-  }
-
-  // ========================================================================
-  // Step 3: Create New Users
-  // ========================================================================
-  for (const userRow of usersToAdd) {
-    const { email, firstName, lastName, organizationName, teamName, role } =
-      userRow;
-    const normalizedRole = role.toLowerCase().trim();
-    const dbRole: 'admin' | 'patient' =
-      normalizedRole === 'admin' ? 'admin' : 'patient';
-
-    // Create auth user
     const { data: authUser, error: authError } =
       await supabase.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
-        user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
-        },
+        email,
+        user_metadata: { first_name: firstName, last_name: lastName },
         email_confirm: true,
       });
 
     if (authError || !authUser.user) {
-      console.error('Error creating auth user:', authError);
-      result.errors.push({
-        type: 'user',
-        identifier: email,
+      errors.push({
+        rowNumber: row.rowNumber,
+        field: 'Email',
         message: authError?.message || 'Failed to create auth user',
       });
       continue;
@@ -812,206 +439,119 @@ export async function bulkImportUsers(
 
     const userId = authUser.user.id;
 
-    // Add to team if specified (trigger will auto-add to org as "patient")
-    if (teamName && organizationName) {
-      const teamKey = `${organizationName}:${teamName}`;
-      const teamId = teamNameToId.get(teamKey);
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: firstName || null,
+        last_name: lastName || null,
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
 
-      if (teamId) {
-        const teamQuery = new TeamsQuery();
-        const teamResult = await teamQuery.addUserToTeam(userId, teamId);
-        if (!teamResult.success) {
-          result.errors.push({
-            type: 'user',
-            identifier: email,
-            message: teamResult.error,
-          });
-        }
-
-        // If role is admin, update org membership role (trigger added as patient)
-        if (dbRole === 'admin') {
-          const orgId = orgNameToId.get(organizationName);
-          if (orgId) {
-            const orgMembersQuery = new OrganizationMembers();
-            const orgResult = await orgMembersQuery.addOrUpdateMembership(
-              userId,
-              orgId,
-              'admin',
-            );
-            if (!orgResult.success) {
-              result.errors.push({
-                type: 'user',
-                identifier: email,
-                message: orgResult.error,
-              });
-            }
-          }
-        }
-      } else {
-        result.errors.push({
-          type: 'user',
-          identifier: email,
-          message: `Team "${teamName}" in "${organizationName}" not found`,
-        });
-      }
-    } else if (organizationName) {
-      // Only organization specified (no team)
-      const orgId = orgNameToId.get(organizationName);
-      if (orgId) {
-        const orgMembersQuery = new OrganizationMembers();
-        const orgResult = await orgMembersQuery.addOrUpdateMembership(
-          userId,
-          orgId,
-          dbRole,
-        );
-        if (!orgResult.success) {
-          result.errors.push({
-            type: 'user',
-            identifier: email,
-            message: orgResult.error,
-          });
-        }
-      } else {
-        result.errors.push({
-          type: 'user',
-          identifier: email,
-          message: `Organization "${organizationName}" not found`,
-        });
-      }
-    }
-
-    result.created.users++;
-  }
-
-  // ========================================================================
-  // Step 4: Update Existing Users
-  // ========================================================================
-  for (const userRow of usersToUpdate) {
-    const { email, firstName, lastName, organizationName, teamName, role } =
-      userRow;
-    const normalizedRole = role.toLowerCase().trim();
-    const dbRole: 'admin' | 'patient' =
-      normalizedRole === 'admin' ? 'admin' : 'patient';
-
-    // Get user by email
-    const profileQuery = new ProfilesQuery();
-    const userResult = await profileQuery.getByEmail(email);
-    if (!userResult.success) {
-      result.errors.push({
-        type: 'user',
-        identifier: email,
-        message: userResult.error,
+    if (profileError) {
+      errors.push({
+        rowNumber: row.rowNumber,
+        field: 'Status',
+        message: `Failed to set status: ${profileError.message}`,
       });
-      continue;
     }
 
-    const userId = userResult.data.id;
-    let wasUpdated = false;
-
-    // Update profile name if different
-    if (
-      userResult.data.first_name !== firstName ||
-      userResult.data.last_name !== lastName
-    ) {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (updateError) {
-        result.errors.push({
-          type: 'user',
-          identifier: email,
-          message: `Failed to update profile: ${updateError.message}`,
-        });
-      } else {
-        wasUpdated = true;
-      }
-    }
-
-    // Add to team if specified
-    if (teamName && organizationName) {
-      const teamKey = `${organizationName}:${teamName}`;
-      const teamId = teamNameToId.get(teamKey);
-
-      if (teamId) {
-        const teamQuery = new TeamsQuery();
-        const teamResult = await teamQuery.addUserToTeam(userId, teamId);
-        if (!teamResult.success) {
-          result.errors.push({
-            type: 'user',
-            identifier: email,
-            message: teamResult.error,
-          });
-        } else {
-          wasUpdated = true;
-        }
-
-        // Update org membership role if admin
-        const orgId = orgNameToId.get(organizationName);
-        if (orgId && dbRole === 'admin') {
-          const orgMembersQuery = new OrganizationMembers();
-          const orgResult = await orgMembersQuery.addOrUpdateMembership(
-            userId,
-            orgId,
-            'admin',
-          );
-          if (!orgResult.success) {
-            result.errors.push({
-              type: 'user',
-              identifier: email,
-              message: orgResult.error,
-            });
-          } else {
-            wasUpdated = true;
-          }
-        }
-      } else {
-        result.errors.push({
-          type: 'user',
-          identifier: email,
-          message: `Team "${teamName}" in "${organizationName}" not found`,
-        });
-      }
-    } else if (organizationName) {
-      // Only organization specified (no team)
-      const orgId = orgNameToId.get(organizationName);
-      if (orgId) {
-        const orgMembersQuery = new OrganizationMembers();
-        const orgResult = await orgMembersQuery.addOrUpdateMembership(
-          userId,
-          orgId,
-          dbRole,
-        );
-        if (!orgResult.success) {
-          result.errors.push({
-            type: 'user',
-            identifier: email,
-            message: orgResult.error,
-          });
-        } else {
-          wasUpdated = true;
-        }
-      } else {
-        result.errors.push({
-          type: 'user',
-          identifier: email,
-          message: `Organization "${organizationName}" not found`,
-        });
-      }
-    }
-
-    if (wasUpdated) {
-      result.updated.users++;
-    }
+    createdUsers.push({
+      id: userId,
+      email,
+      firstName,
+      lastName,
+      status: 'pending',
+    });
   }
+
+  return { createdUsers, errors };
+}
+
+async function resolveExistingUsers(
+  rows: ImportUserRow[],
+): Promise<
+  { success: true; data: ImportedUser[] } | { success: false; error: string }
+> {
+  const profileQuery = new ProfilesQuery();
+  const emails = rows.map((r) => r.email.toLowerCase().trim());
+  const result = await profileQuery.getByEmailsForImport(emails);
+  if (!result.success) return { success: false, error: result.error };
+
+  const byEmail = new Map(
+    result.data
+      .filter((p) => p.email)
+      .map((p) => [String(p.email).toLowerCase(), p]),
+  );
+
+  const existingUsers: ImportedUser[] = rows.map((r) => {
+    const emailLower = r.email.toLowerCase().trim();
+    const p = byEmail.get(emailLower);
+    return {
+      id: p?.id ?? `missing:${emailLower}`,
+      email: emailLower,
+      firstName: p?.first_name ?? r.firstName ?? '',
+      lastName: p?.last_name ?? r.lastName ?? '',
+      status: (p?.status ?? 'active') as ProfileStatus | string,
+    };
+  });
+
+  return { success: true, data: existingUsers };
+}
+
+export async function importUsersCSV(
+  csvText: string,
+): Promise<
+  { success: true; data: ImportUsersResult } | { success: false; error: string }
+> {
+  const parsed = await uploadUsersCSV(csvText);
+  if (!parsed.success) return parsed;
+
+  const createResult = await createPendingUsers(parsed.data.usersToAdd);
+  const existingResult = await resolveExistingUsers(parsed.data.existingUsers);
+  if (!existingResult.success) return existingResult;
 
   return {
     success: true,
-    data: result,
+    data: {
+      createdUsers: createResult.createdUsers,
+      existingUsers: existingResult.data,
+      failedUsers: parsed.data.failedUsers.map((u) => ({
+        rowNumber: u.rowNumber,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })),
+      errors: [...parsed.data.errors, ...createResult.errors],
+    },
+  };
+}
+
+export async function importUsersExcel(
+  fileData: ArrayBuffer,
+): Promise<
+  { success: true; data: ImportUsersResult } | { success: false; error: string }
+> {
+  const parsed = await uploadUsersExcel(fileData);
+  if (!parsed.success) return parsed;
+
+  const createResult = await createPendingUsers(parsed.data.usersToAdd);
+  const existingResult = await resolveExistingUsers(parsed.data.existingUsers);
+  if (!existingResult.success) return existingResult;
+
+  return {
+    success: true,
+    data: {
+      createdUsers: createResult.createdUsers,
+      existingUsers: existingResult.data,
+      failedUsers: parsed.data.failedUsers.map((u) => ({
+        rowNumber: u.rowNumber,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })),
+      errors: [...parsed.data.errors, ...createResult.errors],
+    },
   };
 }

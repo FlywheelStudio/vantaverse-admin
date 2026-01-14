@@ -9,7 +9,6 @@ alwaysApply: false
 
 ### **User Management**
 - **`profiles`** - User profile information linked to auth.users
-- **`allowed_emails`** - Email whitelist for signup control (service_role only)
 - **`otp_codes`** - One-time password codes for authentication (service_role only)
 
 ### **Points & Transactions System**
@@ -128,7 +127,6 @@ points_required_for_next_level INTEGER -- HP points needed for next level (NULL 
 - **`hp_level_thresholds`**: Service role can manage, authenticated users can read
 - **`ip_level_thresholds`**: Service role can manage, authenticated users can read
 - **`profiles_with_stats`**: Users view own, service_role full access
-- **`allowed_emails`**: Service role only
 - **`otp_codes`**: Service role only
 
 ## Important Notes

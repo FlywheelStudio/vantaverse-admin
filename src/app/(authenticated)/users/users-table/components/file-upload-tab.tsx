@@ -9,20 +9,20 @@ import { Button } from '@/components/ui/button';
 import {
   getTemplateCSVUrl,
   getTemplateExcelUrl,
-  type ImportValidationResult,
-  uploadUsersCSV,
-  uploadUsersExcel,
+  importUsersCSV,
+  importUsersExcel,
+  type ImportUsersResult,
 } from '../../actions';
 
 interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
-  onValidationResult: (result: ImportValidationResult) => void;
+  onImported: (result: ImportUsersResult) => void;
   onCancel: () => void;
 }
 
 export function FileUploadTab({
   fileType,
-  onValidationResult,
+  onImported,
   onCancel,
 }: FileUploadTabProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,24 +55,24 @@ export function FileUploadTab({
     inputRef.current?.click();
   };
 
-  const validateAndPreview = async (file: File) => {
+  const importUsers = async (file: File) => {
     setIsValidating(true);
     try {
       if (isCSV) {
         const csvText = await file.text();
-        const result = await uploadUsersCSV(csvText);
+        const result = await importUsersCSV(csvText);
         if (result.success) {
-          onValidationResult(result.data);
+          onImported(result.data);
         } else {
-          toast.error(result.error || 'Failed to validate CSV file');
+          toast.error(result.error || 'Failed to import CSV file');
         }
       } else {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await uploadUsersExcel(arrayBuffer);
+        const result = await importUsersExcel(arrayBuffer);
         if (result.success) {
-          onValidationResult(result.data);
+          onImported(result.data);
         } else {
-          toast.error(result.error || 'Failed to validate Excel file');
+          toast.error(result.error || 'Failed to import Excel file');
         }
       }
     } catch {
@@ -99,7 +99,7 @@ export function FileUploadTab({
       );
       return;
     }
-    await validateAndPreview(file);
+    await importUsers(file);
   };
 
   const acceptDrop = (e: React.DragEvent) => {
@@ -152,12 +152,13 @@ export function FileUploadTab({
               <div className="text-base font-medium text-[#1E3A5F]">
                 Upload {isCSV ? 'CSV' : 'Excel'} File
               </div>
-              <div className="text-sm text-[#64748B]">
-                Click to browse or drag and drop
-              </div>
-              {file && (
+              {(file && (
                 <div className="mt-2 text-xs text-[#1E3A5F]">
                   Selected: {file.name}
+                </div>
+              )) || (
+                <div className="text-sm text-[#64748B]">
+                  Click to browse or drag and drop
                 </div>
               )}
             </div>
@@ -178,9 +179,10 @@ export function FileUploadTab({
             }}
           >
             <div>
-              💡 Your {isCSV ? 'CSV' : 'Excel'} should include columns:{' '}
-              <span className="font-semibold">email</span> (required),{' '}
-              <span className="font-semibold">name</span> (optional).
+              Your {isCSV ? 'CSV' : 'Excel'} should include columns:{' '}
+              <span className="font-semibold">First Name</span>,{' '}
+              <span className="font-semibold">Last Name</span>,{' '}
+              <span className="font-semibold">Email</span> (required).
             </div>
             <button
               type="button"
