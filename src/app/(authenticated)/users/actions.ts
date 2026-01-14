@@ -9,20 +9,20 @@ import * as XLSX from 'xlsx';
 // Types for Excel Import Validation
 // ============================================================================
 
-export interface ImportUserRow {
+interface ImportUserRow {
   rowNumber: number;
   firstName: string;
   lastName: string;
   email: string;
 }
 
-export interface ValidationError {
+interface ValidationError {
   rowNumber: number;
   field: string;
   message: string;
 }
 
-export interface ImportValidationResult {
+interface ImportValidationResult {
   usersToAdd: ImportUserRow[];
   existingUsers: ImportUserRow[];
   failedUsers: ImportUserRow[];
@@ -122,7 +122,7 @@ export async function getTemplateExcelUrl() {
  * Upload and validate users CSV file
  * @param csvText - The CSV file content as a string
  */
-export async function uploadUsersCSV(
+async function uploadUsersCSV(
   csvText: string,
 ): Promise<
   | { success: true; data: ImportValidationResult }
@@ -251,7 +251,7 @@ function isValidEmail(email: string): boolean {
 /**
  * Upload and validate users Excel file
  */
-export async function uploadUsersExcel(
+async function uploadUsersExcel(
   fileData: ArrayBuffer,
 ): Promise<
   | { success: true; data: ImportValidationResult }
@@ -386,9 +386,9 @@ export async function createUserQuickAdd(data: {
 // Bulk Import Types and Functions (simple: first_name, last_name, email)
 // ============================================================================
 
-export type ProfileStatus = 'pending' | 'invited' | 'active' | 'assigned';
+type ProfileStatus = 'pending' | 'invited' | 'active' | 'assigned';
 
-export interface ImportedUser {
+interface ImportedUser {
   id: string;
   email: string;
   firstName: string;

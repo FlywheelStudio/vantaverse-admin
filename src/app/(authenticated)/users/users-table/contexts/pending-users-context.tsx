@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
-export type PendingUsersSource = 'created' | 'existing' | 'failed';
+type PendingUsersSource = 'created' | 'existing' | 'failed';
 
-export interface PendingUsersUser {
+interface PendingUsersUser {
   id: string;
   email: string;
   firstName: string;
