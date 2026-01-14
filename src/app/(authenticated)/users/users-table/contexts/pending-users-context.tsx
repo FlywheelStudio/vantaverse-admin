@@ -13,7 +13,7 @@ interface PendingUsersUser {
   source: PendingUsersSource;
 }
 
-export interface PendingUsersRow extends PendingUsersUser {
+interface PendingUsersRow extends PendingUsersUser {
   batchId: number;
   isOld: boolean;
 }
