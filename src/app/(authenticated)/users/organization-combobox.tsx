@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 import { useOrganizations } from '@/hooks/use-organizations';
-import { createOrganization } from '@/app/(authenticated)/organizations/actions';
+import { createOrganization } from '@/app/(authenticated)/groups/actions';
 import toast from 'react-hot-toast';
 
 interface OrganizationComboboxProps {

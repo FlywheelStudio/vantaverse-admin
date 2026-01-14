@@ -13,7 +13,6 @@ interface UsersTableFiltersProps {
   selectedTeamName?: string;
   onFiltersChange?: (filters: UsersTableFilters) => void;
   onTeamNameChange: (name: string | undefined) => void;
-  onQuickAdd: () => void;
 }
 
 export function UsersTableFilters({
@@ -24,12 +23,11 @@ export function UsersTableFilters({
   selectedTeamName,
   onFiltersChange,
   onTeamNameChange,
-  onQuickAdd,
 }: UsersTableFiltersProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-row gap-4">
-        <AddUserMenu onQuickAdd={onQuickAdd} />
+        <AddUserMenu />
         <Input
           placeholder="Search users..."
           value={searchValue}

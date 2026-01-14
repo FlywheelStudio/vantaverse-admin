@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getOrganizations } from '@/app/(authenticated)/organizations/actions';
+import { getOrganizations } from '@/app/(authenticated)/groups/actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 export function useOrganizations() {

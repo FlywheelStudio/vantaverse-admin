@@ -12,7 +12,7 @@ import {
 // Vantabuddy trigger position and dimensions
 export const VANTABUDDY_CONFIG = {
   // Position: top-16 (64px) left-0 (0px)
-  top: 64, // top-16 = 64px
+  top: 10, // top-16 = 64px
   left: 0, // left-0 = 0px
   // Size: w-16 h-16 (64px)
   width: 64,
@@ -30,12 +30,12 @@ export const SIDEBAR_CONFIG = {
 } as const;
 
 // Header height
-export const HEADER_HEIGHT = 64; // h-16 = 64px
+export const HEADER_HEIGHT = 0; // h-16 = 64px
 
 // Navigation links
 export const NAV_LINKS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/groups', label: 'Groups & Teams', icon: Building2 },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/builder', label: 'Programs', icon: Dumbbell },
   { href: '/exercises', label: 'Exercises', icon: Activity },

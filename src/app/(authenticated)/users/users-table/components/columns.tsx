@@ -26,15 +26,22 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
+  const router = useRouter();
   const fullName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : null;
 
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className="flex items-center gap-3 cursor-pointer"
+      onClick={() => {
+        router.push(`/users/${profile.id}`);
+      }}
+    >
       <div className="size-10 shrink-0 flex items-center justify-center">
         <Avatar
           src={profile.avatar_url || null}

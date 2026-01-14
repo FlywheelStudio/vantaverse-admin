@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useOrganizations } from '@/hooks/use-organizations';
-import { getTeamsByOrganizationId } from '@/app/(authenticated)/organizations/teams-actions';
+import { getTeamsByOrganizationId } from '@/app/(authenticated)/groups/teams-actions';
 import type { Team } from '@/lib/supabase/schemas/teams';
 
 interface OrgTeamFilterProps {

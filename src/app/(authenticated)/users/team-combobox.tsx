@@ -5,7 +5,7 @@ import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 import {
   getTeamsByOrganizationId,
   createTeam,
-} from '@/app/(authenticated)/organizations/teams-actions';
+} from '@/app/(authenticated)/groups/teams-actions';
 import toast from 'react-hot-toast';
 
 interface TeamComboboxProps {
