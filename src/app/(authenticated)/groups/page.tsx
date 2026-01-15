@@ -637,9 +637,7 @@ export default function OrganizationsPage() {
 
   return (
     <PageWrapper
-      subheader={
-        <h1 className="text-2xl font-medium">Organizations & Teams</h1>
-      }
+      subheader={<h1 className="text-2xl font-medium">Groups & Teams</h1>}
     >
       <div
         className={`p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar ${

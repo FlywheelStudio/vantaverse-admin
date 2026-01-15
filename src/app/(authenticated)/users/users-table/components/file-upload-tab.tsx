@@ -18,12 +18,14 @@ interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
   onImported: (result: ImportUsersResult) => void;
   onCancel: () => void;
+  role?: 'admin' | 'user';
 }
 
 export function FileUploadTab({
   fileType,
   onImported,
   onCancel,
+  role = 'user',
 }: FileUploadTabProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -60,7 +62,7 @@ export function FileUploadTab({
     try {
       if (isCSV) {
         const csvText = await file.text();
-        const result = await importUsersCSV(csvText);
+        const result = await importUsersCSV(csvText, role);
         if (result.success) {
           onImported(result.data);
         } else {
@@ -68,7 +70,7 @@ export function FileUploadTab({
         }
       } else {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await importUsersExcel(arrayBuffer);
+        const result = await importUsersExcel(arrayBuffer, role);
         if (result.success) {
           onImported(result.data);
         } else {

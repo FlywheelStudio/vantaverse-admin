@@ -709,6 +709,7 @@ export class ProfilesQuery extends SupabaseQuery {
     lastName: string;
     organizationId?: string;
     teamId?: string;
+    role?: 'admin' | 'user';
   }): Promise<SupabaseSuccess<{ userId: string }> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
@@ -789,6 +790,21 @@ export class ProfilesQuery extends SupabaseQuery {
             success: false,
             error: `Failed to add user to team: ${teamError.message}`,
           };
+        }
+      }
+
+      // Add to super admin organization if role is physician
+      if (data.role === 'admin') {
+        const { OrganizationMembers } = await import('./organization-members');
+        const orgMembersQuery = new OrganizationMembers();
+        const superAdminResult = await orgMembersQuery.makeSuperAdmin(userId);
+
+        // Log error but don't fail user creation if super admin org doesn't exist
+        if (!superAdminResult.success) {
+          console.error(
+            'Failed to add user to super admin organization:',
+            superAdminResult.error,
+          );
         }
       }
 

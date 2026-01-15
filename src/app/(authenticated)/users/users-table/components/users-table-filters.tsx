@@ -58,7 +58,7 @@ export function UsersTableFilters({
 
   return (
     <div className="flex flex-row gap-4 w-full">
-      <AddUserMenu />
+      <AddUserMenu role={filters.role} />
       <Input
         placeholder="Search users..."
         value={searchValue}

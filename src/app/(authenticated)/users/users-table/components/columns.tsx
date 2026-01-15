@@ -218,15 +218,15 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
         queryClient.invalidateQueries({ queryKey: ['users'] });
         toast.success(
           isSuperAdmin
-            ? 'Super admin revoked successfully'
-            : 'User made super admin successfully',
+            ? 'Physician made member successfully'
+            : 'Member made physician successfully',
         );
       } else {
-        toast.error(result.error || 'Failed to toggle admin status');
+        toast.error(result.error || 'Failed to toggle role');
       }
     } catch (error) {
-      console.error('Error toggling admin:', error);
-      toast.error('Failed to toggle admin status');
+      console.error('Error toggling role:', error);
+      toast.error('Failed to toggle role');
     } finally {
       setIsTogglingAdmin(false);
     }
@@ -251,7 +251,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {isSuperAdmin ? 'Revoke Super Admin' : 'Make Super Admin'}
+          {isSuperAdmin ? 'Make member' : 'Make physician'}
         </TooltipContent>
       </Tooltip>
       <DeleteUserButton profile={profile} onDelete={handleDelete} />

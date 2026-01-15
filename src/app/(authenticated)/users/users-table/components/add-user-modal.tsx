@@ -28,17 +28,26 @@ import {
 interface AddUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  role?: 'admin' | 'user';
 }
 
-export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
+export function AddUserModal({
+  open,
+  onOpenChange,
+  role = 'user',
+}: AddUserModalProps) {
   return (
     <PendingUsersProvider>
-      <AddUserModalInner open={open} onOpenChange={onOpenChange} />
+      <AddUserModalInner open={open} onOpenChange={onOpenChange} role={role} />
     </PendingUsersProvider>
   );
 }
 
-function AddUserModalInner({ open, onOpenChange }: AddUserModalProps) {
+function AddUserModalInner({
+  open,
+  onOpenChange,
+  role = 'user',
+}: AddUserModalProps) {
   const queryClient = useQueryClient();
   const { addBatch, reset, rows } = usePendingUsers();
 
@@ -88,6 +97,7 @@ function AddUserModalInner({ open, onOpenChange }: AddUserModalProps) {
         email: individualEmail.trim(),
         firstName: individualFirstName.trim(),
         lastName: individualLastName.trim(),
+        role,
       });
 
       if (!result.success) {
@@ -326,6 +336,7 @@ function AddUserModalInner({ open, onOpenChange }: AddUserModalProps) {
                             fileType="csv"
                             onImported={handleImported}
                             onCancel={handleCancel}
+                            role={role}
                           />
                         </TabsContent>
                       </motion.div>
@@ -348,6 +359,7 @@ function AddUserModalInner({ open, onOpenChange }: AddUserModalProps) {
                             fileType="excel"
                             onImported={handleImported}
                             onCancel={handleCancel}
+                            role={role}
                           />
                         </TabsContent>
                       </motion.div>

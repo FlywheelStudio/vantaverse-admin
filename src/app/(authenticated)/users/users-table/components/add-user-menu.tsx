@@ -6,7 +6,11 @@ import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddUserModal } from './add-user-modal';
 
-export function AddUserMenu() {
+interface AddUserMenuProps {
+  role?: 'admin' | 'user';
+}
+
+export function AddUserMenu({ role = 'user' }: AddUserMenuProps) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
@@ -16,9 +20,19 @@ export function AddUserMenu() {
         onClick={() => setOpen(true)}
         className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer"
       >
-        {isMobile ? <Plus className="h-4 w-4" /> : 'Add Member'}
+        {isMobile ? (
+          <Plus className="h-4 w-4" />
+        ) : role === 'admin' ? (
+          'Add Physician'
+        ) : (
+          'Add Member'
+        )}
       </Button>
-      <AddUserModal open={open} onOpenChange={(next) => setOpen(next)} />
+      <AddUserModal
+        open={open}
+        onOpenChange={(next) => setOpen(next)}
+        role={role}
+      />
     </>
   );
 }

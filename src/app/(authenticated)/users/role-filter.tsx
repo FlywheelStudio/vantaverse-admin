@@ -17,7 +17,7 @@ export function RoleFilter({
         variant="ghost"
         size="sm"
         onClick={() => onRoleSelect('user')}
-        className={`flex-1 rounded-lg transition-colors ${
+        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
           selectedRole === 'user'
             ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
             : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
@@ -29,13 +29,13 @@ export function RoleFilter({
         variant="ghost"
         size="sm"
         onClick={() => onRoleSelect('admin')}
-        className={`flex-1 rounded-lg transition-colors ${
+        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
           selectedRole === 'admin'
             ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
             : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
         }`}
       >
-        Admins
+        Physicians
       </Button>
     </div>
   );

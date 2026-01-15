@@ -374,6 +374,7 @@ export async function createUserQuickAdd(data: {
   lastName: string;
   organizationId?: string;
   teamId?: string;
+  role?: 'admin' | 'user';
 }): Promise<
   | { success: true; data: { userId: string } }
   | { success: false; error: string }
@@ -408,13 +409,17 @@ export interface ImportUsersResult {
   errors: ValidationError[];
 }
 
-async function createPendingUsers(rows: ImportUserRow[]): Promise<{
+async function createPendingUsers(
+  rows: ImportUserRow[],
+  role?: 'admin' | 'user',
+): Promise<{
   createdUsers: ImportedUser[];
   errors: ValidationError[];
 }> {
   const supabase = await createAdminClient();
   const createdUsers: ImportedUser[] = [];
   const errors: ValidationError[] = [];
+  const orgMembersQuery = new OrganizationMembers();
 
   for (const row of rows) {
     const email = row.email.toLowerCase().trim();
@@ -457,6 +462,18 @@ async function createPendingUsers(rows: ImportUserRow[]): Promise<{
       });
     }
 
+    // Add to super admin organization if role is admin
+    if (role === 'admin') {
+      const superAdminResult = await orgMembersQuery.makeSuperAdmin(userId);
+      // Log error but don't fail user creation if super admin org doesn't exist
+      if (!superAdminResult.success) {
+        console.error(
+          'Failed to add user to super admin organization:',
+          superAdminResult.error,
+        );
+      }
+    }
+
     createdUsers.push({
       id: userId,
       email,
@@ -471,6 +488,7 @@ async function createPendingUsers(rows: ImportUserRow[]): Promise<{
 
 async function resolveExistingUsers(
   rows: ImportUserRow[],
+  role?: 'admin' | 'user',
 ): Promise<
   { success: true; data: ImportedUser[] } | { success: false; error: string }
 > {
@@ -497,19 +515,41 @@ async function resolveExistingUsers(
     };
   });
 
+  // Add existing users to super admin organization if role is admin
+  if (role === 'admin') {
+    const orgMembersQuery = new OrganizationMembers();
+    for (const user of existingUsers) {
+      // Skip if user ID is missing (failed lookup)
+      if (user.id.startsWith('missing:')) continue;
+
+      const superAdminResult = await orgMembersQuery.makeSuperAdmin(user.id);
+      // Log error but don't fail if super admin org doesn't exist
+      if (!superAdminResult.success) {
+        console.error(
+          'Failed to add existing user to super admin organization:',
+          superAdminResult.error,
+        );
+      }
+    }
+  }
+
   return { success: true, data: existingUsers };
 }
 
 export async function importUsersCSV(
   csvText: string,
+  role?: 'admin' | 'user',
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
   const parsed = await uploadUsersCSV(csvText);
   if (!parsed.success) return parsed;
 
-  const createResult = await createPendingUsers(parsed.data.usersToAdd);
-  const existingResult = await resolveExistingUsers(parsed.data.existingUsers);
+  const createResult = await createPendingUsers(parsed.data.usersToAdd, role);
+  const existingResult = await resolveExistingUsers(
+    parsed.data.existingUsers,
+    role,
+  );
   if (!existingResult.success) return existingResult;
 
   return {
@@ -530,14 +570,18 @@ export async function importUsersCSV(
 
 export async function importUsersExcel(
   fileData: ArrayBuffer,
+  role?: 'admin' | 'user',
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
   const parsed = await uploadUsersExcel(fileData);
   if (!parsed.success) return parsed;
 
-  const createResult = await createPendingUsers(parsed.data.usersToAdd);
-  const existingResult = await resolveExistingUsers(parsed.data.existingUsers);
+  const createResult = await createPendingUsers(parsed.data.usersToAdd, role);
+  const existingResult = await resolveExistingUsers(
+    parsed.data.existingUsers,
+    role,
+  );
   if (!existingResult.success) return existingResult;
 
   return {
