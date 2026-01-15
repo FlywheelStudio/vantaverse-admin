@@ -1,13 +1,24 @@
 import { useState, useMemo, useEffect, useRef, startTransition } from 'react';
+import type { MemberRole } from '../types';
 
-export function useMemberSelection(initialMemberIds: Set<string>) {
-  // Initialize from initialMemberIds, will be synced via useEffect when it changes
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
+interface UseMemberSelectionParams {
+  initialMemberIds: Set<string>;
+  initialPhysiologistId?: string | null;
+}
+
+export function useMemberSelection({
+  initialMemberIds,
+  initialPhysiologistId,
+}: UseMemberSelectionParams) {
+  // Separate selections for members and physiologist
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMemberIds),
   );
+  const [selectedPhysiologistId, setSelectedPhysiologistId] = useState<
+    string | null
+  >(initialPhysiologistId || null);
 
-  // Sync selectedUserIds when initialMemberIds changes
-  // Serialize Set to array for reliable dependency comparison
+  // Sync selectedMemberIds when initialMemberIds changes
   const initialIdsKey = useMemo(
     () => Array.from(initialMemberIds).sort().join(','),
     [initialMemberIds],
@@ -16,64 +27,95 @@ export function useMemberSelection(initialMemberIds: Set<string>) {
   const prevKeyRef = useRef(initialIdsKey);
 
   useEffect(() => {
-    // Only update when the key actually changes (prop change, not user interaction)
     if (prevKeyRef.current !== initialIdsKey) {
       prevKeyRef.current = initialIdsKey;
       startTransition(() => {
-        setSelectedUserIds(new Set(initialMemberIds));
+        setSelectedMemberIds(new Set(initialMemberIds));
       });
     }
   }, [initialMemberIds, initialIdsKey]);
 
-  const handleToggleUser = (userId: string) => {
-    setSelectedUserIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return next;
+  // Sync physiologist when it changes
+  useEffect(() => {
+    startTransition(() => {
+      setSelectedPhysiologistId(initialPhysiologistId || null);
     });
+  }, [initialPhysiologistId]);
+
+  const handleToggleUser = (userId: string, role: MemberRole) => {
+    if (role === 'patient') {
+      setSelectedMemberIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+    } else if (role === 'admin') {
+      // For physiologist, only one can be selected
+      setSelectedPhysiologistId((prev) => (prev === userId ? null : userId));
+    }
   };
 
-  const handleToggleGroup = (userIds: string[]) => {
-    setSelectedUserIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = userIds.every((id) => next.has(id));
+  const handleToggleGroup = (userIds: string[], role: MemberRole) => {
+    if (role === 'patient') {
+      setSelectedMemberIds((prev) => {
+        const next = new Set(prev);
+        const allSelected = userIds.every((id) => next.has(id));
 
-      if (allSelected) {
-        // Deselect all
-        userIds.forEach((id) => next.delete(id));
-      } else {
-        // Select all
-        userIds.forEach((id) => next.add(id));
-      }
-      return next;
-    });
+        if (allSelected) {
+          userIds.forEach((id) => next.delete(id));
+        } else {
+          userIds.forEach((id) => next.add(id));
+        }
+        return next;
+      });
+    }
+    // Groups don't apply to physiologist (single selection only)
   };
 
-  const hasChanges = useMemo(() => {
-    if (selectedUserIds.size !== initialMemberIds.size) return true;
-    for (const id of selectedUserIds) {
-      if (!initialMemberIds.has(id)) return true;
+  const hasChanges = (role: MemberRole): boolean => {
+    if (role === 'patient') {
+      const current = selectedMemberIds;
+      if (current.size !== initialMemberIds.size) return true;
+
+      for (const id of current) {
+        if (!initialMemberIds.has(id)) return true;
+      }
+
+      for (const id of initialMemberIds) {
+        if (!current.has(id)) return true;
+      }
+
+      return false;
     }
-    for (const id of initialMemberIds) {
-      if (!selectedUserIds.has(id)) return true;
-    }
-    return false;
-  }, [selectedUserIds, initialMemberIds]);
+
+    // For physiologist, compare with initial
+    return selectedPhysiologistId !== (initialPhysiologistId || null);
+  };
 
   const initialCount = initialMemberIds.size;
-  const newMemberCount = selectedUserIds.size;
+  const newMemberCount = selectedMemberIds.size;
   const countChange = newMemberCount - initialCount;
 
   const resetSelection = () => {
-    setSelectedUserIds(new Set(initialMemberIds));
+    setSelectedMemberIds(new Set(initialMemberIds));
+    setSelectedPhysiologistId(initialPhysiologistId || null);
+  };
+
+  const clearAll = (role: MemberRole) => {
+    if (role === 'patient') {
+      setSelectedMemberIds(new Set());
+    } else {
+      setSelectedPhysiologistId(null);
+    }
   };
 
   return {
-    selectedUserIds,
+    selectedMemberIds,
+    selectedPhysiologistId,
     handleToggleUser,
     handleToggleGroup,
     hasChanges,
@@ -81,5 +123,6 @@ export function useMemberSelection(initialMemberIds: Set<string>) {
     newMemberCount,
     countChange,
     resetSelection,
+    clearAll,
   };
 }

@@ -1,5 +1,10 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar } from '@/components/ui/avatar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { GroupedProfile } from '../types';
 
 interface ProfileItemProps {
@@ -14,6 +19,43 @@ export function ProfileItem({
   onToggle,
 }: ProfileItemProps) {
   const { profile } = groupedProfile;
+  const orgMemberships = profile.orgMemberships || [];
+
+  const renderOrgDisplay = () => {
+    if (orgMemberships.length === 0) {
+      return null;
+    }
+
+    if (orgMemberships.length === 1) {
+      return (
+        <div className="text-xs text-muted-foreground truncate">
+          {orgMemberships[0].orgName}
+        </div>
+      );
+    }
+
+    // Multiple orgs - show +n bubble with tooltip
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="inline-flex items-center">
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              +{orgMemberships.length}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="space-y-1">
+            {orgMemberships.map((org) => (
+              <div key={org.orgId} className="text-sm">
+                {org.orgName}
+              </div>
+            ))}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
   return (
     <div
@@ -35,15 +77,18 @@ export function ProfileItem({
           size={32}
         />
       </div>
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="font-medium text-sm text-foreground truncate">
-          {profile.first_name} {profile.last_name}
-        </div>
-        {profile.email && (
-          <div className="text-xs text-muted-foreground truncate">
-            {profile.email}
+      <div className="flex-1 min-w-0 overflow-hidden flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm text-foreground truncate">
+            {profile.first_name} {profile.last_name}
           </div>
-        )}
+          {profile.email && (
+            <div className="text-xs text-muted-foreground truncate">
+              {profile.email}
+            </div>
+          )}
+        </div>
+        <div className="shrink-0 flex items-center">{renderOrgDisplay()}</div>
       </div>
     </div>
   );

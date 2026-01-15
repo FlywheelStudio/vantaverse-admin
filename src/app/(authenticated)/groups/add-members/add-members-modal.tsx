@@ -1,26 +1,56 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from '@/components/ui/sheet';
-import { Input } from '@/components/ui/input';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowRight } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useMemberData } from './hooks/use-member-data';
 import { useMemberSelection } from './hooks/use-member-selection';
 import { useSaveMembers } from './hooks/use-save-members';
 import { filterProfiles } from './utils/filter-profiles';
-import { groupProfiles } from './utils/group-profiles';
-import { ThisOrgSection } from './components/this-org-section';
-import { OrgGroupSection } from './components/org-group-section';
-import { UnassignedSection } from './components/unassigned-section';
-import type { AddMembersModalProps } from './types';
+import { ProfileItem } from './components/profile-item';
+import type { AddMembersModalProps, MemberRole } from './types';
+import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
+
+/**
+ * Filter profiles by role (patient vs admin/physiologist)
+ */
+function filterByRole(
+  profiles: ProfileWithMemberships[],
+  role: MemberRole,
+): ProfileWithMemberships[] {
+  if (role === 'patient') {
+    // Members tab: show all non-admins
+    return profiles.filter((profile) => {
+      const hasAdminRole = profile.orgMemberships.some(
+        (om) => om.role === 'admin',
+      );
+      return !hasAdminRole;
+    });
+  }
+
+  // Physiologist tab: show only admins
+  return profiles.filter((profile) => {
+    const hasAdminRole = profile.orgMemberships.some(
+      (om) => om.role === 'admin',
+    );
+    return hasAdminRole;
+  });
+}
 
 export function AddMembersModal({
   open,
@@ -31,16 +61,21 @@ export function AddMembersModal({
   organizationId,
 }: AddMembersModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
-  const [expandedThisOrg, setExpandedThisOrg] = useState(true);
-  const [expandedUnassigned, setExpandedUnassigned] = useState(false);
-
-  const { profilesData, profilesLoading, membersLoading, initialMemberIds } =
-    useMemberData(open, type, id);
+  const [selectedRole, setSelectedRole] = useState<MemberRole>('patient');
+  const [viewUnassigned, setViewUnassigned] = useState(true);
 
   const {
-    selectedUserIds,
+    profilesData,
+    profilesLoading,
+    membersLoading,
+    initialMemberIds,
+    initialPhysiologistId,
+    currentPhysiologist,
+  } = useMemberData(open, type, id, organizationId);
+
+  const {
+    selectedMemberIds,
+    selectedPhysiologistId,
     handleToggleUser,
     handleToggleGroup,
     hasChanges,
@@ -48,165 +83,323 @@ export function AddMembersModal({
     newMemberCount,
     countChange,
     resetSelection,
-  } = useMemberSelection(initialMemberIds);
+    clearAll,
+  } = useMemberSelection({
+    initialMemberIds,
+    initialPhysiologistId,
+  });
 
   const { handleSave, isSaving } = useSaveMembers({
     type,
     id,
     name,
     organizationId,
-    selectedUserIds,
-    hasChanges,
+    selectedRole,
+    selectedMemberIds,
+    selectedPhysiologistId,
+    hasChanges: hasChanges(selectedRole),
     profilesData,
     onSuccess: () => onOpenChange(false),
   });
 
+  // Filter profiles
   const filteredProfiles = useMemo(() => {
     if (!profilesData?.success || !profilesData.data) return [];
-    return filterProfiles(profilesData.data, searchQuery);
-  }, [profilesData, searchQuery]);
 
-  const groupedProfiles = useMemo(() => {
-    return groupProfiles(
-      filteredProfiles,
-      initialMemberIds,
-      type,
-      organizationId,
-    );
-  }, [filteredProfiles, initialMemberIds, type, organizationId]);
+    let filtered = filterByRole(profilesData.data, selectedRole);
+    filtered = filterProfiles(filtered, searchQuery);
+
+    // Filter by unassigned if checkbox is checked (only for Members tab)
+    if (selectedRole === 'patient' && viewUnassigned) {
+      filtered = filtered.filter(
+        (profile) =>
+          profile.orgMemberships.length === 0 &&
+          profile.teamMemberships.length === 0,
+      );
+    }
+
+    return filtered;
+  }, [profilesData, selectedRole, searchQuery, viewUnassigned]);
+
+  // Get all user IDs for select all/clear
+  const allUserIds = useMemo(
+    () => filteredProfiles.map((p) => p.id),
+    [filteredProfiles],
+  );
+
+  // Find current physiologist profile
+  const currentPhysiologistProfile = useMemo(() => {
+    if (
+      selectedRole === 'admin' &&
+      currentPhysiologist &&
+      profilesData?.success &&
+      profilesData.data
+    ) {
+      return profilesData.data.find((p) => p.id === currentPhysiologist.userId);
+    }
+    return null;
+  }, [selectedRole, currentPhysiologist, profilesData]);
+
+  const handleSelectAll = () => {
+    if (selectedRole === 'patient') {
+      handleToggleGroup(allUserIds, 'patient');
+    }
+  };
+
+  const handleClear = () => {
+    clearAll(selectedRole);
+  };
 
   const handleCancel = () => {
     resetSelection();
+    setSearchQuery('');
+    setViewUnassigned(true);
+    setSelectedRole('patient');
     onOpenChange(false);
   };
 
-  const toggleOrg = (orgId: string) => {
-    setExpandedOrgs((prev) => {
-      const next = new Set(prev);
-      if (next.has(orgId)) {
-        next.delete(orgId);
-      } else {
-        next.add(orgId);
-      }
-      return next;
-    });
-  };
-
-  const toggleTeam = (teamId: string) => {
-    setExpandedTeams((prev) => {
-      const next = new Set(prev);
-      if (next.has(teamId)) {
-        next.delete(teamId);
-      } else {
-        next.add(teamId);
-      }
-      return next;
-    });
-  };
-
   const isLoading = profilesLoading || membersLoading;
+  const isPhysiologistDisabled = type === 'team';
+  const hasPhysiologistSelected = selectedPhysiologistId !== null;
+  const currentPhysiologistName = currentPhysiologist
+    ? `${currentPhysiologist.firstName} ${currentPhysiologist.lastName}`
+    : null;
+
+  const canSave =
+    hasChanges(selectedRole) &&
+    !isSaving &&
+    (selectedRole === 'patient'
+      ? selectedMemberIds.size > 0
+      : selectedPhysiologistId !== null);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-[35vw] flex flex-col p-0"
-        style={{ zIndex: 60 }}
-      >
-        <SheetHeader className="px-6 py-4 border-b shrink-0">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg font-semibold">
-              <div className="flex items-center gap-2">
-                <span>{initialCount}</span>
-                {countChange !== 0 && (
-                  <>
-                    <ArrowRight className="h-4 w-4" />
-                    <span
-                      className={
-                        countChange > 0 ? 'text-green-600' : 'text-red-600'
-                      }
-                    >
-                      {newMemberCount}
-                    </span>
-                  </>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
+    >
+      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={
+            open
+              ? { opacity: 1, scale: 1, y: 0 }
+              : { opacity: 0, scale: 0.95, y: 20 }
+          }
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F]">Add to {name}</DialogTitle>
+            <DialogDescription>
+              Select users and assign their role in this group.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Role Selection Tabs */}
+          <div className="pt-4 pb-2">
+            <div className="text-sm font-medium mb-3">Assign Role</div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Member Tab */}
+              <button
+                type="button"
+                onClick={() => setSelectedRole('patient')}
+                className={`cursor-pointer p-4 border-2 rounded-lg text-left transition-all ${
+                  selectedRole === 'patient'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="font-semibold text-base mb-1 justify-self-center">
+                  Member
+                </div>
+                <div className="text-sm text-muted-foreground justify-self-center">
+                  Participates in program
+                </div>
+              </button>
+
+              {/* Physiologist Tab */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      !isPhysiologistDisabled && setSelectedRole('admin')
+                    }
+                    disabled={isPhysiologistDisabled}
+                    className={`cursor-pointer p-4 border-2 rounded-lg text-left transition-all ${
+                      isPhysiologistDisabled
+                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                        : selectedRole === 'admin'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-base mb-1 justify-self-center">
+                      Physiologist
+                    </div>
+                    <div className="text-sm text-muted-foreground justify-self-center">
+                      Co-manages group
+                    </div>
+                  </button>
+                </TooltipTrigger>
+                {isPhysiologistDisabled && (
+                  <TooltipContent>
+                    <p>
+                      Physiologist is managed at organization level and applies
+                      to all teams in the organization
+                    </p>
+                  </TooltipContent>
                 )}
-                <span className="text-muted-foreground">members in {name}</span>
-              </div>
-            </SheetTitle>
+              </Tooltip>
+            </div>
           </div>
-          <Input
-            placeholder="Search by email, name, org, or team..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mt-4"
-          />
-        </SheetHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-4">
-          {isLoading ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Loading...
-            </div>
-          ) : (
-            <div className="py-4 min-w-0">
-              {type === 'team' &&
-                organizationId &&
-                groupedProfiles.thisOrgMembers.length > 0 && (
-                  <ThisOrgSection
-                    members={groupedProfiles.thisOrgMembers}
-                    isExpanded={expandedThisOrg}
-                    onToggle={() => setExpandedThisOrg(!expandedThisOrg)}
-                    type={type}
-                    organizationId={organizationId}
-                    selectedUserIds={selectedUserIds}
-                    onToggleUser={handleToggleUser}
-                    onToggleGroup={handleToggleGroup}
+          {/* Search and Controls */}
+          <div className="space-y-3 pt-2">
+            <Input
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {selectedRole === 'patient' && (
+              <div className="flex items-center justify-between border-2 rounded-lg p-2 bg-gray-50">
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="view-unassigned"
+                    checked={viewUnassigned}
+                    onCheckedChange={(checked) =>
+                      setViewUnassigned(checked === true)
+                    }
                   />
+                  <label
+                    htmlFor="view-unassigned"
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    View unassigned
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* User List */}
+          <ScrollArea className="flex-1 min-h-0 mt-4">
+            {isLoading ? (
+              <div className="py-8 text-center text-muted-foreground">
+                Loading...
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {/* Show current physiologist at top of Physiologist tab */}
+                {selectedRole === 'admin' &&
+                  currentPhysiologist &&
+                  currentPhysiologistProfile &&
+                  initialPhysiologistId && (
+                    <ProfileItem
+                      key={currentPhysiologist.userId}
+                      groupedProfile={{
+                        profile: currentPhysiologistProfile,
+                        isCurrentMember: false,
+                      }}
+                      isSelected={
+                        selectedPhysiologistId === initialPhysiologistId
+                      }
+                      onToggle={() => {
+                        if (isPhysiologistDisabled) return;
+                        handleToggleUser(currentPhysiologist.userId, 'admin');
+                      }}
+                    />
+                  )}
+                {filteredProfiles.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No users found
+                  </div>
+                ) : (
+                  filteredProfiles.map((profile) => {
+                    // Skip current physiologist if already shown at top
+                    if (
+                      selectedRole === 'admin' &&
+                      currentPhysiologistProfile &&
+                      profile.id === currentPhysiologistProfile.id
+                    ) {
+                      return null;
+                    }
+
+                    const isSelected =
+                      selectedRole === 'patient'
+                        ? selectedMemberIds.has(profile.id)
+                        : selectedPhysiologistId === profile.id;
+
+                    return (
+                      <ProfileItem
+                        key={profile.id}
+                        groupedProfile={{
+                          profile,
+                          isCurrentMember: initialMemberIds.has(profile.id),
+                        }}
+                        isSelected={isSelected}
+                        onToggle={() => {
+                          if (
+                            selectedRole === 'admin' &&
+                            isPhysiologistDisabled
+                          ) {
+                            return;
+                          }
+                          handleToggleUser(profile.id, selectedRole);
+                        }}
+                      />
+                    );
+                  })
                 )}
+              </div>
+            )}
+          </ScrollArea>
 
-              {groupedProfiles.orgGroups.map((org) => (
-                <OrgGroupSection
-                  key={org.orgId}
-                  org={org}
-                  isOrgExpanded={expandedOrgs.has(org.orgId)}
-                  onToggleOrg={() => toggleOrg(org.orgId)}
-                  expandedTeams={expandedTeams}
-                  onToggleTeam={toggleTeam}
-                  type={type}
-                  currentId={id}
-                  selectedUserIds={selectedUserIds}
-                  onToggleUser={handleToggleUser}
-                  onToggleGroup={handleToggleGroup}
-                />
-              ))}
-
-              {groupedProfiles.unassigned.length > 0 && (
-                <UnassignedSection
-                  members={groupedProfiles.unassigned}
-                  isExpanded={expandedUnassigned}
-                  onToggle={() => setExpandedUnassigned(!expandedUnassigned)}
-                  selectedUserIds={selectedUserIds}
-                  onToggleUser={handleToggleUser}
-                  onToggleGroup={handleToggleGroup}
-                />
-              )}
-            </div>
-          )}
-        </ScrollArea>
-
-        <SheetFooter className="px-6 py-4 border-t shrink-0 gap-2 flex-row justify-start mt-auto">
-          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            className="bg-[#2454FF] hover:bg-[#1E3FCC]"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 mt-auto border-t">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!canSave}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {isSaving
+                ? 'Saving...'
+                : selectedRole === 'patient'
+                  ? countChange === 0
+                    ? `Add ${initialCount} Member${initialCount !== 1 ? 's' : ''}`
+                    : `Add ${initialCount} -> ${newMemberCount} Member${newMemberCount !== 1 ? 's' : ''}`
+                  : hasPhysiologistSelected
+                    ? currentPhysiologistName
+                      ? 'Replace Physiologist'
+                      : 'Assign Physiologist'
+                    : 'Assign Physiologist'}
+            </Button>
+          </div>
+        </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }

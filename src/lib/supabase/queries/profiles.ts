@@ -12,7 +12,11 @@ import {
 } from '../schemas/profiles';
 
 export type ProfileWithMemberships = Profile & {
-  orgMemberships: Array<{ orgId: string; orgName: string }>;
+  orgMemberships: Array<{
+    orgId: string;
+    orgName: string;
+    role: 'admin' | 'patient' | 'member';
+  }>;
   teamMemberships: Array<{
     teamId: string;
     teamName: string;
@@ -125,7 +129,7 @@ export class ProfilesQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        '*, organization_members(organization_id, organizations!inner(id, name)), team_membership(team_id, teams!inner(id, name, organization_id, organizations!inner(id, name)))',
+        '*, organization_members(organization_id, role, organizations!inner(id, name)), team_membership(team_id, teams!inner(id, name, organization_id, organizations!inner(id, name)))',
       )
       .order('created_at', { ascending: false });
 
@@ -145,6 +149,7 @@ export class ProfilesQuery extends SupabaseQuery {
 
     type RawOrgMember = {
       organization_id: string;
+      role: 'admin' | 'patient' | 'member';
       organizations: {
         id: string;
         name: string;
@@ -179,6 +184,7 @@ export class ProfilesQuery extends SupabaseQuery {
               .map((om) => ({
                 orgId: om.organization_id,
                 orgName: om.organizations!.name,
+                role: om.role,
               }))
           : [];
 

@@ -128,6 +128,14 @@ export async function getOrganizationMemberUserIds(organizationId: string) {
 }
 
 /**
+ * Get current physiologist for an organization
+ */
+export async function getCurrentPhysiologist(organizationId: string) {
+  const query = new OrganizationMembers();
+  return query.getCurrentPhysiologist(organizationId);
+}
+
+/**
  * Update organization members (add and remove)
  */
 export async function updateOrganizationMembers(
@@ -154,7 +162,7 @@ export async function updateOrganizationMembers(
   let added = 0;
   let removed = 0;
 
-  // Add new members
+  // Add new members (stored as 'patient' role in database)
   if (toAdd.length > 0) {
     const { error: insertError } = await supabase
       .from('organization_members')
@@ -162,7 +170,7 @@ export async function updateOrganizationMembers(
         toAdd.map((user_id) => ({
           organization_id: organizationId,
           user_id,
-          role: 'member',
+          role: 'patient',
           is_active: true,
         })),
       );
@@ -196,5 +204,93 @@ export async function updateOrganizationMembers(
   return {
     success: true as const,
     data: { added, removed },
+  };
+}
+
+/**
+ * Assign or replace physiologist for an organization
+ * Only one physiologist per organization - replaces existing if one exists
+ */
+export async function assignPhysiologist(
+  organizationId: string,
+  userId: string,
+) {
+  const membersQuery = new OrganizationMembers();
+  const supabase = await createClient();
+
+  // Get current physiologist
+  const currentPhysiologistResult =
+    await membersQuery.getCurrentPhysiologist(organizationId);
+  if (!currentPhysiologistResult.success) {
+    return currentPhysiologistResult;
+  }
+
+  const currentPhysiologist = currentPhysiologistResult.data;
+
+  // If there's an existing physiologist and it's a different user, remove the old one
+  if (currentPhysiologist && currentPhysiologist.userId !== userId) {
+    const { error: deleteError } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('organization_id', organizationId)
+      .eq('user_id', currentPhysiologist.userId)
+      .eq('role', 'admin');
+
+    if (deleteError) {
+      return {
+        success: false as const,
+        error: `Failed to remove existing physiologist: ${deleteError.message}`,
+      };
+    }
+  }
+
+  // Check if the new user is already a member with a different role
+  const { data: existingMember } = await supabase
+    .from('organization_members')
+    .select('id, role')
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingMember) {
+    // Update existing membership to admin role (physiologist is stored as admin)
+    const { error: updateError } = await supabase
+      .from('organization_members')
+      .update({ role: 'admin', is_active: true })
+      .eq('id', existingMember.id);
+
+    if (updateError) {
+      return {
+        success: false as const,
+        error: `Failed to update member to physiologist: ${updateError.message}`,
+      };
+    }
+
+    return {
+      success: true as const,
+      data: { replaced: currentPhysiologist !== null },
+    };
+  }
+
+  // Insert new physiologist membership (stored as admin role)
+  const { error: insertError } = await supabase
+    .from('organization_members')
+    .insert({
+      organization_id: organizationId,
+      user_id: userId,
+      role: 'admin',
+      is_active: true,
+    });
+
+  if (insertError) {
+    return {
+      success: false as const,
+      error: `Failed to assign physiologist: ${insertError.message}`,
+    };
+  }
+
+  return {
+    success: true as const,
+    data: { replaced: currentPhysiologist !== null },
   };
 }

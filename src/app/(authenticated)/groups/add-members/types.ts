@@ -9,6 +9,8 @@ export interface AddMembersModalProps {
   organizationId?: string;
 }
 
+export type MemberRole = 'patient' | 'admin';
+
 export type GroupedProfile = {
   profile: ProfileWithMemberships;
   isCurrentMember: boolean;
@@ -30,3 +32,10 @@ export type GroupedProfilesResult = {
   thisOrgMembers: GroupedProfile[];
   unassigned: GroupedProfile[];
 };
+
+export type CurrentPhysiologist = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+} | null;
