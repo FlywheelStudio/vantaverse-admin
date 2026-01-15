@@ -691,6 +691,13 @@ export default function OrganizationsPage() {
                 return null;
               }
 
+              const targetOrganizationName =
+                addingMembersTo.type === 'team' && targetTeam?.organization_id
+                  ? displayOrganizations.find(
+                      (o) => o.id === targetTeam.organization_id,
+                    )?.name
+                  : undefined;
+
               return (
                 <AddMembersModal
                   open={!!addingMembersTo}
@@ -709,6 +716,7 @@ export default function OrganizationsPage() {
                       ? targetTeam?.organization_id
                       : undefined
                   }
+                  organizationName={targetOrganizationName}
                 />
               );
             })()}

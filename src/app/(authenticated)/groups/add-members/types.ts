@@ -7,6 +7,7 @@ export interface AddMembersModalProps {
   id: string;
   name: string;
   organizationId?: string;
+  organizationName?: string;
 }
 
 export type GroupedProfile = {

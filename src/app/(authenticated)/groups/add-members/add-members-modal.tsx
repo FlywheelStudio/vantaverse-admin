@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Loader } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ export function AddMembersModal({
   id,
   name,
   organizationId,
+  organizationName,
 }: AddMembersModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<MemberRole>('patient');
@@ -190,7 +192,13 @@ export function AddMembersModal({
           className="flex flex-col flex-1 min-h-0"
         >
           <DialogHeader>
-            <DialogTitle className="text-[#1E3A5F]">Add to {name}</DialogTitle>
+            <DialogTitle className="text-[#1E3A5F]">
+              Add to{' '}
+              {type === 'team' && organizationName
+                ? `${organizationName}/${name}`
+                : name}{' '}
+              ({type === 'organization' ? 'Group' : 'Team'})
+            </DialogTitle>
             <DialogDescription>
               Select users and assign their role in this group.
             </DialogDescription>
@@ -383,12 +391,15 @@ export function AddMembersModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!canSave}
+              disabled={!canSave || isSaving}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              {isSaving
-                ? 'Saving...'
-                : selectedRole === 'patient'
+              {(isSaving || membersLoading) && (
+                <Loader className="h-4 w-4 animate-spin" />
+              )}
+              {!isSaving &&
+                !membersLoading &&
+                (selectedRole === 'patient'
                   ? countChange === 0
                     ? `Add ${initialCount} Member${initialCount !== 1 ? 's' : ''}`
                     : `Add ${initialCount} -> ${newMemberCount} Member${newMemberCount !== 1 ? 's' : ''}`
@@ -396,7 +407,7 @@ export function AddMembersModal({
                     ? currentPhysiologistName
                       ? 'Replace Physiologist'
                       : 'Assign Physiologist'
-                    : 'Assign Physiologist'}
+                    : 'Assign Physiologist')}
             </Button>
           </div>
         </motion.div>
