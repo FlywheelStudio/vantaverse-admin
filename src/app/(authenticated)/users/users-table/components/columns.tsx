@@ -52,7 +52,7 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
           size={40}
         />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-w-44">
         <div className="font-medium text-sm text-[#1E3A5F] truncate">
           {fullName || 'Unknown'}
         </div>
