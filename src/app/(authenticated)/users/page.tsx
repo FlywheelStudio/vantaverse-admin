@@ -7,6 +7,7 @@ import { useUsers } from '@/hooks/use-users';
 import { UsersTable } from './users-table';
 import { columns } from './users-table/components/columns';
 import { Card } from '@/components/ui/card';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -30,8 +31,8 @@ export default function UsersPage() {
   const [filters, setFilters] = useState<{
     organization_id?: string;
     team_id?: string;
-    role?: 'admin' | 'user';
-  }>({ role: 'user' });
+    role: MemberRole;
+  }>({ role: 'patient' });
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const { data: users, isLoading } = useUsers(filters);
 

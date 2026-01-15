@@ -22,7 +22,7 @@ interface UseUsersTableParams {
 export function useUsersTable({
   columns,
   data,
-  filters = {},
+  filters = { role: 'patient' },
 }: UseUsersTableParams) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
@@ -47,7 +47,7 @@ export function useUsersTable({
   useEffect(() => {
     setColumnFilters((prev) => {
       const existing = prev.find((f) => f.id === 'is_super_admin');
-      const role = filters.role || 'user';
+      const role = filters.role || 'patient';
       const roleValue = role === 'admin' ? true : false;
       if (existing && existing.value === roleValue) {
         return prev;

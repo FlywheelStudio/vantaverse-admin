@@ -1,10 +1,11 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 export interface UsersTableFilters {
   organization_id?: string;
   team_id?: string;
-  role?: 'admin' | 'user';
+  role: MemberRole;
 }
 
 export interface UsersTableProps {

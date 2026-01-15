@@ -3,6 +3,7 @@ import { OrgTeamFilter } from '../../org-team-filter';
 import { RoleFilter } from '../../role-filter';
 import { AddUserMenu } from './add-user-menu';
 import type { UsersTableFilters } from '../types';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface UsersTableFiltersProps {
   searchValue: string;
@@ -27,7 +28,7 @@ export function UsersTableFilters({
     onTeamNameChange(undefined);
     const newFilters: UsersTableFilters = {
       ...(orgId && { organization_id: orgId }),
-      role: filters.role || 'user',
+      role: filters.role || 'patient',
     };
     onFiltersChange?.(newFilters);
   };
@@ -39,7 +40,7 @@ export function UsersTableFilters({
         organization_id: filters.organization_id,
       }),
       ...(teamId && { team_id: teamId }),
-      role: filters.role || 'user',
+      role: filters.role || 'patient',
     };
     onFiltersChange?.(newFilters);
   };
@@ -47,12 +48,12 @@ export function UsersTableFilters({
   const handleClear = () => {
     onTeamNameChange(undefined);
     const newFilters: UsersTableFilters = {
-      role: filters.role || 'user',
+      role: filters.role || 'patient',
     };
     onFiltersChange?.(newFilters);
   };
 
-  const handleRoleSelect = (role: 'admin' | 'user') => {
+  const handleRoleSelect = (role: MemberRole) => {
     onFiltersChange?.({ ...filters, role });
   };
 
@@ -75,7 +76,7 @@ export function UsersTableFilters({
         onClear={handleClear}
       />
       <RoleFilter
-        selectedRole={filters.role || 'user'}
+        selectedRole={filters.role || 'patient'}
         onRoleSelect={handleRoleSelect}
       />
     </div>

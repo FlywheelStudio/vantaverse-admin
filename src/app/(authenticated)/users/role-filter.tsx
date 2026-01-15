@@ -1,14 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface RoleFilterProps {
-  selectedRole?: 'admin' | 'user';
-  onRoleSelect: (role: 'admin' | 'user') => void;
+  selectedRole: MemberRole;
+  onRoleSelect: (role: MemberRole) => void;
 }
 
 export function RoleFilter({
-  selectedRole = 'user',
+  selectedRole = 'patient',
   onRoleSelect,
 }: RoleFilterProps) {
   return (
@@ -16,9 +17,9 @@ export function RoleFilter({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => onRoleSelect('user')}
+        onClick={() => onRoleSelect('patient')}
         className={`cursor-pointer flex-1 rounded-lg transition-colors ${
-          selectedRole === 'user'
+          selectedRole === 'patient'
             ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
             : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
         }`}
