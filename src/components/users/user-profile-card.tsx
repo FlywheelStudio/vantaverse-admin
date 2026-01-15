@@ -19,7 +19,7 @@ interface UserProfileCardProps {
   lastName: string;
   email: string;
   avatarUrl?: string | null;
-  role: MemberRole;
+  role?: MemberRole;
 }
 
 export function UserProfileCard({

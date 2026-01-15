@@ -11,7 +11,7 @@ import type { UsersTableProps } from './users-table/types';
 export function UsersTable({
   columns,
   data,
-  filters = {},
+  filters = { role: 'patient' },
   onFiltersChange,
   isLoading = false,
 }: UsersTableProps) {
