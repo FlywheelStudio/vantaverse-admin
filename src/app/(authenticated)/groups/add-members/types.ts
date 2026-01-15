@@ -15,27 +15,3 @@ export type GroupedProfile = {
   profile: ProfileWithMemberships;
   isCurrentMember: boolean;
 };
-
-export type OrgGroup = {
-  orgId: string;
-  orgName: string;
-  teams: {
-    teamId: string;
-    teamName: string;
-    profiles: GroupedProfile[];
-  }[];
-  profiles: GroupedProfile[];
-};
-
-export type GroupedProfilesResult = {
-  orgGroups: OrgGroup[];
-  thisOrgMembers: GroupedProfile[];
-  unassigned: GroupedProfile[];
-};
-
-export type CurrentPhysiologist = {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-} | null;
