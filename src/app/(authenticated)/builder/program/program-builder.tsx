@@ -178,7 +178,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
   };
 
   return (
-    <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
+    <>
       {hasLoadedOnce && (
         <>
           {/* Create Form */}
@@ -315,6 +315,6 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
           </Card>
         </>
       )}
-    </div>
+    </>
   );
 }

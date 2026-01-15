@@ -18,9 +18,7 @@ export default function BuilderIdPage() {
           </div>
         }
       >
-        <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center">
-          <p className="text-gray-500">Invalid program ID</p>
-        </div>
+        <p className="text-gray-500">Invalid program ID</p>
       </PageWrapper>
     );
   }

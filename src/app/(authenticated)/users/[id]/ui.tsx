@@ -73,62 +73,60 @@ export function UserProfilePageUI({
         </h1>
       }
     >
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background">
-        <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
-          {/* User Profile Header */}
-          <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
-            <UserProfileCard
-              userId={user.id}
-              firstName={user.first_name || ''}
-              lastName={user.last_name || ''}
-              email={user.email || ''}
-              avatarUrl={user.avatar_url}
+      <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
+        {/* User Profile Header */}
+        <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
+          <UserProfileCard
+            userId={user.id}
+            firstName={user.first_name || ''}
+            lastName={user.last_name || ''}
+            email={user.email || ''}
+            avatarUrl={user.avatar_url}
+          />
+        </div>
+
+        {/* Cards Section */}
+        <CardContent className="p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+            <AppointmentCard
+              title="Screening"
+              color="var(--color-blue-600)"
+              appointments={screeningAppointments}
+            />
+            <AppointmentCard
+              title="Consultation"
+              color="var(--color-green-600)"
+              appointments={consultationAppointments}
+            />
+            <HpCard
+              currentLevel={user.current_level}
+              hpPoints={user.hp_points}
+              pointsRequiredForNextLevel={user.points_required_for_next_level}
+              currentPhase={user.current_phase}
+              levelDescription={hpLevelThreshold?.description ?? null}
+              levelImageUrl={hpLevelThreshold?.image_url ?? null}
+              transactions={hpTransactions}
+            />
+            <IpCard
+              empowerment={user.empowerment}
+              empowermentTitle={user.empowerment_title}
+              currentEffect={empowermentThreshold?.effects ?? null}
+              gateTitle={gateInfo?.title ?? null}
+              gateDescription={gateInfo?.description ?? null}
+              pointsMissingForNextLevel={pointsMissingForNextLevel}
+              basePower={empowermentThreshold?.base_power ?? null}
+              topPower={empowermentThreshold?.top_power ?? null}
+              transactions={ipTransactions}
             />
           </div>
-
-          {/* Cards Section */}
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-              <AppointmentCard
-                title="Screening"
-                color="var(--color-blue-600)"
-                appointments={screeningAppointments}
-              />
-              <AppointmentCard
-                title="Consultation"
-                color="var(--color-green-600)"
-                appointments={consultationAppointments}
-              />
-              <HpCard
-                currentLevel={user.current_level}
-                hpPoints={user.hp_points}
-                pointsRequiredForNextLevel={user.points_required_for_next_level}
-                currentPhase={user.current_phase}
-                levelDescription={hpLevelThreshold?.description ?? null}
-                levelImageUrl={hpLevelThreshold?.image_url ?? null}
-                transactions={hpTransactions}
-              />
-              <IpCard
-                empowerment={user.empowerment}
-                empowermentTitle={user.empowerment_title}
-                currentEffect={empowermentThreshold?.effects ?? null}
-                gateTitle={gateInfo?.title ?? null}
-                gateDescription={gateInfo?.description ?? null}
-                pointsMissingForNextLevel={pointsMissingForNextLevel}
-                basePower={empowermentThreshold?.base_power ?? null}
-                topPower={empowermentThreshold?.top_power ?? null}
-                transactions={ipTransactions}
-              />
+          {(mcIntakeSurvey || habitPledge) && (
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
+              {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
+              {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
             </div>
-            {(mcIntakeSurvey || habitPledge) && (
-              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
-                {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
-                {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </PageWrapper>
   );
 }

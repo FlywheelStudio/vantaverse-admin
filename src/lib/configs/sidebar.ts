@@ -39,6 +39,5 @@ export const NAV_LINKS = [
   { href: '/users', label: 'Users', icon: Users },
   { href: '/builder', label: 'Programs', icon: Dumbbell },
   { href: '/exercises', label: 'Exercises', icon: Activity },
-  { href: '/schedules', label: 'Schedules', icon: Calendar },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;

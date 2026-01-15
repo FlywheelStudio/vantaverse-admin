@@ -639,89 +639,81 @@ export default function OrganizationsPage() {
     <PageWrapper
       subheader={<h1 className="text-2xl font-medium">Groups & Teams</h1>}
     >
-      <div
-        className={`p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar ${
-          !addingMembersTo ? 'glass-background' : ''
-        }`}
-      >
-        <OrganizationsTableProvider value={contextValue}>
-          {!isLoading && (
-            <Card
-              className={`text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden ${
-                !addingMembersTo ? 'backdrop-blur-sm' : ''
-              }`}
-            >
-              <div className="p-6 sm:p-8">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key="table"
-                    variants={contentVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                  >
-                    <OrganizationsTable
-                      columns={columns}
-                      data={displayOrganizations}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </Card>
-          )}
-          {addingMembersTo &&
-            (() => {
-              const targetOrg =
-                addingMembersTo.type === 'organization'
-                  ? displayOrganizations.find(
-                      (o) => o.id === addingMembersTo.id,
-                    )
-                  : undefined;
-              const targetTeam =
-                addingMembersTo.type === 'team'
-                  ? displayOrganizations
-                      .flatMap((o) => o.teams || [])
-                      .find((t) => t.id === addingMembersTo.id)
-                  : undefined;
+      <OrganizationsTableProvider value={contextValue}>
+        {!isLoading && (
+          <Card
+            className={`text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden ${
+              !addingMembersTo ? 'backdrop-blur-sm' : ''
+            }`}
+          >
+            <div className="p-6 sm:p-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="table"
+                  variants={contentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <OrganizationsTable
+                    columns={columns}
+                    data={displayOrganizations}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </Card>
+        )}
+        {addingMembersTo &&
+          (() => {
+            const targetOrg =
+              addingMembersTo.type === 'organization'
+                ? displayOrganizations.find((o) => o.id === addingMembersTo.id)
+                : undefined;
+            const targetTeam =
+              addingMembersTo.type === 'team'
+                ? displayOrganizations
+                    .flatMap((o) => o.teams || [])
+                    .find((t) => t.id === addingMembersTo.id)
+                : undefined;
 
-              if (
-                (addingMembersTo.type === 'organization' && !targetOrg) ||
-                (addingMembersTo.type === 'team' && !targetTeam)
-              ) {
-                return null;
-              }
+            if (
+              (addingMembersTo.type === 'organization' && !targetOrg) ||
+              (addingMembersTo.type === 'team' && !targetTeam)
+            ) {
+              return null;
+            }
 
-              const targetOrganizationName =
-                addingMembersTo.type === 'team' && targetTeam?.organization_id
-                  ? displayOrganizations.find(
-                      (o) => o.id === targetTeam.organization_id,
-                    )?.name
-                  : undefined;
+            const targetOrganizationName =
+              addingMembersTo.type === 'team' && targetTeam?.organization_id
+                ? displayOrganizations.find(
+                    (o) => o.id === targetTeam.organization_id,
+                  )?.name
+                : undefined;
 
-              return (
-                <AddMembersModal
-                  open={!!addingMembersTo}
-                  onOpenChange={(open) => {
-                    if (!open) handleCloseAddMembers();
-                  }}
-                  type={addingMembersTo.type}
-                  id={addingMembersTo.id}
-                  name={
-                    addingMembersTo.type === 'organization'
-                      ? targetOrg?.name || ''
-                      : targetTeam?.name || ''
-                  }
-                  organizationId={
-                    addingMembersTo.type === 'team'
-                      ? targetTeam?.organization_id
-                      : undefined
-                  }
-                  organizationName={targetOrganizationName}
-                />
-              );
-            })()}
-        </OrganizationsTableProvider>
-      </div>
+            return (
+              <AddMembersModal
+                open={!!addingMembersTo}
+                onOpenChange={(open) => {
+                  if (!open) handleCloseAddMembers();
+                }}
+                type={addingMembersTo.type}
+                id={addingMembersTo.id}
+                name={
+                  addingMembersTo.type === 'organization'
+                    ? targetOrg?.name || ''
+                    : targetTeam?.name || ''
+                }
+                organizationId={
+                  addingMembersTo.type === 'team'
+                    ? targetTeam?.organization_id
+                    : undefined
+                }
+                organizationName={targetOrganizationName}
+              />
+            );
+          })()}
+      </OrganizationsTableProvider>
     </PageWrapper>
   );
 }

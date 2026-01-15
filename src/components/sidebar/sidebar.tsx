@@ -10,6 +10,7 @@ import {
   HEADER_HEIGHT,
   NAV_LINKS,
 } from '@/lib/configs/sidebar';
+import { UserAvatar } from '../header/user-avatar';
 
 export function Sidebar() {
   const { isOpen, isExpanded, collapse, expand } = useSidebar();
@@ -89,7 +90,7 @@ export function Sidebar() {
             }}
           >
             <div
-              className={`${isMobile || !isExpanded ? '' : 'pr-6'} pb-6 h-full overflow-y-auto slim-scrollbar`}
+              className={`${isMobile || !isExpanded ? '' : 'pr-6'} pb-6 h-full flex flex-col overflow-y-auto slim-scrollbar`}
               style={{
                 paddingTop: `${VANTABUDDY_CONFIG.height}px`,
               }}
@@ -133,7 +134,7 @@ export function Sidebar() {
                     >
                       <Link
                         href={link.href}
-                        className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} rounded-r-lg py-3 transition-colors text-white ${
+                        className={`content-link flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} rounded-r-lg py-3 transition-colors text-white ${
                           isCollapsed
                             ? isActive
                               ? 'bg-[#2454FF]/70'
@@ -153,6 +154,9 @@ export function Sidebar() {
                   );
                 })}
               </motion.nav>
+              <div className="flex items-center gap-2 glass-background rounded-r-lg p-2 mt-auto">
+                <UserAvatar showName={isExpanded} />
+              </div>
             </div>
           </motion.aside>
         )}
