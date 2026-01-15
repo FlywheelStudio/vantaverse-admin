@@ -5,7 +5,6 @@ import {
   Users,
   Dumbbell,
   Activity,
-  Calendar,
   Settings,
 } from 'lucide-react';
 
