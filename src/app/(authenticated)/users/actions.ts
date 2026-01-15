@@ -412,7 +412,7 @@ export interface ImportUsersResult {
 
 async function createPendingUsers(
   rows: ImportUserRow[],
-  role?: MemberRole,
+  role: MemberRole,
 ): Promise<{
   createdUsers: ImportedUser[];
   errors: ValidationError[];
@@ -489,7 +489,7 @@ async function createPendingUsers(
 
 async function resolveExistingUsers(
   rows: ImportUserRow[],
-  role?: MemberRole,
+  role: MemberRole,
 ): Promise<
   { success: true; data: ImportedUser[] } | { success: false; error: string }
 > {
@@ -539,7 +539,7 @@ async function resolveExistingUsers(
 
 export async function importUsersCSV(
   csvText: string,
-  role?: MemberRole,
+  role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
@@ -571,7 +571,7 @@ export async function importUsersCSV(
 
 export async function importUsersExcel(
   fileData: ArrayBuffer,
-  role?: MemberRole,
+  role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {

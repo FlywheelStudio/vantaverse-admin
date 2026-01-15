@@ -24,17 +24,18 @@ import {
   PendingUsersProvider,
   usePendingUsers,
 } from '../contexts/pending-users-context';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface AddUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  role?: 'admin' | 'user';
+  role: MemberRole;
 }
 
 export function AddUserModal({
   open,
   onOpenChange,
-  role = 'user',
+  role = 'patient',
 }: AddUserModalProps) {
   return (
     <PendingUsersProvider>
@@ -46,7 +47,7 @@ export function AddUserModal({
 function AddUserModalInner({
   open,
   onOpenChange,
-  role = 'user',
+  role = 'patient',
 }: AddUserModalProps) {
   const queryClient = useQueryClient();
   const { addBatch, reset, rows } = usePendingUsers();

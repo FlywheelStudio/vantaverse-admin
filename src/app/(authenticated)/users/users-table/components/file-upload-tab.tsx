@@ -19,7 +19,7 @@ interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
   onImported: (result: ImportUsersResult) => void;
   onCancel: () => void;
-  role?: MemberRole;
+  role: MemberRole;
 }
 
 export function FileUploadTab({
