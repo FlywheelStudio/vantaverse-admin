@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddUserModal } from './add-user-modal';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface AddUserMenuProps {
-  role?: 'admin' | 'user';
+  role: MemberRole;
 }
 
-export function AddUserMenu({ role = 'user' }: AddUserMenuProps) {
+export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
