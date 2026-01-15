@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Trash2, Shield, ShieldOff, CheckCircle } from 'lucide-react';
+import { Trash2, Shield, ShieldOff } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -63,54 +64,73 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function BadgesCell({ profile }: { profile: ProfileWithStats }) {
-  return (
-    <div className="flex items-center gap-2">
-      {profile.consultation_completed && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Consultation Completed</TooltipContent>
-        </Tooltip>
-      )}
-      {profile.screening_completed && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-blue-600" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Screening Completed</TooltipContent>
-        </Tooltip>
-      )}
-      {!profile.consultation_completed && !profile.screening_completed && (
-        <span className="text-[#64748B] text-xs">—</span>
-      )}
-    </div>
-  );
-}
-
-function ProgressCell({ profile }: { profile: ProfileWithStats }) {
-  const percentage = profile.program_completion_percentage ?? 0;
-  return (
-    <div className="flex items-center gap-2 min-w-[120px]">
-      <Progress value={percentage} className="flex-1" />
-      <span className="text-xs text-[#64748B] font-medium min-w-[40px] text-right">
-        {Math.round(percentage)}%
-      </span>
-    </div>
-  );
-}
-
-function JourneyPhaseCell({ profile }: { profile: ProfileWithStats }) {
-  const phase = profile.journey_phase;
-  if (!phase) {
+function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
+  if (!profile.last_sign_in) {
     return <span className="text-[#64748B] text-sm">—</span>;
   }
-  return <span className="text-sm text-[#1E3A5F] capitalize">{phase}</span>;
+
+  let relativeTime: string | null = null;
+  try {
+    const date = new Date(profile.last_sign_in);
+    relativeTime = formatDistanceToNow(date, { addSuffix: true });
+  } catch {
+    relativeTime = null;
+  }
+
+  if (!relativeTime) {
+    return <span className="text-[#64748B] text-sm">—</span>;
+  }
+
+  return <span className="text-sm text-[#1E3A5F]">{relativeTime}</span>;
+}
+
+function GroupsCell({ profile }: { profile: ProfileWithStats }) {
+  const orgs = profile.orgMemberships || [];
+  if (orgs.length === 0) {
+    return <span className="text-[#64748B] text-sm">—</span>;
+  }
+
+  const orgNames = orgs.map((org) => org.orgName);
+  const displayText =
+    orgNames.length > 2
+      ? `${orgNames.slice(0, 2).join(', ')}, ...`
+      : orgNames.join(', ');
+
+  return (
+    <span
+      className="text-sm text-[#1E3A5F] truncate"
+      title={orgNames.join(', ')}
+    >
+      {displayText}
+    </span>
+  );
+}
+
+function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
+  const status = profile.status;
+  if (!status) {
+    return <span className="text-[#64748B] text-sm">—</span>;
+  }
+
+  const getBadgeClasses = () => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-800';
+      case 'invited':
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 hover:text-blue-800';
+      case 'active':
+      case 'assigned':
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 hover:text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100 hover:text-gray-800';
+    }
+  };
+
+  return (
+    <Badge variant="outline" className={`${getBadgeClasses()} cursor-default`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  );
 }
 
 function DeleteUserButton({
@@ -264,34 +284,31 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
     },
   },
   {
-    accessorKey: 'badges',
+    accessorKey: 'last_sign_in',
     header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Badges</span>
+      <span className="text-sm font-bold text-[#1E3A5F]">Last login</span>
     ),
-    cell: ({ row }) => <BadgesCell profile={row.original} />,
+    cell: ({ row }) => <LastLoginCell profile={row.original} />,
+    enableSorting: true,
+  },
+  {
+    id: 'groups',
+    accessorFn: (row) =>
+      row.orgMemberships?.map((org) => org.orgName).join(', ') || '',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Groups</span>
+    ),
+    cell: ({ row }) => <GroupsCell profile={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
   },
   {
-    accessorKey: 'program_completion_percentage',
+    accessorKey: 'status',
     header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Progress</span>
+      <span className="text-sm font-bold text-[#1E3A5F]">Registration</span>
     ),
-    cell: ({ row }) => <ProgressCell profile={row.original} />,
+    cell: ({ row }) => <RegistrationCell profile={row.original} />,
     enableSorting: true,
-  },
-  {
-    accessorKey: 'journey_phase',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Journey Phase</span>
-    ),
-    cell: ({ row }) => <JourneyPhaseCell profile={row.original} />,
-    enableSorting: true,
-    filterFn: (row, id, value) => {
-      const phase = row.getValue(id) as string | null;
-      if (!value || value === 'all') return true;
-      return phase === value;
-    },
   },
   {
     id: 'is_super_admin',

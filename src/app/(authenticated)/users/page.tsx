@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useUsers } from '@/hooks/use-users';
@@ -30,18 +30,16 @@ export default function UsersPage() {
   const [filters, setFilters] = useState<{
     organization_id?: string;
     team_id?: string;
-    journey_phase?: string;
-  }>({});
+    role?: 'admin' | 'user';
+  }>({ role: 'user' });
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const loadedOnceRef = useRef(false);
   const { data: users, isLoading } = useUsers(filters);
 
   const displayUsers = users || [];
 
-  // Track if we've loaded data at least once
+  // I hate hydration errors
   useEffect(() => {
-    if (!isLoading && displayUsers.length > 0 && !loadedOnceRef.current) {
-      loadedOnceRef.current = true;
+    if (!isLoading && displayUsers.length > 0) {
       setTimeout(() => {
         setHasLoadedOnce(true);
       }, 0);

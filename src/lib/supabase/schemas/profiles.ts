@@ -53,6 +53,18 @@ export const profileWithStatsSchema = profileSchema.extend({
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
   is_super_admin: z.boolean().optional(),
+  orgMemberships: z
+    .array(z.object({ orgId: z.string(), orgName: z.string() }))
+    .optional(),
 });
+
+export type RawOrgMember = {
+  user_id: string;
+  organization_id: string;
+  organizations: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 export type ProfileWithStats = z.infer<typeof profileWithStatsSchema>;

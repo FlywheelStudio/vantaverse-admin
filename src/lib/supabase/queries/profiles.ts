@@ -6,6 +6,7 @@ import {
 import {
   profileSchema,
   profileWithStatsSchema,
+  RawOrgMember,
   type Profile,
   type ProfileWithStats,
 } from '../schemas/profiles';
@@ -423,18 +424,50 @@ export class ProfilesQuery extends SupabaseQuery {
       }
     }
 
-    // Add is_super_admin field to each profile
-    const profilesWithAdminStatus = data.map((profile) => {
+    // Get organization memberships for all profiles
+    const profileIds = data.map(
+      (p) => (p as Record<string, unknown>).id as string,
+    );
+    const { data: orgMembersData } = await supabase
+      .from('organization_members')
+      .select('user_id, organization_id, organizations!inner(id, name)')
+      .in('user_id', profileIds)
+      .eq('is_active', true);
+
+    // Create a map of user_id -> orgMemberships
+    const orgMembershipsMap = new Map<
+      string,
+      Array<{ orgId: string; orgName: string }>
+    >();
+
+    if (orgMembersData) {
+      (orgMembersData as unknown as RawOrgMember[]).forEach((om) => {
+        if (om.organizations) {
+          if (!orgMembershipsMap.has(om.user_id)) {
+            orgMembershipsMap.set(om.user_id, []);
+          }
+          orgMembershipsMap.get(om.user_id)!.push({
+            orgId: om.organization_id,
+            orgName: om.organizations.name,
+          });
+        }
+      });
+    }
+
+    // Add is_super_admin and orgMemberships to each profile
+    const profilesWithAdminStatusAndOrgs = data.map((profile) => {
       const profileRecord = profile as Record<string, unknown>;
+      const userId = profileRecord.id as string;
       return {
         ...profileRecord,
-        is_super_admin: superAdminUserIds.has(profileRecord.id as string),
+        is_super_admin: superAdminUserIds.has(userId),
+        orgMemberships: orgMembershipsMap.get(userId) || [],
       };
     });
 
     const result = profileWithStatsSchema
       .array()
-      .safeParse(profilesWithAdminStatus);
+      .safeParse(profilesWithAdminStatusAndOrgs);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);

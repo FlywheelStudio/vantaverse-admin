@@ -16,7 +16,7 @@ import type { UsersTableFilters } from '../types';
 interface UseUsersTableParams {
   columns: ColumnDef<ProfileWithStats>[];
   data: ProfileWithStats[];
-  filters?: UsersTableFilters;
+  filters: UsersTableFilters;
 }
 
 export function useUsersTable({
@@ -43,37 +43,17 @@ export function useUsersTable({
     });
   }, [debouncedSearch]);
 
-  // Update journey_phase filter in table when prop changes
-  useEffect(() => {
-    setColumnFilters((prev) => {
-      const existing = prev.find((f) => f.id === 'journey_phase');
-      if (existing && existing.value === filters.journey_phase) {
-        return prev;
-      }
-      const filtered = prev.filter((f) => f.id !== 'journey_phase');
-      return filters.journey_phase
-        ? [...filtered, { id: 'journey_phase', value: filters.journey_phase }]
-        : filtered;
-    });
-  }, [filters.journey_phase]);
-
   // Update role filter in table when prop changes
   useEffect(() => {
     setColumnFilters((prev) => {
       const existing = prev.find((f) => f.id === 'is_super_admin');
-      const roleValue =
-        filters.role === 'admin'
-          ? true
-          : filters.role === 'user'
-            ? false
-            : undefined;
+      const role = filters.role || 'user';
+      const roleValue = role === 'admin' ? true : false;
       if (existing && existing.value === roleValue) {
         return prev;
       }
       const filtered = prev.filter((f) => f.id !== 'is_super_admin');
-      return roleValue !== undefined
-        ? [...filtered, { id: 'is_super_admin', value: roleValue }]
-        : filtered;
+      return [...filtered, { id: 'is_super_admin', value: roleValue }];
     });
   }, [filters.role]);
 
