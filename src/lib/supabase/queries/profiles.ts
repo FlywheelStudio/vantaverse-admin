@@ -10,12 +10,13 @@ import {
   type Profile,
   type ProfileWithStats,
 } from '../schemas/profiles';
+import { MemberRole } from '../schemas/organization-members';
 
 export type ProfileWithMemberships = Profile & {
   orgMemberships: Array<{
     orgId: string;
     orgName: string;
-    role: 'admin' | 'patient' | 'member';
+    role: MemberRole;
   }>;
   teamMemberships: Array<{
     teamId: string;
@@ -149,7 +150,7 @@ export class ProfilesQuery extends SupabaseQuery {
 
     type RawOrgMember = {
       organization_id: string;
-      role: 'admin' | 'patient' | 'member';
+      role: MemberRole;
       organizations: {
         id: string;
         name: string;
@@ -715,7 +716,7 @@ export class ProfilesQuery extends SupabaseQuery {
     lastName: string;
     organizationId?: string;
     teamId?: string;
-    role?: 'admin' | 'user';
+    role?: MemberRole;
   }): Promise<SupabaseSuccess<{ userId: string }> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 

@@ -5,6 +5,7 @@ import {
   type SupabaseError,
 } from '../query';
 import { organizationMemberSchema } from '../schemas/organization-members';
+import { MemberRole } from '../schemas/organization-members';
 
 export class OrganizationMembers extends SupabaseQuery {
   /**
@@ -305,7 +306,7 @@ export class OrganizationMembers extends SupabaseQuery {
   public async addOrUpdateMembership(
     userId: string,
     organizationId: string,
-    role: 'admin' | 'patient',
+    role: MemberRole,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 

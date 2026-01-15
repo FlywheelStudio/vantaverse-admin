@@ -5,7 +5,7 @@ import { updateOrganizationMembers, assignPhysiologist } from '../../actions';
 import { updateTeamMembers } from '../../teams-actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
-import type { MemberRole } from '../types';
+import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 /**
  * Build member objects from user IDs using profiles map

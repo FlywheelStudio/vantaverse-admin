@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, startTransition } from 'react';
-import type { MemberRole } from '../types';
+import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface UseMemberSelectionParams {
   initialMemberIds: Set<string>;

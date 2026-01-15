@@ -23,7 +23,8 @@ import { useMemberSelection } from './hooks/use-member-selection';
 import { useSaveMembers } from './hooks/use-save-members';
 import { filterProfiles } from './utils/filter-profiles';
 import { ProfileItem } from './components/profile-item';
-import type { AddMembersModalProps, MemberRole } from './types';
+import type { AddMembersModalProps } from './types';
+import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
 
 /**

@@ -9,8 +9,6 @@ export interface AddMembersModalProps {
   organizationId?: string;
 }
 
-export type MemberRole = 'patient' | 'admin';
-
 export type GroupedProfile = {
   profile: ProfileWithMemberships;
   isCurrentMember: boolean;
