@@ -4,6 +4,7 @@ import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import * as XLSX from 'xlsx';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 // ============================================================================
 // Types for Excel Import Validation
@@ -374,7 +375,7 @@ export async function createUserQuickAdd(data: {
   lastName: string;
   organizationId?: string;
   teamId?: string;
-  role?: 'admin' | 'user';
+  role?: MemberRole;
 }): Promise<
   | { success: true; data: { userId: string } }
   | { success: false; error: string }
@@ -411,7 +412,7 @@ export interface ImportUsersResult {
 
 async function createPendingUsers(
   rows: ImportUserRow[],
-  role?: 'admin' | 'user',
+  role?: MemberRole,
 ): Promise<{
   createdUsers: ImportedUser[];
   errors: ValidationError[];
@@ -488,7 +489,7 @@ async function createPendingUsers(
 
 async function resolveExistingUsers(
   rows: ImportUserRow[],
-  role?: 'admin' | 'user',
+  role?: MemberRole,
 ): Promise<
   { success: true; data: ImportedUser[] } | { success: false; error: string }
 > {
@@ -538,7 +539,7 @@ async function resolveExistingUsers(
 
 export async function importUsersCSV(
   csvText: string,
-  role?: 'admin' | 'user',
+  role?: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
@@ -570,7 +571,7 @@ export async function importUsersCSV(
 
 export async function importUsersExcel(
   fileData: ArrayBuffer,
-  role?: 'admin' | 'user',
+  role?: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
