@@ -13,19 +13,20 @@ import {
   importUsersExcel,
   type ImportUsersResult,
 } from '../../actions';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
   onImported: (result: ImportUsersResult) => void;
   onCancel: () => void;
-  role?: 'admin' | 'user';
+  role?: MemberRole;
 }
 
 export function FileUploadTab({
   fileType,
   onImported,
   onCancel,
-  role = 'user',
+  role = 'patient',
 }: FileUploadTabProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
