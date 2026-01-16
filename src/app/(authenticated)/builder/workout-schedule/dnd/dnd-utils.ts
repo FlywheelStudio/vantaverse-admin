@@ -201,7 +201,6 @@ export function moveItemToGroup(
 
   if (updatedTargetGroupIndex !== -1) {
     const updatedTargetGroup = newItems[updatedTargetGroupIndex];
-    console.log('updatedTargetGroup', updatedTargetGroup);
     if (updatedTargetGroup.type === 'group') {
       updatedTargetGroup.data.items.push(activeItem.item);
     }

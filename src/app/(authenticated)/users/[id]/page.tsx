@@ -6,9 +6,11 @@ import { IpPointsQuery } from '@/lib/supabase/queries/ip-points';
 import { McIntakeQuery } from '@/lib/supabase/queries/mc-intake';
 import { HabitPledgeQuery } from '@/lib/supabase/queries/habit-pledge';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import { UserProfilePageUI } from './ui';
+import { AdminProfileView } from './admin-profile-view';
 
 export default async function UserProfilePage({
   params,
@@ -34,6 +36,53 @@ export default async function UserProfilePage({
 
   const user = userResult.data;
 
+  // If target user is physician (admin role), show org tabs with viewing admin's organizations
+  const isTargetUserPhysician = user.role === 'admin';
+
+  if (isTargetUserPhysician) {
+    const orgMembersQuery = new OrganizationMembers();
+    const organizationsResult = await orgMembersQuery.getOrganizationsByUserId(id);
+
+    const organizations = organizationsResult.success
+      ? organizationsResult.data
+      : [];
+
+    // Fetch patients for each organization
+    type PatientData = {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+      avatar_url: string | null;
+    };
+
+    const patientsByOrg: Record<string, PatientData[]> = {};
+
+    await Promise.all(
+      organizations.map(async (org) => {
+        const patientsResult =
+          await profilesQuery.getPatientsByOrganization(org.id);
+        if (patientsResult.success) {
+          patientsByOrg[org.id] = patientsResult.data.map((p) => ({
+            id: p.id,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            email: p.email,
+            avatar_url: p.avatar_url,
+          }));
+        }
+      }),
+    );
+
+    return (
+      <AdminProfileView
+        user={user}
+        organizations={organizations}
+        patientsByOrg={patientsByOrg}
+      />
+    );
+  }
+  
   // Bulk query remaining data in parallel
   const [
     appointmentsResult,

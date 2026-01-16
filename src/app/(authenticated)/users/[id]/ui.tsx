@@ -108,6 +108,7 @@ export function UserProfilePageUI({
             userId={user.id}
             firstName={user.first_name || ''}
             lastName={user.last_name || ''}
+            description={user.description}
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}

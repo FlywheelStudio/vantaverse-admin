@@ -369,4 +369,86 @@ export class OrganizationMembers extends SupabaseQuery {
       data: undefined,
     };
   }
+
+  /**
+   * Get all organizations for a user (excluding super admin organization)
+   * @param userId - The user ID
+   * @returns Success with organizations array or error
+   */
+  public async getOrganizationsByUserId(userId: string): Promise<
+    | SupabaseSuccess<
+        Array<{
+          id: string;
+          name: string;
+          description: string | null;
+          picture_url: string | null;
+        }>
+      >
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select(
+        'organization_id, organizations!inner(id, name, description, picture_url, is_super_admin)',
+      )
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get organizations for user',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    // Filter out super admin organization and transform data
+    type RawOrgMember = {
+      organization_id: string;
+      organizations:
+        | {
+            id: string;
+            name: string;
+            description: string | null;
+            picture_url: string | null;
+            is_super_admin: boolean | null;
+          }
+        | null
+        | Array<{
+            id: string;
+            name: string;
+            description: string | null;
+            picture_url: string | null;
+            is_super_admin: boolean | null;
+          }>;
+    };
+
+    const organizations = (data as unknown as RawOrgMember[])
+      .map((item) => {
+        const org = Array.isArray(item.organizations)
+          ? item.organizations[0]
+          : item.organizations;
+        return { orgId: item.organization_id, org };
+      })
+      .filter(({ org }) => org && org.is_super_admin !== true)
+      .map(({ orgId, org }) => ({
+        id: orgId,
+        name: org!.name,
+        description: org!.description,
+        picture_url: org!.picture_url,
+      }));
+
+    return {
+      success: true,
+      data: organizations,
+    };
+  }
 }

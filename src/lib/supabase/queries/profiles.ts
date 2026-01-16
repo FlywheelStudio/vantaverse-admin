@@ -31,7 +31,7 @@ export class ProfilesQuery extends SupabaseQuery {
    * @returns Success with profile data or error
    */
   public async getAuthProfile(): Promise<
-    SupabaseSuccess<Profile> | SupabaseError
+    SupabaseSuccess<ProfileWithStats> | SupabaseError
   > {
     const supabase = await this.getClient('authenticated_user');
     const user = await this.getUser();
@@ -63,7 +63,7 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileSchema.safeParse(data);
+    const result = profileWithStatsSchema.safeParse(data);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -555,6 +555,20 @@ export class ProfilesQuery extends SupabaseQuery {
       success: true,
       data: result.data,
     };
+  }
+
+  /**
+   * Get all patients (role='patient') in an organization
+   * @param organizationId - The organization ID
+   * @returns Success with profiles array or error
+   */
+  public async getPatientsByOrganization(
+    organizationId: string,
+  ): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
+    return this.getListWithStats({
+      organization_id: organizationId,
+      role: 'patient',
+    });
   }
 
   /**

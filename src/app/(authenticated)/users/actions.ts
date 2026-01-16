@@ -2,10 +2,10 @@
 
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import type { Profile } from '@/lib/supabase/schemas/profiles';
 
 // ============================================================================
 // Types for Excel Import Validation
@@ -69,7 +69,10 @@ export async function getUsersWithStats(filters?: {
  */
 export async function updateUserProfile(
   userId: string,
-  profileData: { first_name?: string; last_name?: string },
+  profileData: Pick<
+    Partial<Profile>,
+    'first_name' | 'last_name' | 'description'
+  >,
 ) {
   const query = new ProfilesQuery();
   return query.update(userId, profileData);
