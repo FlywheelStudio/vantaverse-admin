@@ -92,14 +92,6 @@ export async function makeSuperAdmin(userId: string) {
 }
 
 /**
- * Get active program assignment for a user
- */
-export async function getUserProgramAssignment(userId: string) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getActiveByUserId(userId);
-}
-
-/**
  * Revoke super admin status from a user
  */
 export async function revokeSuperAdmin(userId: string) {
