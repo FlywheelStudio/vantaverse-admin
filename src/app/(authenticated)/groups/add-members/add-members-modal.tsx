@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, startTransition } from 'react';
 import { motion } from 'framer-motion';
 import { Loader } from 'lucide-react';
 import {
@@ -62,10 +62,20 @@ export function AddMembersModal({
   name,
   organizationId,
   organizationName,
+  initialRole,
 }: AddMembersModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState<MemberRole>('patient');
+  const [selectedRole, setSelectedRole] = useState<MemberRole>(
+    initialRole ?? 'patient',
+  );
   const [viewUnassigned, setViewUnassigned] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    startTransition(() => {
+      setSelectedRole(initialRole ?? 'patient');
+    });
+  }, [open, initialRole]);
 
   const {
     profilesData,

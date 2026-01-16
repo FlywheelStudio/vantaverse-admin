@@ -6,51 +6,25 @@ import { ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationsTable } from '../../../context/organizations';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from './teams-cell';
+import { useRouter } from 'next/navigation';
 
 function EditableNameCell({ org }: { org: Organization }) {
-  const {
-    editingCell,
-    editingValue,
-    setEditingValue,
-    handleCellEdit,
-    handleCellBlur,
-    handleCancel,
-    inputRef,
-  } = useOrganizationsTable();
-  const isEditing = editingCell?.id === org.id && editingCell?.field === 'name';
   const value = org.name;
-
-  if (isEditing) {
-    return (
-      <Input
-        ref={inputRef as React.RefObject<HTMLInputElement>}
-        value={editingValue}
-        onChange={(e) => setEditingValue(e.target.value)}
-        onBlur={() => handleCellBlur(org.id, 'name', editingValue, value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            handleCancel();
-          }
-        }}
-        className="font-semibold text-[#1E3A5F]"
-        autoFocus
-      />
-    );
-  }
+  const router = useRouter();
 
   return (
-    <span
-      onClick={() => handleCellEdit(org.id, 'name')}
-      className="font-semibold text-[#1E3A5F] cursor-pointer hover:text-[#2454FF] transition-colors"
-    >
-      {value}
-    </span>
+    <div className="flex items-center gap-2">
+      <span
+        onClick={() => router.push(`/groups/${org.id}`)}
+        className="font-semibold text-[#1E3A5F] cursor-pointer hover:text-[#2454FF] transition-colors"
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 

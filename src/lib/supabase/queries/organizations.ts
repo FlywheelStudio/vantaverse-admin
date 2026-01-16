@@ -106,6 +106,104 @@ export class OrganizationsQuery extends SupabaseQuery {
   }
 
   /**
+   * Get a single organization by ID (with members + teams_count)
+   * @param id - The organization id
+   * @returns Success with organization or error
+   */
+  public async getById(
+    id: string,
+  ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organizations')
+      .select(
+        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
+      )
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get organization',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'Organization not found',
+      };
+    }
+
+    type RawOrganizationMember = {
+      id: string;
+      user_id: string;
+      is_active: boolean | null;
+      profiles: {
+        id: string;
+        avatar_url: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+      } | null;
+    };
+
+    type RawOrganization = Omit<
+      Organization,
+      'members_count' | 'member_ids' | 'members' | 'teams_count'
+    > & {
+      organization_members: RawOrganizationMember[] | null;
+      teams: { id: string }[] | null;
+    };
+
+    const org = data as RawOrganization;
+    const { organization_members, teams, ...orgData } = org;
+
+    const members =
+      Array.isArray(organization_members) && organization_members.length > 0
+        ? organization_members
+            .filter((m) => m.is_active === true)
+            .map((m) => ({
+              id: m.id,
+              user_id: m.user_id,
+              profile: m.profiles
+                ? {
+                    id: m.profiles.id,
+                    avatar_url: m.profiles.avatar_url,
+                    first_name: m.profiles.first_name,
+                    last_name: m.profiles.last_name,
+                    email: m.profiles.email,
+                  }
+                : null,
+            }))
+        : [];
+
+    const memberIds = members.map((m) => m.id);
+    const teamsCount = Array.isArray(teams) ? teams.length : 0;
+
+    const transformed = {
+      ...orgData,
+      members_count: members.length,
+      member_ids: memberIds.length > 0 ? memberIds : undefined,
+      members: members.length > 0 ? members : undefined,
+      teams_count: teamsCount,
+    };
+
+    const result = organizationSchema.safeParse(transformed);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  }
+
+  /**
    * Create a new organization
    * @param name - The organization name
    * @param description - Optional organization description

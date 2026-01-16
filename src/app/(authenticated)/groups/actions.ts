@@ -16,6 +16,14 @@ export async function getOrganizations() {
 }
 
 /**
+ * Get organization by ID
+ */
+export async function getOrganizationById(id: string) {
+  const query = new OrganizationsQuery();
+  return query.getById(id);
+}
+
+/**
  * Create a new organization
  */
 export async function createOrganization(

@@ -240,6 +240,8 @@ export class OrganizationMembers extends SupabaseQuery {
         firstName: string;
         lastName: string;
         email: string;
+        avatarUrl: string | null;
+        description: string | null;
       } | null>
     | SupabaseError
   > {
@@ -247,7 +249,9 @@ export class OrganizationMembers extends SupabaseQuery {
 
     const { data, error } = await supabase
       .from('organization_members')
-      .select('user_id, profiles!inner(first_name, last_name, email)')
+      .select(
+        'user_id, profiles!inner(first_name, last_name, email, avatar_url, description)',
+      )
       .eq('organization_id', organizationId)
       .eq('role', 'admin')
       .eq('is_active', true)
@@ -283,6 +287,8 @@ export class OrganizationMembers extends SupabaseQuery {
       first_name: string | null;
       last_name: string | null;
       email: string | null;
+      avatar_url: string | null;
+      description: string | null;
     };
 
     return {
@@ -292,6 +298,8 @@ export class OrganizationMembers extends SupabaseQuery {
         firstName: profile.first_name || '',
         lastName: profile.last_name || '',
         email: profile.email || '',
+        avatarUrl: profile.avatar_url || null,
+        description: profile.description || null,
       },
     };
   }

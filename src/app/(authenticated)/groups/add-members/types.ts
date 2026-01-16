@@ -1,4 +1,5 @@
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
+import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 export interface AddMembersModalProps {
   open: boolean;
@@ -8,6 +9,7 @@ export interface AddMembersModalProps {
   name: string;
   organizationId?: string;
   organizationName?: string;
+  initialRole?: MemberRole;
 }
 
 export type GroupedProfile = {

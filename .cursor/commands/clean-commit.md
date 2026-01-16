@@ -57,6 +57,10 @@ description: Analyze uncommitted changes and suggest focused, high-signal code i
 - Identify structurally similar types that could be unified
 - Prefer shared type files over repeated local definitions
 
+### Direct supabase queries
+- Scan for direct use of supabase queries that are not in the "queries" directory
+- All supabase queries should be centralized in the "queries" directory and not be scattered in different files
+
 ---
 
 ## Output Requirements
