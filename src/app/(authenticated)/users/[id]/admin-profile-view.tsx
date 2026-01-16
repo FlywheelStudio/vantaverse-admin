@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { UserProfileCard } from '@/components/users/user-profile-card';
 import { Card } from '@/components/ui/card';
@@ -112,26 +113,38 @@ export function AdminProfileView({
     >
       <div className="flex flex-col gap-6 h-full min-h-0">
         {/* User Profile Card */}
-        <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
-          <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
-            <UserProfileCard
-              userId={user.id}
-              firstName={user.first_name || ''}
-              lastName={user.last_name || ''}
-              email={user.email || ''}
-              avatarUrl={user.avatar_url}
-              description={user.description}
-              role={user.role}
-            />
-          </div>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
+            <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
+              <UserProfileCard
+                userId={user.id}
+                firstName={user.first_name || ''}
+                lastName={user.last_name || ''}
+                email={user.email || ''}
+                avatarUrl={user.avatar_url}
+                description={user.description}
+                role={user.role}
+              />
+            </div>
+          </Card>
+        </motion.div>
 
         {/* Main Content - Organizations, Patients, and Chat */}
         <div
           className={`grid grid-cols-1 ${isYourself ? 'lg:grid-cols-2' : ''} gap-6 flex-1 min-h-0`}
         >
           {/* Left Side - Organizations and Patients */}
-          <Card className="overflow-hidden shadow-xl border border-border flex flex-col min-h-0">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="h-full flex flex-col min-h-0"
+          >
+            <Card className="overflow-hidden shadow-xl border border-border flex flex-col min-h-0 h-full">
             <div className="flex-1 min-h-0 flex flex-col">
               {organizations.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center p-8 text-muted-foreground text-sm text-center">
@@ -167,24 +180,50 @@ export function AdminProfileView({
               )}
             </div>
           </Card>
+          </motion.div>
 
           {/* Right Side - Chat Interface (only on own profile) */}
           {isYourself && (
-            <div className="h-full min-h-0 lg:sticky lg:top-6">
-              {chatId && selectedPatient && selectedOrgId ? (
-                <ChatInterface
-                  chatId={chatId}
-                  patientName={patientName}
-                  onClose={handleChatClose}
-                />
-              ) : (
-                <Card className="h-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                  <p className="text-muted-foreground text-sm text-center p-8">
-                    Select a patient to start a chat
-                  </p>
-                </Card>
-              )}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="h-full min-h-0 lg:sticky lg:top-6"
+            >
+              <AnimatePresence mode="wait">
+                {chatId && selectedPatient && selectedOrgId ? (
+                  <motion.div
+                    key="chat"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full"
+                  >
+                    <ChatInterface
+                      chatId={chatId}
+                      patientName={patientName}
+                      onClose={handleChatClose}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full"
+                  >
+                    <Card className="h-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                      <p className="text-muted-foreground text-sm text-center p-8">
+                        Select a patient to start a chat
+                      </p>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
         </div>
       </div>

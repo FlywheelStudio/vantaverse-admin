@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, startTransition } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -189,33 +190,40 @@ export function ChatInterface({
           <>
             <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-4">
               <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex w-full',
-                      message.message_type === 'admin'
-                        ? 'justify-end'
-                        : 'justify-start',
-                    )}
-                  >
-                    <div
+                <AnimatePresence mode="popLayout">
+                  {messages.map((message) => (
+                    <motion.div
+                      key={message.id}
+                      layout
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
                       className={cn(
-                        'max-w-[70%] rounded-lg px-4 py-2',
-                        getMessageColor(message.message_type),
+                        'flex w-full',
+                        message.message_type === 'admin'
+                          ? 'justify-end'
+                          : 'justify-start',
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap wrap-break-word">
-                        {message.content}
-                      </p>
-                      {message.created_at && (
-                        <p className="text-xs opacity-70 mt-1">
-                          {format(new Date(message.created_at), 'HH:mm')}
+                      <div
+                        className={cn(
+                          'max-w-[70%] rounded-lg px-4 py-2',
+                          getMessageColor(message.message_type),
+                        )}
+                      >
+                        <p className="text-sm whitespace-pre-wrap wrap-break-word">
+                          {message.content}
                         </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                        {message.created_at && (
+                          <p className="text-xs opacity-70 mt-1">
+                            {format(new Date(message.created_at), 'HH:mm')}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
