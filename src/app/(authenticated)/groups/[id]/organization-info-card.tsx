@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
-import { Users, Upload } from 'lucide-react';
+import { Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
-import { EditableDescription } from './editable-components';
+import { EditableDescription, GroupImageUploader } from './editable-components';
 import {
   updateOrganization,
   uploadOrganizationPicture,
@@ -24,71 +23,6 @@ export function OrganizationInfoCard({
     patch: Partial<Pick<Organization, 'description' | 'picture_url'>>,
   ) => void;
 }) {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
-
-  const handleUpload = async (file: File) => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(file);
-      const base64String = await base64Promise;
-
-      const oldPictureUrl = organization.picture_url || null;
-
-      const uploadResult = await uploadOrganizationPicture(
-        organization.id,
-        base64String,
-        oldPictureUrl,
-      );
-
-      if (!uploadResult.success) {
-        toast.error(uploadResult.error || 'Failed to upload image');
-        return;
-      }
-
-      if (!uploadResult.data) {
-        toast.error('Failed to upload image');
-        return;
-      }
-
-      const updateResult = await updateOrganizationPicture(
-        organization.id,
-        uploadResult.data,
-      );
-
-      if (!updateResult.success) {
-        toast.error(updateResult.error || 'Failed to save image');
-        return;
-      }
-
-      onOrganizationChange({ picture_url: uploadResult.data });
-      toast.success('Image uploaded');
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to upload image');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await handleUpload(file);
-  };
-
   const handleSaveDescription = async (next: string | null) => {
     const prev = organization.description;
     onOrganizationChange({ description: next });
@@ -98,6 +32,53 @@ export function OrganizationInfoCard({
     if (!result.success) {
       onOrganizationChange({ description: prev });
       toast.error(result.error || 'Failed to update description');
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const prev = organization.picture_url;
+    try {
+      const reader = new FileReader();
+      const base64String = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const uploadResult = await uploadOrganizationPicture(
+        organization.id,
+        base64String,
+        prev,
+      );
+
+      if (!uploadResult.success || !uploadResult.data) {
+        const errorMessage =
+          'error' in uploadResult && typeof uploadResult.error === 'string'
+            ? uploadResult.error
+            : 'Failed to upload image';
+        toast.error(errorMessage);
+        return;
+      }
+
+      const updateResult = await updateOrganizationPicture(
+        organization.id,
+        uploadResult.data,
+      );
+
+      if (!updateResult.success) {
+        const errorMessage =
+          'error' in updateResult
+            ? updateResult.error
+            : 'Failed to update image';
+        toast.error(errorMessage);
+        return;
+      }
+
+      onOrganizationChange({ picture_url: uploadResult.data });
+      toast.success('Image uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
     }
   };
 
@@ -119,38 +100,10 @@ export function OrganizationInfoCard({
           </div>
         </div>
         <div className="size-16 shrink-0 flex items-center justify-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png"
-            onChange={handleFileSelect}
-            className="hidden"
+          <GroupImageUploader
+            pictureUrl={organization.picture_url}
+            onUpload={handleImageUpload}
           />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="relative flex size-16 overflow-hidden rounded-lg border-2 border-[#E5E9F0] hover:border-[#2454FF] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 items-center justify-center"
-          >
-            {!organization.picture_url ? (
-              <Upload className="h-6 w-6 text-[#64748B]" />
-            ) : (
-              <Image
-                src={organization.picture_url}
-                alt=""
-                className="object-contain"
-                fill
-              />
-            )}
-            {isUploading && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/80">
-                <div
-                  className="loader"
-                  style={{ width: '48px', height: '48px' }}
-                />
-              </div>
-            )}
-          </button>
         </div>
       </div>
     </Card>
