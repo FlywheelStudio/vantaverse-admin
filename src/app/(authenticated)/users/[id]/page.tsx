@@ -5,6 +5,9 @@ import { HpPointsQuery } from '@/lib/supabase/queries/hp-points';
 import { IpPointsQuery } from '@/lib/supabase/queries/ip-points';
 import { McIntakeQuery } from '@/lib/supabase/queries/mc-intake';
 import { HabitPledgeQuery } from '@/lib/supabase/queries/habit-pledge';
+import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import { UserProfilePageUI } from './ui';
 
 export default async function UserProfilePage({
@@ -20,6 +23,7 @@ export default async function UserProfilePage({
   const ipPointsQuery = new IpPointsQuery();
   const mcIntakeQuery = new McIntakeQuery();
   const habitPledgeQuery = new HabitPledgeQuery();
+  const programAssignmentsQuery = new ProgramAssignmentsQuery();
 
   // First, validate that the user exists
   const userResult = await profilesQuery.getUserById(id);
@@ -41,6 +45,7 @@ export default async function UserProfilePage({
     nextThresholdResult,
     mcIntakeSurveyResult,
     habitPledgeResult,
+    programAssignmentResult,
   ] = await Promise.all([
     appointmentsQuery.getAppointmentsByUserId(id),
     user.current_level !== null
@@ -74,6 +79,7 @@ export default async function UserProfilePage({
         } as const),
     mcIntakeQuery.getSurveyByUserId(id),
     habitPledgeQuery.getPledgeByUserId(id),
+    programAssignmentsQuery.getActiveByUserId(id),
   ]);
 
   const appointments = appointmentsResult.success
@@ -96,6 +102,40 @@ export default async function UserProfilePage({
     ? mcIntakeSurveyResult.data
     : null;
   const habitPledge = habitPledgeResult.success ? habitPledgeResult.data : null;
+  const programAssignmentData = programAssignmentResult.success
+    ? programAssignmentResult.data
+    : null;
+  const programAssignment = programAssignmentData?.assignment ?? null;
+  const exerciseNamesMap =
+    programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
+  const groupsMap =
+    programAssignmentData?.groupsMap ??
+    new Map<string, { exercise_template_ids: string[] | null }>();
+
+  // Extract schedule and completion from program assignment
+  let schedule: DatabaseSchedule | null = null;
+  let completion: Array<Array<unknown>> | null | undefined = null;
+
+  if (programAssignment) {
+    // Extract schedule from workout_schedule, merge with patient_override if exists
+    const baseSchedule = programAssignment.workout_schedule?.schedule as
+      | DatabaseSchedule
+      | null
+      | undefined;
+    const patientOverride = programAssignment.patient_override as
+      | DatabaseSchedule
+      | null
+      | undefined;
+
+    schedule = mergeScheduleWithOverride(
+      baseSchedule ?? null,
+      patientOverride ?? null,
+    );
+    completion = programAssignment.completion as
+      | Array<Array<unknown>>
+      | null
+      | undefined;
+  }
 
   // Calculate points missing for next level
   let pointsMissingForNextLevel: number | null = null;
@@ -131,6 +171,11 @@ export default async function UserProfilePage({
       pointsMissingForNextLevel={pointsMissingForNextLevel}
       mcIntakeSurvey={mcIntakeSurvey}
       habitPledge={habitPledge}
+      programAssignment={programAssignment}
+      schedule={schedule}
+      completion={completion}
+      exerciseNamesMap={exerciseNamesMap}
+      groupsMap={groupsMap}
     />
   );
 }

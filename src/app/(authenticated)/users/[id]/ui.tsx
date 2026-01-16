@@ -11,9 +11,12 @@ import { HpCard } from './hp-card';
 import { IpCard } from './ip-card';
 import { McIntakeCard } from './mc-intake-card';
 import { HabitPledgeCard } from './habit-pledge-card';
+import { ProgramStatusCard } from './program-status-card';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useMemo } from 'react';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
 
 export function UserProfilePageUI({
   user,
@@ -26,6 +29,11 @@ export function UserProfilePageUI({
   pointsMissingForNextLevel,
   mcIntakeSurvey,
   habitPledge,
+  programAssignment,
+  schedule,
+  completion,
+  exerciseNamesMap,
+  groupsMap,
 }: {
   user: ProfileWithStats;
   appointments: Appointment[];
@@ -58,6 +66,11 @@ export function UserProfilePageUI({
   pointsMissingForNextLevel: number | null;
   mcIntakeSurvey: McIntakeSurvey | null;
   habitPledge: HabitPledge | null;
+  programAssignment: ProgramAssignmentWithTemplate | null;
+  schedule: DatabaseSchedule | null;
+  completion: Array<Array<unknown>> | null | undefined;
+  exerciseNamesMap: Map<string, string>;
+  groupsMap: Map<string, { exercise_template_ids: string[] | null }>;
 }) {
   // Filter screening and consultation appointments
   const screeningAppointments = appointments.filter(
@@ -136,12 +149,19 @@ export function UserProfilePageUI({
                 transactions={ipTransactions}
               />
             </div>
-            {(mcIntakeSurvey || habitPledge) && (
-              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
-                {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
-                {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
-              </div>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
+              <McIntakeCard survey={mcIntakeSurvey} />
+              <HabitPledgeCard pledge={habitPledge} />
+            </div>
+            <div className="col-span-full w-full mt-6">
+              <ProgramStatusCard
+                assignment={programAssignment}
+                schedule={schedule}
+                completion={completion}
+                exerciseNamesMap={exerciseNamesMap}
+                groupsMap={groupsMap}
+              />
+            </div>
           </CardContent>
         )}
       </Card>

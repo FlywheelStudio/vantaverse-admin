@@ -58,7 +58,7 @@ export function UserProfileCard({
       case 'super_admin':
         return 'destructive';
       default:
-        return 'secondary';
+        return 'default';
     }
   };
 
@@ -158,17 +158,10 @@ export function UserProfileCard({
       <div className="flex items-center gap-6">
         {/* Avatar */}
         <div
-          className="relative group cursor-pointer shrink-0"
+          className="relative group cursor-pointer shrink-0 size-24"
           onClick={handleAvatarClick}
           onMouseEnter={() => setIsHoveringAvatar(true)}
           onMouseLeave={() => setIsHoveringAvatar(false)}
-          style={{
-            width: '128px',
-            height: '128px',
-            minWidth: '128px',
-            minHeight: '128px',
-            flexShrink: 0,
-          }}
         >
           <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
             <Avatar
@@ -176,7 +169,7 @@ export function UserProfileCard({
               firstName={firstName}
               lastName={lastName}
               userId={userId}
-              size={128}
+              size={48}
             />
           </div>
           {/* Upload Overlay */}
@@ -186,7 +179,7 @@ export function UserProfileCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10"
+                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10 size-24"
               >
                 <div className="flex flex-col items-center justify-center">
                   <motion.div

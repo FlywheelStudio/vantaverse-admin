@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Zap, TrendingUp, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -155,7 +155,7 @@ export function IpCard({
               <div className="flex items-center gap-2 text-sm text-[#64748B]">
                 <TrendingUp className="h-4 w-4" />
                 <span>
-                  {pointsMissing.toLocaleString()} points needed for next level
+                  {formatNumber(pointsMissing)} points needed for next level
                 </span>
               </div>
             )}
@@ -240,7 +240,7 @@ export function IpCard({
                     </div>
                     <Progress value={progressPercentage} className="h-2" />
                     <p className="text-xs text-[#64748B]">
-                      {pointsMissing.toLocaleString()} points needed
+                      {formatNumber(pointsMissing)} points needed
                     </p>
                   </div>
                 )}
@@ -275,7 +275,7 @@ export function IpCard({
                   Transaction History
                 </h4>
                 <motion.div
-                  className="space-y-3 px-4 pb-4"
+                  className="space-y-3 px-4 pb-4 max-h-[200px] overflow-y-auto scrollbar-thin"
                   initial="hidden"
                   animate="visible"
                   variants={{
@@ -314,7 +314,7 @@ export function IpCard({
                           </Badge>
                           <span className="text-sm font-semibold text-[#1E3A5F]">
                             {tx.amount > 0 ? '+' : ''}
-                            {tx.amount.toLocaleString()} IP
+                            {formatNumber(tx.amount)} IP
                           </span>
                         </div>
                         {tx.description && (

@@ -129,8 +129,6 @@ export function moveItemToGroup(
   targetGroupId: string,
   flatItems: FlatItem[],
 ): SelectedItem[] {
-  console.log('moveItemToGroup', items, activeId, targetGroupId, flatItems);
-
   const activeItem = findFlatItemById(flatItems, activeId);
 
   if (!activeItem) {
@@ -139,7 +137,6 @@ export function moveItemToGroup(
 
   // Don't allow moving groups into groups
   if (activeItem.item.type === 'group') {
-    console.log('activeItem is a group, returning items');
     return items;
   }
 
@@ -157,14 +154,12 @@ export function moveItemToGroup(
   }
 
   const targetGroup = newItems[targetGroupIndex];
-  console.log('targetGroup', targetGroup);
   if (targetGroup.type !== 'group') {
     return items;
   }
 
   // If already in the target group, do nothing
   if (activeParentId === targetGroupId) {
-    console.log('activeItem is already in the target group, returning items');
     return items;
   }
 

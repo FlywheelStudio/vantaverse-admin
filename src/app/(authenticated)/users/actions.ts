@@ -2,6 +2,7 @@
 
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
@@ -57,6 +58,7 @@ export async function getUsersWithStats(filters?: {
   organization_id?: string;
   team_id?: string;
   journey_phase?: string;
+  role?: MemberRole;
 }) {
   const query = new ProfilesQuery();
   return query.getListWithStats(filters);
@@ -87,6 +89,14 @@ export async function deleteUser(userId: string) {
 export async function makeSuperAdmin(userId: string) {
   const query = new OrganizationMembers();
   return query.makeSuperAdmin(userId);
+}
+
+/**
+ * Get active program assignment for a user
+ */
+export async function getUserProgramAssignment(userId: string) {
+  const query = new ProgramAssignmentsQuery();
+  return query.getActiveByUserId(userId);
 }
 
 /**
@@ -445,21 +455,18 @@ async function createPendingUsers(
 
     const userId = authUser.user.id;
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        first_name: firstName || null,
-        last_name: lastName || null,
-        status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    const profilesQuery = new ProfilesQuery();
+    const updateResult = await profilesQuery.update(userId, {
+      first_name: firstName || null,
+      last_name: lastName || null,
+      status: 'pending',
+    });
 
-    if (profileError) {
+    if (!updateResult.success) {
       errors.push({
         rowNumber: row.rowNumber,
         field: 'Status',
-        message: `Failed to set status: ${profileError.message}`,
+        message: `Failed to set status: ${updateResult.error}`,
       });
     }
 

@@ -43,20 +43,6 @@ export function useUsersTable({
     });
   }, [debouncedSearch]);
 
-  // Update role filter in table when prop changes
-  useEffect(() => {
-    setColumnFilters((prev) => {
-      const existing = prev.find((f) => f.id === 'is_super_admin');
-      const role = filters.role || 'patient';
-      const roleValue = role === 'admin' ? true : false;
-      if (existing && existing.value === roleValue) {
-        return prev;
-      }
-      const filtered = prev.filter((f) => f.id !== 'is_super_admin');
-      return [...filtered, { id: 'is_super_admin', value: roleValue }];
-    });
-  }, [filters.role]);
-
   const table = useReactTable({
     data,
     columns,

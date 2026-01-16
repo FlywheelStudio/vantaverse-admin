@@ -9,6 +9,8 @@ import {
   type ProgramAssignment,
   type ProgramAssignmentWithTemplate,
 } from '../schemas/program-assignments';
+import { GroupsQuery } from './groups';
+import { ExerciseTemplatesQuery } from './exercise-templates';
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**
@@ -25,7 +27,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .select(
         `
         *,
-        program_template (*)
+        program_template (*),
+        workout_schedule:workout_schedules (*)
       `,
       )
       .eq('status', 'template')
@@ -49,6 +52,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     const transformedData = data.map((item: ProgramAssignmentWithTemplate) => ({
       ...item,
       program_template: item.program_template || null,
+      workout_schedule:
+        (item as { workout_schedule?: unknown }).workout_schedule || null,
     }));
 
     const result = programAssignmentWithTemplateSchema
@@ -375,6 +380,144 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       data: {
         workout_schedule_id: assignment.workout_schedule_id,
         patient_override: assignment.patient_override as unknown,
+      },
+    };
+  }
+
+  /**
+   * Get active program assignment by user ID (joined with program_template and workout_schedule)
+   * @param userId - The user ID
+   * @returns Success with program assignment, exercise names map, and groups map, or null if not found, or error
+   */
+  public async getActiveByUserId(userId: string): Promise<
+    | SupabaseSuccess<{
+        assignment: ProgramAssignmentWithTemplate | null;
+        exerciseNamesMap: Map<string, string>;
+        groupsMap: Map<string, { exercise_template_ids: string[] | null }>;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase
+      .from('program_assignment')
+      .select(
+        `
+        *,
+        program_template (*),
+        workout_schedule:workout_schedules (*)
+      `,
+      )
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (error) {
+      // Handle the specific case where maybeSingle fails due to join issues
+      if (
+        error.code === 'PGRST116' ||
+        error.message?.includes(
+          'Cannot coerce the result to a single JSON object',
+        )
+      ) {
+        return {
+          success: true,
+          data: {
+            assignment: null,
+            exerciseNamesMap: new Map(),
+            groupsMap: new Map(),
+          },
+        };
+      }
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get program assignment',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: {
+          assignment: null,
+          exerciseNamesMap: new Map(),
+          groupsMap: new Map(),
+        },
+      };
+    }
+
+    // Transform the data to match our schema structure
+    const transformedData = {
+      ...data,
+      program_template: data.program_template || null,
+      workout_schedule:
+        (data as { workout_schedule?: unknown }).workout_schedule || null,
+    };
+
+    const result =
+      programAssignmentWithTemplateSchema.safeParse(transformedData);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    const assignment = result.data;
+
+    // Extract exercise_template_ids and group_ids from workout_schedule
+    const workoutSchedule = assignment.workout_schedule;
+    const exerciseTemplateIds =
+      (workoutSchedule?.exercise_template_ids as string[] | null) || [];
+    const groupIds = (workoutSchedule?.group_ids as string[] | null) || [];
+
+    // Fetch groups to extract their exercise_template_ids
+    const groupsQuery = new GroupsQuery();
+    const groupsResult = await groupsQuery.getByIds(groupIds);
+
+    // Extract exercise template IDs from groups
+    const exerciseTemplateIdsFromGroups: string[] = [];
+    const groupsMap = new Map<
+      string,
+      { exercise_template_ids: string[] | null }
+    >();
+
+    if (groupsResult.success) {
+      for (const [groupId, group] of groupsResult.data) {
+        groupsMap.set(groupId, {
+          exercise_template_ids: group.exercise_template_ids,
+        });
+        if (group.exercise_template_ids) {
+          exerciseTemplateIdsFromGroups.push(...group.exercise_template_ids);
+        }
+      }
+    }
+
+    // Combine all exercise template IDs and get distinct set
+    const allExerciseTemplateIds = [
+      ...new Set([...exerciseTemplateIds, ...exerciseTemplateIdsFromGroups]),
+    ];
+
+    // Fetch exercise templates
+    const exerciseTemplatesQuery = new ExerciseTemplatesQuery();
+    const exerciseTemplatesResultFinal = await exerciseTemplatesQuery.getByIds(
+      allExerciseTemplateIds,
+    );
+
+    // Create exercise names map
+    const exerciseNamesMap = new Map<string, string>();
+    if (exerciseTemplatesResultFinal.success) {
+      for (const [templateId, template] of exerciseTemplatesResultFinal.data) {
+        if (template.exercise_name) {
+          exerciseNamesMap.set(templateId, template.exercise_name);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        assignment,
+        exerciseNamesMap,
+        groupsMap,
       },
     };
   }

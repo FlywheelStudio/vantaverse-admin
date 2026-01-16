@@ -9,7 +9,7 @@ import {
   Award,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -147,14 +147,14 @@ export function HpCard({
             <div className="flex items-center gap-2 text-sm text-[#64748B]">
               <Trophy className="h-4 w-4" style={{ color }} />
               <span className="font-semibold text-[#1E3A5F]">
-                {points.toLocaleString()} VP
+                {formatNumber(points)} VP
               </span>
             </div>
             {!isMaxLevel && pointsNeeded !== null && (
               <div className="flex items-center gap-2 text-sm text-[#64748B]">
                 <TrendingUp className="h-4 w-4" />
                 <span>
-                  {pointsNeeded.toLocaleString()} points needed for next level
+                  {formatNumber(pointsNeeded)} points needed for next level
                 </span>
               </div>
             )}
@@ -221,7 +221,7 @@ export function HpCard({
                     Vanta Points:
                   </span>
                   <span className="text-sm font-semibold text-[#1E3A5F]">
-                    {points.toLocaleString()}
+                    {formatNumber(points)}
                   </span>
                 </div>
 
@@ -251,7 +251,7 @@ export function HpCard({
                     </div>
                     <Progress value={progressPercentage} className="h-2" />
                     <p className="text-xs text-[#64748B]">
-                      {pointsNeeded.toLocaleString()} points needed
+                      {formatNumber(pointsNeeded)} points needed
                     </p>
                   </div>
                 )}
@@ -286,7 +286,7 @@ export function HpCard({
                   Transaction History
                 </h4>
                 <motion.div
-                  className="space-y-3 px-4 pb-4"
+                  className="space-y-3 px-4 pb-4 max-h-48 overflow-y-auto scrollbar-thin"
                   initial="hidden"
                   animate="visible"
                   variants={{
@@ -324,7 +324,7 @@ export function HpCard({
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>
                           <span className="text-sm font-semibold text-[#1E3A5F]">
-                            +{tx.points_earned.toLocaleString()} HP
+                            +{formatNumber(tx.points_earned)} HP
                           </span>
                         </div>
                         {tx.description && (
