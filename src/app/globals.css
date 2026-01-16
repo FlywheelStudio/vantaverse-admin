@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@source "../../**/*.{js,ts,jsx,tsx,mdx}";
+
 @custom-variant dark (&:is(.dark *));
 
 @media (prefers-reduced-motion: no-preference) {

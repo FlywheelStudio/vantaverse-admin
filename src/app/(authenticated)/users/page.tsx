@@ -34,7 +34,11 @@ export default function UsersPage() {
     role: MemberRole;
   }>({ role: 'patient' });
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const { data: users, isLoading } = useUsers(filters);
+  const { data: users, isLoading } = useUsers({
+    organization_id: filters.organization_id,
+    team_id: filters.team_id,
+    role: filters.role,
+  });
 
   const displayUsers = users || [];
 

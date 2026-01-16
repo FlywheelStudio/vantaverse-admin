@@ -17,6 +17,7 @@ interface UserProfileCardProps {
   userId: string;
   firstName: string;
   lastName: string;
+  description?: string | null;
   email: string;
   avatarUrl?: string | null;
   role?: MemberRole;
@@ -26,19 +27,21 @@ export function UserProfileCard({
   userId,
   firstName: initialFirstName,
   lastName: initialLastName,
+  description: initialDescription,
   email,
   avatarUrl: initialAvatarUrl,
   role = 'patient',
 }: UserProfileCardProps) {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
+  const [description, setDescription] = useState(initialDescription ?? '');
   const [avatarUrl] = useState(initialAvatarUrl);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<
-    'firstName' | 'lastName' | null
+    'firstName' | 'lastName' | 'description' | null
   >(null);
   const [editingValue, setEditingValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,34 +61,68 @@ export function UserProfileCard({
       case 'super_admin':
         return 'destructive';
       default:
-        return 'secondary';
+        return 'default';
     }
   };
 
-  const handleFieldEdit = (field: 'firstName' | 'lastName') => {
+  const getDisplayRole = (role: MemberRole | undefined): string => {
+    if (!role) return 'member';
+    switch (role) {
+      case 'patient':
+        return 'member';
+      case 'admin':
+        return 'physician';
+      default:
+        return role;
+    }
+  };
+
+  const fieldValueMap = {
+    firstName,
+    lastName,
+    description,
+  } as const;
+
+  const fieldKeyMap = {
+    firstName: 'first_name',
+    lastName: 'last_name',
+    description: 'description',
+  } as const;
+
+  const fieldSuccessMessages = {
+    firstName: 'First name updated',
+    lastName: 'Last name updated',
+    description: 'Description updated',
+  } as const;
+
+  const handleFieldEdit = (field: 'firstName' | 'lastName' | 'description') => {
     setEditingField(field);
-    setEditingValue(field === 'firstName' ? firstName : lastName);
+    setEditingValue(fieldValueMap[field]);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  const handleFieldBlur = async (field: 'firstName' | 'lastName') => {
-    const currentValue = field === 'firstName' ? firstName : lastName;
+  const handleFieldBlur = async (
+    field: 'firstName' | 'lastName' | 'description',
+  ) => {
+    const currentValue = fieldValueMap[field];
     if (editingValue === currentValue) {
       setEditingField(null);
       return;
     }
 
     const result = await updateUserProfile(userId, {
-      [field === 'firstName' ? 'first_name' : 'last_name']: editingValue,
+      [fieldKeyMap[field]]: editingValue,
     });
 
     if (result.success) {
       if (field === 'firstName') {
         setFirstName(editingValue);
-      } else {
+      } else if (field === 'lastName') {
         setLastName(editingValue);
+      } else {
+        setDescription(editingValue);
       }
-      toast.success(`${field === 'firstName' ? 'First' : 'Last'} name updated`);
+      toast.success(fieldSuccessMessages[field]);
     } else {
       toast.error(result.error);
       setEditingValue(currentValue);
@@ -94,7 +131,8 @@ export function UserProfileCard({
   };
 
   const handleFieldCancel = () => {
-    const currentValue = editingField === 'firstName' ? firstName : lastName;
+    const currentValue =
+      editingField ? fieldValueMap[editingField] : '';
     setEditingValue(currentValue);
     setEditingField(null);
   };
@@ -146,17 +184,10 @@ export function UserProfileCard({
       <div className="flex items-center gap-6">
         {/* Avatar */}
         <div
-          className="relative group cursor-pointer shrink-0"
+          className="relative group cursor-pointer shrink-0 size-24"
           onClick={handleAvatarClick}
           onMouseEnter={() => setIsHoveringAvatar(true)}
           onMouseLeave={() => setIsHoveringAvatar(false)}
-          style={{
-            width: '128px',
-            height: '128px',
-            minWidth: '128px',
-            minHeight: '128px',
-            flexShrink: 0,
-          }}
         >
           <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
             <Avatar
@@ -164,7 +195,7 @@ export function UserProfileCard({
               firstName={firstName}
               lastName={lastName}
               userId={userId}
-              size={128}
+              size={88}
             />
           </div>
           {/* Upload Overlay */}
@@ -174,7 +205,7 @@ export function UserProfileCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10"
+                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10 size-24"
               >
                 <div className="flex flex-col items-center justify-center">
                   <motion.div
@@ -252,12 +283,41 @@ export function UserProfileCard({
               variant={getRoleBadgeVariant(role)}
               className="text-xs font-semibold px-3 py-1 capitalize"
             >
-              {role}
+              {getDisplayRole(role)}
             </Badge>
           </div>
           <p className="text-muted-foreground mb-3 text-sm cursor-default">
             {email}
           </p>
+          <div className="text-sm">
+            {editingField === 'description' ? (
+              <Input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                onBlur={() => handleFieldBlur('description')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleFieldCancel();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleFieldBlur('description');
+                  }
+                }}
+                className="w-full max-w-xl"
+                placeholder="Add a description"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={() => handleFieldEdit('description')}
+                className="text-muted-foreground cursor-pointer hover:text-[#2454FF] transition-colors"
+              >
+                {description?.trim() ? description : 'Add a description'}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </>

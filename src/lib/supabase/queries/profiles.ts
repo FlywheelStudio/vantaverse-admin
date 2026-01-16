@@ -6,7 +6,6 @@ import {
 import {
   profileSchema,
   profileWithStatsSchema,
-  RawOrgMember,
   type Profile,
   type ProfileWithStats,
 } from '../schemas/profiles';
@@ -32,7 +31,7 @@ export class ProfilesQuery extends SupabaseQuery {
    * @returns Success with profile data or error
    */
   public async getAuthProfile(): Promise<
-    SupabaseSuccess<Profile> | SupabaseError
+    SupabaseSuccess<ProfileWithStats> | SupabaseError
   > {
     const supabase = await this.getClient('authenticated_user');
     const user = await this.getUser();
@@ -64,7 +63,7 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileSchema.safeParse(data);
+    const result = profileWithStatsSchema.safeParse(data);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -86,6 +85,7 @@ export class ProfilesQuery extends SupabaseQuery {
   ): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
+    // Fetch profile data
     const { data, error } = await supabase
       .from('profiles_with_stats')
       .select('*')
@@ -106,7 +106,24 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileWithStatsSchema.safeParse(data);
+    // Fetch role from organization_members (get first role if multiple memberships)
+    const { data: orgMemberData, error: orgMemberError } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', id)
+      .limit(1)
+      .maybeSingle();
+
+    // Role is optional, so we don't fail if there's an error or no membership
+    const role =
+      !orgMemberError && orgMemberData?.role ? orgMemberData.role : undefined;
+
+    const profileData = {
+      ...data,
+      role,
+    };
+
+    const result = profileWithStatsSchema.safeParse(profileData);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -320,13 +337,14 @@ export class ProfilesQuery extends SupabaseQuery {
 
   /**
    * Get list of profiles with stats and optional filtering
-   * @param filters - Optional filters (organization_id, team_id, journey_phase)
+   * @param filters - Optional filters (organization_id, team_id, journey_phase, role)
    * @returns Success with profiles with stats array or error
    */
   public async getListWithStats(filters?: {
     organization_id?: string;
     team_id?: string;
     journey_phase?: string;
+    role?: MemberRole;
   }): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
@@ -341,16 +359,53 @@ export class ProfilesQuery extends SupabaseQuery {
 
     let userIds: string[] | null = null;
 
+    // Filter by role via organization_members
+    if (filters?.role) {
+      const { data: orgMembersByRole } = await supabase
+        .from('organization_members')
+        .select('user_id')
+        .eq('role', filters.role)
+        .eq('is_active', true);
+
+      if (orgMembersByRole && orgMembersByRole.length > 0) {
+        userIds = orgMembersByRole.map((m) => m.user_id);
+      } else {
+        return {
+          success: true,
+          data: [],
+        };
+      }
+    }
+
     // Filter by organization_id via organization_members
     if (filters?.organization_id) {
-      const { data: orgMembers } = await supabase
+      let orgMembersQuery = supabase
         .from('organization_members')
         .select('user_id')
         .eq('organization_id', filters.organization_id)
         .eq('is_active', true);
 
+      // If role filter is already applied, we need to intersect
+      if (filters?.role) {
+        orgMembersQuery = orgMembersQuery.eq('role', filters.role);
+      }
+
+      const { data: orgMembers } = await orgMembersQuery;
+
       if (orgMembers && orgMembers.length > 0) {
-        userIds = orgMembers.map((m) => m.user_id);
+        const orgUserIds = orgMembers.map((m) => m.user_id);
+        // If we already have userIds from role filter, intersect them
+        if (userIds) {
+          userIds = userIds.filter((id) => orgUserIds.includes(id));
+          if (userIds.length === 0) {
+            return {
+              success: true,
+              data: [],
+            };
+          }
+        } else {
+          userIds = orgUserIds;
+        }
       } else {
         return {
           success: true,
@@ -368,7 +423,7 @@ export class ProfilesQuery extends SupabaseQuery {
 
       if (teamMembers && teamMembers.length > 0) {
         const teamUserIds = teamMembers.map((m) => m.user_id);
-        // If we already have userIds from org filter, intersect them
+        // If we already have userIds from previous filters, intersect them
         if (userIds) {
           userIds = userIds.filter((id) => teamUserIds.includes(id));
           if (userIds.length === 0) {
@@ -437,18 +492,29 @@ export class ProfilesQuery extends SupabaseQuery {
     );
     const { data: orgMembersData } = await supabase
       .from('organization_members')
-      .select('user_id, organization_id, organizations!inner(id, name)')
+      .select('user_id, organization_id, role, organizations!inner(id, name)')
       .in('user_id', profileIds)
       .eq('is_active', true);
 
-    // Create a map of user_id -> orgMemberships
+    // Create a map of user_id -> orgMemberships and user_id -> role
     const orgMembershipsMap = new Map<
       string,
       Array<{ orgId: string; orgName: string }>
     >();
+    const userRoleMap = new Map<string, MemberRole>();
+
+    type OrgMemberWithRole = {
+      user_id: string;
+      organization_id: string;
+      role: MemberRole;
+      organizations: {
+        id: string;
+        name: string;
+      } | null;
+    };
 
     if (orgMembersData) {
-      (orgMembersData as unknown as RawOrgMember[]).forEach((om) => {
+      (orgMembersData as unknown as OrgMemberWithRole[]).forEach((om) => {
         if (om.organizations) {
           if (!orgMembershipsMap.has(om.user_id)) {
             orgMembershipsMap.set(om.user_id, []);
@@ -458,10 +524,14 @@ export class ProfilesQuery extends SupabaseQuery {
             orgName: om.organizations.name,
           });
         }
+        // Store the role (if multiple, use the first one found)
+        if (om.role && !userRoleMap.has(om.user_id)) {
+          userRoleMap.set(om.user_id, om.role);
+        }
       });
     }
 
-    // Add is_super_admin and orgMemberships to each profile
+    // Add is_super_admin, orgMemberships, and role to each profile
     const profilesWithAdminStatusAndOrgs = data.map((profile) => {
       const profileRecord = profile as Record<string, unknown>;
       const userId = profileRecord.id as string;
@@ -469,6 +539,7 @@ export class ProfilesQuery extends SupabaseQuery {
         ...profileRecord,
         is_super_admin: superAdminUserIds.has(userId),
         orgMemberships: orgMembershipsMap.get(userId) || [],
+        role: userRoleMap.get(userId),
       };
     });
 
@@ -484,6 +555,20 @@ export class ProfilesQuery extends SupabaseQuery {
       success: true,
       data: result.data,
     };
+  }
+
+  /**
+   * Get all patients (role='patient') in an organization
+   * @param organizationId - The organization ID
+   * @returns Success with profiles array or error
+   */
+  public async getPatientsByOrganization(
+    organizationId: string,
+  ): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
+    return this.getListWithStats({
+      organization_id: organizationId,
+      role: 'patient',
+    });
   }
 
   /**

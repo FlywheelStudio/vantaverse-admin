@@ -20,8 +20,13 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '5mb',
     },
+    viewTransition: true,
   },
   headers: async () => {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) {
+      return [];
+    }
     return [
       {
         source: '/:path*',

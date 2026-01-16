@@ -1,5 +1,20 @@
 # Changelog
 
+# [0.7.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.6.0...0.7.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* resolved a bug in physician assignment ([9d1b62a](https://github.com/FlywheelStudio/vantaverse-admin/commit/9d1b62a569388e93689bba90f8fc5da032e32a0c))
+
+
+### Features
+
+* **admin-profile:** enhance animations in admin profile and chat interface components ([6ed7777](https://github.com/FlywheelStudio/vantaverse-admin/commit/6ed7777eb5213d7f816108b0f8b6c99d61834feb))
+* **user-profile:** enhance user profile display with role handling and conditional card rendering ([8b4e9a8](https://github.com/FlywheelStudio/vantaverse-admin/commit/8b4e9a829a18c7e27bd71b2f398626223681be4d))
+* **user-profile:** implement organization and patient data fetching for admin users ([50404f0](https://github.com/FlywheelStudio/vantaverse-admin/commit/50404f00f89bf438a829620ef3c013fd6ea66f68))
+* **users:** add program assignment handling and improve user profile integration ([af4bcba](https://github.com/FlywheelStudio/vantaverse-admin/commit/af4bcbac7aa00c2108492a977e78391cfe554f1f))
+
 # [0.6.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.5.0...0.6.0) (2026-01-16)
 
 

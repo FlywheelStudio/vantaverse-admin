@@ -25,3 +25,7 @@ export function getDayOfWeek(day_index: number) {
     'Sunday',
   ][day_index - 1];
 }
+
+export function formatNumber(value: number): string {
+  return value.toLocaleString('en-US');
+}

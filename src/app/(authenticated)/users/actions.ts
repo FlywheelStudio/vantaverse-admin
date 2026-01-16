@@ -5,6 +5,7 @@ import { OrganizationMembers } from '@/lib/supabase/queries/organization-members
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import type { Profile } from '@/lib/supabase/schemas/profiles';
 
 // ============================================================================
 // Types for Excel Import Validation
@@ -57,6 +58,7 @@ export async function getUsersWithStats(filters?: {
   organization_id?: string;
   team_id?: string;
   journey_phase?: string;
+  role?: MemberRole;
 }) {
   const query = new ProfilesQuery();
   return query.getListWithStats(filters);
@@ -67,7 +69,10 @@ export async function getUsersWithStats(filters?: {
  */
 export async function updateUserProfile(
   userId: string,
-  profileData: { first_name?: string; last_name?: string },
+  profileData: Pick<
+    Partial<Profile>,
+    'first_name' | 'last_name' | 'description'
+  >,
 ) {
   const query = new ProfilesQuery();
   return query.update(userId, profileData);
@@ -445,21 +450,18 @@ async function createPendingUsers(
 
     const userId = authUser.user.id;
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        first_name: firstName || null,
-        last_name: lastName || null,
-        status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    const profilesQuery = new ProfilesQuery();
+    const updateResult = await profilesQuery.update(userId, {
+      first_name: firstName || null,
+      last_name: lastName || null,
+      status: 'pending',
+    });
 
-    if (profileError) {
+    if (!updateResult.success) {
       errors.push({
         rowNumber: row.rowNumber,
         field: 'Status',
-        message: `Failed to set status: ${profileError.message}`,
+        message: `Failed to set status: ${updateResult.error}`,
       });
     }
 
