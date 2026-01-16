@@ -1,5 +1,22 @@
 # Changelog
 
+# [0.6.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.5.0...0.6.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* **organization-info-card:** streamline image upload handling and integrate GroupImageUploader component ([c950cfc](https://github.com/FlywheelStudio/vantaverse-admin/commit/c950cfc958c0c07fdd71f0db51972ec0398df93e))
+* patient instead of user ([0fda09e](https://github.com/FlywheelStudio/vantaverse-admin/commit/0fda09e776405c90132c5e7b1b1aabf2aeb05d0a))
+* patient instead of user ([18bb37b](https://github.com/FlywheelStudio/vantaverse-admin/commit/18bb37bed63b8da383f04bc7216a9dad568db2c1))
+* patient instead of user ([823caff](https://github.com/FlywheelStudio/vantaverse-admin/commit/823caff163205843ad4a5e80567f43b3acfcc5d6))
+* patient instead of user ([fd2fd8a](https://github.com/FlywheelStudio/vantaverse-admin/commit/fd2fd8a435351b2651f81afbc4f8ca2211c17756))
+* patient instead of user ([943fc61](https://github.com/FlywheelStudio/vantaverse-admin/commit/943fc6172330d24e56dfd3ce4f5bc93a23c6873a))
+
+
+### Features
+
+* **groups:** implement physiologist management and enhance member role functionality in organization groups ([ba8fbfb](https://github.com/FlywheelStudio/vantaverse-admin/commit/ba8fbfbe732fa92c7f43693913838e1cc152824e))
+
 # [0.5.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.4.0...0.5.0) (2026-01-13)
 
 
