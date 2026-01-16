@@ -2,6 +2,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -126,6 +132,33 @@
   }
 }
 
+header {
+  position: relative;
+  overflow: visible;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1;
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  bottom: -16px;
+  left: 10%;
+  right: 10%;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50% / 100%;
+  filter: blur(12px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+header h1 {
+  font-size: 36px;
+}
+
 .glass-background {
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
@@ -204,10 +237,4 @@
   border-radius: 8px !important;
   border: 6px solid rgba(22, 227, 22, 0.52) !important;
   border-style: outset !important;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
-  }
 }
