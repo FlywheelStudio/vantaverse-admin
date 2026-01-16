@@ -1,61 +1,43 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface RoleFilterProps {
-  selectedRole?: 'admin' | 'user';
-  onRoleSelect: (role?: 'admin' | 'user') => void;
+  selectedRole: MemberRole;
+  onRoleSelect: (role: MemberRole) => void;
 }
 
-export function RoleFilter({ selectedRole, onRoleSelect }: RoleFilterProps) {
-  const displayText =
-    selectedRole === 'admin'
-      ? 'Admin'
-      : selectedRole === 'user'
-        ? 'Users'
-        : 'All Roles';
-
+export function RoleFilter({
+  selectedRole = 'patient',
+  onRoleSelect,
+}: RoleFilterProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className="bg-white border-[#2454FF]/20 rounded-xl text-[#1E3A5F] hover:bg-[#F5F7FA] min-w-[150px] justify-between"
-        >
-          {displayText}
-          <ChevronDown className="h-4 w-4 ml-2" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[150px]">
-        <DropdownMenuItem
-          onClick={() => onRoleSelect(undefined)}
-          data-selected={!selectedRole}
-          className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
-        >
-          All Roles
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => onRoleSelect('admin')}
-          data-selected={selectedRole === 'admin'}
-          className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
-        >
-          Admin
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => onRoleSelect('user')}
-          data-selected={selectedRole === 'user'}
-          className="cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!"
-        >
-          Users
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-2 bg-white border border-[#2454FF]/20 rounded-xl p-1">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onRoleSelect('patient')}
+        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
+          selectedRole === 'patient'
+            ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
+            : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
+        }`}
+      >
+        Members
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onRoleSelect('admin')}
+        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
+          selectedRole === 'admin'
+            ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
+            : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
+        }`}
+      >
+        Physicians
+      </Button>
+    </div>
   );
 }

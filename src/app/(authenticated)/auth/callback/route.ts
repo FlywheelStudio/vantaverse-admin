@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/core/server';
 import { NextResponse } from 'next/server';
 import { serverGetNext } from '../actions';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 
 const errorMessage = 'An error occurred during sign in. Please try again.';
 
@@ -45,6 +46,12 @@ export async function GET(request: Request) {
         ),
       );
     }
+
+    // Update last_sign_in timestamp
+    const profilesQuery = new ProfilesQuery();
+    await profilesQuery.update(userId, {
+      last_sign_in: new Date().toISOString(),
+    });
 
     // User is admin, redirect to dashboard
     return NextResponse.redirect(new URL(next, origin));

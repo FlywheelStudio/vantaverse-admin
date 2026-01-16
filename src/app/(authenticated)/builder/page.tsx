@@ -9,7 +9,7 @@ export default function BuilderPage() {
     <PageWrapper
       subheader={
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-medium">Program Builder</span>
+          <h1 className="text-2xl font-medium">Program Builder</h1>
         </div>
       }
     >

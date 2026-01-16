@@ -49,7 +49,7 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
     return (
       <div
         suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
         <p className="text-gray-500">Loading...</p>
       </div>
@@ -60,7 +60,7 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
     return (
       <div
         suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
         <p className="text-gray-500">Invalid program ID</p>
       </div>
@@ -71,7 +71,7 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
     return (
       <div
         suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
         <p className="text-gray-500">Loading...</p>
       </div>
@@ -82,7 +82,7 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
     return (
       <div
         suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
+        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
         <p className="text-red-500">Error loading template: {error.message}</p>
       </div>
@@ -91,20 +91,14 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
 
   if (!template) {
     return (
-      <div
-        suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background flex items-center justify-center"
-      >
+      <div suppressHydrationWarning>
         <p className="text-gray-500">Template not found</p>
       </div>
     );
   }
 
   return (
-    <div
-      suppressHydrationWarning
-      className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar glass-background"
-    >
+    <>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -128,6 +122,6 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
           </div>
         </Card>
       </motion.div>
-    </div>
+    </>
   );
 }

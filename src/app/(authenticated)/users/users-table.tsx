@@ -4,16 +4,14 @@ import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { useUsersTable } from './users-table/hooks/use-users-table';
-import { useQuickAddUser } from './users-table/hooks/use-quick-add-user';
 import { UsersTableFilters } from './users-table/components/users-table-filters';
-import { QuickAddUserForm } from './users-table/components/quick-add-user-form';
 import { UsersTablePagination } from './users-table/components/users-table-pagination';
 import type { UsersTableProps } from './users-table/types';
 
 export function UsersTable({
   columns,
   data,
-  filters = {},
+  filters = { role: 'patient' },
   onFiltersChange,
   isLoading = false,
 }: UsersTableProps) {
@@ -27,18 +25,6 @@ export function UsersTable({
     data,
     filters,
   });
-
-  const {
-    creatingRow,
-    savingUser,
-    newUserData,
-    setNewUserData,
-    handleQuickAdd,
-    handleOrgChange,
-    handleTeamChange,
-    handleSaveNewUser,
-    handleCancelNewUser,
-  } = useQuickAddUser();
 
   // Compute org name from filters (derived state)
   const selectedOrgName = useMemo(() => {
@@ -56,9 +42,9 @@ export function UsersTable({
   // Get filter display names for empty state
   const emptyStateMessage =
     filters.team_id && selectedTeamName
-      ? `No users assigned to this team`
+      ? `No members assigned to this team`
       : filters.organization_id && selectedOrgName
-        ? `No users assigned to this organization`
+        ? `No members assigned to this organization`
         : 'No results.';
 
   return (
@@ -71,17 +57,6 @@ export function UsersTable({
         selectedTeamName={selectedTeamName}
         onFiltersChange={onFiltersChange}
         onTeamNameChange={handleTeamNameChange}
-        onQuickAdd={handleQuickAdd}
-      />
-      <QuickAddUserForm
-        isOpen={creatingRow}
-        newUserData={newUserData}
-        savingUser={savingUser}
-        onOrgChange={handleOrgChange}
-        onTeamChange={handleTeamChange}
-        onDataChange={setNewUserData}
-        onSave={handleSaveNewUser}
-        onCancel={handleCancelNewUser}
       />
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -116,7 +91,7 @@ export function UsersTable({
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                    <span className="text-[#64748B]">Loading users...</span>
+                    <span className="text-[#64748B]">Loading members...</span>
                   </div>
                 </td>
               </tr>

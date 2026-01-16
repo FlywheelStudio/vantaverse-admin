@@ -15,7 +15,7 @@ export function UsersTablePagination({ table }: UsersTablePaginationProps) {
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
       <div className="flex justify-center md:justify-start">
         <span className="text-sm text-[#64748B]">
-          {table.getFilteredRowModel().rows.length} user(s) total.
+          {table.getFilteredRowModel().rows.length} member(s) total.
         </span>
       </div>
       <div className="flex items-center justify-center gap-2">

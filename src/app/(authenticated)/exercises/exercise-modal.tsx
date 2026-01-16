@@ -169,7 +169,7 @@ export function ExerciseModal({
 
         {/* Video Player */}
         {videoUrl && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+          <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg bg-black">
             {exercise.video_type === 'youtube' ? (
               <iframe
                 src={videoUrl}

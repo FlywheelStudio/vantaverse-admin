@@ -5,6 +5,7 @@ import {
   type SupabaseError,
 } from '../query';
 import { organizationMemberSchema } from '../schemas/organization-members';
+import { MemberRole } from '../schemas/organization-members';
 
 export class OrganizationMembers extends SupabaseQuery {
   /**
@@ -229,6 +230,81 @@ export class OrganizationMembers extends SupabaseQuery {
   }
 
   /**
+   * Get current physiologist for an organization
+   * @param organizationId - The organization ID
+   * @returns Success with physiologist info or null if none exists
+   */
+  public async getCurrentPhysiologist(organizationId: string): Promise<
+    | SupabaseSuccess<{
+        userId: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        avatarUrl: string | null;
+        description: string | null;
+      } | null>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select(
+        'user_id, profiles!inner(first_name, last_name, email, avatar_url, description)',
+      )
+      .eq('organization_id', organizationId)
+      .eq('role', 'admin')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get current physiologist',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    // Handle profiles as potentially array or single object
+    const profilesData = Array.isArray(data.profiles)
+      ? data.profiles[0]
+      : (data.profiles as unknown);
+
+    if (!profilesData || Array.isArray(profilesData)) {
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    const profile = profilesData as {
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+      avatar_url: string | null;
+      description: string | null;
+    };
+
+    return {
+      success: true,
+      data: {
+        userId: data.user_id,
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        email: profile.email || '',
+        avatarUrl: profile.avatar_url || null,
+        description: profile.description || null,
+      },
+    };
+  }
+
+  /**
    * Add or update organization membership
    * @param userId - The user ID
    * @param organizationId - The organization ID
@@ -238,7 +314,7 @@ export class OrganizationMembers extends SupabaseQuery {
   public async addOrUpdateMembership(
     userId: string,
     organizationId: string,
-    role: 'admin' | 'patient',
+    role: MemberRole,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 

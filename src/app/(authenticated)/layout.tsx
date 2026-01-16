@@ -3,7 +3,6 @@
 import { SidebarProvider } from '@/context/sidebar';
 import { VantaBuddyTrigger } from '@/components/sidebar/vantabuddy-trigger';
 import { Sidebar } from '@/components/sidebar/sidebar';
-import Header from './header';
 import { useSidebar } from '@/context/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -30,7 +29,6 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
           'linear-gradient(180deg, #0D47A1 0%, #2196F3 50%, #B3E5FC 100%)',
       }}
     >
-      <Header />
       <VantaBuddyTrigger />
       {isMobile ? (
         <div className="flex">

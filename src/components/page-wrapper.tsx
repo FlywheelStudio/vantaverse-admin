@@ -14,20 +14,24 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
     isExpanded && isOpen ? 10 : isOpen ? 10 : VANTABUDDY_CONFIG.width + 10;
 
   return (
-    <div className="h-full w-full flex flex-col pr-4">
-      <div
+    <div className="h-full w-full flex flex-col">
+      <header
         suppressHydrationWarning
-        className="text-white flex items-center shrink-0"
+        className="text-white flex items-center justify-between shrink-0 content-title"
         style={{
           paddingLeft: `${paddingLeft}px`,
           height: `${VANTABUDDY_CONFIG.height}px`,
         }}
+        aria-label="Page Header"
       >
         {subheader}
-      </div>
+      </header>
       <div
         suppressHydrationWarning
-        className="pl-4 pt-4 pb-4 flex-1 overflow-hidden"
+        className="p-4 flex-1 overflow-y-auto h-full slim-scrollbar"
+        style={{
+          scrollBehavior: 'smooth',
+        }}
       >
         {children}
       </div>

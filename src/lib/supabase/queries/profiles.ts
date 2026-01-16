@@ -6,12 +6,18 @@ import {
 import {
   profileSchema,
   profileWithStatsSchema,
+  RawOrgMember,
   type Profile,
   type ProfileWithStats,
 } from '../schemas/profiles';
+import { MemberRole } from '../schemas/organization-members';
 
 export type ProfileWithMemberships = Profile & {
-  orgMemberships: Array<{ orgId: string; orgName: string }>;
+  orgMemberships: Array<{
+    orgId: string;
+    orgName: string;
+    role: MemberRole;
+  }>;
   teamMemberships: Array<{
     teamId: string;
     teamName: string;
@@ -124,7 +130,7 @@ export class ProfilesQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        '*, organization_members(organization_id, organizations!inner(id, name)), team_membership(team_id, teams!inner(id, name, organization_id, organizations!inner(id, name)))',
+        '*, organization_members(organization_id, role, organizations!inner(id, name)), team_membership(team_id, teams!inner(id, name, organization_id, organizations!inner(id, name)))',
       )
       .order('created_at', { ascending: false });
 
@@ -144,6 +150,7 @@ export class ProfilesQuery extends SupabaseQuery {
 
     type RawOrgMember = {
       organization_id: string;
+      role: MemberRole;
       organizations: {
         id: string;
         name: string;
@@ -178,6 +185,7 @@ export class ProfilesQuery extends SupabaseQuery {
               .map((om) => ({
                 orgId: om.organization_id,
                 orgName: om.organizations!.name,
+                role: om.role,
               }))
           : [];
 
@@ -423,18 +431,50 @@ export class ProfilesQuery extends SupabaseQuery {
       }
     }
 
-    // Add is_super_admin field to each profile
-    const profilesWithAdminStatus = data.map((profile) => {
+    // Get organization memberships for all profiles
+    const profileIds = data.map(
+      (p) => (p as Record<string, unknown>).id as string,
+    );
+    const { data: orgMembersData } = await supabase
+      .from('organization_members')
+      .select('user_id, organization_id, organizations!inner(id, name)')
+      .in('user_id', profileIds)
+      .eq('is_active', true);
+
+    // Create a map of user_id -> orgMemberships
+    const orgMembershipsMap = new Map<
+      string,
+      Array<{ orgId: string; orgName: string }>
+    >();
+
+    if (orgMembersData) {
+      (orgMembersData as unknown as RawOrgMember[]).forEach((om) => {
+        if (om.organizations) {
+          if (!orgMembershipsMap.has(om.user_id)) {
+            orgMembershipsMap.set(om.user_id, []);
+          }
+          orgMembershipsMap.get(om.user_id)!.push({
+            orgId: om.organization_id,
+            orgName: om.organizations.name,
+          });
+        }
+      });
+    }
+
+    // Add is_super_admin and orgMemberships to each profile
+    const profilesWithAdminStatusAndOrgs = data.map((profile) => {
       const profileRecord = profile as Record<string, unknown>;
+      const userId = profileRecord.id as string;
       return {
         ...profileRecord,
-        is_super_admin: superAdminUserIds.has(profileRecord.id as string),
+        is_super_admin: superAdminUserIds.has(userId),
+        orgMemberships: orgMembershipsMap.get(userId) || [],
       };
     });
 
     const result = profileWithStatsSchema
       .array()
-      .safeParse(profilesWithAdminStatus);
+      .safeParse(profilesWithAdminStatusAndOrgs);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -585,6 +625,47 @@ export class ProfilesQuery extends SupabaseQuery {
   }
 
   /**
+   * Get user profiles by email list (for import display)
+   * NOTE: emails are matched case-sensitively by Supabase `in()`; callers should
+   * pass normalized lowercase emails.
+   */
+  public async getByEmailsForImport(emails: string[]): Promise<
+    | SupabaseSuccess<
+        Array<{
+          id: string;
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          status: string | null;
+        }>
+      >
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('service_role');
+
+    if (emails.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, first_name, last_name, status')
+      .in('email', emails);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get users by emails for import',
+      );
+    }
+
+    return {
+      success: true,
+      data: data ?? [],
+    };
+  }
+
+  /**
    * Get user profile by email (case-insensitive)
    * @param email - The email to search for
    * @returns Success with user profile data or error
@@ -635,6 +716,7 @@ export class ProfilesQuery extends SupabaseQuery {
     lastName: string;
     organizationId?: string;
     teamId?: string;
+    role?: MemberRole;
   }): Promise<SupabaseSuccess<{ userId: string }> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
@@ -663,6 +745,24 @@ export class ProfilesQuery extends SupabaseQuery {
       }
 
       const userId = authUser.user.id;
+
+      // Ensure profile fields/status are set
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: data.firstName.trim() || null,
+          last_name: data.lastName.trim() || null,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (profileError) {
+        return {
+          success: false,
+          error: `Failed to update profile: ${profileError.message}`,
+        };
+      }
 
       // Add to organization if provided
       if (data.organizationId) {
@@ -697,6 +797,21 @@ export class ProfilesQuery extends SupabaseQuery {
             success: false,
             error: `Failed to add user to team: ${teamError.message}`,
           };
+        }
+      }
+
+      // Add to super admin organization if role is physician
+      if (data.role === 'admin') {
+        const { OrganizationMembers } = await import('./organization-members');
+        const orgMembersQuery = new OrganizationMembers();
+        const superAdminResult = await orgMembersQuery.makeSuperAdmin(userId);
+
+        // Log error but don't fail user creation if super admin org doesn't exist
+        if (!superAdminResult.success) {
+          console.error(
+            'Failed to add user to super admin organization:',
+            superAdminResult.error,
+          );
         }
       }
 

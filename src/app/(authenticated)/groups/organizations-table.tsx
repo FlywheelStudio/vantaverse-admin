@@ -188,7 +188,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
         </Button>
         <Input
-          placeholder="Search organizations..."
+          placeholder="Search groups..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           className="bg-white border-[#2454FF]/20 rounded-xl placeholder:text-[#64748B]/60 focus:border-[#2454FF] focus:ring-[#2454FF] flex-1"

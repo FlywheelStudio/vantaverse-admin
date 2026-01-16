@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useOrganizations } from '@/hooks/use-organizations';
-import { getTeamsByOrganizationId } from '@/app/(authenticated)/organizations/teams-actions';
+import { getTeamsByOrganizationId } from '@/app/(authenticated)/groups/teams-actions';
 import type { Team } from '@/lib/supabase/schemas/teams';
 
 interface OrgTeamFilterProps {
@@ -64,7 +64,7 @@ export function OrgTeamFilter({
       ? `${selectedOrgName || ''} / ${selectedTeamName}`
       : selectedOrgId && selectedOrgName
         ? selectedOrgName
-        : 'All Organizations / Teams';
+        : 'All Groups / Teams';
 
   // Load teams for selected org if not already loaded (needed for highlighting and display)
   React.useEffect(() => {
@@ -114,7 +114,7 @@ export function OrgTeamFilter({
           data-selected={isAllSelected}
           className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
         >
-          All Organizations / Teams
+          All Groups / Teams
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {organizations?.map((org) => (

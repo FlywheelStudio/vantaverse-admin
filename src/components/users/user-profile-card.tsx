@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { updateUserProfile } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
+import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface UserProfileCardProps {
   userId: string;
@@ -18,7 +19,7 @@ interface UserProfileCardProps {
   lastName: string;
   email: string;
   avatarUrl?: string | null;
-  role?: string;
+  role?: MemberRole;
 }
 
 export function UserProfileCard({
@@ -27,7 +28,7 @@ export function UserProfileCard({
   lastName: initialLastName,
   email,
   avatarUrl: initialAvatarUrl,
-  role = 'user',
+  role = 'patient',
 }: UserProfileCardProps) {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);

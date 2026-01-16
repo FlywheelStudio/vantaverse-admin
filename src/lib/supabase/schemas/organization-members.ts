@@ -3,9 +3,10 @@ import { Database } from '../database.types';
 
 const organizationRoleValues = [
   'admin',
-  'member',
   'patient',
 ] as const satisfies readonly Database['public']['Enums']['organization_role'][];
+
+export type MemberRole = (typeof organizationRoleValues)[number];
 
 export const organizationMemberRoleSchema = z.enum(organizationRoleValues, {
   message: 'Invalid organization role',

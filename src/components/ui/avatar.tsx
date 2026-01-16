@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 // Generate a consistent color from a seed string
 export function generateColorFromSeed(seed: string): string {
@@ -49,10 +50,12 @@ export function Avatar({
   const avatarColor = generateColorFromSeed(colorSeed);
   const fontSize = size * 0.35;
   const initials = getInitials(firstName, lastName);
+  const router = useRouter();
 
   return src ? (
     <div
-      className={`relative w-full h-full bg-gray-200 overflow-hidden rounded-full ${className}`}
+      onClick={() => router.push(`/users/${userId}`)}
+      className={`relative w-full h-full bg-gray-200 cursor-pointer overflow-hidden rounded-full ${className}`}
     >
       <Image
         src={src}
@@ -63,7 +66,7 @@ export function Avatar({
     </div>
   ) : (
     <div
-      className={`w-full h-full flex items-center justify-center text-white text-xs font-medium rounded-full ${className}`}
+      className={`w-full h-full flex items-center justify-center text-white text-xs font-medium cursor-pointer rounded-full ${className}`}
       style={{ backgroundColor: avatarColor, fontSize }}
     >
       {initials}
