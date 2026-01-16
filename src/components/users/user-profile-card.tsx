@@ -169,7 +169,7 @@ export function UserProfileCard({
               firstName={firstName}
               lastName={lastName}
               userId={userId}
-              size={48}
+              size={88}
             />
           </div>
           {/* Upload Overlay */}
