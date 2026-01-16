@@ -57,13 +57,13 @@ export function EditableTitle({
   }
 
   return (
-    <span
+    <h1
       onClick={() => setIsEditing(true)}
       className={className}
       title="Click to edit"
     >
       {value}
-    </span>
+    </h1>
   );
 }
 
