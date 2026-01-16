@@ -52,7 +52,6 @@ export function PhysicianCard({
     <Card className="p-6 border border-white/50 bg-white/95 h-full flex flex-col">
       <div className="flex items-start justify-between gap-4 flex-1">
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg text-[#1E3A5F] mb-4">Assigned physician</h1>
           <div className="flex items-center gap-3 min-w-0">
             <div className="size-12 shrink-0 flex items-center justify-center">
               <Avatar
