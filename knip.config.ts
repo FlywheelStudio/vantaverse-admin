@@ -16,6 +16,7 @@ const config: KnipConfig = {
     '@commitlint/config-conventional',
     '@commitlint/cli',
     'commitlint',
+    'cmdk',
   ],
   project: ['src/**/*.{js,ts,jsx,tsx}'],
 };
