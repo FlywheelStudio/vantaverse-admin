@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Database } from '../database.types';
+import { organizationMemberRoleSchema } from './organization-members';
 
 const journeyPhaseValues = [
   'discovery',
@@ -56,6 +57,7 @@ export const profileWithStatsSchema = profileSchema.extend({
   orgMemberships: z
     .array(z.object({ orgId: z.string(), orgName: z.string() }))
     .optional(),
+  role: organizationMemberRoleSchema.optional(),
 });
 
 export type RawOrgMember = {

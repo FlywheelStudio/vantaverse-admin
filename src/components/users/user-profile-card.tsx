@@ -62,6 +62,18 @@ export function UserProfileCard({
     }
   };
 
+  const getDisplayRole = (role: MemberRole | undefined): string => {
+    if (!role) return 'member';
+    switch (role) {
+      case 'patient':
+        return 'member';
+      case 'admin':
+        return 'physician';
+      default:
+        return role;
+    }
+  };
+
   const handleFieldEdit = (field: 'firstName' | 'lastName') => {
     setEditingField(field);
     setEditingValue(field === 'firstName' ? firstName : lastName);
@@ -252,7 +264,7 @@ export function UserProfileCard({
               variant={getRoleBadgeVariant(role)}
               className="text-xs font-semibold px-3 py-1 capitalize"
             >
-              {role}
+              {getDisplayRole(role)}
             </Badge>
           </div>
           <p className="text-muted-foreground mb-3 text-sm cursor-default">

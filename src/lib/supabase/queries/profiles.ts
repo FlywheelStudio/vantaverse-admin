@@ -86,6 +86,7 @@ export class ProfilesQuery extends SupabaseQuery {
   ): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
+    // Fetch profile data
     const { data, error } = await supabase
       .from('profiles_with_stats')
       .select('*')
@@ -106,7 +107,24 @@ export class ProfilesQuery extends SupabaseQuery {
       };
     }
 
-    const result = profileWithStatsSchema.safeParse(data);
+    // Fetch role from organization_members (get first role if multiple memberships)
+    const { data: orgMemberData, error: orgMemberError } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', id)
+      .limit(1)
+      .maybeSingle();
+
+    // Role is optional, so we don't fail if there's an error or no membership
+    const role =
+      !orgMemberError && orgMemberData?.role ? orgMemberData.role : undefined;
+
+    const profileData = {
+      ...data,
+      role,
+    };
+
+    const result = profileWithStatsSchema.safeParse(profileData);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);

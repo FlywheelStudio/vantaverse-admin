@@ -12,6 +12,8 @@ import { IpCard } from './ip-card';
 import { McIntakeCard } from './mc-intake-card';
 import { HabitPledgeCard } from './habit-pledge-card';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/hooks/use-auth';
+import { useMemo } from 'react';
 
 export function UserProfilePageUI({
   user,
@@ -65,11 +67,24 @@ export function UserProfilePageUI({
     (a) => a.type === 'onboarding_consultation',
   );
 
+  const { user: currentUser } = useAuth();
+
+  const isYourself = useMemo(
+    () => user.id === currentUser?.id,
+    [user.id, currentUser?.id],
+  );
+
+  // Determine if user is a member (patient) - physicians (admin) only see profile card
+  const isMember = user.role === 'patient' || !user.role;
+
   return (
     <PageWrapper
       subheader={
         <h1 className="text-2xl font-medium">
-          {user.first_name && `${user.first_name}'s `}Profile
+          {isYourself
+            ? 'Your '
+            : `${user.first_name && `${user.first_name}'s `} `}
+          Profile
         </h1>
       }
     >
@@ -82,50 +97,53 @@ export function UserProfilePageUI({
             lastName={user.last_name || ''}
             email={user.email || ''}
             avatarUrl={user.avatar_url}
+            role={user.role}
           />
         </div>
 
-        {/* Cards Section */}
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-            <AppointmentCard
-              title="Screening"
-              color="var(--color-blue-600)"
-              appointments={screeningAppointments}
-            />
-            <AppointmentCard
-              title="Consultation"
-              color="var(--color-green-600)"
-              appointments={consultationAppointments}
-            />
-            <HpCard
-              currentLevel={user.current_level}
-              hpPoints={user.hp_points}
-              pointsRequiredForNextLevel={user.points_required_for_next_level}
-              currentPhase={user.current_phase}
-              levelDescription={hpLevelThreshold?.description ?? null}
-              levelImageUrl={hpLevelThreshold?.image_url ?? null}
-              transactions={hpTransactions}
-            />
-            <IpCard
-              empowerment={user.empowerment}
-              empowermentTitle={user.empowerment_title}
-              currentEffect={empowermentThreshold?.effects ?? null}
-              gateTitle={gateInfo?.title ?? null}
-              gateDescription={gateInfo?.description ?? null}
-              pointsMissingForNextLevel={pointsMissingForNextLevel}
-              basePower={empowermentThreshold?.base_power ?? null}
-              topPower={empowermentThreshold?.top_power ?? null}
-              transactions={ipTransactions}
-            />
-          </div>
-          {(mcIntakeSurvey || habitPledge) && (
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
-              {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
-              {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
+        {/* Cards Section - Only show for members, hide for physicians */}
+        {isMember && (
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+              <AppointmentCard
+                title="Screening"
+                color="var(--color-blue-600)"
+                appointments={screeningAppointments}
+              />
+              <AppointmentCard
+                title="Consultation"
+                color="var(--color-green-600)"
+                appointments={consultationAppointments}
+              />
+              <HpCard
+                currentLevel={user.current_level}
+                hpPoints={user.hp_points}
+                pointsRequiredForNextLevel={user.points_required_for_next_level}
+                currentPhase={user.current_phase}
+                levelDescription={hpLevelThreshold?.description ?? null}
+                levelImageUrl={hpLevelThreshold?.image_url ?? null}
+                transactions={hpTransactions}
+              />
+              <IpCard
+                empowerment={user.empowerment}
+                empowermentTitle={user.empowerment_title}
+                currentEffect={empowermentThreshold?.effects ?? null}
+                gateTitle={gateInfo?.title ?? null}
+                gateDescription={gateInfo?.description ?? null}
+                pointsMissingForNextLevel={pointsMissingForNextLevel}
+                basePower={empowermentThreshold?.base_power ?? null}
+                topPower={empowermentThreshold?.top_power ?? null}
+                transactions={ipTransactions}
+              />
             </div>
-          )}
-        </CardContent>
+            {(mcIntakeSurvey || habitPledge) && (
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
+                {mcIntakeSurvey && <McIntakeCard survey={mcIntakeSurvey} />}
+                {habitPledge && <HabitPledgeCard pledge={habitPledge} />}
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
     </PageWrapper>
   );
