@@ -149,6 +149,7 @@ export function GroupDetailsPageUI({
                 data={memberRows}
                 onAddClick={openAddUsers}
                 onRemove={handleRemove}
+                organizationId={org.id}
               />
             </div>
           </Card>

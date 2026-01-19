@@ -24,11 +24,13 @@ export function MembersTable({
   isLoading,
   onAddClick,
   onRemove,
+  organizationId,
 }: {
   data: GroupMemberRow[];
   isLoading?: boolean;
   onAddClick: () => void;
   onRemove: (userId: string) => Promise<void>;
+  organizationId: string;
 }) {
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
@@ -45,7 +47,7 @@ export function MembersTable({
     });
   }, [debouncedSearch]);
 
-  const columns = getMembersColumns({ onRemove });
+  const columns = getMembersColumns({ onRemove, organizationId });
 
   const table = useReactTable({
     data,

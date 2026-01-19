@@ -1,7 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getOrganizations } from '@/app/(authenticated)/groups/actions';
+import {
+  getOrganizations,
+  getOrganizationById,
+} from '@/app/(authenticated)/groups/actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 export function useOrganizations() {
@@ -16,5 +19,22 @@ export function useOrganizations() {
 
       return result.data;
     },
+  });
+}
+
+export function useOrganization(id: string | null | undefined) {
+  return useQuery<Organization | null, Error>({
+    queryKey: ['organization', id],
+    queryFn: async () => {
+      if (!id) return null;
+      const result = await getOrganizationById(id);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
+    enabled: !!id,
   });
 }

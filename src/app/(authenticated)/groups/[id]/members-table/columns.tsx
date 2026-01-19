@@ -26,17 +26,28 @@ export type GroupMemberRow = {
   program_name: string | null;
 };
 
-function NameEmailCell({ member }: { member: GroupMemberRow }) {
+function NameEmailCell({
+  member,
+  organizationId,
+}: {
+  member: GroupMemberRow;
+  organizationId: string;
+}) {
   const router = useRouter();
   const fullName =
     member.first_name && member.last_name
       ? `${member.first_name} ${member.last_name}`
       : member.first_name || member.last_name || null;
 
+  const handleClick = () => {
+    const fromParam = encodeURIComponent(`/groups/${organizationId}`);
+    router.push(`/users/${member.user_id}?from=${fromParam}`);
+  };
+
   return (
     <div
       className="flex items-center gap-3 cursor-pointer"
-      onClick={() => router.push(`/users/${member.user_id}`)}
+      onClick={handleClick}
     >
       <div className="size-10 shrink-0 flex items-center justify-center">
         <Avatar
@@ -137,8 +148,10 @@ function ActionsCell({
 
 export function getMembersColumns({
   onRemove,
+  organizationId,
 }: {
   onRemove: (userId: string) => Promise<void>;
+  organizationId: string;
 }): ColumnDef<GroupMemberRow>[] {
   return [
     {
@@ -146,7 +159,9 @@ export function getMembersColumns({
       header: () => (
         <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
       ),
-      cell: ({ row }) => <NameEmailCell member={row.original} />,
+      cell: ({ row }) => (
+        <NameEmailCell member={row.original} organizationId={organizationId} />
+      ),
       enableSorting: false,
       filterFn: (row, _id, value) => {
         const member = row.original;

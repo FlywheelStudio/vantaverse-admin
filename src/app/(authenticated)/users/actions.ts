@@ -65,6 +65,14 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
+ * Get user profile by ID
+ */
+export async function getUserProfileById(id: string) {
+  const query = new ProfilesQuery();
+  return query.getUserById(id);
+}
+
+/**
  * Update user profile
  */
 export async function updateUserProfile(
