@@ -11,6 +11,7 @@ import {
 } from '../schemas/program-assignments';
 import { GroupsQuery } from './groups';
 import { ExerciseTemplatesQuery } from './exercise-templates';
+import { profileSchema } from '../schemas/profiles';
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**
@@ -78,20 +79,23 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   public async getById(
     id: string,
   ): Promise<SupabaseSuccess<ProgramAssignmentWithTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
       .from('program_assignment')
       .select(
         `
         *,
-        program_template (*)
+        program_template (*),
+        workout_schedule:workout_schedules (*),
+        profiles!program_assignment_user_id_fkey (id, first_name, last_name)
       `,
       )
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error(error);
       return this.parseResponsePostgresError(
         error,
         'Failed to get program assignment',
@@ -99,20 +103,14 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     }
 
     if (!data) {
+      console.error('Program assignment not found');
       return {
         success: false,
         error: 'Program assignment not found',
       };
     }
 
-    // Transform the data to match our schema structure
-    const transformedData = {
-      ...data,
-      program_template: data.program_template || null,
-    };
-
-    const result =
-      programAssignmentWithTemplateSchema.safeParse(transformedData);
+    const result = programAssignmentWithTemplateSchema.safeParse(data);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -359,7 +357,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .from('program_assignment')
       .select('workout_schedule_id, patient_override')
       .eq('id', assignmentId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       return this.parseResponsePostgresError(

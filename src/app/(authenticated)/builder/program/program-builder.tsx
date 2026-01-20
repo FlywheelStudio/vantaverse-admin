@@ -152,9 +152,8 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
   }, [isLoading, displayAssignments.length]);
 
   const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
-    const templateId = assignment.program_template?.id;
-    if (templateId) {
-      router.push(`/builder/${templateId}`);
+    if (assignment.id) {
+      router.push(`/builder/${assignment.id}`);
       onTemplateSelect?.(assignment);
     }
   };

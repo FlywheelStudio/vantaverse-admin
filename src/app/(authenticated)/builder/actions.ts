@@ -21,6 +21,14 @@ export async function getProgramAssignments() {
 }
 
 /**
+ * Get a single program assignment by ID (joined with program_template)
+ */
+export async function getProgramAssignmentById(id: string) {
+  const query = new ProgramAssignmentsQuery();
+  return query.getById(id);
+}
+
+/**
  * Get a single program template by ID
  */
 export async function getProgramTemplateById(id: string) {

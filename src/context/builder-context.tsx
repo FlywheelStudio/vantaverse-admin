@@ -9,15 +9,14 @@ import React, {
 } from 'react';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import {
-  getProgramAssignmentByTemplateId,
   getWorkoutScheduleData,
   convertScheduleToSelectedItems,
 } from '@/app/(authenticated)/builder/actions';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
 
 interface BuilderContextValue {
-  selectedTemplateId: string | null;
-  setSelectedTemplateId: (id: string | null) => void;
+  selectedAssignmentId: string | null;
+  setSelectedAssignmentId: (id: string | null) => void;
   clearSelectedTemplate: () => void;
   schedule: SelectedItem[][][]; // [week][day][items]
   currentWeek: number;
@@ -63,8 +62,7 @@ interface BuilderContextProviderProps {
 export function BuilderContextProvider({
   children,
 }: BuilderContextProviderProps) {
-  // Template ID is now managed via URL routing, not sessionStorage
-  const [selectedTemplateId, setSelectedTemplateIdState] = useState<
+  const [selectedAssignmentId, setSelectedAssignmentIdState] = useState<
     string | null
   >(null);
 
@@ -127,45 +125,37 @@ export function BuilderContextProvider({
   const [isHydrated] = useState(() => typeof window !== 'undefined');
   const isLoadingScheduleRef = React.useRef(false);
   const hasLoadedScheduleRef = React.useRef(false);
+  const currentLoadingAssignmentIdRef = React.useRef<string | null>(null);
 
-  // Fetch program assignment when template ID changes
+  // Set program assignment ID directly when selected assignment ID changes
   useEffect(() => {
-    if (selectedTemplateId && typeof window !== 'undefined') {
-      getProgramAssignmentByTemplateId(selectedTemplateId)
-        .then((result) => {
-          if (result.success && result.data) {
-            setProgramAssignmentIdState(result.data.id);
-            sessionStorage.setItem(
-              PROGRAM_ASSIGNMENT_STORAGE_KEY,
-              result.data.id,
-            );
-            // Reset schedule loading refs when assignment changes
-            isLoadingScheduleRef.current = false;
-            hasLoadedScheduleRef.current = false;
-          } else {
-            setProgramAssignmentIdState(null);
-            sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-            isLoadingScheduleRef.current = false;
-            hasLoadedScheduleRef.current = false;
-          }
-        })
-        .catch(() => {
-          setProgramAssignmentIdState(null);
-          sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-          isLoadingScheduleRef.current = false;
-          hasLoadedScheduleRef.current = false;
-        });
+    if (selectedAssignmentId && typeof window !== 'undefined') {
+      setProgramAssignmentIdState((prev) => {
+        // Only update if different to avoid unnecessary re-renders
+        if (prev === selectedAssignmentId) return prev;
+        sessionStorage.setItem(
+          PROGRAM_ASSIGNMENT_STORAGE_KEY,
+          selectedAssignmentId,
+        );
+        // Reset schedule loading refs when assignment changes
+        isLoadingScheduleRef.current = false;
+        hasLoadedScheduleRef.current = false;
+        currentLoadingAssignmentIdRef.current = null;
+        return selectedAssignmentId;
+      });
     } else {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
       }
-      setTimeout(() => {
-        setProgramAssignmentIdState(null);
-      }, 0);
-      isLoadingScheduleRef.current = false;
-      hasLoadedScheduleRef.current = false;
+      setProgramAssignmentIdState((prev) => {
+        if (prev === null) return prev;
+        isLoadingScheduleRef.current = false;
+        hasLoadedScheduleRef.current = false;
+        currentLoadingAssignmentIdRef.current = null;
+        return null;
+      });
     }
-  }, [selectedTemplateId]);
+  }, [selectedAssignmentId]);
 
   // Load schedule from database on page load if programAssignmentId exists
   useEffect(() => {
@@ -174,20 +164,31 @@ export function BuilderContextProvider({
       !isHydrated ||
       isLoadingScheduleRef.current ||
       typeof window === 'undefined' ||
-      hasLoadedScheduleRef.current
+      hasLoadedScheduleRef.current ||
+      currentLoadingAssignmentIdRef.current === programAssignmentId
     ) {
       return;
     }
 
     // Always load from database when programAssignmentId exists
     isLoadingScheduleRef.current = true;
+    currentLoadingAssignmentIdRef.current = programAssignmentId;
 
     getWorkoutScheduleData(programAssignmentId)
       .then((result) => {
+        // Check if assignment ID changed while loading
+        if (currentLoadingAssignmentIdRef.current !== programAssignmentId) {
+          isLoadingScheduleRef.current = false;
+          hasLoadedScheduleRef.current = false;
+          currentLoadingAssignmentIdRef.current = null;
+          return;
+        }
+
         if (!result.success) {
           console.error('Failed to load workout schedule:', result.error);
           isLoadingScheduleRef.current = false;
           hasLoadedScheduleRef.current = true;
+          currentLoadingAssignmentIdRef.current = null;
           return;
         }
 
@@ -197,6 +198,7 @@ export function BuilderContextProvider({
         if (!dbSchedule && !patientOverride) {
           isLoadingScheduleRef.current = false;
           hasLoadedScheduleRef.current = true;
+          currentLoadingAssignmentIdRef.current = null;
           return;
         }
 
@@ -216,16 +218,26 @@ export function BuilderContextProvider({
         if (!mergedSchedule || mergedSchedule.length === 0) {
           isLoadingScheduleRef.current = false;
           hasLoadedScheduleRef.current = true;
+          currentLoadingAssignmentIdRef.current = null;
           return;
         }
 
         // Convert to SelectedItem format using server action
         convertScheduleToSelectedItems(mergedSchedule)
           .then((result) => {
+            // Check again if assignment ID changed during conversion
+            if (currentLoadingAssignmentIdRef.current !== programAssignmentId) {
+              isLoadingScheduleRef.current = false;
+              hasLoadedScheduleRef.current = false;
+              currentLoadingAssignmentIdRef.current = null;
+              return;
+            }
+
             if (!result.success) {
               console.error('Failed to convert schedule:', result.error);
               isLoadingScheduleRef.current = false;
               hasLoadedScheduleRef.current = true;
+              currentLoadingAssignmentIdRef.current = null;
               return;
             }
 
@@ -239,25 +251,28 @@ export function BuilderContextProvider({
             }
             isLoadingScheduleRef.current = false;
             hasLoadedScheduleRef.current = true;
+            currentLoadingAssignmentIdRef.current = null;
           })
           .catch((error) => {
             console.error('Failed to convert schedule:', error);
             isLoadingScheduleRef.current = false;
             hasLoadedScheduleRef.current = true;
+            currentLoadingAssignmentIdRef.current = null;
           });
       })
       .catch((error) => {
         console.error('Failed to load workout schedule:', error);
         isLoadingScheduleRef.current = false;
         hasLoadedScheduleRef.current = true;
+        currentLoadingAssignmentIdRef.current = null;
       });
   }, [programAssignmentId, isHydrated]);
 
-  const setSelectedTemplateId = useCallback((id: string | null) => {
-    setSelectedTemplateIdState(id);
+  const setSelectedAssignmentId = useCallback((id: string | null) => {
+    setSelectedAssignmentIdState(id);
     if (typeof window !== 'undefined') {
       if (id) {
-        // Reset schedule loading refs when template changes
+        // Reset schedule loading refs when assignment changes
         isLoadingScheduleRef.current = false;
         hasLoadedScheduleRef.current = false;
       } else {
@@ -273,13 +288,14 @@ export function BuilderContextProvider({
         setCopiedWeekData(null);
         isLoadingScheduleRef.current = false;
         hasLoadedScheduleRef.current = false;
+        currentLoadingAssignmentIdRef.current = null;
       }
     }
   }, []);
 
   const clearSelectedTemplate = useCallback(() => {
-    setSelectedTemplateId(null);
-  }, [setSelectedTemplateId]);
+    setSelectedAssignmentId(null);
+  }, [setSelectedAssignmentId]);
 
   const initializeSchedule = useCallback((weeks: number) => {
     if (weeks <= 0) return;
@@ -512,8 +528,8 @@ export function BuilderContextProvider({
   return (
     <BuilderContext.Provider
       value={{
-        selectedTemplateId,
-        setSelectedTemplateId,
+        selectedAssignmentId,
+        setSelectedAssignmentId,
         clearSelectedTemplate,
         schedule,
         currentWeek,

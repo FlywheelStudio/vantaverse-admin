@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { programTemplateSchema } from './program-templates';
+import { profileSchema } from './profiles';
 
 export const programAssignmentSchema = z.object({
   id: z.string(),
@@ -37,6 +38,11 @@ export const programAssignmentWithTemplateSchema =
   programAssignmentSchema.extend({
     program_template: programTemplateSchema,
     workout_schedule: workoutScheduleSchema.nullable(),
+    profiles: z.object({
+      id: z.uuid(),
+      first_name: z.string().nullable(),
+      last_name: z.string().nullable(),
+    }).nullish(),
   });
 
 export type ProgramAssignmentWithTemplate = z.infer<

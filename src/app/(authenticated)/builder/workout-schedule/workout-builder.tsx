@@ -1,8 +1,8 @@
 'use client';
 
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useEffect, useState, useRef } from 'react';
 import { useBuilder } from '@/context/builder-context';
-import { useProgramTemplate } from '@/hooks/use-program-template';
+import { useProgramAssignment } from '@/hooks/use-program-assignment';
 import { ProgramDetailsSection } from '../program/ui';
 import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';
@@ -12,51 +12,38 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 interface WorkoutBuilderProps {
-  templateId: string | undefined;
+  assignmentId: string | undefined;
 }
 
-export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
-  const { initializeSchedule, setSelectedTemplateId } = useBuilder();
-  const { data: template, isLoading, error } = useProgramTemplate(templateId);
+export function WorkoutBuilder({ assignmentId }: WorkoutBuilderProps) {
+  const { schedule, initializeSchedule, setSelectedAssignmentId, programAssignmentId } = useBuilder();
+  const { data: assignment, isLoading, error } = useProgramAssignment(assignmentId);
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
+  const hasInitializedRef = useRef(false);
 
-  // Set template ID in context for programAssignmentId fetching
+  // Set assignment ID in context only once when component mounts
   useEffect(() => {
-    if (templateId) {
-      setSelectedTemplateId(templateId);
+    if (assignmentId && programAssignmentId !== assignmentId) {
+      setSelectedAssignmentId(assignmentId);
+      hasInitializedRef.current = false;
     }
-    return () => {
-      setSelectedTemplateId(null);
-    };
-  }, [templateId, setSelectedTemplateId]);
+  }, [assignmentId, programAssignmentId, setSelectedAssignmentId]);
 
-  // Ensure component only renders after hydration
-  useEffect(() => {
-    startTransition(() => {
-      setIsMounted(true);
-    });
-  }, []);
 
-  // Initialize schedule when template loads
+
+  // Initialize schedule when assignment loads (only if schedule is empty and not loading)
+  // Context handles loading from database, but we need to initialize empty schedule structure
   useEffect(() => {
-    if (template) {
-      initializeSchedule(template.weeks);
+    const scheduleIsEmpty = schedule.length === 0;
+    if (assignment?.program_template && !isLoading && !hasInitializedRef.current && scheduleIsEmpty) {
+      hasInitializedRef.current = true;
+      initializeSchedule(assignment.program_template.weeks);
     }
-  }, [template, initializeSchedule]);
+  }, [assignment?.program_template, isLoading, initializeSchedule]);
 
-  if (!isMounted) {
-    return (
-      <div
-        suppressHydrationWarning
-        className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
-      >
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
-  }
+  const template = assignment?.program_template ?? null;
 
-  if (!templateId) {
+  if (!assignmentId) {
     return (
       <div
         suppressHydrationWarning
@@ -84,15 +71,15 @@ export function WorkoutBuilder({ templateId }: WorkoutBuilderProps) {
         suppressHydrationWarning
         className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
-        <p className="text-red-500">Error loading template: {error.message}</p>
+        <p className="text-red-500">Error loading program: {error.message}</p>
       </div>
     );
   }
 
-  if (!template) {
+  if (!assignment || !template) {
     return (
       <div suppressHydrationWarning>
-        <p className="text-gray-500">Template not found</p>
+        <p className="text-gray-500">Program not found</p>
       </div>
     );
   }

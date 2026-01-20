@@ -32,7 +32,7 @@ export default function BuilderIdPage() {
       }
     >
       <BuilderContextProvider>
-        <WorkoutBuilder templateId={id} />
+        <WorkoutBuilder assignmentId={id} />
       </BuilderContextProvider>
     </PageWrapper>
   );

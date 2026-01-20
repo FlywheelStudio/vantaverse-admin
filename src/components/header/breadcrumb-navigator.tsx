@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/hooks/use-organizations';
 import { useUserProfile } from '@/hooks/use-users';
+import { useProgramAssignment } from '@/hooks/use-program-assignment';
 
 type BreadcrumbItem = {
   label: string;
@@ -14,76 +15,84 @@ type BreadcrumbItem = {
 };
 
 type BreadcrumbSegment = {
-  type: 'groups' | 'users' | 'programs' | 'exercises';
+  type: string;
   id?: string;
   path: string;
 };
+
+// Check if a segment looks like an ID (UUID, numeric, or long alphanumeric)
+function isIdSegment(segment: string): boolean {
+  // UUID pattern
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)) {
+    return true;
+  }
+  // Long alphanumeric (likely an ID)
+  if (/^[a-z0-9]{20,}$/i.test(segment)) {
+    return true;
+  }
+  // Numeric ID
+  if (/^\d+$/.test(segment)) {
+    return true;
+  }
+  return false;
+}
+
+// Parse segments from a path string
+function parseSegmentsFromPath(path: string): BreadcrumbSegment[] {
+  const segments = path.split('/').filter(Boolean);
+  const result: BreadcrumbSegment[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    const nextSegment = segments[i + 1];
+    
+    // If current segment is an ID, skip it (should be handled by previous iteration)
+    if (isIdSegment(segment)) {
+      continue;
+    }
+
+    // If next segment exists and looks like an ID, this is a resource with ID
+    if (nextSegment && isIdSegment(nextSegment)) {
+      const path = `/${segment}/${nextSegment}`;
+      result.push({
+        type: segment,
+        id: nextSegment,
+        path,
+      });
+      i++; // Skip the ID segment
+    } else {
+      // This is a resource without ID (list page)
+      result.push({
+        type: segment,
+        path: `/${segment}`,
+      });
+    }
+  }
+
+  return result;
+}
 
 function parseFromPath(encodedPath: string): BreadcrumbSegment[] {
   try {
     const decoded = decodeURIComponent(encodedPath);
     const path = decoded.startsWith('/') ? decoded : `/${decoded}`;
-    const segments = path.split('/').filter(Boolean);
-    const result: BreadcrumbSegment[] = [];
-
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      if (segment === 'groups' && segments[i + 1]) {
-        result.push({
-          type: 'groups',
-          id: segments[i + 1],
-          path: `/groups/${segments[i + 1]}`,
-        });
-        i++; // Skip the ID segment
-      } else if (segment === 'users' && segments[i + 1]) {
-        result.push({
-          type: 'users',
-          id: segments[i + 1],
-          path: `/users/${segments[i + 1]}`,
-        });
-        i++; // Skip the ID segment
-      } else if (segment === 'programs') {
-        result.push({
-          type: 'programs',
-          path: '/programs',
-        });
-      } else if (segment === 'exercises') {
-        result.push({
-          type: 'exercises',
-          path: '/exercises',
-        });
-      }
-    }
-
-    return result;
+    return parseSegmentsFromPath(path);
   } catch {
     return [];
   }
 }
 
 function getCurrentPageSegment(pathname: string): BreadcrumbSegment | null {
-  const segments = pathname.split('/').filter(Boolean);
-  
-  if (segments[0] === 'groups' && segments[1]) {
-    return { type: 'groups', id: segments[1], path: `/groups/${segments[1]}` };
+  const segments = parseSegmentsFromPath(pathname);
+  return segments.length > 0 ? segments[segments.length - 1] : null;
+}
+
+// Capitalize first letter and handle plural forms
+function formatLabel(type: string): string {
+  if (type === 'builder') {
+    return 'Programs';
   }
-  if (segments[0] === 'groups' && !segments[1]) {
-    return { type: 'groups', path: '/groups' };
-  }
-  if (segments[0] === 'users' && segments[1]) {
-    return { type: 'users', id: segments[1], path: `/users/${segments[1]}` };
-  }
-  if (segments[0] === 'users' && !segments[1]) {
-    return { type: 'users', path: '/users' };
-  }
-  if (segments[0] === 'programs') {
-    return { type: 'programs', path: '/programs' };
-  }
-  if (segments[0] === 'exercises') {
-    return { type: 'exercises', path: '/exercises' };
-  }
-  
-  return null;
+  return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function BreadcrumbLabel({ segment }: { segment: BreadcrumbSegment }) {
@@ -93,7 +102,11 @@ function BreadcrumbLabel({ segment }: { segment: BreadcrumbSegment }) {
   const { data: userProfile } = useUserProfile(
     segment.type === 'users' ? segment.id : null,
   );
-
+  const { data: programAssignment } = useProgramAssignment(
+    segment.type === 'builder' ? segment.id : null,
+  );
+ 
+  // Special handling for groups with ID
   if (segment.type === 'groups' && segment.id) {
     if (organization) {
       return <>{organization.name}</>;
@@ -101,34 +114,28 @@ function BreadcrumbLabel({ segment }: { segment: BreadcrumbSegment }) {
     return <>Loading...</>;
   }
 
+  // Special handling for users with ID
   if (segment.type === 'users' && segment.id) {
     if (userProfile) {
       const fullName =
-        userProfile.first_name && userProfile.last_name
-          ? `${userProfile.first_name} ${userProfile.last_name}`
-          : userProfile.first_name || userProfile.last_name || 'Unknown';
+        userProfile.first_name ||
+           userProfile.first_name || 'Unknown';
       return <>{fullName}&apos;s Profile</>;
     }
     return <>Loading...</>;
   }
 
-  if (segment.type === 'users' && !segment.id) {
-    return <>Users</>;
+  // Special handling for builder with ID
+  if (segment.type === 'builder' && segment.id) {
+    if (programAssignment) {
+      let userName = '';
+      if (programAssignment.profiles) {
+        userName = programAssignment.profiles.first_name || programAssignment.profiles.last_name || 'Unknown';
+      }
+      return <>{programAssignment.program_template?.name + (userName ? ' (' + userName + ')' : '') || 'Unknown Program'}</>;
+    }
+    return <>Loading...</>;
   }
-
-  if (segment.type === 'groups' && !segment.id) {
-    return <>Groups</>;
-  }
-
-  if (segment.type === 'programs') {
-    return <>Programs</>;
-  }
-
-  if (segment.type === 'exercises') {
-    return <>Exercises</>;
-  }
-
-  return null;
 }
 
 export default function BreadcrumbNavigator({
@@ -170,50 +177,37 @@ export default function BreadcrumbNavigator({
 
     // Add segments from ?from parameter
     fromSegments.forEach((segment) => {
-      if (segment.type === 'groups' && segment.id) {
-        items.push({ label: 'Groups', href: '/groups' });
+      if (segment.id) {
+        // Resource with ID: add parent list page, then the resource
+        items.push({ 
+          label: formatLabel(segment.type), 
+          href: `/${segment.type}` 
+        });
         items.push({ label: '', href: segment.path, segment });
-      } else if (segment.type === 'users' && segment.id) {
-        items.push({ label: 'Users', href: '/users' });
-        items.push({ label: '', href: segment.path, segment });
-      } else if (segment.type === 'programs') {
-        items.push({ label: 'Programs', href: segment.path, segment });
-      } else if (segment.type === 'exercises') {
-        items.push({ label: 'Exercises', href: segment.path, segment });
+      } else {
+        // List page: add directly
+        items.push({ label: formatLabel(segment.type), href: segment.path, segment });
       }
     });
 
     // Always add current page segment as the last item
     if (currentSegment) {
-      if (currentSegment.type === 'groups' && currentSegment.id) {
-        // Only add "Groups" if not already in fromSegments
-        const hasGroupsInFrom = fromSegments.some((s) => s.type === 'groups');
-        if (!hasGroupsInFrom) {
-          items.push({ label: 'Groups', href: '/groups' });
+      if (currentSegment.id) {
+        // Resource with ID: check if parent is already in fromSegments
+        const hasParentInFrom = fromSegments.some((s) => s.type === currentSegment.type);
+        if (!hasParentInFrom) {
+          items.push({ 
+            label: formatLabel(currentSegment.type), 
+            href: `/${currentSegment.type}` 
+          });
         }
         items.push({ label: '', href: null, segment: currentSegment });
-      } else if (currentSegment.type === 'groups' && !currentSegment.id) {
-        items.push({ label: 'Groups', href: null, segment: currentSegment });
-      } else if (currentSegment.type === 'users' && currentSegment.id) {
-        // Only add "Users" if not already in fromSegments
-        const hasUsersInFrom = fromSegments.some((s) => s.type === 'users');
-        if (!hasUsersInFrom) {
-          items.push({ label: 'Users', href: '/users' });
-        }
-        items.push({ label: '', href: null, segment: currentSegment });
-      } else if (currentSegment.type === 'users' && !currentSegment.id) {
-        items.push({ label: 'Users', href: null, segment: currentSegment });
-      } else if (currentSegment.type === 'programs') {
-        items.push({
-          label: 'Programs',
-          href: null,
-          segment: currentSegment,
-        });
-      } else if (currentSegment.type === 'exercises') {
-        items.push({
-          label: 'Exercises',
-          href: null,
-          segment: currentSegment,
+      } else {
+        // List page: add directly
+        items.push({ 
+          label: formatLabel(currentSegment.type), 
+          href: null, 
+          segment: currentSegment 
         });
       }
     }

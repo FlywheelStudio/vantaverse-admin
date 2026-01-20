@@ -75,7 +75,8 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
       onClick={() => {
-        router.push(`/users/${profile?.id}`);
+        const fromPath = window.location.search.split('from=')[1];
+        router.push(`/users/${profile?.id}${fromPath ? `?from=${fromPath}` : ''}`);
       }}
     >
       <motion.span
