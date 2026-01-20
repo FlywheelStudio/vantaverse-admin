@@ -1,5 +1,19 @@
 # Changelog
 
+# [0.8.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.7.0...0.8.0) (2026-01-20)
+
+
+### Features
+
+* **builder:** add program assignment retrieval and update WorkoutBuilder component to use assignment ID ([2ca6b79](https://github.com/FlywheelStudio/vantaverse-admin/commit/2ca6b79b1d8c0709ded9b8df16462f61dbbd40ed))
+* **groups:** integrate BreadcrumbNavigator and enhance members table with organization ID ([c8fa64f](https://github.com/FlywheelStudio/vantaverse-admin/commit/c8fa64fba384465f733de0d14b9c4a08b8a1cc74))
+* **page-wrapper:** wrap BreadcrumbNavigator in Suspense for improved loading state handling ([7cbc1d7](https://github.com/FlywheelStudio/vantaverse-admin/commit/7cbc1d7086619cf70a0bf9a8ffe40a0f26cec411))
+* **physician-card:** add organizationId prop and implement navigation on physician card click ([9accc59](https://github.com/FlywheelStudio/vantaverse-admin/commit/9accc5905ebb989af2fc04c017211cce701ce111))
+* **program-assignments:** enhance program assignment functionality with delete and assign features ([e5868bb](https://github.com/FlywheelStudio/vantaverse-admin/commit/e5868bbaa06fb72ded09e19e59e0b3c0d8c2c918))
+* **template-config:** add tempo field to template form data and integrate TempoInput component ([28ee603](https://github.com/FlywheelStudio/vantaverse-admin/commit/28ee603d56ab3f2ba688b3fadb2b10a5f89d76ce))
+* **user-profile:** implement user avatar upload functionality and enhance user profile actions ([ab8ce0e](https://github.com/FlywheelStudio/vantaverse-admin/commit/ab8ce0e648d889b2f01fa642eb03fad8b47fa5eb))
+* **users-table:** add program assignment column ([7a3445a](https://github.com/FlywheelStudio/vantaverse-admin/commit/7a3445aa5c8ef89a8667555cc55b3a1ada7f0a56))
+
 # [0.7.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.6.0...0.7.0) (2026-01-16)
 
 
