@@ -1850,18 +1850,18 @@ export type Database = {
           intro_completed: boolean | null
           journey_phase: Database["public"]["Enums"]["journey_phase"] | null
           last_name: string | null
-          last_sign_in: string | null
           max_gate_type: Database["public"]["Enums"]["gate_unlock_type"] | null
           max_gate_unlocked: number | null
           phone: string | null
           points_required_for_next_level: number | null
           program_assigned: boolean | null
+          program_assignment_id: string | null
+          program_assignment_name: string | null
           program_completion_percentage: number | null
           program_due_date: string | null
           program_started: boolean | null
           program_weeks: number | null
           screening_completed: boolean | null
-          status: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1885,18 +1885,18 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
-          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
           points_required_for_next_level?: never
           program_assigned?: boolean | null
+          program_assignment_id?: never
+          program_assignment_name?: never
           program_completion_percentage?: never
           program_due_date?: string | null
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
-          status?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1920,18 +1920,18 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
-          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
           points_required_for_next_level?: never
           program_assigned?: boolean | null
+          program_assignment_id?: never
+          program_assignment_name?: never
           program_completion_percentage?: never
           program_due_date?: string | null
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
-          status?: string | null
           updated_at?: string | null
         }
         Relationships: []

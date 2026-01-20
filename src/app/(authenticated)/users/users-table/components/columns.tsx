@@ -28,6 +28,8 @@ import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { AssignProgramModal } from '../../[id]/assign-program-modal';
+import Link from 'next/link';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -86,9 +88,15 @@ function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
 
 function GroupsCell({ profile }: { profile: ProfileWithStats }) {
   const orgs = profile.orgMemberships || [];
+  const router = useRouter();
+
   if (orgs.length === 0) {
     return <span className="text-[#64748B] text-sm">—</span>;
   }
+
+  const handleGroupClick = (orgId: string) => {
+    router.push(`/groups/${orgId}?from=users`);
+  };
 
   const orgNames = orgs.map((org) => org.orgName);
   const displayText =
@@ -96,13 +104,89 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
       ? `${orgNames.slice(0, 2).join(', ')}, ...`
       : orgNames.join(', ');
 
+  // If single org, make whole cell clickable
+  if (orgs.length === 1) {
+    return (
+      <button
+        type="button"
+        onClick={() => handleGroupClick(orgs[0].orgId)}
+        className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer truncate text-left"
+        title={orgNames.join(', ')}
+      >
+        {displayText}
+      </button>
+    );
+  }
+
+  // Multiple orgs - show clickable names
   return (
-    <span
-      className="text-sm text-[#1E3A5F] truncate"
-      title={orgNames.join(', ')}
-    >
-      {displayText}
-    </span>
+    <div className="flex flex-wrap gap-1">
+      {orgs.slice(0, 2).map((org, index) => (
+        <button
+          key={org.orgId}
+          type="button"
+          onClick={() => handleGroupClick(org.orgId)}
+          className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer"
+        >
+          {org.orgName}
+          {index < Math.min(orgs.length, 2) - 1 && ', '}
+        </button>
+      ))}
+      {orgs.length > 2 && (
+        <span className="text-sm text-[#64748B]">, ...</span>
+      )}
+    </div>
+  );
+}
+
+function ProgramCell({ profile }: { profile: ProfileWithStats }) {
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const queryClient = useQueryClient();
+
+  const hasProgram =
+    profile.program_assignment_id && profile.program_assignment_name;
+
+  const handleAssignSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    setModalOpen(false);
+  };
+
+  if (hasProgram) {
+    return (
+      <Link
+        href={`/builder/${profile.program_assignment_id}?from=users`}
+        className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer truncate"
+      >
+        {profile.program_assignment_name}
+      </Link>
+    );
+  }
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer"
+          >
+            —
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Click to assign program</p>
+        </TooltipContent>
+      </Tooltip>
+      <AssignProgramModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        userId={profile.id}
+        onAssignSuccess={handleAssignSuccess}
+        userFirstName={profile.first_name}
+        userLastName={profile.last_name}
+      />
+    </>
   );
 }
 
@@ -299,6 +383,16 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       <span className="text-sm font-bold text-[#1E3A5F]">Groups</span>
     ),
     cell: ({ row }) => <GroupsCell profile={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
+  },
+  {
+    id: 'program',
+    accessorFn: (row) => row.program_assignment_name || '',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Program</span>
+    ),
+    cell: ({ row }) => <ProgramCell profile={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
   },
