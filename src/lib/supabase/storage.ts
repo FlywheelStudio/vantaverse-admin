@@ -172,6 +172,129 @@ export class SupabaseStorage {
   }
 
   /**
+   * Lists files in a folder from Supabase Storage.
+   * @param bucket - The storage bucket name.
+   * @param path - The folder path to list files from.
+   * @returns Success with array of file paths or an error message.
+   */
+  public async list(
+    bucket: string,
+    path: string,
+  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
+    const client = await this.resolveClient();
+
+    const { data, error } = await client.storage
+      .from(bucket)
+      .list(path, {
+        limit: 100,
+        sortBy: { column: 'name', order: 'asc' },
+      });
+
+    // If folder doesn't exist or is empty, return empty array
+    if (
+      error &&
+      (error.message?.toLowerCase().includes('not found') ||
+        error.message?.toLowerCase().includes('does not exist'))
+    ) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    // Handle RLS violation errors
+    if (error) {
+      const message = error.message?.toLowerCase() ?? '';
+      if (
+        message.includes('row-level security') ||
+        error.message === 'PGRST116' ||
+        error.message === '403'
+      ) {
+        return {
+          success: false,
+          error:
+            'You do not have permission to list files from this storage bucket. Please contact support or ensure you are logged in with the correct account.',
+        };
+      }
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    // Filter out folders and return only file paths
+    const filePaths =
+      data
+        ?.filter((item) => !item.id) // Folders have an id, files don't
+        .map((item) => {
+          // Construct full path
+          const normalizedPath = path.endsWith('/') ? path : `${path}/`;
+          return `${normalizedPath}${item.name}`;
+        }) ?? [];
+
+    return {
+      success: true,
+      data: filePaths,
+    };
+  }
+
+  /**
+   * Creates a signed URL for a file in Supabase Storage.
+   * @param bucket - The storage bucket name.
+   * @param path - The path to the file.
+   * @param expiresIn - Expiration time in seconds (default: 1000 years).
+   * @returns Success with signed URL or an error message.
+   */
+  public async createSignedUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number = 1000 * 365 * 24 * 60 * 60, // 1000 years in seconds
+  ): Promise<SupabaseSuccess<string> | SupabaseError> {
+    const client = await this.resolveClient();
+
+    const { data, error } = await client.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+
+    if (error) {
+      const message = error.message?.toLowerCase() ?? '';
+      if (
+        message.includes('row-level security') ||
+        error.message === 'PGRST116' ||
+        error.message === '403'
+      ) {
+        return {
+          success: false,
+          error:
+            'You do not have permission to create signed URLs for this storage bucket. Please contact support or ensure you are logged in with the correct account.',
+        };
+      }
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    if (!data?.signedUrl) {
+      return {
+        success: false,
+        error: 'Failed to generate signed URL',
+      };
+    }
+
+    // Replace Supabase URL with API URL if configured
+    const signedUrl = data.signedUrl.replace(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_API_URL!,
+    );
+
+    return {
+      success: true,
+      data: signedUrl,
+    };
+  }
+
+  /**
    * Deletes a file from Supabase Storage.
    * Handles row-level security (RLS) violations by returning a user-friendly error message.
    * @param bucket - The storage bucket name.
