@@ -26,6 +26,7 @@ const getDefaultFormData = (): TemplateFormData => ({
   weight: null,
   weightUnit: 'kg',
   rest_time: TemplateConfigDefaultValues.rest_time,
+  tempo: [null, null, null, null],
   rep_override: [],
   time_override: [],
   distance_override: [],
@@ -52,6 +53,13 @@ function initializeFormData(item: ValidTemplateItem | null): TemplateFormData {
     parseValueWithUnit(w),
   );
 
+  // Parse tempo from template (string[] of length 4)
+  const tempo = template.tempo
+    ? Array(4)
+        .fill(null)
+        .map((_, i) => template.tempo?.[i] ?? null)
+    : [null, null, null, null];
+
   return {
     sets,
     rep: template.rep ?? null,
@@ -61,6 +69,7 @@ function initializeFormData(item: ValidTemplateItem | null): TemplateFormData {
     weight: weightParsed.value,
     weightUnit: weightParsed.unit || 'kg',
     rest_time: template.rest_time ?? null,
+    tempo,
     rep_override: Array(sets)
       .fill(null)
       .map((_, i) => template.rep_override?.[i] ?? null),
@@ -270,6 +279,10 @@ export function useTemplateForm(
       );
       const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
 
+      // Format tempo: convert to string[] of length 4, filter out nulls but maintain array length
+      const tempoFormatted: string[] = formData.tempo.map((v) => v ?? '');
+      const hasTempo = tempoFormatted.some((v) => v !== '');
+
       const templateData: Partial<ExerciseTemplate> = {
         exercise_id: exerciseId,
         sets: formData.sets ?? undefined,
@@ -278,6 +291,7 @@ export function useTemplateForm(
         distance: distanceValue ?? undefined,
         weight: weightValue ?? undefined,
         rest_time: formData.rest_time ?? undefined,
+        tempo: hasTempo ? tempoFormatted : undefined,
         rep_override: hasRepOverrides ? repOverrides : undefined,
         time_override: hasTimeOverrides ? timeOverrides : undefined,
         distance_override: hasDistanceOverrides
@@ -316,6 +330,9 @@ export function useTemplateForm(
       )
       .filter((v): v is string => v !== null);
 
+    const tempoFormatted: string[] = formData.tempo.map((v) => v ?? '');
+    const hasTempo = tempoFormatted.some((v) => v !== '');
+
     onCopy({
       sets: formData.sets,
       rep: formData.rep ?? undefined,
@@ -323,6 +340,7 @@ export function useTemplateForm(
       distance: distanceValue ?? undefined,
       weight: weightValue ?? undefined,
       rest_time: formData.rest_time ?? undefined,
+      tempo: hasTempo ? tempoFormatted : undefined,
       rep_override: formData.rep_override.filter(
         (v): v is number => v !== null,
       ),
@@ -475,6 +493,10 @@ export function useTemplateForm(
         }
       }
 
+      if (copiedData.tempo && copiedData.tempo.length === 4) {
+        updated.tempo = copiedData.tempo.map((v) => v ?? null);
+      }
+
       return updated;
     });
   };
@@ -523,7 +545,11 @@ export function useTemplateForm(
       (v) => v !== '-1',
     );
     const hasWeightOverrides = weightOverridesFormatted.some((v) => v !== '-1');
-    const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
+      const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
+
+      // Format tempo: convert to string[] of length 4
+      const tempoFormatted: string[] = formData.tempo.map((v) => v ?? '');
+      const hasTempo = tempoFormatted.some((v) => v !== '');
 
     const templateData: Partial<ExerciseTemplate> = {
       exercise_id: exerciseId,
@@ -533,6 +559,7 @@ export function useTemplateForm(
       distance: distanceValue ?? undefined,
       weight: weightValue ?? undefined,
       rest_time: formData.rest_time ?? undefined,
+      tempo: hasTempo ? tempoFormatted : undefined,
       rep_override: hasRepOverrides ? repOverrides : undefined,
       time_override: hasTimeOverrides ? timeOverrides : undefined,
       distance_override: hasDistanceOverrides

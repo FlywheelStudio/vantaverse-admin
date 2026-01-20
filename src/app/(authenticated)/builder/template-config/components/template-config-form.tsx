@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { TempoInput } from './tempo-input';
 import type { TemplateFormData, TabType } from '../types';
 
 interface TemplateConfigFormProps {
@@ -48,6 +49,8 @@ export function TemplateConfigForm({
     activeTab === 'all'
       ? formData.weightUnit
       : formData.weight_override_units[currentSetIndex] || 'kg';
+  const currentTempo =
+    activeTab === 'all' ? formData.tempo : formData.tempo;
 
   return (
     <div className="p-3 space-y-2">
@@ -253,6 +256,17 @@ export function TemplateConfigForm({
           onMouseDown={(e) => {
             e.stopPropagation();
           }}
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-600 w-14 shrink-0">Tempo</span>
+        <TempoInput
+          value={currentTempo}
+          onChange={(value: (string | null)[]) => {
+            setFormData((prev) => ({ ...prev, tempo: value }));
+          }}
+          disabled={activeTab === 'set'}
         />
       </div>
     </div>
