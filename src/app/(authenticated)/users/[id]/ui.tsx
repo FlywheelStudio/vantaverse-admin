@@ -161,6 +161,9 @@ export function UserProfilePageUI({
                 completion={completion}
                 exerciseNamesMap={exerciseNamesMap}
                 groupsMap={groupsMap}
+                userId={user.id}
+                userFirstName={user.first_name}
+                userLastName={user.last_name}
               />
             </div>
           </CardContent>

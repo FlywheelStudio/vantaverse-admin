@@ -438,7 +438,6 @@ export class OrganizationMembers extends SupabaseQuery {
           : item.organizations;
         return { orgId: item.organization_id, org };
       })
-      .filter(({ org }) => org && org.is_super_admin !== true)
       .map(({ orgId, org }) => ({
         id: orgId,
         name: org!.name,

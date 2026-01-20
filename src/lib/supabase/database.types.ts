@@ -1244,6 +1244,7 @@ export type Database = {
       }
       program_assignment: {
         Row: {
+          base: string | null
           completion: Json[] | null
           created_at: string | null
           end_date: string | null
@@ -1258,6 +1259,7 @@ export type Database = {
           workout_schedule_id: string | null
         }
         Insert: {
+          base?: string | null
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
@@ -1272,6 +1274,7 @@ export type Database = {
           workout_schedule_id?: string | null
         }
         Update: {
+          base?: string | null
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
@@ -1286,6 +1289,20 @@ export type Database = {
           workout_schedule_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "program_assignment_base_fkey"
+            columns: ["base"]
+            isOneToOne: false
+            referencedRelation: "program_assignment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_assignment_base_fkey"
+            columns: ["base"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "program_assignment_organization_id_fkey"
             columns: ["organization_id"]
@@ -1838,6 +1855,8 @@ export type Database = {
           phone: string | null
           points_required_for_next_level: number | null
           program_assigned: boolean | null
+          program_assignment_id: string | null
+          program_assignment_name: string | null
           program_completion_percentage: number | null
           program_due_date: string | null
           program_started: boolean | null
@@ -1871,6 +1890,8 @@ export type Database = {
           phone?: string | null
           points_required_for_next_level?: never
           program_assigned?: boolean | null
+          program_assignment_id?: never
+          program_assignment_name?: never
           program_completion_percentage?: never
           program_due_date?: string | null
           program_started?: boolean | null
@@ -1904,6 +1925,8 @@ export type Database = {
           phone?: string | null
           points_required_for_next_level?: never
           program_assigned?: boolean | null
+          program_assignment_id?: never
+          program_assignment_name?: never
           program_completion_percentage?: never
           program_due_date?: string | null
           program_started?: boolean | null
@@ -1991,6 +2014,10 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_program: {
+        Args: { p_program_assignment_id: string }
+        Returns: Json
+      }
       edit_exercise_template: {
         Args: {
           p_distance?: string
@@ -2048,7 +2075,6 @@ export type Database = {
         Args: { week_number?: number }
         Returns: Json
       }
-      get_weekly_workout_detail: { Args: { p_user_id: string }; Returns: Json }
       get_workouts_by_id: {
         Args: { p_date?: string; p_exercise_id: number }
         Returns: Json

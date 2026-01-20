@@ -121,7 +121,6 @@ export function DragContent({
                   ) : (
                     <SelectedItemComponent
                       item={activeItem}
-                      index={0}
                       onRemove={() => {}}
                       onClick={() => {}}
                     />

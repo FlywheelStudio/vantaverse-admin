@@ -116,14 +116,14 @@ export class WorkoutSchedulesQuery extends SupabaseQuery {
       }>
     | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     // Fetch program assignment with workout_schedule_id and patient_override
     const { data: assignment, error: assignmentError } = await supabase
       .from('program_assignment')
       .select('workout_schedule_id, patient_override')
       .eq('id', programAssignmentId)
-      .single();
+      .maybeSingle();
 
     if (assignmentError) {
       return this.parseResponsePostgresError(

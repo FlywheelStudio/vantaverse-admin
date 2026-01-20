@@ -78,20 +78,23 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   public async getById(
     id: string,
   ): Promise<SupabaseSuccess<ProgramAssignmentWithTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
       .from('program_assignment')
       .select(
         `
         *,
-        program_template (*)
+        program_template (*),
+        workout_schedule:workout_schedules (*),
+        profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)
       `,
       )
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error(error);
       return this.parseResponsePostgresError(
         error,
         'Failed to get program assignment',
@@ -99,20 +102,14 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     }
 
     if (!data) {
+      console.error('Program assignment not found');
       return {
         success: false,
         error: 'Program assignment not found',
       };
     }
 
-    // Transform the data to match our schema structure
-    const transformedData = {
-      ...data,
-      program_template: data.program_template || null,
-    };
-
-    const result =
-      programAssignmentWithTemplateSchema.safeParse(transformedData);
+    const result = programAssignmentWithTemplateSchema.safeParse(data);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -359,7 +356,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .from('program_assignment')
       .select('workout_schedule_id, patient_override')
       .eq('id', assignmentId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       return this.parseResponsePostgresError(
@@ -519,6 +516,237 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         exerciseNamesMap,
         groupsMap,
       },
+    };
+  }
+
+  /**
+   * Get paginated program assignments with search and status filtering
+   * @param page - Page number (1-indexed)
+   * @param pageSize - Number of items per page
+   * @param search - Optional search query (searches user_id, first_name, last_name, email, program_template.name)
+   * @param showAssigned - If true, show both 'template' and 'active' status. If false, only 'template'
+   * @returns Success with paginated data or error
+   */
+  public async getListPaginated(
+    page: number = 1,
+    pageSize: number = 25,
+    search?: string,
+    showAssigned: boolean = false,
+  ): Promise<
+    | SupabaseSuccess<{
+        data: ProgramAssignmentWithTemplate[];
+        page: number;
+        pageSize: number;
+        total: number;
+        hasMore: boolean;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    let query = supabase
+      .from('program_assignment')
+      .select(
+        `
+        *,
+        program_template (*),
+        workout_schedule:workout_schedules (*),
+        profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)
+      `,
+        { count: 'exact' },
+      );
+
+    // Filter by status
+    if (showAssigned) {
+      query = query.in('status', ['template', 'active']);
+    } else {
+      query = query.eq('status', 'template');
+    }
+
+    // Apply sorting
+    query = query.order('created_at', { ascending: false });
+
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get program assignments',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: {
+          data: [],
+          page,
+          pageSize,
+          total: 0,
+          hasMore: false,
+        },
+      };
+    }
+
+    // Transform the data to match our schema structure
+    let transformedData = data.map((item: ProgramAssignmentWithTemplate) => ({
+      ...item,
+      program_template: item.program_template || null,
+      workout_schedule:
+        (item as { workout_schedule?: unknown }).workout_schedule || null,
+      profiles: (item as { profiles?: unknown }).profiles || null,
+    }));
+
+    // Apply search filter in application layer (searches across multiple fields)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      transformedData = transformedData.filter((item) => {
+        // Search in user_id
+        if (item.user_id?.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+
+        // Search in profiles fields
+        const profiles = item.profiles as
+          | { first_name?: string | null; last_name?: string | null; email?: string | null }
+          | null
+          | undefined;
+        if (profiles) {
+          if (
+            profiles.first_name?.toLowerCase().includes(searchLower) ||
+            profiles.last_name?.toLowerCase().includes(searchLower) ||
+            profiles.email?.toLowerCase().includes(searchLower)
+          ) {
+            return true;
+          }
+        }
+
+        // Search in program_template name
+        if (item.program_template?.name?.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+
+    const result = programAssignmentWithTemplateSchema
+      .array()
+      .safeParse(transformedData);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    // Adjust total count if search was applied
+    const adjustedTotal = search ? result.data.length : count || 0;
+    const hasMore = search
+      ? false // Can't determine hasMore with client-side filtering
+      : from + result.data.length < adjustedTotal;
+
+    return {
+      success: true,
+      data: {
+        data: result.data,
+        page,
+        pageSize,
+        total: adjustedTotal,
+        hasMore,
+      },
+    };
+  }
+
+  /**
+   * Assign a program template to a user by creating a new assignment
+   * @param templateAssignmentId - The template assignment ID to copy from
+   * @param userId - The user ID to assign to
+   * @returns Success with created assignment or error
+   */
+  public async assignToUser(
+    templateAssignmentId: string,
+    userId: string,
+    startDate: string, // ISO date string (YYYY-MM-DD)
+  ): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    // First, get the template assignment to copy from
+    const templateResult = await this.getById(templateAssignmentId);
+
+    if (!templateResult.success) {
+      return templateResult;
+    }
+
+    const templateAssignment = templateResult.data;
+
+    // Check if user already has an active assignment for this template
+    const { data: existingAssignment } = await supabase
+      .from('program_assignment')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('program_template_id', templateAssignment.program_template_id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (existingAssignment) {
+      return {
+        success: false,
+        error: 'User already has an active assignment for this program',
+      };
+    }
+
+    // Calculate end date by adding weeks from template to start date
+    const startDateObj = new Date(startDate);
+    const templateWeeks = templateAssignment.program_template?.weeks || 0;
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setDate(endDateObj.getDate() + templateWeeks * 7);
+    const endDate = endDateObj.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+
+    // Create new assignment from template
+    const { data, error } = await supabase
+      .from('program_assignment')
+      .insert({
+        program_template_id: templateAssignment.program_template_id,
+        user_id: userId,
+        organization_id: templateAssignment.organization_id,
+        workout_schedule_id: templateAssignment.workout_schedule_id,
+        start_date: startDate,
+        end_date: endDate,
+        status: 'active',
+        completion: null,
+        patient_override: null,
+        base: templateAssignment.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to assign program to user',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'Failed to create program assignment',
+      };
+    }
+
+    const result = programAssignmentSchema.safeParse(data);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
     };
   }
 }

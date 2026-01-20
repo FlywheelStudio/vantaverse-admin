@@ -33,6 +33,7 @@ export interface TemplateFormData {
   weight: string | null;
   weightUnit: string;
   rest_time: number | null;
+  tempo: (string | null)[];
   rep_override: (number | null)[];
   time_override: (number | null)[];
   distance_override: (string | null)[];

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { updateUserProfile } from '@/app/(authenticated)/users/actions';
+import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
@@ -35,9 +35,10 @@ export function UserProfileCard({
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [description, setDescription] = useState(initialDescription ?? '');
-  const [avatarUrl] = useState(initialAvatarUrl);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<
@@ -45,10 +46,72 @@ export function UserProfileCard({
   >(null);
   const [editingValue, setEditingValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarClick = () => {
-    // TODO: Implement file upload logic for Supabase bucket
-    console.log('Avatar upload clicked');
+    if (isUploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error('File size must be less than 5MB.');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        if (!base64String) {
+          setIsUploading(false);
+          toast.error('Failed to read file.');
+          return;
+        }
+
+        // Upload to server
+        const result = await uploadUserAvatar(userId, base64String);
+
+        if (result.success) {
+          setAvatarUrl(result.data);
+          toast.success('Profile picture updated successfully');
+        } else {
+          toast.error(result.error);
+        }
+
+        setIsUploading(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      };
+
+      reader.onerror = () => {
+        setIsUploading(false);
+        toast.error('Failed to read file.');
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error(error);
+      setIsUploading(false);
+      toast.error('An unexpected error occurred during upload.');
+    }
   };
 
   const handleChatToggle = () => {
@@ -180,13 +243,25 @@ export function UserProfileCard({
 
       {/* Main Profile Card */}
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png"
+        hidden
+        onChange={handleFileChange}
+        disabled={isUploading}
+      />
+
       {/* Header Section with Horizontal Layout */}
       <div className="flex items-center gap-6">
         {/* Avatar */}
         <div
-          className="relative group cursor-pointer shrink-0 size-24"
+          className={`relative group shrink-0 size-24 ${
+            isUploading ? 'cursor-wait opacity-50' : 'cursor-pointer'
+          }`}
           onClick={handleAvatarClick}
-          onMouseEnter={() => setIsHoveringAvatar(true)}
+          onMouseEnter={() => !isUploading && setIsHoveringAvatar(true)}
           onMouseLeave={() => setIsHoveringAvatar(false)}
         >
           <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
@@ -200,7 +275,25 @@ export function UserProfileCard({
           </div>
           {/* Upload Overlay */}
           <AnimatePresence>
-            {isHoveringAvatar && (
+            {isUploading ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10 size-24"
+              >
+                <div className="flex flex-col items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
+                  />
+                  <p className="text-sm text-white font-semibold mt-2">
+                    Uploading...
+                  </p>
+                </div>
+              </motion.div>
+            ) : isHoveringAvatar ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -221,7 +314,7 @@ export function UserProfileCard({
                   </motion.div>
                 </div>
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
         {/* User Info */}

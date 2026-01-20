@@ -120,6 +120,7 @@ export function GroupDetailsPageUI({
             <PhysicianCard
               physician={currentPhysician}
               onAssignClick={openAssignPhysician}
+              organizationId={org.id}
             />
           </motion.div>
           <motion.div
@@ -149,6 +150,7 @@ export function GroupDetailsPageUI({
                 data={memberRows}
                 onAddClick={openAddUsers}
                 onRemove={handleRemove}
+                organizationId={org.id}
               />
             </div>
           </Card>

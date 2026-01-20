@@ -53,6 +53,8 @@ export const profileWithStatsSchema = profileSchema.extend({
   points_required_for_next_level: z.number().nullable(),
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
+  program_assignment_id: z.uuid().nullable().optional(),
+  program_assignment_name: z.string().nullable().optional(),
   is_super_admin: z.boolean().optional(),
   orgMemberships: z
     .array(z.object({ orgId: z.string(), orgName: z.string() }))

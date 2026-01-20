@@ -3,6 +3,7 @@
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { createAdminClient } from '@/lib/supabase/core/admin';
+import { SupabaseStorage } from '@/lib/supabase/storage';
 import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { Profile } from '@/lib/supabase/schemas/profiles';
@@ -65,17 +66,110 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
+ * Get user profile by ID
+ */
+export async function getUserProfileById(id: string) {
+  const query = new ProfilesQuery();
+  return query.getUserById(id);
+}
+
+/**
  * Update user profile
  */
 export async function updateUserProfile(
   userId: string,
   profileData: Pick<
     Partial<Profile>,
-    'first_name' | 'last_name' | 'description'
+    'first_name' | 'last_name' | 'description' | 'avatar_url'
   >,
 ) {
   const query = new ProfilesQuery();
   return query.update(userId, profileData);
+}
+
+/**
+ * Upload user avatar image
+ */
+export async function uploadUserAvatar(
+  userId: string,
+  fileBase64: string,
+): Promise<
+  { success: true; data: string } | { success: false; error: string }
+> {
+  // Validate file type
+  const base64Header = fileBase64.substring(0, 30);
+  const isJpeg =
+    base64Header.includes('data:image/jpeg') ||
+    base64Header.includes('data:image/jpg');
+  const isPng = base64Header.includes('data:image/png');
+
+  if (!isJpeg && !isPng) {
+    return {
+      success: false,
+      error: 'Invalid file type. Only JPEG and PNG images are allowed.',
+    };
+  }
+
+  const storage = new SupabaseStorage();
+  const extension = isJpeg ? 'jpg' : 'png';
+  const folderPath = `${userId}/user_image`;
+  const filePath = `${folderPath}/image.${extension}`;
+  const contentType = isJpeg ? 'image/jpeg' : 'image/png';
+
+  // List and delete existing files in the folder
+  const listResult = await storage.list('user_assets', folderPath);
+  if (listResult.success) {
+    // Delete all existing files
+    for (const existingPath of listResult.data) {
+      await storage.delete('user_assets', existingPath);
+    }
+  }
+
+  // Upload new image
+  const uploadResult = await storage.upload({
+    bucket: 'user_assets',
+    path: filePath,
+    body: fileBase64,
+    contentType,
+    upsert: true,
+    getPublicUrl: false, // Don't get public URL since bucket is private
+  });
+
+  if (!uploadResult.success) {
+    return uploadResult;
+  }
+
+  // Generate signed URL (1000 years expiration)
+  const signedUrlResult = await storage.createSignedUrl(
+    'user_assets',
+    filePath,
+    1000 * 365 * 24 * 60 * 60, // 1000 years in seconds
+  );
+
+  if (!signedUrlResult.success) {
+    return {
+      success: false,
+      error: `Failed to generate signed URL: ${signedUrlResult.error}`,
+    };
+  }
+
+  // Update user's avatar_url
+  const query = new ProfilesQuery();
+  const updateResult = await query.update(userId, {
+    avatar_url: signedUrlResult.data,
+  });
+
+  if (!updateResult.success) {
+    return {
+      success: false,
+      error: `Failed to update avatar URL: ${updateResult.error}`,
+    };
+  }
+
+  return {
+    success: true,
+    data: signedUrlResult.data,
+  };
 }
 
 /**

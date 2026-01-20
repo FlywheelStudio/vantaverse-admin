@@ -7,14 +7,12 @@ import { cn } from '@/lib/utils';
 
 interface SelectedItemProps {
   item: SelectedItem;
-  index: number;
   onRemove: () => void;
   onClick: (event: React.MouseEvent) => void;
 }
 
 export function SelectedItemComponent({
   item,
-  index,
   onRemove,
   onClick,
 }: SelectedItemProps) {

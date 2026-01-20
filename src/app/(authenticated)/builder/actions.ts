@@ -21,10 +21,10 @@ export async function getProgramAssignments() {
 }
 
 /**
- * Get a single program template by ID
+ * Get a single program assignment by ID (joined with program_template)
  */
-export async function getProgramTemplateById(id: string) {
-  const query = new ProgramTemplatesQuery();
+export async function getProgramAssignmentById(id: string) {
+  const query = new ProgramAssignmentsQuery();
   return query.getById(id);
 }
 
@@ -324,14 +324,6 @@ export async function upsertGroup(data: {
 > {
   const query = new GroupsQuery();
   return query.upsertGroup(data);
-}
-
-/**
- * Get program assignment by program template ID
- */
-export async function getProgramAssignmentByTemplateId(templateId: string) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getByTemplateId(templateId);
 }
 
 /**

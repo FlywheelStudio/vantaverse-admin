@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/avatar';
 import { PlusIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface SingleAvatarProps {
   src?: string;
@@ -30,9 +31,13 @@ const SingleAvatar = ({
   onMouseEnter,
   onMouseLeave,
 }: SingleAvatarProps) => {
+  const router = useRouter();
   return (
     <div
       className="cursor-pointer border-4 border-background rounded-full bg-background transition-all duration-300 relative"
+      onClick={() => {
+        router.push(`/users/${userId}?from=`+encodeURIComponent(`/groups/`));
+      }}
       style={{
         width: size,
         height: size,

@@ -22,7 +22,6 @@ interface UseUsersTableParams {
 export function useUsersTable({
   columns,
   data,
-  filters = { role: 'patient' },
 }: UseUsersTableParams) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
