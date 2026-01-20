@@ -41,6 +41,7 @@ export const programAssignmentWithTemplateSchema =
       id: z.uuid(),
       first_name: z.string().nullable(),
       last_name: z.string().nullable(),
+      email: z.string().nullable(),
     }).nullish(),
   });
 

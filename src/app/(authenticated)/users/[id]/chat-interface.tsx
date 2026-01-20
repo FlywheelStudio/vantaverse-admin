@@ -188,7 +188,7 @@ export function ChatInterface({
           </div>
         ) : (
           <>
-            <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-4">
+            <ScrollArea ref={scrollAreaRef} className="flex-1 h-0 px-4 py-4">
               <div className="space-y-4">
                 <AnimatePresence mode="popLayout">
                   {messages.map((message) => (

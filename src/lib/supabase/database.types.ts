@@ -1244,6 +1244,7 @@ export type Database = {
       }
       program_assignment: {
         Row: {
+          base: string | null
           completion: Json[] | null
           created_at: string | null
           end_date: string | null
@@ -1258,6 +1259,7 @@ export type Database = {
           workout_schedule_id: string | null
         }
         Insert: {
+          base?: string | null
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
@@ -1272,6 +1274,7 @@ export type Database = {
           workout_schedule_id?: string | null
         }
         Update: {
+          base?: string | null
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
@@ -1286,6 +1289,20 @@ export type Database = {
           workout_schedule_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "program_assignment_base_fkey"
+            columns: ["base"]
+            isOneToOne: false
+            referencedRelation: "program_assignment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_assignment_base_fkey"
+            columns: ["base"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "program_assignment_organization_id_fkey"
             columns: ["organization_id"]
@@ -1833,6 +1850,7 @@ export type Database = {
           intro_completed: boolean | null
           journey_phase: Database["public"]["Enums"]["journey_phase"] | null
           last_name: string | null
+          last_sign_in: string | null
           max_gate_type: Database["public"]["Enums"]["gate_unlock_type"] | null
           max_gate_unlocked: number | null
           phone: string | null
@@ -1843,6 +1861,7 @@ export type Database = {
           program_started: boolean | null
           program_weeks: number | null
           screening_completed: boolean | null
+          status: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1866,6 +1885,7 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
+          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
@@ -1876,6 +1896,7 @@ export type Database = {
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
+          status?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1899,6 +1920,7 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
+          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
@@ -1909,6 +1931,7 @@ export type Database = {
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1991,6 +2014,10 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_program: {
+        Args: { p_program_assignment_id: string }
+        Returns: Json
+      }
       edit_exercise_template: {
         Args: {
           p_distance?: string
@@ -2048,7 +2075,6 @@ export type Database = {
         Args: { week_number?: number }
         Returns: Json
       }
-      get_weekly_workout_detail: { Args: { p_user_id: string }; Returns: Json }
       get_workouts_by_id: {
         Args: { p_date?: string; p_exercise_id: number }
         Returns: Json

@@ -324,7 +324,7 @@ export function DayBoxesGrid() {
                   {hasItems ? (
                     <>
                       <div className="absolute top-2 right-2">
-                        <CopyPasteButtons
+                        {!isBeforeStart && (<CopyPasteButtons
                           size="sm"
                           onCopy={() => copyDay(currentWeek, dayIndex)}
                           onPaste={() => pasteDay(currentWeek, dayIndex)}
@@ -333,7 +333,7 @@ export function DayBoxesGrid() {
                           copyTooltip="Copy Day"
                           pasteTooltip="Paste Day"
                           copiedTooltip="Day already copied"
-                        />
+                        />)}
                       </div>
                       <motion.div
                         key={`week-${currentWeek}-day-${day}-items`}
@@ -379,7 +379,7 @@ export function DayBoxesGrid() {
                   ) : (
                     <>
                       <div className="absolute top-2 right-2">
-                        <CopyPasteButtons
+                        {!isBeforeStart && (<CopyPasteButtons
                           size="sm"
                           onCopy={() => copyDay(currentWeek, dayIndex)}
                           onPaste={() => pasteDay(currentWeek, dayIndex)}
@@ -390,7 +390,7 @@ export function DayBoxesGrid() {
                           copiedTooltip="Day already copied"
                           showCopy={false}
                           showPaste={true}
-                        />
+                        />)}
                       </div>
                       <motion.p
                         key={`week-${currentWeek}-day-${day}-rest`}
