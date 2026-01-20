@@ -1,5 +1,3 @@
-'use client';
-
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { ProgramBuilder } from './program/program-builder';

@@ -1,13 +1,9 @@
-'use client';
-
-import { useParams } from 'next/navigation';
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { WorkoutBuilder } from '../workout-schedule/workout-builder';
 
-export default function BuilderIdPage() {
-  const params = useParams();
-  const id = params?.id as string | undefined;
+export default async function BuilderIdPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   if (!id) {
     return (

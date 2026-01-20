@@ -7,6 +7,7 @@ import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-template
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
+import { createParallelQueries } from '@/lib/supabase/query';
 import { DatabaseSchedule } from './workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
@@ -17,6 +18,7 @@ import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates
  */
 export async function getProgramAssignments() {
   const query = new ProgramAssignmentsQuery();
+  
   return query.getTemplates();
 }
 
@@ -412,31 +414,21 @@ export async function convertScheduleToSelectedItems(
   const templatesQuery = new ExerciseTemplatesQuery();
   const groupsQuery = new GroupsQuery();
 
-  const [templatesResult, groupsResult] = await Promise.all([
-    exerciseTemplateIds.size > 0
-      ? templatesQuery.getByIds(Array.from(exerciseTemplateIds))
-      : Promise.resolve({ success: true as const, data: new Map() }),
-    groupIds.size > 0
-      ? groupsQuery.getByIds(Array.from(groupIds))
-      : Promise.resolve({ success: true as const, data: new Map() }),
-  ]);
+  const data = await createParallelQueries({
+    templates: {
+      condition: exerciseTemplateIds.size > 0,
+      query: () => templatesQuery.getByIds(Array.from(exerciseTemplateIds)),
+      defaultValue: new Map(),
+    },
+    groups: {
+      condition: groupIds.size > 0,
+      query: () => groupsQuery.getByIds(Array.from(groupIds)),
+      defaultValue: new Map(),
+    },
+  });
 
-  if (!templatesResult.success) {
-    return {
-      success: false as const,
-      error: templatesResult.error || 'Failed to fetch exercise templates',
-    };
-  }
-
-  if (!groupsResult.success) {
-    return {
-      success: false as const,
-      error: groupsResult.error || 'Failed to fetch groups',
-    };
-  }
-
-  const templatesMap = templatesResult.data;
-  const groupsMap = groupsResult.data;
+  const templatesMap = data.templates;
+  const groupsMap = data.groups;
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];

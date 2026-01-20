@@ -9,6 +9,7 @@ import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignme
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import { createParallelQueries } from '@/lib/supabase/query';
 import { UserProfilePageUI } from './ui';
 import { AdminProfileView } from './admin-profile-view';
 
@@ -84,81 +85,74 @@ export default async function UserProfilePage({
   }
   
   // Bulk query remaining data in parallel
-  const [
-    appointmentsResult,
-    hpLevelThresholdResult,
-    hpTransactionsResult,
-    empowermentThresholdResult,
-    gateInfoResult,
-    ipTransactionsResult,
-    nextThresholdResult,
-    mcIntakeSurveyResult,
-    habitPledgeResult,
-    programAssignmentResult,
-  ] = await Promise.all([
-    appointmentsQuery.getAppointmentsByUserId(id),
-    user.current_level !== null
-      ? hpPointsQuery.getHpLevelThresholdByLevel(user.current_level)
-      : Promise.resolve({
-          success: false,
-          error: 'No current level',
-        } as const),
-    hpPointsQuery.getHpTransactionsByUserId(id),
-    user.empowerment_threshold !== null
-      ? ipPointsQuery.getEmpowermentThresholdById(user.empowerment_threshold)
-      : Promise.resolve({
-          success: false,
-          error: 'No empowerment threshold',
-        } as const),
-    user.max_gate_type !== null && user.max_gate_unlocked !== null
-      ? ipPointsQuery.getCurrentGateInfo(
-          user.max_gate_type,
-          user.max_gate_unlocked,
-        )
-      : Promise.resolve({
-          success: false,
-          error: 'No gate information',
-        } as const),
-    ipPointsQuery.getIpTransactionsByUserId(id),
-    user.empowerment_threshold !== null
-      ? ipPointsQuery.getNextEmpowermentThreshold(user.empowerment_threshold)
-      : Promise.resolve({
-          success: false,
-          error: 'No current threshold',
-        } as const),
-    mcIntakeQuery.getSurveyByUserId(id),
-    habitPledgeQuery.getPledgeByUserId(id),
-    programAssignmentsQuery.getActiveByUserId(id),
-  ]);
+  const data = await createParallelQueries({
+    appointments: {
+      query: () => appointmentsQuery.getAppointmentsByUserId(id),
+      defaultValue: [],
+    },
+    hpLevelThreshold: {
+      condition: user.current_level !== null,
+      query: () =>
+        hpPointsQuery.getHpLevelThresholdByLevel(user.current_level!),
+      defaultValue: null,
+    },
+    hpTransactions: {
+      query: () => hpPointsQuery.getHpTransactionsByUserId(id),
+      defaultValue: [],
+    },
+    empowermentThreshold: {
+      condition: user.empowerment_threshold !== null,
+      query: () =>
+        ipPointsQuery.getEmpowermentThresholdById(user.empowerment_threshold!),
+      defaultValue: null,
+    },
+    gateInfo: {
+      condition:
+        user.max_gate_type !== null && user.max_gate_unlocked !== null,
+      query: () =>
+        ipPointsQuery.getCurrentGateInfo(
+          user.max_gate_type!,
+          user.max_gate_unlocked!,
+        ),
+      defaultValue: null,
+    },
+    ipTransactions: {
+      query: () => ipPointsQuery.getIpTransactionsByUserId(id),
+      defaultValue: [],
+    },
+    nextThreshold: {
+      condition: user.empowerment_threshold !== null,
+      query: () =>
+        ipPointsQuery.getNextEmpowermentThreshold(user.empowerment_threshold!),
+      defaultValue: null,
+    },
+    mcIntakeSurvey: {
+      query: () => mcIntakeQuery.getSurveyByUserId(id),
+      defaultValue: null,
+    },
+    habitPledge: {
+      query: () => habitPledgeQuery.getPledgeByUserId(id),
+      defaultValue: null,
+    },
+    programAssignmentData: {
+      query: () => programAssignmentsQuery.getActiveByUserId(id),
+      defaultValue: null,
+    },
+  });
 
-  const appointments = appointmentsResult.success
-    ? appointmentsResult.data
-    : [];
-  const hpLevelThreshold = hpLevelThresholdResult.success
-    ? hpLevelThresholdResult.data
-    : null;
-  const hpTransactions = hpTransactionsResult.success
-    ? hpTransactionsResult.data
-    : [];
-  const empowermentThreshold = empowermentThresholdResult.success
-    ? empowermentThresholdResult.data
-    : null;
-  const gateInfo = gateInfoResult.success ? gateInfoResult.data : null;
-  const ipTransactions = ipTransactionsResult.success
-    ? ipTransactionsResult.data
-    : [];
-  const mcIntakeSurvey = mcIntakeSurveyResult.success
-    ? mcIntakeSurveyResult.data
-    : null;
-  const habitPledge = habitPledgeResult.success ? habitPledgeResult.data : null;
-  const programAssignmentData = programAssignmentResult.success
-    ? programAssignmentResult.data
-    : null;
-  const programAssignment = programAssignmentData?.assignment ?? null;
+  const appointments = data.appointments;
+  const hpLevelThreshold = data.hpLevelThreshold;
+  const hpTransactions = data.hpTransactions;
+  const empowermentThreshold = data.empowermentThreshold;
+  const gateInfo = data.gateInfo;
+  const ipTransactions = data.ipTransactions;
+  const mcIntakeSurvey = data.mcIntakeSurvey;
+  const habitPledge = data.habitPledge;
+  const programAssignment = data.programAssignmentData?.assignment ?? null;
   const exerciseNamesMap =
-    programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
+    data.programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
   const groupsMap =
-    programAssignmentData?.groupsMap ??
+    data.programAssignmentData?.groupsMap ??
     new Map<string, { exercise_template_ids: string[] | null }>();
 
   // Extract schedule and completion from program assignment
@@ -190,11 +184,10 @@ export default async function UserProfilePage({
   let pointsMissingForNextLevel: number | null = null;
   if (
     user.empowerment !== null &&
-    nextThresholdResult.success &&
-    nextThresholdResult.data !== null
+    data.nextThreshold !== null
   ) {
     const currentEmpowerment = user.empowerment;
-    const nextBasePower = nextThresholdResult.data.base_power;
+    const nextBasePower = data.nextThreshold.base_power;
     pointsMissingForNextLevel = Math.max(0, nextBasePower - currentEmpowerment);
   } else if (
     user.empowerment !== null &&
