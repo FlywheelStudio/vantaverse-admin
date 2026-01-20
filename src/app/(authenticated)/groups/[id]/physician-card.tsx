@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { useRouter } from 'next/navigation';
 
 export type PhysicianInfo = {
   userId: string;
@@ -16,10 +17,13 @@ export type PhysicianInfo = {
 export function PhysicianCard({
   physician,
   onAssignClick,
+  organizationId,
 }: {
   physician: PhysicianInfo | null;
   onAssignClick: () => void;
+  organizationId: string;
 }) {
+  const router = useRouter();
   const fullName =
     physician?.firstName && physician?.lastName
       ? `${physician.firstName} ${physician.lastName}`
@@ -51,7 +55,7 @@ export function PhysicianCard({
   return (
     <Card className="p-6 border border-white/50 bg-white/95 h-full flex flex-col">
       <div className="flex items-start justify-between gap-4 flex-1">
-        <div className="flex-1 min-w-0">
+        <div className="cursor-pointer flex-1 min-w-0" onClick={() => router.push(`/users/${physician.userId}?from=/groups/${organizationId}`)}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="size-12 shrink-0 flex items-center justify-center">
               <Avatar
