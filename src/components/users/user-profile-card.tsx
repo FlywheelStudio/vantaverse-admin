@@ -108,6 +108,7 @@ export function UserProfileCard({
 
       reader.readAsDataURL(file);
     } catch (error) {
+      console.error(error);
       setIsUploading(false);
       toast.error('An unexpected error occurred during upload.');
     }
