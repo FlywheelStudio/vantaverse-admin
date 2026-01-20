@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, Suspense, useEffect, useRef, useState } from 'react';
 import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import BreadcrumbNavigator from './header/breadcrumb-navigator';
@@ -58,7 +58,9 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
           scrollBehavior: 'smooth',
         }}
       >
-        <BreadcrumbNavigator scrollPosition={scrollPosition} />
+        <Suspense fallback={<div className="h-12 mb-4" />}>
+          <BreadcrumbNavigator scrollPosition={scrollPosition} />
+        </Suspense>
         {children}
       </div>
     </div>
