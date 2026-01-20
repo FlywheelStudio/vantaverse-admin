@@ -95,7 +95,6 @@ export function TopLevelDroppable({
                 <SortableItem key={itemId} id={itemId}>
                   <SelectedItemComponent
                     item={item}
-                    index={index}
                     onRemove={() => onRemove(index)}
                     onClick={(e) => handleItemClick(index, e)}
                   />

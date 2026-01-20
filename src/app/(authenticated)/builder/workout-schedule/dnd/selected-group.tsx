@@ -107,7 +107,6 @@ export function SelectedGroupComponent({
                 <SortableItem key={itemId} id={itemId}>
                   <SelectedItemComponent
                     item={item}
-                    index={itemIndex}
                     onRemove={() => {
                       const newItems = group.items.filter(
                         (_, i) => i !== itemIndex,
