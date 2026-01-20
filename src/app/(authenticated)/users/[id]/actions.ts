@@ -3,14 +3,6 @@
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { createClient } from '@/lib/supabase/core/server';
 
-export type PaginatedResult<T> = {
-  data: T[];
-  page: number;
-  pageSize: number;
-  total: number;
-  hasMore: boolean;
-};
-
 /**
  * Get paginated program assignments with search and status filtering
  */
