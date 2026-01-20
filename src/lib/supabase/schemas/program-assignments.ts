@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { programTemplateSchema } from './program-templates';
-import { profileSchema } from './profiles';
 
 export const programAssignmentSchema = z.object({
   id: z.string(),

@@ -11,7 +11,6 @@ import {
 } from '../schemas/program-assignments';
 import { GroupsQuery } from './groups';
 import { ExerciseTemplatesQuery } from './exercise-templates';
-import { profileSchema } from '../schemas/profiles';
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**

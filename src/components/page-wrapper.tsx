@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import BreadcrumbNavigator from './header/breadcrumb-navigator';

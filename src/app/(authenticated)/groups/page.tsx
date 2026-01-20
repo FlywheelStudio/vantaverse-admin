@@ -30,7 +30,6 @@ import type {
   EditableTeamField,
 } from '../../../context/organizations';
 import type { Team } from '@/lib/supabase/schemas/teams';
-import BreadcrumbNavigator from '@/components/header/breadcrumb-navigator';
 
 const contentVariants = {
   hidden: { opacity: 0, y: 20 },

@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBuilder } from '@/context/builder-context';
 import { useProgramAssignment } from '@/hooks/use-program-assignment';
 import { ProgramDetailsSection } from '../program/ui';
