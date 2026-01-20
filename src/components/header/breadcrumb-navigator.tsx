@@ -307,7 +307,7 @@ export default function BreadcrumbNavigator({
                   </Link>
                 ) : (
                   <span
-                    className="text-gray-800 font-medium ml-2"
+                    className="cursor-default text-gray-800 font-medium ml-2"
                     aria-current={isLast ? 'page' : undefined}
                   >
                     {item.label || (segment && <BreadcrumbLabel segment={segment} />)}

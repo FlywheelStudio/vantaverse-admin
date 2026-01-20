@@ -176,6 +176,11 @@ function MembersCell({ org }: { org: Organization }) {
   );
 }
 
+const isTeamsEnabled =
+  process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+
+
+console.log(isTeamsEnabled);
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
@@ -256,15 +261,21 @@ export const columns: ColumnDef<Organization>[] = [
     },
     cell: ({ row }) => <MembersCell org={row.original} />,
   },
-  {
-    accessorKey: 'teams_count',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Teams</span>
-    ),
-    cell: ({ row }) => <TeamsCell organization={row.original} />,
-    enableSorting: false,
-    enableColumnFilter: false,
-  },
+  ...(isTeamsEnabled
+    ? [
+        {
+          accessorKey: 'teams_count',
+          header: () => (
+            <span className="text-sm font-bold text-[#1E3A5F]">Teams</span>
+          ),
+          cell: ({ row }: { row: { original: Organization } }) => (
+            <TeamsCell organization={row.original} />
+          ),
+          enableSorting: false,
+          enableColumnFilter: false,
+        } as ColumnDef<Organization>,
+      ]
+    : []),
   {
     accessorKey: 'created_at',
     header: ({ column }) => {
