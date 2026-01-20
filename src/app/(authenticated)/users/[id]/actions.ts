@@ -41,7 +41,7 @@ export async function deleteProgram(programAssignmentId: string) {
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc('delete_program', {
+    const { error } = await supabase.rpc('delete_program', {
       p_program_assignment_id: programAssignmentId,
     });
 
