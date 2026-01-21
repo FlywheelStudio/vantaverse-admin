@@ -294,7 +294,7 @@ export function useAssignPhysiologist(organizationId: string) {
 
       return result.data;
     },
-    onMutate: async (userId) => {
+    onMutate: async () => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: physiologistKey });
       await queryClient.cancelQueries({ queryKey: organizationsKey });
@@ -304,11 +304,6 @@ export function useAssignPhysiologist(organizationId: string) {
         queryClient.getQueryData(physiologistKey);
       const previousOrganizationsData =
         queryClient.getQueryData<Organization[]>(organizationsKey);
-
-      // Optimistically update physiologist cache
-      // We can't build the full physiologist object here without profile data,
-      // so we'll just invalidate on success
-      // The optimistic update would require profile data which we don't have in this hook
 
       return { previousPhysiologistData, previousOrganizationsData };
     },

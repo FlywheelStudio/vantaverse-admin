@@ -213,11 +213,9 @@ export function useUploadOrganizationPicture() {
 
       return uploadResult.data;
     },
-    onMutate: async ({ organizationId }) => {
-      // Cancel outgoing refetches
+    onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: organizationsKeys.all });
 
-      // Snapshot previous value
       const previousData =
         queryClient.getQueryData<Organization[]>(organizationsKeys.all);
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 export type EditableField = 'name' | 'description';
 export type EditableTeamField = 'name' | 'description';

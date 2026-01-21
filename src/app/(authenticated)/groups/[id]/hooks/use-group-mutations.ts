@@ -26,11 +26,6 @@ export const groupsKeys = {
     [...groupsKeys.all, 'team', 'members', teamId] as const,
 };
 
-interface UpdateOrganizationData {
-  id: string;
-  data: Partial<Pick<Organization, 'name' | 'description'>>;
-}
-
 /**
  * Mutation hook for updating organization (name/description)
  * Includes optimistic updates and error rollback

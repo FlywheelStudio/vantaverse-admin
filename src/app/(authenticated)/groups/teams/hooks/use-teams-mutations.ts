@@ -168,7 +168,7 @@ export function useUpdateTeam() {
       }
       toast.error(error.message || 'Failed to update team');
     },
-    onSuccess: async (_team, { id }, context) => {
+    onSuccess: async (_team, { id }) => {
       // Find organization that contains this team
       const organizations =
         queryClient.getQueryData<Organization[]>(organizationsKeys.all);
