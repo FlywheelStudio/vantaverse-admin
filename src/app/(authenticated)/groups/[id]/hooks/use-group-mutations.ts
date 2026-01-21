@@ -22,6 +22,8 @@ export const groupsKeys = {
     [...groupsKeys.detail(id), 'members'] as const,
   physiologist: (id: string | null | undefined) =>
     [...groupsKeys.detail(id), 'physiologist'] as const,
+  teamMembers: (teamId: string | null | undefined) =>
+    [...groupsKeys.all, 'team', 'members', teamId] as const,
 };
 
 interface UpdateOrganizationData {
