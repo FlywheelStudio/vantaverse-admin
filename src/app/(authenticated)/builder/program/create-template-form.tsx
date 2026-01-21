@@ -21,6 +21,7 @@ import { useProgramAssignments } from '@/hooks/use-program-assignments';
 import Image from 'next/image';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import { useBuilder } from '@/context/builder-context';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface CreateTemplateFormProps {
   onSuccess?: () => void;
@@ -35,7 +36,7 @@ export function CreateTemplateForm({
 }: CreateTemplateFormProps) {
   const queryClient = useQueryClient();
   const { setProgramStartDate } = useBuilder();
-  const { data: assignments } = useProgramAssignments();
+  const { assignments } = useProgramAssignments();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -87,7 +88,7 @@ export function CreateTemplateForm({
         loadedDatesForTemplateIdRef.current !== initialData.id
       ) {
         const assignment = assignments.find(
-          (a) => a.program_template?.id === initialData.id,
+          (a: ProgramAssignmentWithTemplate) => a.program_template?.id === initialData.id,
         );
         if (assignment?.start_date) {
           const startDate = new Date(assignment.start_date);
