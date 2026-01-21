@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/hooks/use-organizations';
 import { useUserProfile } from '@/hooks/use-users';
-import { useProgramAssignment } from '@/hooks/use-program-assignment';
+import { useProgramAssignment } from '@/hooks/use-program-assignments';
 
 type BreadcrumbItem = {
   label: string;

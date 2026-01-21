@@ -338,7 +338,7 @@ export async function createParallelQueries<T extends QuerySchema>(
 
   for (const { key, result, required, defaultValue } of results) {
     if (required && !result.success) {
-      if(process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === 'development') {
         console.error('Failed to execute required query:', key, result);
       }
       resolveActionResult(result);

@@ -23,6 +23,20 @@ export async function getProgramAssignments() {
 }
 
 /**
+ * Get paginated program assignments with status='template' (joined with program_template)
+ * Supports server-side filtering for search and weeks
+ */
+export async function getProgramAssignmentsPaginated(
+  page: number = 1,
+  pageSize: number = 16,
+  search?: string,
+  weeks?: number,
+) {
+  const query = new ProgramAssignmentsQuery();
+  return query.getTemplatesPaginated(page, pageSize, search, weeks);
+}
+
+/**
  * Get a single program assignment by ID (joined with program_template)
  */
 export async function getProgramAssignmentById(id: string) {

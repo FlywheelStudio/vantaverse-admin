@@ -11,8 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useExercisesInfinite } from '@/hooks/use-exercises-infinite';
-import { useExerciseTemplatesInfinite } from '@/hooks/use-exercise-templates-infinite';
+import {
+  useExercisesInfinite,
+  useExerciseTemplatesInfinite,
+} from '@/hooks/use-exercises';
 import { useDebounce } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';

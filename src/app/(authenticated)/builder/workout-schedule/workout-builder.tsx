@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useBuilder } from '@/context/builder-context';
-import { useProgramAssignment } from '@/hooks/use-program-assignment';
+import { useProgramAssignment } from '@/hooks/use-program-assignments';
 import { ProgramDetailsSection } from '../program/ui';
 import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';

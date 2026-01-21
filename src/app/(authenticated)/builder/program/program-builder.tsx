@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProgramAssignments } from '@/hooks/use-program-assignments';
+import {
+  useProgramAssignments,
+  useDeleteProgramAssignment,
+  programAssignmentsInfiniteQueryOptions,
+  programAssignmentsKeys,
+} from '@/hooks/use-program-assignments';
 import { ProgramTemplateCard } from './program-template-card';
 import { CreateTemplateForm } from './create-template-form';
 import { Card } from '@/components/ui/card';
@@ -13,8 +18,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { deleteProgramAssignment } from '../actions';
-import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 const contentVariants = {
@@ -69,87 +72,53 @@ interface ProgramBuilderProps {
 }
 
 export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
-  const { data: assignments, isLoading } = useProgramAssignments();
   const queryClient = useQueryClient();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [searchValue, setSearchValue] = useState('');
   const [weeksFilter, setWeeksFilter] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const pageSize = 16;
 
-  // Reset to page 1 when search or filter changes
-  const handleSearchChange = useCallback(() => {
-    setCurrentPage(1);
-  }, []);
+  // Debounce search and weeks filter
+  const debouncedSearch = useDebounce(searchValue, 300);
+  const debouncedWeeksFilter = useDebounce(weeksFilter, 300);
 
-  const handleFilterChange = useCallback(() => {
-    setCurrentPage(1);
-  }, []);
+  // Parse weeks filter to number
+  const weeksFilterNumber =
+    debouncedWeeksFilter && !Number.isNaN(Number.parseInt(debouncedWeeksFilter, 10))
+      ? Number.parseInt(debouncedWeeksFilter, 10)
+      : undefined;
 
-  const debouncedSearch = useDebounce(searchValue, 300, handleSearchChange);
-  const debouncedWeeksFilter = useDebounce(
-    weeksFilter,
-    300,
-    handleFilterChange,
-  );
+  // Use infinite query with server-side filtering
+  const {
+    assignments,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useProgramAssignments(debouncedSearch, weeksFilterNumber, pageSize);
+
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const loadedOnceRef = useRef(false);
-
-  // Filter assignments by search term and filters
-  const filteredAssignments = assignments?.filter((assignment) => {
-    const template = assignment.program_template;
-    if (!template) return false;
-
-    // Search filter (name, description, and goals)
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      const matchesName = template.name.toLowerCase().includes(searchLower);
-      const matchesDescription = template.description
-        ?.toLowerCase()
-        .includes(searchLower);
-      const matchesGoals = template.goals?.toLowerCase().includes(searchLower);
-      if (!matchesName && !matchesDescription && !matchesGoals) return false;
-    }
-
-    // Weeks filter
-    if (debouncedWeeksFilter) {
-      const weeksValue = Number.parseInt(debouncedWeeksFilter, 10);
-      if (!Number.isNaN(weeksValue) && template.weeks !== weeksValue) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // Paginate filtered assignments
-  const { paginatedAssignments, totalPages, totalCount } = useMemo(() => {
-    const allFiltered = filteredAssignments || [];
-    const total = allFiltered.length;
-    const pages = Math.ceil(total / pageSize);
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginated = allFiltered.slice(startIndex, endIndex);
-    return {
-      paginatedAssignments: paginated,
-      totalPages: pages,
-      totalCount: total,
-    };
-  }, [filteredAssignments, currentPage, pageSize]);
-
-  const displayAssignments = paginatedAssignments;
+  const prefetchTriggeredRef = useRef(false);
 
   // Track if we've loaded data at least once
   useEffect(() => {
-    if (!isLoading && displayAssignments.length > 0 && !loadedOnceRef.current) {
+    if (!isLoading && assignments.length > 0 && !loadedOnceRef.current) {
       loadedOnceRef.current = true;
       setTimeout(() => {
         setHasLoadedOnce(true);
       }, 0);
     }
-  }, [isLoading, displayAssignments.length]);
+  }, [isLoading, assignments.length]);
+
+  // Delete mutation hook
+  const deleteMutation = useDeleteProgramAssignment(
+    debouncedSearch,
+    weeksFilterNumber,
+    pageSize,
+  );
 
   const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
     if (assignment.id) {
@@ -166,15 +135,59 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
     setShowCreateForm(false);
   };
 
-  const handleDelete = async (assignmentId: string) => {
-    const result = await deleteProgramAssignment(assignmentId);
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['program-assignments'] });
-      toast.success('Program deleted successfully');
-    } else {
-      toast.error(result.error || 'Failed to delete program');
-    }
-  };
+  const handleDelete = useCallback(
+    (assignmentId: string) => {
+      deleteMutation.mutate(assignmentId);
+    },
+    [deleteMutation],
+  );
+
+  // Reset prefetch trigger when filters change
+  useEffect(() => {
+    prefetchTriggeredRef.current = false;
+  }, [debouncedSearch, weeksFilterNumber]);
+
+  // Infinite scroll with prefetching using scroll position
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const queryOptions = programAssignmentsInfiniteQueryOptions(
+      debouncedSearch,
+      weeksFilterNumber,
+      pageSize,
+    );
+
+    const handleScroll = () => {
+      const scrollProgress =
+        (window.scrollY + window.innerHeight) /
+        document.documentElement.scrollHeight;
+
+      // Prefetch at 80% scroll
+      if (scrollProgress > 0.8 && !prefetchTriggeredRef.current) {
+        prefetchTriggeredRef.current = true;
+        queryClient.prefetchInfiniteQuery(queryOptions);
+      }
+
+      // Actually fetch at 90% scroll
+      if (scrollProgress > 0.9) {
+        fetchNextPage().then(() => {
+          // Reset prefetch trigger after fetching so we can prefetch next page
+          prefetchTriggeredRef.current = false;
+        });
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    queryClient,
+    debouncedSearch,
+    weeksFilterNumber,
+    pageSize,
+  ]);
 
   return (
     <>
@@ -232,7 +245,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
                   animate="visible"
                   exit="exit"
                 >
-                  {displayAssignments.length === 0 ? (
+                  {assignments.length === 0 && !isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <p className="text-gray-500">
                         {debouncedSearch || debouncedWeeksFilter
@@ -249,7 +262,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
                         animate="visible"
                       >
                         <AnimatePresence mode="popLayout">
-                          {displayAssignments.map((assignment) => (
+                          {assignments.map((assignment) => (
                             <motion.div
                               key={assignment.id}
                               variants={cardVariants}
@@ -267,43 +280,10 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
                         </AnimatePresence>
                       </motion.div>
 
-                      {/* Pagination Controls */}
-                      {totalPages > 1 && (
-                        <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-                          <p className="text-sm text-gray-600">
-                            Showing {(currentPage - 1) * pageSize + 1}-
-                            {Math.min(currentPage * pageSize, totalCount)} of{' '}
-                            {totalCount} programs
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((p) => Math.max(1, p - 1))
-                              }
-                              disabled={currentPage === 1}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
-                            <span className="px-3 text-sm text-gray-700">
-                              Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((p) =>
-                                  Math.min(totalPages, p + 1),
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                            >
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
+                      {/* Loading indicator */}
+                      {isFetchingNextPage && (
+                        <div className="flex items-center justify-center py-8">
+                          <p className="text-gray-500">Loading more programs...</p>
                         </div>
                       )}
                     </>
