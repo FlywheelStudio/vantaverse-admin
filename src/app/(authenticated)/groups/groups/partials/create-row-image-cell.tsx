@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { useOrganizationsTable } from '../../../context/organizations';
+import { useOrganizationsTable } from '@/context/organizations';
 
 export function CreateRowImageCell() {
   const { newOrgData, setNewOrgData, uploadingImage, creatingRow } =

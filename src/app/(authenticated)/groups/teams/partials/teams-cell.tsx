@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useOrganizationsTable } from '../../../context/organizations';
+import { useOrganizationsTable } from '@/context/organizations';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 interface TeamsCellProps {

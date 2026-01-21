@@ -7,9 +7,9 @@ import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
-import { useOrganizationsTable } from '../../../context/organizations';
+import { useOrganizationsTable } from '@/context/organizations';
 import { AvatarGroup } from '@/components/ui/avatar-group';
-import { TeamsCell } from './teams-cell';
+import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
 
 function EditableNameCell({ org }: { org: Organization }) {
@@ -179,8 +179,6 @@ function MembersCell({ org }: { org: Organization }) {
 const isTeamsEnabled =
   process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
 
-
-console.log(isTeamsEnabled);
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',

@@ -30,7 +30,6 @@ interface NewTeamData {
 }
 
 interface OrganizationsTableContextValue {
-  onEdit: (org: Organization) => void;
   handleCreate: () => void;
   handleSave: (
     id: string,

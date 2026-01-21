@@ -7,7 +7,7 @@ import {
 } from '@/app/(authenticated)/groups/actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
-export function useOrganizations() {
+export function useOrganizations(initialData?: Organization[]) {
   return useQuery<Organization[], Error>({
     queryKey: ['organizations'],
     queryFn: async () => {
@@ -19,6 +19,7 @@ export function useOrganizations() {
 
       return result.data;
     },
+    ...(initialData !== undefined && { initialData }),
   });
 }
 
