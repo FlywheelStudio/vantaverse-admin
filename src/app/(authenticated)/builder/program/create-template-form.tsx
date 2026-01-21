@@ -53,6 +53,12 @@ export function CreateTemplateForm({
     weeks: number;
   } | null>(null);
   const loadedDatesForTemplateIdRef = useRef<string | null>(null);
+  const assignmentsRef = useRef(assignments);
+
+  // Keep ref in sync with assignments
+  useEffect(() => {
+    assignmentsRef.current = assignments;
+  }, [assignments]);
 
   // Pre-fill form when initialData changes
   useEffect(() => {
@@ -83,11 +89,13 @@ export function CreateTemplateForm({
       }
 
       // Load assignment dates if available (only once per template)
+      const currentAssignments = assignmentsRef.current;
       if (
-        assignments &&
+        currentAssignments &&
+        currentAssignments.length > 0 &&
         loadedDatesForTemplateIdRef.current !== initialData.id
       ) {
-        const assignment = assignments.find(
+        const assignment = currentAssignments.find(
           (a: ProgramAssignmentWithTemplate) => a.program_template?.id === initialData.id,
         );
         if (assignment?.start_date) {
@@ -105,7 +113,7 @@ export function CreateTemplateForm({
         }
       }
     }
-  }, [initialData, setProgramStartDate, assignments]);
+  }, [initialData, setProgramStartDate]);
 
   // Format date to YYYY-MM-DD in UTC to match Supabase timezone
   // Creates a UTC date from local date components to ensure the date string matches what the user sees

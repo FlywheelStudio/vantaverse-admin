@@ -1,6 +1,6 @@
 'use client';
 
-import { CollapsibleSection } from '../collapsible-section';
+import { CollapsibleSection } from '@/components/common/collapsible-section';
 import { CreateTemplateForm } from './create-template-form';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 

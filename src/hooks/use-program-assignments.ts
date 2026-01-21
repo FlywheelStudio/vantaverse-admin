@@ -1,7 +1,7 @@
 'use client';
 
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { infiniteQueryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { getProgramAssignmentsPaginated, getProgramAssignmentById, deleteProgramAssignment } from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
@@ -57,6 +57,33 @@ export function programAssignmentsInfiniteQueryOptions(
   });
 }
 
+/**
+ * Query options factory for program assignment detail
+ * Uses queryOptions helper for type safety and reusability
+ */
+export function programAssignmentQueryOptions(
+  id: string | null | undefined,
+  initialData?: ProgramAssignmentWithTemplate | null,
+) {
+  return queryOptions({
+    queryKey: programAssignmentsKeys.detail(id),
+    queryFn: async () => {
+      if (!id) return null;
+      const result = await getProgramAssignmentById(id);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
+    enabled: !!id,
+    staleTime: 60 * 1000, // 60 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...(initialData !== undefined && initialData !== null && { initialData }),
+  });
+}
+
 export function useProgramAssignments(
   search?: string,
   weeks?: number,
@@ -80,21 +107,11 @@ export function useProgramAssignments(
   };
 }
 
-export function useProgramAssignment(id: string | null | undefined) {
-  return useQuery<ProgramAssignmentWithTemplate | null, Error>({
-    queryKey: programAssignmentsKeys.detail(id),
-    queryFn: async () => {
-      if (!id) return null;
-      const result = await getProgramAssignmentById(id);
-
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      return result.data;
-    },
-    enabled: !!id,
-  });
+export function useProgramAssignment(
+  id: string | null | undefined,
+  initialData?: ProgramAssignmentWithTemplate | null,
+) {
+  return useQuery(programAssignmentQueryOptions(id, initialData));
 }
 
 export function useDeleteProgramAssignment(

@@ -78,7 +78,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
   const [searchValue, setSearchValue] = useState('');
   const [weeksFilter, setWeeksFilter] = useState<string>('');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const pageSize = 16;
+  const pageSize = 21;
 
   // Debounce search and weeks filter
   const debouncedSearch = useDebounce(searchValue, 300);
