@@ -1,16 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
 import { Button } from '@/components/ui/button';
 import { useBuilder } from '@/context/builder-context';
 import {
-  upsertWorkoutSchedule,
-  updateProgramSchedule,
-  upsertGroup,
-} from '@/app/(authenticated)/builder/actions';
-import { convertSelectedItemsToDatabaseSchedule } from './utils';
+  useUpsertWorkoutSchedule,
+  useUpdateProgramSchedule,
+} from '@/hooks/use-workout-schedule-mutations';
 import toast from 'react-hot-toast';
 
 interface BuildWorkoutSectionProps {
@@ -21,9 +18,23 @@ export function BuildWorkoutSection({
   initialWeeks,
 }: BuildWorkoutSectionProps) {
   const { schedule, programAssignmentId } = useBuilder();
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
+  // Chain mutations: first upsert schedule, then update program assignment
+  const updateProgramScheduleMutation = useUpdateProgramSchedule();
+
+  const upsertScheduleMutation = useUpsertWorkoutSchedule({
+    onSuccess: (data) => {
+      // After schedule is saved, update program assignment
+      if (programAssignmentId) {
+        updateProgramScheduleMutation.mutate({
+          assignmentId: programAssignmentId,
+          workoutScheduleId: data.id,
+        });
+      }
+    },
+  });
+
+  const handleSave = () => {
     if (!programAssignmentId) {
       toast.error('No program assignment found');
       return;
@@ -39,68 +50,15 @@ export function BuildWorkoutSection({
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      // Create updated schedule array
-      const updatedSchedule = [...schedule];
-      if (updatedSchedule.length === 0) {
-        updatedSchedule.push(Array.from({ length: 7 }, () => []));
-      }
-      // Ensure each week has all 7 days
-      for (let w = 0; w < updatedSchedule.length; w++) {
-        while (updatedSchedule[w].length < 7) {
-          updatedSchedule[w].push([]);
-        }
-      }
-
-      // Convert to database format (upserts groups without IDs)
-      const conversionResult = await convertSelectedItemsToDatabaseSchedule(
-        updatedSchedule,
-        upsertGroup,
-      );
-
-      if (!conversionResult.success) {
-        console.error('Error converting schedule:', conversionResult.error);
-        toast.error(conversionResult.error || 'Failed to convert schedule');
-        setIsSaving(false);
-        return;
-      }
-
-      // Save to database
-      const result = await upsertWorkoutSchedule(conversionResult.data);
-
-      if (!result.success) {
-        console.error('Error saving workout schedule:', result.error);
-        toast.error(result.error || 'Failed to save workout schedule');
-        setIsSaving(false);
-        return;
-      }
-
-      // Always update program assignment workout_schedule_id
-      const updateResult = await updateProgramSchedule(
-        programAssignmentId,
-        result.data.id,
-      );
-
-      if (!updateResult.success) {
-        console.error('Error updating program assignment:', updateResult.error);
-        toast.error(
-          updateResult.error || 'Failed to update program assignment',
-        );
-        setIsSaving(false);
-        return;
-      }
-
-      toast.success('Workout schedule saved successfully');
-    } catch (error) {
-      console.error('Error saving workout schedule:', error);
-      toast.error('An unexpected error occurred');
-    } finally {
-      setIsSaving(false);
-    }
+    // Trigger the mutation chain
+    upsertScheduleMutation.mutate({
+      schedule,
+      assignmentId: programAssignmentId,
+    });
   };
 
+  const isSaving =
+    upsertScheduleMutation.isPending || updateProgramScheduleMutation.isPending;
   const isDisabled = !programAssignmentId || isSaving;
 
   return (
@@ -119,7 +77,7 @@ export function BuildWorkoutSection({
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
       </div>
-      <div className="p-4 border-t border-gray-200">
+      <div className={`p-4 border-t border-gray-200 ${isDisabled ? 'disabled-div' : ''}`}>
         <div className="space-y-6">
           <WeekNavigation initialWeeks={initialWeeks} />
           <DayBoxesGrid />

@@ -11,17 +11,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useExercisesInfinite } from '@/hooks/use-exercises-infinite';
-import { useExerciseTemplatesInfinite } from '@/hooks/use-exercise-templates-infinite';
+import {
+  useExercisesInfinite,
+  useExerciseTemplatesInfinite,
+} from '@/hooks/use-exercises';
 import { useDebounce } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
-import { ExerciseTabSwitcher } from './exercise-tab-switcher';
-import { ExerciseSearchControls } from './exercise-search-controls';
-import { ExerciseLibraryCard } from './exercise-library-card';
-import { ExerciseTemplateCard } from './exercise-template-card';
+import { ExerciseTabSwitcher } from './partials/exercise-tab-switcher';
+import { ExerciseSearchControls } from './partials/exercise-search-controls';
+import { ExerciseLibraryCard } from './partials/exercise-library-card';
+import { ExerciseTemplateCard } from './partials/exercise-template-card';
 import { SelectedItemsList } from './selected-items-list';
 
 type TabType = 'library' | 'templates';
@@ -226,6 +228,7 @@ export function ExerciseBuilderModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] h-[85vh] max-w-[90vw] flex flex-col p-0">
+        <div className="flex flex-col flex-1 min-h-0">
         <DialogHeader className="p-6 border-b">
           <DialogTitle>{getHeaderTitle()}</DialogTitle>
           <DialogDescription>
@@ -392,6 +395,7 @@ export function ExerciseBuilderModal({
             Done
           </Button>
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

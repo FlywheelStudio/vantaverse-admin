@@ -1,17 +1,20 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useTemplateForm } from './hooks/use-template-form';
 import { useModalDrag } from './hooks/use-modal-drag';
-import { TemplateConfigHeader } from './components/template-config-header';
-import { SetsInput } from './components/sets-input';
-import { TemplateConfigTabs } from './components/template-config-tabs';
-import { TemplateConfigForm } from './components/template-config-form';
-import { TemplateConfigActions } from './components/template-config-actions';
+import { TemplateConfigHeader } from './partials/header';
+import { SetsInput } from './partials/sets-input';
+import { TemplateConfigTabs } from './partials/tabs';
+import { TemplateConfigForm } from './partials/form';
+import { TemplateConfigActions } from './partials/actions';
 import type { TemplateConfigProps } from './types';
+import type { TemplateFormData } from './schemas';
 
 export const TemplateConfigOffsets = {
   x: 200,
-  y: 80,
+  y: 320,
 };
 
 export const TemplateConfigDefaultValues = {
@@ -25,26 +28,45 @@ export function TemplateConfig({
   item,
   position,
   onClose,
-  onSave,
   copiedData,
   onCopy,
+  onUpdate,
 }: TemplateConfigProps) {
   const { modalRef, modalPosition, handleMouseDown } = useModalDrag(position);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
+    form,
     formData,
-    setFormData,
     activeTab,
     setActiveTab,
     currentSetIndex,
     setCurrentSetIndex,
     handleSetsChange,
     setCurrentValue,
-    handleBlur,
     handleCopy,
     handlePaste,
-    handleSave,
-  } = useTemplateForm(item, onSave, onClose, copiedData);
+    onSubmit,
+    isSubmitting,
+  } = useTemplateForm(item, onClose, copiedData, onUpdate);
+
+  // Click outside detection - save on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node) &&
+        !isSubmitting
+      ) {
+        form.handleSubmit(onSubmit)();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [modalRef, form, onSubmit, isSubmitting]);
 
   if (!item) return null;
 
@@ -54,8 +76,12 @@ export function TemplateConfig({
       : item.data.exercise_name || 'Unnamed Exercise';
 
   return (
-    <div
+    <motion.div
       ref={modalRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="bg-white rounded-lg shadow-2xl border border-gray-300"
       style={{
         position: 'fixed',
@@ -72,31 +98,38 @@ export function TemplateConfig({
         onMouseDown={handleMouseDown}
       />
 
-      <SetsInput sets={formData.sets} onChange={handleSetsChange} />
+      <form ref={formRef} onSubmit={form.handleSubmit(onSubmit)}>
+        <SetsInput
+          sets={formData.sets || TemplateConfigDefaultValues.sets}
+          onChange={handleSetsChange}
+          disabled={isSubmitting}
+        />
 
-      <TemplateConfigTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        currentSetIndex={currentSetIndex}
-        sets={formData.sets}
-        onSetIndexChange={setCurrentSetIndex}
-      />
+        <TemplateConfigTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          currentSetIndex={currentSetIndex}
+          sets={formData.sets || TemplateConfigDefaultValues.sets}
+          onSetIndexChange={setCurrentSetIndex}
+        />
 
-      <TemplateConfigForm
-        formData={formData}
-        activeTab={activeTab}
-        currentSetIndex={currentSetIndex}
-        setFormData={setFormData}
-        onValueChange={setCurrentValue}
-        onBlur={() => handleBlur(modalRef)}
-      />
+        <TemplateConfigForm
+          form={form}
+          formData={formData as TemplateFormData}
+          activeTab={activeTab}
+          currentSetIndex={currentSetIndex}
+          setCurrentValue={setCurrentValue}
+          disabled={isSubmitting}
+        />
 
-      <TemplateConfigActions
-        onCopy={() => handleCopy(onCopy)}
-        onPaste={handlePaste}
-        canPaste={!!copiedData}
-        onSave={handleSave}
-      />
-    </div>
+        <TemplateConfigActions
+          onCopy={() => handleCopy(onCopy)}
+          onPaste={handlePaste}
+          canPaste={!!copiedData}
+          onSubmit={form.handleSubmit(onSubmit)}
+          isSubmitting={isSubmitting}
+        />
+      </form>
+    </motion.div>
   );
 }

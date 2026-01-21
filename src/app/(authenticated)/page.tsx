@@ -1,12 +1,9 @@
-'use client';
-
-import { useProfile } from '@/hooks/use-profile';
+import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { PageWrapper } from '@/components/page-wrapper';
 
-export default function HomePage() {
-  const { data: profile } = useProfile();
-
-  const firstName = profile?.first_name;
+export default async function HomePage() {
+  const result = await getAuthProfile();
+  const firstName = result.success ? result.data?.first_name : undefined;
 
   return (
     <PageWrapper

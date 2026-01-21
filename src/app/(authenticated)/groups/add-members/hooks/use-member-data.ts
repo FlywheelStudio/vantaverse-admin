@@ -6,6 +6,7 @@ import {
   getCurrentPhysiologist,
 } from '../../actions';
 import { getTeamMemberUserIds } from '../../teams-actions';
+import { groupsKeys } from '../../[id]/hooks/use-group-mutations';
 
 export function useMemberData(
   open: boolean,
@@ -20,35 +21,51 @@ export function useMemberData(
   });
 
   const { data: currentMembersData, isLoading: membersLoading } = useQuery({
-    queryKey: [type === 'organization' ? 'org-members' : 'team-members', id],
-    queryFn: () =>
+    queryKey:
       type === 'organization'
-        ? getOrganizationMemberUserIds(id)
-        : getTeamMemberUserIds(id),
+        ? groupsKeys.members(id)
+        : groupsKeys.teamMembers(id),
+    queryFn: async () => {
+      const result =
+        type === 'organization'
+          ? await getOrganizationMemberUserIds(id)
+          : await getTeamMemberUserIds(id);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
     enabled: open,
   });
 
   // Get current physiologist (only for organizations)
   const orgIdForPhysiologist = type === 'organization' ? id : organizationId;
   const { data: currentPhysiologistData } = useQuery({
-    queryKey: ['current-physiologist', orgIdForPhysiologist],
-    queryFn: () => getCurrentPhysiologist(orgIdForPhysiologist!),
+    queryKey: groupsKeys.physiologist(orgIdForPhysiologist),
+    queryFn: async () => {
+      const result = await getCurrentPhysiologist(orgIdForPhysiologist!);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
     enabled: open && !!orgIdForPhysiologist && type === 'organization',
   });
 
   const initialMemberIds = useMemo(() => {
-    if (currentMembersData?.success && currentMembersData.data) {
-      return new Set(currentMembersData.data);
+    if (currentMembersData) {
+      return new Set(currentMembersData);
     }
     return new Set<string>();
   }, [currentMembersData]);
 
   const initialPhysiologistId = useMemo(() => {
-    if (
-      currentPhysiologistData?.success &&
-      currentPhysiologistData.data?.userId
-    ) {
-      return currentPhysiologistData.data.userId;
+    if (currentPhysiologistData?.userId) {
+      return currentPhysiologistData.userId;
     }
     return null;
   }, [currentPhysiologistData]);
@@ -59,8 +76,6 @@ export function useMemberData(
     membersLoading,
     initialMemberIds,
     initialPhysiologistId,
-    currentPhysiologist: currentPhysiologistData?.success
-      ? currentPhysiologistData.data
-      : null,
+    currentPhysiologist: currentPhysiologistData || null,
   };
 }

@@ -9,10 +9,13 @@ import React, {
 } from 'react';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import {
-  getWorkoutScheduleData,
   convertScheduleToSelectedItems,
 } from '@/app/(authenticated)/builder/actions';
-import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import {
+  mergeScheduleWithOverride,
+  type DatabaseSchedule,
+} from '@/app/(authenticated)/builder/workout-schedule/utils';
+import { useWorkoutSchedule, type WorkoutScheduleData } from '@/hooks/use-workout-schedule';
 
 interface BuilderContextValue {
   selectedAssignmentId: string | null;
@@ -57,10 +60,12 @@ export function useBuilder() {
 
 interface BuilderContextProviderProps {
   children: React.ReactNode;
+  initialWorkoutSchedule?: WorkoutScheduleData | null;
 }
 
 export function BuilderContextProvider({
   children,
+  initialWorkoutSchedule,
 }: BuilderContextProviderProps) {
   const [selectedAssignmentId, setSelectedAssignmentIdState] = useState<
     string | null
@@ -123,9 +128,13 @@ export function BuilderContextProvider({
 
   // Initialize as hydrated if on client, false on server
   const [isHydrated] = useState(() => typeof window !== 'undefined');
-  const isLoadingScheduleRef = React.useRef(false);
-  const hasLoadedScheduleRef = React.useRef(false);
-  const currentLoadingAssignmentIdRef = React.useRef<string | null>(null);
+  const hasProcessedScheduleRef = React.useRef<string | null>(null);
+
+  // Use React Query hook for workout schedule data
+  const { data: workoutScheduleData } = useWorkoutSchedule(
+    programAssignmentId,
+    initialWorkoutSchedule || undefined,
+  );
 
   // Set program assignment ID directly when selected assignment ID changes
   useEffect(() => {
@@ -137,10 +146,8 @@ export function BuilderContextProvider({
           PROGRAM_ASSIGNMENT_STORAGE_KEY,
           selectedAssignmentId,
         );
-        // Reset schedule loading refs when assignment changes
-        isLoadingScheduleRef.current = false;
-        hasLoadedScheduleRef.current = false;
-        currentLoadingAssignmentIdRef.current = null;
+        // Reset schedule processing ref when assignment changes
+        hasProcessedScheduleRef.current = null;
         return selectedAssignmentId;
       });
     } else {
@@ -149,132 +156,77 @@ export function BuilderContextProvider({
       }
       setProgramAssignmentIdState((prev) => {
         if (prev === null) return prev;
-        isLoadingScheduleRef.current = false;
-        hasLoadedScheduleRef.current = false;
-        currentLoadingAssignmentIdRef.current = null;
+        hasProcessedScheduleRef.current = null;
         return null;
       });
     }
   }, [selectedAssignmentId]);
 
-  // Load schedule from database on page load if programAssignmentId exists
+  // Process schedule data when it loads from React Query
   useEffect(() => {
     if (
       !programAssignmentId ||
       !isHydrated ||
-      isLoadingScheduleRef.current ||
       typeof window === 'undefined' ||
-      hasLoadedScheduleRef.current ||
-      currentLoadingAssignmentIdRef.current === programAssignmentId
+      hasProcessedScheduleRef.current === programAssignmentId ||
+      !workoutScheduleData
     ) {
       return;
     }
 
-    // Always load from database when programAssignmentId exists
-    isLoadingScheduleRef.current = true;
-    currentLoadingAssignmentIdRef.current = programAssignmentId;
+    hasProcessedScheduleRef.current = programAssignmentId;
 
-    getWorkoutScheduleData(programAssignmentId)
+    const { schedule: dbSchedule, patientOverride } = workoutScheduleData;
+
+    // Handle null schedule - mark as processed even if empty
+    if (!dbSchedule && !patientOverride) {
+      return;
+    }
+
+    // Merge schedule with patient override
+    const mergedSchedule = mergeScheduleWithOverride(
+      (dbSchedule as DatabaseSchedule) || null,
+      (patientOverride as DatabaseSchedule) || null,
+    );
+
+    // If merged schedule is empty, return early
+    if (!mergedSchedule || mergedSchedule.length === 0) {
+      return;
+    }
+
+    // Convert to SelectedItem format using server action
+    convertScheduleToSelectedItems(mergedSchedule)
       .then((result) => {
-        // Check if assignment ID changed while loading
-        if (currentLoadingAssignmentIdRef.current !== programAssignmentId) {
-          isLoadingScheduleRef.current = false;
-          hasLoadedScheduleRef.current = false;
-          currentLoadingAssignmentIdRef.current = null;
+        // Check again if assignment ID changed during conversion
+        if (hasProcessedScheduleRef.current !== programAssignmentId) {
           return;
         }
 
         if (!result.success) {
-          console.error('Failed to load workout schedule:', result.error);
-          isLoadingScheduleRef.current = false;
-          hasLoadedScheduleRef.current = true;
-          currentLoadingAssignmentIdRef.current = null;
+          console.error('Failed to convert schedule:', result.error);
           return;
         }
 
-        const { schedule: dbSchedule, patientOverride } = result.data;
-
-        // Handle null schedule - mark as loaded even if empty
-        if (!dbSchedule && !patientOverride) {
-          isLoadingScheduleRef.current = false;
-          hasLoadedScheduleRef.current = true;
-          currentLoadingAssignmentIdRef.current = null;
-          return;
+        const convertedSchedule = result.data as SelectedItem[][][];
+        setScheduleState(convertedSchedule);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(
+            SCHEDULE_STORAGE_KEY,
+            JSON.stringify(convertedSchedule),
+          );
         }
-
-        // Type assertion for schedule data
-        type DatabaseScheduleDay = {
-          exercises: Array<{ id: string; type: 'exercise_template' | 'group' }>;
-        };
-        type DatabaseSchedule = DatabaseScheduleDay[][];
-
-        // Merge schedule with patient override
-        const mergedSchedule = mergeScheduleWithOverride(
-          (dbSchedule as DatabaseSchedule) || null,
-          (patientOverride as DatabaseSchedule) || null,
-        );
-
-        // If merged schedule is empty, mark as loaded and return
-        if (!mergedSchedule || mergedSchedule.length === 0) {
-          isLoadingScheduleRef.current = false;
-          hasLoadedScheduleRef.current = true;
-          currentLoadingAssignmentIdRef.current = null;
-          return;
-        }
-
-        // Convert to SelectedItem format using server action
-        convertScheduleToSelectedItems(mergedSchedule)
-          .then((result) => {
-            // Check again if assignment ID changed during conversion
-            if (currentLoadingAssignmentIdRef.current !== programAssignmentId) {
-              isLoadingScheduleRef.current = false;
-              hasLoadedScheduleRef.current = false;
-              currentLoadingAssignmentIdRef.current = null;
-              return;
-            }
-
-            if (!result.success) {
-              console.error('Failed to convert schedule:', result.error);
-              isLoadingScheduleRef.current = false;
-              hasLoadedScheduleRef.current = true;
-              currentLoadingAssignmentIdRef.current = null;
-              return;
-            }
-
-            const convertedSchedule = result.data as SelectedItem[][][];
-            setScheduleState(convertedSchedule);
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem(
-                SCHEDULE_STORAGE_KEY,
-                JSON.stringify(convertedSchedule),
-              );
-            }
-            isLoadingScheduleRef.current = false;
-            hasLoadedScheduleRef.current = true;
-            currentLoadingAssignmentIdRef.current = null;
-          })
-          .catch((error) => {
-            console.error('Failed to convert schedule:', error);
-            isLoadingScheduleRef.current = false;
-            hasLoadedScheduleRef.current = true;
-            currentLoadingAssignmentIdRef.current = null;
-          });
       })
       .catch((error) => {
-        console.error('Failed to load workout schedule:', error);
-        isLoadingScheduleRef.current = false;
-        hasLoadedScheduleRef.current = true;
-        currentLoadingAssignmentIdRef.current = null;
+        console.error('Failed to convert schedule:', error);
       });
-  }, [programAssignmentId, isHydrated]);
+  }, [programAssignmentId, isHydrated, workoutScheduleData]);
 
   const setSelectedAssignmentId = useCallback((id: string | null) => {
     setSelectedAssignmentIdState(id);
     if (typeof window !== 'undefined') {
       if (id) {
-        // Reset schedule loading refs when assignment changes
-        isLoadingScheduleRef.current = false;
-        hasLoadedScheduleRef.current = false;
+        // Reset schedule processing ref when assignment changes
+        hasProcessedScheduleRef.current = null;
       } else {
         sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
         sessionStorage.removeItem(CURRENT_WEEK_STORAGE_KEY);
@@ -286,9 +238,7 @@ export function BuilderContextProvider({
         setProgramStartDateState(null);
         setCopiedWeekIndex(null);
         setCopiedWeekData(null);
-        isLoadingScheduleRef.current = false;
-        hasLoadedScheduleRef.current = false;
-        currentLoadingAssignmentIdRef.current = null;
+        hasProcessedScheduleRef.current = null;
       }
     }
   }, []);

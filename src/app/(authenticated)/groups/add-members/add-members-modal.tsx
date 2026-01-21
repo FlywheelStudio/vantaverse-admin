@@ -102,7 +102,7 @@ export function AddMembersModal({
     initialPhysiologistId,
   });
 
-  const { handleSave, isSaving } = useSaveMembers({
+  const { handleSave, isPending } = useSaveMembers({
     type,
     id,
     name,
@@ -180,7 +180,7 @@ export function AddMembersModal({
 
   const canSave =
     hasChanges(selectedRole) &&
-    !isSaving &&
+    !isPending &&
     (selectedRole === 'patient'
       ? selectedMemberIds.size > 0
       : selectedPhysiologistId !== null);
@@ -395,19 +395,19 @@ export function AddMembersModal({
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={isSaving}
+              disabled={isPending}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!canSave || isSaving}
+              disabled={!canSave || isPending}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              {(isSaving || membersLoading) && (
+              {(isPending || membersLoading) && (
                 <Loader className="h-4 w-4 animate-spin" />
               )}
-              {!isSaving &&
+              {!isPending &&
                 !membersLoading &&
                 (selectedRole === 'patient'
                   ? countChange === 0

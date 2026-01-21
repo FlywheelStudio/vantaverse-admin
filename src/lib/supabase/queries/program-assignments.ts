@@ -71,6 +71,229 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Create an empty paginated result
+   * @param page - Page number
+   * @param pageSize - Page size
+   * @returns Empty paginated result structure
+   */
+  private createEmptyPaginatedResult(
+    page: number,
+    pageSize: number,
+  ): SupabaseSuccess<{
+    data: ProgramAssignmentWithTemplate[];
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  }> {
+    return {
+      success: true,
+      data: {
+        data: [],
+        page,
+        pageSize,
+        total: 0,
+        hasMore: false,
+      },
+    };
+  }
+
+  /**
+   * Filter template IDs by weeks
+   * @param weeks - Number of weeks to filter by
+   * @returns Template IDs matching the weeks filter, or error
+   */
+  private async filterByWeeks(
+    weeks: number,
+  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+    const { data: templates, error: templatesError } = await supabase
+      .from('program_template')
+      .select('id')
+      .eq('weeks', weeks);
+
+    if (templatesError) {
+      return this.parseResponsePostgresError(
+        templatesError,
+        'Failed to filter by weeks',
+      );
+    }
+
+    const templateIds = templates?.map((t) => t.id) || [];
+    return {
+      success: true,
+      data: templateIds,
+    };
+  }
+
+  /**
+   * Filter template IDs by search query
+   * @param search - Search query string
+   * @param existingTemplateIds - Optional existing template IDs to intersect with
+   * @returns Template IDs matching the search, or error
+   */
+  private async filterBySearch(
+    search: string,
+    existingTemplateIds?: string[],
+  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+    const searchLower = search.toLowerCase();
+    const { data: searchTemplates, error: searchError } = await supabase
+      .from('program_template')
+      .select('id')
+      .or(
+        `name.ilike.%${searchLower}%,description.ilike.%${searchLower}%,goals.ilike.%${searchLower}%`,
+      );
+
+    if (searchError) {
+      return this.parseResponsePostgresError(
+        searchError,
+        'Failed to search templates',
+      );
+    }
+
+    const searchTemplateIds = searchTemplates?.map((t) => t.id) || [];
+
+    // Intersect with existing template IDs if provided
+    const templateIds = existingTemplateIds
+      ? existingTemplateIds.filter((id) => searchTemplateIds.includes(id))
+      : searchTemplateIds;
+
+    return {
+      success: true,
+      data: templateIds,
+    };
+  }
+
+  /**
+   * Get paginated program assignments with status='template' (joined with program_template)
+   * Supports server-side filtering for search and weeks
+   * @param page - Page number (1-indexed)
+   * @param pageSize - Number of items per page
+   * @param search - Optional search query (searches program_template.name, description, goals)
+   * @param weeks - Optional weeks filter (filters by program_template.weeks)
+   * @returns Success with paginated data or error
+   */
+  public async getTemplatesPaginated(
+    page: number = 1,
+    pageSize: number = 16,
+    search?: string,
+    weeks?: number,
+  ): Promise<
+    | SupabaseSuccess<{
+        data: ProgramAssignmentWithTemplate[];
+        page: number;
+        pageSize: number;
+        total: number;
+        hasMore: boolean;
+      }>
+    | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    // Filter by weeks if provided
+    let templateIds: string[] | undefined;
+    if (weeks !== undefined && weeks !== null) {
+      const weeksResult = await this.filterByWeeks(weeks);
+      if (!weeksResult.success) {
+        return weeksResult;
+      }
+
+      templateIds = weeksResult.data;
+      if (templateIds.length === 0) {
+        return this.createEmptyPaginatedResult(page, pageSize);
+      }
+    }
+
+    // Filter by search if provided
+    if (search) {
+      const searchResult = await this.filterBySearch(search, templateIds);
+      if (!searchResult.success) {
+        return searchResult;
+      }
+
+      templateIds = searchResult.data;
+      if (templateIds.length === 0) {
+        return this.createEmptyPaginatedResult(page, pageSize);
+      }
+    }
+
+    // Build main query
+    let query = supabase
+      .from('program_assignment')
+      .select(
+        `
+        *,
+        program_template (*),
+        workout_schedule:workout_schedules (*)
+      `,
+        { count: 'exact' },
+      )
+      .eq('status', 'template');
+
+    // Apply template ID filter if we have one
+    if (templateIds && templateIds.length > 0) {
+      query = query.in('program_template_id', templateIds);
+    }
+
+    // Apply sorting
+    query = query.order('created_at', { ascending: false });
+
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get program assignments',
+      );
+    }
+
+    if (!data) {
+      return this.createEmptyPaginatedResult(page, pageSize);
+    }
+
+    // Transform the data to match our schema structure
+    const transformedData = data.map((item: ProgramAssignmentWithTemplate) => ({
+      ...item,
+      program_template: item.program_template || null,
+      workout_schedule:
+        (item as { workout_schedule?: unknown }).workout_schedule || null,
+    }));
+
+    const result = programAssignmentWithTemplateSchema
+      .array()
+      .safeParse(transformedData);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    // For accurate count when filtering, we need to count the filtered results
+    const total = templateIds
+      ? result.data.length < pageSize
+        ? from + result.data.length
+        : (count || 0)
+      : count || 0;
+    const hasMore = from + result.data.length < total;
+
+    return {
+      success: true,
+      data: {
+        data: result.data,
+        page,
+        pageSize,
+        total,
+        hasMore,
+      },
+    };
+  }
+
+  /**
    * Get a single program assignment by ID (joined with program_template)
    * @param id - The assignment ID
    * @returns Success with program assignment or error
@@ -747,6 +970,39 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     return {
       success: true,
       data: result.data,
+    };
+  }
+
+  /**
+   * Delete a program using the delete_program RPC function
+   * @param programAssignmentId - The program assignment ID to delete
+   * @returns Success or error
+   */
+  public async deleteProgramRPC(
+    programAssignmentId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    if (!programAssignmentId) {
+      return {
+        success: false,
+        error: 'Program assignment ID is required',
+      };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+    const { error } = await supabase.rpc('delete_program', {
+      p_program_assignment_id: programAssignmentId,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to delete program',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
     };
   }
 }

@@ -6,11 +6,11 @@ description: Analyze uncommitted changes and suggest focused, high-signal code i
 
 ## Analysis Strategy (Diff-First)
 
-1. Get list of uncommitted changed files using:
-   - `git diff --name-only`
-   - `git diff --cached --name-only`
+1. Get list of changed files using the `@branch` pattern:
+   - Use `@branch` to reference all files changed in the current branch
+   - This ensures consistent file collection across command executions
 
-2. Analyze **diff hunks first** for each file using `git diff`:
+2. Analyze **diff hunks first** for each file in `@branch`:
    - Focus on added and modified lines
    - Avoid full-file analysis by default
 

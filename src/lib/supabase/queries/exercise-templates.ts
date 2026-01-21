@@ -286,6 +286,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
     p_distance?: string;
     p_weight?: string;
     p_rest_time?: number;
+    p_tempo?: string[];
     p_rep_override?: number[];
     p_time_override?: number[];
     p_distance_override?: string[];

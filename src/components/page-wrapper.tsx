@@ -1,3 +1,5 @@
+'use client';
+
 import { ReactNode, Suspense, useEffect, useRef, useState } from 'react';
 import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';

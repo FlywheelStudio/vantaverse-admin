@@ -37,9 +37,8 @@ interface DragContentProps {
   >;
   copiedTemplateData: Partial<ExerciseTemplate> | null;
   handleCloseModal: () => void;
-  handleSave: (templateData: Partial<ExerciseTemplate>) => Promise<void>;
+  onUpdate: (index: number, item: SelectedItem) => void;
   handleCopy: (data: Partial<ExerciseTemplate>) => void;
-  handlePaste: () => void;
   handleItemClick: (index: number, event: React.MouseEvent) => void;
 }
 
@@ -52,9 +51,8 @@ export function DragContent({
   setModalState,
   copiedTemplateData,
   handleCloseModal,
-  handleSave,
+  onUpdate,
   handleCopy,
-  handlePaste,
   handleItemClick,
 }: DragContentProps) {
   const {
@@ -78,7 +76,8 @@ export function DragContent({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <TopLevelDroppable
+        <div className="w-full">
+          <TopLevelDroppable
           isDraggingFromGroup={isDraggingFromGroup}
           items={items}
           topLevelIds={topLevelIds}
@@ -103,6 +102,7 @@ export function DragContent({
           }}
           handleItemClick={handleItemClick}
         />
+        </div>
 
         {typeof document !== 'undefined' &&
           createPortal(
@@ -137,10 +137,42 @@ export function DragContent({
           item={modalState.item}
           position={modalState.position}
           onClose={handleCloseModal}
-          onSave={handleSave}
           copiedData={copiedTemplateData}
           onCopy={handleCopy}
-          onPaste={handlePaste}
+          onUpdate={(templateData) => {
+            if (modalState.itemIndex !== null && modalState.item) {
+              const exerciseId =
+                modalState.item.type === 'exercise'
+                  ? modalState.item.data.id
+                  : modalState.item.data.exercise_id;
+
+              const optimisticTemplate: ExerciseTemplate = {
+                ...(modalState.item.type === 'template'
+                  ? modalState.item.data
+                  : ({} as ExerciseTemplate)),
+                id:
+                  modalState.item.type === 'template'
+                    ? modalState.item.data.id
+                    : '',
+                template_hash:
+                  modalState.item.type === 'template'
+                    ? modalState.item.data.template_hash
+                    : '',
+                exercise_id: exerciseId,
+                exercise_name: modalState.item.data.exercise_name,
+                video_type: modalState.item.data.video_type,
+                video_url: modalState.item.data.video_url,
+                ...templateData,
+              } as ExerciseTemplate;
+
+              const optimisticItem: SelectedItem = {
+                type: 'template',
+                data: optimisticTemplate,
+              };
+
+              onUpdate(modalState.itemIndex, optimisticItem);
+            }
+          }}
         />
       )}
     </>

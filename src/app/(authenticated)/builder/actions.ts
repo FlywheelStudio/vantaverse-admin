@@ -7,17 +7,24 @@ import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-template
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
+import { createParallelQueries } from '@/lib/supabase/query';
 import { DatabaseSchedule } from './workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 /**
- * Get all program assignments with status='template' (joined with program_template)
+ * Get paginated program assignments with status='template' (joined with program_template)
+ * Supports server-side filtering for search and weeks
  */
-export async function getProgramAssignments() {
+export async function getProgramAssignmentsPaginated(
+  page: number = 1,
+  pageSize: number = 16,
+  search?: string,
+  weeks?: number,
+) {
   const query = new ProgramAssignmentsQuery();
-  return query.getTemplates();
+  return query.getTemplatesPaginated(page, pageSize, search, weeks);
 }
 
 /**
@@ -34,7 +41,7 @@ export async function getProgramAssignmentById(id: string) {
 export async function createProgramTemplate(
   name: string,
   weeks: number,
-  startDate: string,
+  startDate?: string | null,
   description?: string | null,
   goals?: string | null,
   notes?: string | null,
@@ -59,32 +66,44 @@ export async function createProgramTemplate(
 
   const templateId = templateResult.data.id;
 
-  // Calculate end date from start date + weeks
-  const start = new Date(startDate);
-  const endDate = new Date(start);
-  endDate.setDate(endDate.getDate() + weeks * 7);
-  const endDateString = endDate.toISOString().split('T')[0];
+  // Only create program_assignment if startDate is provided
+  if (startDate) {
+    // Calculate end date from start date + weeks
+    const start = new Date(startDate);
+    const endDate = new Date(start);
+    endDate.setDate(endDate.getDate() + weeks * 7);
+    const endDateString = endDate.toISOString().split('T')[0];
 
-  // Create program_assignment with status='template'
-  const assignmentResult = await assignmentQuery.create(
-    templateId,
-    startDate,
-    endDateString,
-    organizationId,
-  );
+    // Create program_assignment with status='template'
+    const assignmentResult = await assignmentQuery.create(
+      templateId,
+      startDate,
+      endDateString,
+      organizationId,
+    );
 
-  if (!assignmentResult.success) {
-    // If assignment creation fails, we could optionally rollback template creation
-    // For now, we'll return the error
-    return assignmentResult;
+    if (!assignmentResult.success) {
+      // If assignment creation fails, we could optionally rollback template creation
+      // For now, we'll return the error
+      return assignmentResult;
+    }
+
+    // Return both template and assignment data
+    return {
+      success: true as const,
+      data: {
+        template: templateResult.data,
+        assignment: assignmentResult.data,
+      },
+    };
   }
 
-  // Return both template and assignment data
+  // Return only template data if no startDate provided
   return {
     success: true as const,
     data: {
       template: templateResult.data,
-      assignment: assignmentResult.data,
+      assignment: null,
     },
   };
 }
@@ -288,6 +307,7 @@ export async function upsertExerciseTemplate(data: {
   p_distance?: string;
   p_weight?: string;
   p_rest_time?: number;
+  p_tempo?: string[];
   p_rep_override?: number[];
   p_time_override?: number[];
   p_distance_override?: string[];
@@ -412,31 +432,21 @@ export async function convertScheduleToSelectedItems(
   const templatesQuery = new ExerciseTemplatesQuery();
   const groupsQuery = new GroupsQuery();
 
-  const [templatesResult, groupsResult] = await Promise.all([
-    exerciseTemplateIds.size > 0
-      ? templatesQuery.getByIds(Array.from(exerciseTemplateIds))
-      : Promise.resolve({ success: true as const, data: new Map() }),
-    groupIds.size > 0
-      ? groupsQuery.getByIds(Array.from(groupIds))
-      : Promise.resolve({ success: true as const, data: new Map() }),
-  ]);
+  const data = await createParallelQueries({
+    templates: {
+      condition: exerciseTemplateIds.size > 0,
+      query: () => templatesQuery.getByIds(Array.from(exerciseTemplateIds)),
+      defaultValue: new Map(),
+    },
+    groups: {
+      condition: groupIds.size > 0,
+      query: () => groupsQuery.getByIds(Array.from(groupIds)),
+      defaultValue: new Map(),
+    },
+  });
 
-  if (!templatesResult.success) {
-    return {
-      success: false as const,
-      error: templatesResult.error || 'Failed to fetch exercise templates',
-    };
-  }
-
-  if (!groupsResult.success) {
-    return {
-      success: false as const,
-      error: groupsResult.error || 'Failed to fetch groups',
-    };
-  }
-
-  const templatesMap = templatesResult.data;
-  const groupsMap = groupsResult.data;
+  const templatesMap = data.templates;
+  const groupsMap = data.groups;
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];

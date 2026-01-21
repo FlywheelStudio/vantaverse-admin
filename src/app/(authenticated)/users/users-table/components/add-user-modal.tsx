@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Info } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
@@ -17,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { createUserQuickAdd, type ImportUsersResult } from '../../actions';
+import { type ImportUsersResult } from '../../actions';
 import { FileUploadTab } from './file-upload-tab';
 import { PendingUsersView } from './pending-users-view';
 import {
@@ -25,6 +24,7 @@ import {
   usePendingUsers,
 } from '../contexts/pending-users-context';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { useCreateUserQuickAdd } from '../hooks/use-users-table-mutations';
 
 interface AddUserModalProps {
   open: boolean;
@@ -49,12 +49,11 @@ function AddUserModalInner({
   onOpenChange,
   role = 'patient',
 }: AddUserModalProps) {
-  const queryClient = useQueryClient();
   const { addBatch, reset, rows } = usePendingUsers();
+  const createUserMutation = useCreateUserQuickAdd();
 
   const [tab, setTab] = useState<'individual' | 'csv' | 'excel'>('individual');
   const [mode, setMode] = useState<'upload' | 'pending'>('upload');
-  const [isSubmittingIndividual, setIsSubmittingIndividual] = useState(false);
   const [individualEmail, setIndividualEmail] = useState('');
   const [individualFirstName, setIndividualFirstName] = useState('');
   const [individualLastName, setIndividualLastName] = useState('');
@@ -92,22 +91,16 @@ function AddUserModalInner({
       return;
     }
 
-    setIsSubmittingIndividual(true);
     try {
-      const result = await createUserQuickAdd({
+      const result = await createUserMutation.mutateAsync({
         email: individualEmail.trim(),
         firstName: individualFirstName.trim(),
         lastName: individualLastName.trim(),
         role,
       });
 
-      if (!result.success) {
-        toast.error(result.error || 'Failed to create user');
-        return;
-      }
-
       const createdUser = {
-        id: result.data.userId,
+        id: result.userId,
         email: individualEmail.trim().toLowerCase(),
         firstName: individualFirstName.trim(),
         lastName: individualLastName.trim(),
@@ -116,17 +109,10 @@ function AddUserModalInner({
 
       addBatch({ createdUsers: [createdUser], existingUsers: [] });
       setMode('pending');
-
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
-      void queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
-      toast.success('User added');
       resetIndividual();
     } catch (error) {
+      // Error handling is done in mutation hook
       console.error('Error creating user:', error);
-      toast.error('Failed to create user');
-    } finally {
-      setIsSubmittingIndividual(false);
     }
   };
 
@@ -156,17 +142,7 @@ function AddUserModalInner({
       })),
     });
 
-    if (result.errors.length > 0) {
-      toast.error(
-        `${result.errors.length} issue${result.errors.length > 1 ? 's' : ''} found during import`,
-      );
-    } else {
-      toast.success('Users added');
-    }
-
-    void queryClient.invalidateQueries({ queryKey: ['users'] });
-    void queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
+    // Toast messages are handled in mutation hooks
     setMode('pending');
   };
 
@@ -299,18 +275,18 @@ function AddUserModalInner({
                               <Button
                                 variant="outline"
                                 onClick={handleCancel}
-                                disabled={isSubmittingIndividual}
+                                disabled={createUserMutation.isPending}
                               >
                                 Cancel
                               </Button>
                               <Button
                                 onClick={handleAddToList}
                                 disabled={
-                                  !canSubmitIndividual || isSubmittingIndividual
+                                  !canSubmitIndividual || createUserMutation.isPending
                                 }
                                 className="bg-red-500 hover:bg-red-600 text-white"
                               >
-                                {isSubmittingIndividual
+                                {createUserMutation.isPending
                                   ? 'Adding...'
                                   : 'Add to List'}
                               </Button>
