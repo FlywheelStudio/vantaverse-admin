@@ -49,7 +49,7 @@ export function TopLevelDroppable({
     <div
       ref={setNodeRef}
       className={cn(
-        'border-2 border-dashed rounded-lg p-4 transition-all duration-200 border-gray-300 bg-gray-50 h-full',
+        'border-2 border-dashed rounded-lg p-4 transition-all duration-200 border-gray-300 bg-gray-50 min-h-full w-full',
         isOver &&
           isDraggingFromGroup &&
           'ring-2 ring-blue-400 ring-offset-2 bg-blue-50/50',

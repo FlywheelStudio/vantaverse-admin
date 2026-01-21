@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { ExerciseBuilderModal } from './exercise-builder-modal';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import { useBuilder } from '@/context/builder-context';
-import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import {
   upsertWorkoutSchedule,
   updateProgramSchedule,
@@ -14,14 +11,13 @@ import {
 } from '@/app/(authenticated)/builder/actions';
 import { convertSelectedItemsToDatabaseSchedule } from './utils';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
-import { getDayOfWeek } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { DayBox } from './day-box';
 
 export function DayBoxesGrid() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
   const {
     currentWeek,
@@ -255,6 +251,54 @@ export function DayBoxesGrid() {
     [currentWeek, getDayItems],
   );
 
+  // Keyboard listener for copy/paste shortcuts
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input field
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Check for Ctrl+C or Cmd+C (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        if (hoveredDay !== null) {
+          event.preventDefault();
+          const dayIndex = hoveredDay - 1;
+          copyDay(currentWeek, dayIndex);
+        }
+      }
+
+      // Check for Ctrl+V or Cmd+V (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+        if (hoveredDay !== null) {
+          const dayIndex = hoveredDay - 1;
+          const isPasteDisabled =
+            !copiedDayData ||
+            (copiedDayIndex?.week === currentWeek &&
+              copiedDayIndex?.day === dayIndex);
+
+          if (!isPasteDisabled) {
+            event.preventDefault();
+            pasteDay(currentWeek, dayIndex);
+          }
+        }
+      }
+    },
+    [hoveredDay, currentWeek, copyDay, pasteDay, copiedDayData, copiedDayIndex],
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
   return (
     <>
       <div className="mt-6 overflow-x-auto slim-scrollbar">
@@ -263,17 +307,6 @@ export function DayBoxesGrid() {
             // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
             const dayIndex = day - 1;
             const items = dayItems(day);
-            const hasItems = items.length > 0;
-            const templateCount = items.filter(
-              (item) => item.type === 'template',
-            ).length;
-            const exerciseCount = items.filter(
-              (item) => item.type === 'exercise',
-            ).length;
-            const totalExerciseCount = templateCount + exerciseCount;
-            const groupCount = items.filter(
-              (item) => item.type === 'group',
-            ).length;
             const dayDate = calculateDayDate(currentWeek, day);
             const formattedDate = dayDate
               ? dayDate.toLocaleDateString('en-US', {
@@ -292,137 +325,22 @@ export function DayBoxesGrid() {
                 copiedDayIndex?.day === dayIndex);
 
             return (
-              <div key={day} className="flex flex-col flex-1 min-w-[160px]">
-                <div className="relative mb-1">
-                  <h3
-                    className={cn(
-                      'text-base font-semibold text-center',
-                      isBeforeStart ? 'text-red-500' : 'text-[#1E3A5F]',
-                    )}
-                  >
-                    {getDayOfWeek(day)}
-                  </h3>
-                </div>
-                {formattedDate && (
-                  <p
-                    className={cn(
-                      'text-xs mb-3 text-center',
-                      isBeforeStart ? 'text-red-400' : 'text-gray-500',
-                    )}
-                  >
-                    {formattedDate} {isBeforeStart ? ' (Before Start)' : ''}
-                  </p>
-                )}
-                <div
-                  className={cn(
-                    'relative border-2 border-dashed rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4',
-                    isBeforeStart
-                      ? 'border-red-400 bg-red-50/50'
-                      : 'border-gray-300 bg-gray-50/50',
-                  )}
-                >
-                  {hasItems ? (
-                    <>
-                      <div className="absolute top-2 right-2">
-                        {!isBeforeStart && (<CopyPasteButtons
-                          size="sm"
-                          onCopy={() => copyDay(currentWeek, dayIndex)}
-                          onPaste={() => pasteDay(currentWeek, dayIndex)}
-                          isCopied={isDayCopied}
-                          isPasteDisabled={isDayPasteDisabled || isBeforeStart}
-                          copyTooltip="Copy Day"
-                          pasteTooltip="Paste Day"
-                          copiedTooltip="Day already copied"
-                        />)}
-                      </div>
-                      <motion.div
-                        key={`week-${currentWeek}-day-${day}-items`}
-                        className="w-full h-full flex flex-col items-center justify-center gap-1"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 * index }}
-                      >
-                        {totalExerciseCount > 0 && (
-                          <motion.p
-                            key={`week-${currentWeek}-day-${day}-exercises`}
-                            className={cn(
-                              'cursor-default text-sm',
-                              isBeforeStart ? 'text-red-400' : 'text-gray-600',
-                            )}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3, delay: 0.1 * index }}
-                          >
-                            {totalExerciseCount} exercise
-                            {totalExerciseCount !== 1 ? 's' : ''}
-                          </motion.p>
-                        )}
-                        {groupCount > 0 && (
-                          <motion.p
-                            key={`week-${currentWeek}-day-${day}-groups`}
-                            className={cn(
-                              'cursor-default text-sm',
-                              isBeforeStart ? 'text-red-400' : 'text-gray-600',
-                            )}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{
-                              duration: 0.3,
-                              delay: 0.1 * index,
-                            }}
-                          >
-                            {groupCount} group{groupCount !== 1 ? 's' : ''}
-                          </motion.p>
-                        )}
-                      </motion.div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="absolute top-2 right-2">
-                        {!isBeforeStart && (<CopyPasteButtons
-                          size="sm"
-                          onCopy={() => copyDay(currentWeek, dayIndex)}
-                          onPaste={() => pasteDay(currentWeek, dayIndex)}
-                          isCopied={isDayCopied}
-                          isPasteDisabled={isDayPasteDisabled || isBeforeStart}
-                          copyTooltip="Copy Day"
-                          pasteTooltip="Paste Day"
-                          copiedTooltip="Day already copied"
-                          showCopy={false}
-                          showPaste={true}
-                        />)}
-                      </div>
-                      <motion.p
-                        key={`week-${currentWeek}-day-${day}-rest`}
-                        className={cn(
-                          'h-full flex flex-col items-center justify-center text-sm cursor-default',
-                          isBeforeStart ? 'text-red-400' : 'text-gray-400',
-                        )}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 * index }}
-                      >
-                        Rest Day
-                      </motion.p>
-                    </>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBeforeStart}
-                    className={cn(
-                      'border-dashed',
-                      isBeforeStart
-                        ? 'border-red-400 text-red-500 cursor-not-allowed bg-red-50/30'
-                        : 'border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer',
-                    )}
-                    onClick={() => handleAddExercise(day)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {hasItems ? 'Edit' : 'Add Exercise'}
-                  </Button>
-                </div>
-              </div>
+              <DayBox
+                key={day}
+                day={day}
+                weekIndex={currentWeek}
+                items={items}
+                formattedDate={formattedDate}
+                isBeforeStart={isBeforeStart}
+                isDayCopied={isDayCopied}
+                isDayPasteDisabled={isDayPasteDisabled}
+                index={index}
+                onAddExercise={handleAddExercise}
+                onCopyDay={() => copyDay(currentWeek, dayIndex)}
+                onPasteDay={() => pasteDay(currentWeek, dayIndex)}
+                onMouseEnter={() => setHoveredDay(day)}
+                onMouseLeave={() => setHoveredDay(null)}
+              />
             );
           })}
         </div>

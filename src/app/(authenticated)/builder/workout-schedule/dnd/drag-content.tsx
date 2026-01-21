@@ -76,7 +76,8 @@ export function DragContent({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <TopLevelDroppable
+        <div className="w-full">
+          <TopLevelDroppable
           isDraggingFromGroup={isDraggingFromGroup}
           items={items}
           topLevelIds={topLevelIds}
@@ -101,6 +102,7 @@ export function DragContent({
           }}
           handleItemClick={handleItemClick}
         />
+        </div>
 
         {typeof document !== 'undefined' &&
           createPortal(
