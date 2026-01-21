@@ -14,15 +14,6 @@ import type { SelectedItem } from '@/app/(authenticated)/builder/template-config
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 /**
- * Get all program assignments with status='template' (joined with program_template)
- */
-export async function getProgramAssignments() {
-  const query = new ProgramAssignmentsQuery();
-  
-  return query.getTemplates();
-}
-
-/**
  * Get paginated program assignments with status='template' (joined with program_template)
  * Supports server-side filtering for search and weeks
  */
