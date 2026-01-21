@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import {
   getTemplateCSVUrl,
   getTemplateExcelUrl,
-  importUsersCSV,
-  importUsersExcel,
   type ImportUsersResult,
 } from '../../actions';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import {
+  useImportUsersCSV,
+  useImportUsersExcel,
+} from '../hooks/use-users-table-mutations';
 
 interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
@@ -30,13 +32,17 @@ export function FileUploadTab({
 }: FileUploadTabProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
 
   const isCSV = fileType === 'csv';
   const acceptMime = isCSV ? '.csv' : '.xlsx,.xls';
   const templateFileName = isCSV
     ? 'Medvanta - Bulk User Template.csv'
     : 'Medvanta - Bulk User Template.xlsx';
+
+  const importCSVMutation = useImportUsersCSV();
+  const importExcelMutation = useImportUsersExcel();
+
+  const isPending = isCSV ? importCSVMutation.isPending : importExcelMutation.isPending;
 
   const handleDownloadTemplate = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,35 +64,6 @@ export function FileUploadTab({
     inputRef.current?.click();
   };
 
-  const importUsers = async (file: File) => {
-    setIsValidating(true);
-    try {
-      if (isCSV) {
-        const csvText = await file.text();
-        const result = await importUsersCSV(csvText, role);
-        if (result.success) {
-          onImported(result.data);
-        } else {
-          toast.error(result.error || 'Failed to import CSV file');
-        }
-      } else {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await importUsersExcel(arrayBuffer, role);
-        if (result.success) {
-          onImported(result.data);
-        } else {
-          toast.error(result.error || 'Failed to import Excel file');
-        }
-      }
-    } catch {
-      toast.error(
-        isCSV ? 'Failed to read CSV file' : 'Failed to read Excel file',
-      );
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -102,7 +79,32 @@ export function FileUploadTab({
       );
       return;
     }
-    await importUsers(file);
+
+    try {
+      if (isCSV) {
+        const csvText = await file.text();
+        const result = await importCSVMutation.mutateAsync({
+          csvText,
+          role,
+        });
+        onImported(result);
+      } else {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await importExcelMutation.mutateAsync({
+          fileData: arrayBuffer,
+          role,
+        });
+        onImported(result);
+      }
+    } catch (error) {
+      // Error handling is done in mutation hooks
+      // Only handle file reading errors here
+      if (error instanceof Error && !error.message.includes('Failed to import')) {
+        toast.error(
+          isCSV ? 'Failed to read CSV file' : 'Failed to read Excel file',
+        );
+      }
+    }
   };
 
   const acceptDrop = (e: React.DragEvent) => {
@@ -224,10 +226,10 @@ export function FileUploadTab({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!file || isValidating}
+            disabled={!file || isPending}
             className="bg-red-500 hover:bg-red-600 text-white"
           >
-            {isValidating ? 'Uploading...' : 'Upload & Add'}
+            {isPending ? 'Uploading...' : 'Upload & Add'}
           </Button>
         </div>
       </div>

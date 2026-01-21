@@ -24,12 +24,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import Link from 'next/link';
+import {
+  useDeleteUser,
+  useToggleSuperAdmin,
+} from '../hooks/use-users-table-mutations';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -219,23 +221,20 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
 
 function DeleteUserButton({
   profile,
-  onDelete,
+  deleteUserMutation,
 }: {
   profile: ProfileWithStats;
-  onDelete: (id: string) => Promise<void>;
+  deleteUserMutation: ReturnType<typeof useDeleteUser>;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
-    setIsDeleting(true);
     try {
-      await onDelete(profile.id);
+      await deleteUserMutation.mutateAsync(profile.id);
       setOpen(false);
     } catch (error) {
+      // Error handling is done in mutation hook
       console.error('Error deleting user:', error);
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -259,15 +258,18 @@ function DeleteUserButton({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="cursor-pointer" disabled={isDeleting}>
+          <AlertDialogCancel
+            className="cursor-pointer"
+            disabled={deleteUserMutation.isPending}
+          >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             className="cursor-pointer"
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={deleteUserMutation.isPending}
           >
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -276,43 +278,20 @@ function DeleteUserButton({
 }
 
 function ActionsCell({ profile }: { profile: ProfileWithStats }) {
-  const queryClient = useQueryClient();
-  const [isTogglingAdmin, setIsTogglingAdmin] = React.useState(false);
+  const deleteUserMutation = useDeleteUser();
+  const toggleSuperAdminMutation = useToggleSuperAdmin();
 
   const isSuperAdmin = profile.is_super_admin ?? false;
 
-  const handleDelete = async (userId: string) => {
-    const result = await deleteUser(userId);
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User deleted successfully');
-    } else {
-      toast.error(result.error || 'Failed to delete user');
-    }
-  };
-
   const handleToggleAdmin = async () => {
-    setIsTogglingAdmin(true);
     try {
-      const result = isSuperAdmin
-        ? await revokeSuperAdmin(profile.id)
-        : await makeSuperAdmin(profile.id);
-
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ['users'] });
-        toast.success(
-          isSuperAdmin
-            ? 'Physician made member successfully'
-            : 'Member made physician successfully',
-        );
-      } else {
-        toast.error(result.error || 'Failed to toggle role');
-      }
+      await toggleSuperAdminMutation.mutateAsync({
+        userId: profile.id,
+        isSuperAdmin,
+      });
     } catch (error) {
+      // Error handling is done in mutation hook
       console.error('Error toggling role:', error);
-      toast.error('Failed to toggle role');
-    } finally {
-      setIsTogglingAdmin(false);
     }
   };
 
@@ -324,7 +303,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
             variant="ghost"
             size="sm"
             onClick={handleToggleAdmin}
-            disabled={isTogglingAdmin}
+            disabled={toggleSuperAdminMutation.isPending}
             className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold cursor-pointer disabled:opacity-50"
           >
             {isSuperAdmin ? (
@@ -338,7 +317,10 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
           {isSuperAdmin ? 'Make member' : 'Make physician'}
         </TooltipContent>
       </Tooltip>
-      <DeleteUserButton profile={profile} onDelete={handleDelete} />
+      <DeleteUserButton
+        profile={profile}
+        deleteUserMutation={deleteUserMutation}
+      />
     </div>
   );
 }

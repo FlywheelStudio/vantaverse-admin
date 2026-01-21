@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { useUsers } from '@/hooks/use-users';
-import { UsersTable } from './users-table';
+import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
 import { Card } from '@/components/ui/card';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';

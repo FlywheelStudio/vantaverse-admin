@@ -10,6 +10,7 @@ import { OrganizationMembers } from '@/lib/supabase/queries/organization-members
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
 import { createParallelQueries } from '@/lib/supabase/query';
+import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { UserProfilePageUI } from './ui';
 import { AdminProfileView } from './admin-profile-view';
 
@@ -40,46 +41,29 @@ export default async function UserProfilePage({
   // If target user is physician (admin role), show org tabs with viewing admin's organizations
   const isTargetUserPhysician = user.role === 'admin';
 
+  // Parallelize admin-related queries
+  const orgMembersQuery = new OrganizationMembers();
+  const adminData = await createParallelQueries({
+    currentUser: {
+      query: () => getAuthProfile(),
+      defaultValue: null,
+    },
+    organizations: {
+      condition: isTargetUserPhysician,
+      query: () => orgMembersQuery.getOrganizationsByUserId(id),
+      defaultValue: [],
+    },
+  });
+
+  const currentUserId = adminData.currentUser?.id ?? null;
+  const organizations = adminData.organizations;
+
   if (isTargetUserPhysician) {
-    const orgMembersQuery = new OrganizationMembers();
-    const organizationsResult = await orgMembersQuery.getOrganizationsByUserId(id);
-
-    const organizations = organizationsResult.success
-      ? organizationsResult.data
-      : [];
-
-    // Fetch patients for each organization
-    type PatientData = {
-      id: string;
-      first_name: string | null;
-      last_name: string | null;
-      email: string | null;
-      avatar_url: string | null;
-    };
-
-    const patientsByOrg: Record<string, PatientData[]> = {};
-
-    await Promise.all(
-      organizations.map(async (org) => {
-        const patientsResult =
-          await profilesQuery.getPatientsByOrganization(org.id);
-        if (patientsResult.success) {
-          patientsByOrg[org.id] = patientsResult.data.map((p) => ({
-            id: p.id,
-            first_name: p.first_name,
-            last_name: p.last_name,
-            email: p.email,
-            avatar_url: p.avatar_url,
-          }));
-        }
-      }),
-    );
-
     return (
       <AdminProfileView
         user={user}
+        currentUserId={currentUserId}
         organizations={organizations}
-        patientsByOrg={patientsByOrg}
       />
     );
   }

@@ -2,13 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  picture_url: string | null;
-}
+import type { Organization } from '@/lib/supabase/schemas/organizations';
 
 interface OrganizationTabsProps {
   organizations: Organization[];

@@ -972,4 +972,37 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       data: result.data,
     };
   }
+
+  /**
+   * Delete a program using the delete_program RPC function
+   * @param programAssignmentId - The program assignment ID to delete
+   * @returns Success or error
+   */
+  public async deleteProgramRPC(
+    programAssignmentId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    if (!programAssignmentId) {
+      return {
+        success: false,
+        error: 'Program assignment ID is required',
+      };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+    const { error } = await supabase.rpc('delete_program', {
+      p_program_assignment_id: programAssignmentId,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to delete program',
+      );
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
 }
