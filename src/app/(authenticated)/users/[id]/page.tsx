@@ -56,7 +56,15 @@ export default async function UserProfilePage({
   });
 
   const currentUserId = adminData.currentUser?.id ?? null;
-  const organizations = adminData.organizations;
+  const organizations = Array.isArray(adminData.organizations)
+    ? adminData.organizations.map((org) => ({
+        ...org,
+        is_active: null,
+        is_super_admin: null,
+        created_at: null,
+        updated_at: null,
+      }))
+    : [];
 
   if (isTargetUserPhysician) {
     return (

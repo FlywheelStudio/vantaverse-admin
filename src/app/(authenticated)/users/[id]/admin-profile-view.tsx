@@ -21,14 +21,20 @@ export async function AdminProfileView({
     const orgMembersQuery = new OrganizationMembers();
     const organizationsResult = await orgMembersQuery.getOrganizationsByUserId(user.id);
     organizations = organizationsResult.success
-      ? organizationsResult.data
+      ? organizationsResult.data.map((org) => ({
+          ...org,
+          is_active: null,
+          is_super_admin: null,
+          created_at: null,
+          updated_at: null,
+        }))
       : [];
   }
 
   return (
     <AdminProfileViewUI
       user={user}
-      organizations={organizations}
+      organizations={organizations ?? []}
       currentUserId={currentUserId}
     />
   );
