@@ -93,7 +93,7 @@ export function GroupDetailsPageUI({
             className="h-full"
           >
             <PhysicianCard
-              physician={currentPhysician}
+              physician={currentPhysician ?? null}
               onAssignClick={openAssignPhysician}
               organizationId={org.id}
             />
