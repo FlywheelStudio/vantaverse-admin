@@ -32,7 +32,10 @@ export default async function BuilderIdPage({ params }: { params: Promise<{ id: 
       }
     >
       <BuilderContextProvider initialWorkoutSchedule={data.workoutScheduleData as WorkoutScheduleData | null}>
-        <WorkoutBuilder assignmentId={id} initialAssignment={data.programAssignment} />
+        <WorkoutBuilder 
+          assignmentId={id} 
+          initialAssignment={data.programAssignment}
+        />
       </BuilderContextProvider>
     </PageWrapper>
   );

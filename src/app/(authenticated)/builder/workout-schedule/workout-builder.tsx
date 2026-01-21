@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import { useBuilder } from '@/context/builder-context';
-import { useProgramAssignment } from '@/hooks/use-passignments';
+import { programAssignmentQueryOptions } from '@/hooks/use-passignments';
 import { useHasScheduleData } from '@/hooks/use-workout-schedule';
+import { useQuery } from '@tanstack/react-query';
 import { ProgramDetailsSection } from '../program/ui';
 import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';
@@ -15,23 +16,19 @@ interface WorkoutBuilderProps {
   initialAssignment: ProgramAssignmentWithTemplate;
 }
 
-export function WorkoutBuilder({ assignmentId, initialAssignment }: WorkoutBuilderProps) {
-  const { initializeSchedule, setSelectedAssignmentId, programAssignmentId } = useBuilder();
-  const { data: assignment } = useProgramAssignment(assignmentId, initialAssignment);
+export function WorkoutBuilder({ 
+  assignmentId, 
+  initialAssignment,
+}: WorkoutBuilderProps) {
+  const { initializeSchedule } = useBuilder();
+  
+  const { data: assignment } = useQuery(
+    programAssignmentQueryOptions(assignmentId, initialAssignment)
+  );
   const { data: hasScheduleData, isSuccess } = useHasScheduleData(assignmentId);
+  
   const initializedAssignmentRef = useRef<string | null>(null);
 
-  // Sync assignment ID prop to context when it changes
-  useEffect(() => {
-    if (assignmentId && programAssignmentId !== assignmentId) {
-      setSelectedAssignmentId(assignmentId);
-      initializedAssignmentRef.current = null;
-    }
-  }, [assignmentId, programAssignmentId, setSelectedAssignmentId]);
-
-  // Initialize empty schedule when no database data exists
-  // Uses React Query selector to check if schedule data exists
-  // Only initialize after query succeeds and confirms no data
   useEffect(() => {
     if (
       assignment?.program_template &&

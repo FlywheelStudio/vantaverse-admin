@@ -58,7 +58,7 @@ export function CreateTemplateForm({
     loadedDatesForTemplateIdRef,
   });
 
-  const { startDate, dateRange, handleDateSelect } =
+  const { startDate, endDate, dateRange, handleDateSelect } =
     useProgramFormDates({
       initialData,
       form,

@@ -16,6 +16,7 @@ export type WorkoutScheduleData = {
  */
 export const workoutScheduleKeys = {
   all: ['workout-schedules'] as const,
+  lists: () => [...workoutScheduleKeys.all, 'list'] as const,
   detail: (assignmentId: string | null | undefined) =>
     [...workoutScheduleKeys.all, 'detail', assignmentId] as const,
 };
