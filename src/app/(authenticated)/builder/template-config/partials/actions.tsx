@@ -13,14 +13,16 @@ interface TemplateConfigActionsProps {
   onCopy: () => void;
   onPaste: () => void;
   canPaste: boolean;
-  onSave: () => void;
+  onSubmit: () => void;
+  isSubmitting?: boolean;
 }
 
 export function TemplateConfigActions({
   onCopy,
   onPaste,
   canPaste,
-  onSave,
+  onSubmit,
+  isSubmitting = false,
 }: TemplateConfigActionsProps) {
   const [showCopyCheck, setShowCopyCheck] = useState(false);
   const [showPasteCheck, setShowPasteCheck] = useState(false);
@@ -40,11 +42,13 @@ export function TemplateConfigActions({
     }
   }, [onPaste, canPaste]);
 
-  const handleSave = useCallback(async () => {
-    await onSave();
-    setShowSaveCheck(true);
-    setTimeout(() => setShowSaveCheck(false), 2000);
-  }, [onSave]);
+  const handleSubmit = useCallback(() => {
+    if (!isSubmitting) {
+      onSubmit();
+      setShowSaveCheck(true);
+      setTimeout(() => setShowSaveCheck(false), 2000);
+    }
+  }, [onSubmit, isSubmitting]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -66,13 +70,13 @@ export function TemplateConfigActions({
         }
       } else if (e.key === 'Enter' && !isInputField) {
         e.preventDefault();
-        handleSave();
+        handleSubmit();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCopy, handlePaste, canPaste, handleSave]);
+  }, [handleCopy, handlePaste, canPaste, handleSubmit]);
 
   return (
     <div className="flex gap-2 px-3 py-2 border-t border-gray-200 bg-gray-50 rounded-b-lg">
@@ -123,13 +127,18 @@ export function TemplateConfigActions({
               <Check className="size-4 m-3 cursor-pointer text-green-500" />
             ) : (
               <Save
-                className="size-4 m-3 cursor-pointer"
-                onClick={handleSave}
+                className={cn(
+                  'size-4 m-3',
+                  isSubmitting
+                    ? 'cursor-not-allowed text-gray-400'
+                    : 'cursor-pointer',
+                )}
+                onClick={handleSubmit}
               />
             )}
           </TooltipTrigger>
           <TooltipContent>
-            <p>Enter</p>
+            <p>{isSubmitting ? 'Saving...' : 'Enter'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

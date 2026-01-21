@@ -41,7 +41,7 @@ export async function getProgramAssignmentById(id: string) {
 export async function createProgramTemplate(
   name: string,
   weeks: number,
-  startDate: string,
+  startDate?: string | null,
   description?: string | null,
   goals?: string | null,
   notes?: string | null,
@@ -66,32 +66,44 @@ export async function createProgramTemplate(
 
   const templateId = templateResult.data.id;
 
-  // Calculate end date from start date + weeks
-  const start = new Date(startDate);
-  const endDate = new Date(start);
-  endDate.setDate(endDate.getDate() + weeks * 7);
-  const endDateString = endDate.toISOString().split('T')[0];
+  // Only create program_assignment if startDate is provided
+  if (startDate) {
+    // Calculate end date from start date + weeks
+    const start = new Date(startDate);
+    const endDate = new Date(start);
+    endDate.setDate(endDate.getDate() + weeks * 7);
+    const endDateString = endDate.toISOString().split('T')[0];
 
-  // Create program_assignment with status='template'
-  const assignmentResult = await assignmentQuery.create(
-    templateId,
-    startDate,
-    endDateString,
-    organizationId,
-  );
+    // Create program_assignment with status='template'
+    const assignmentResult = await assignmentQuery.create(
+      templateId,
+      startDate,
+      endDateString,
+      organizationId,
+    );
 
-  if (!assignmentResult.success) {
-    // If assignment creation fails, we could optionally rollback template creation
-    // For now, we'll return the error
-    return assignmentResult;
+    if (!assignmentResult.success) {
+      // If assignment creation fails, we could optionally rollback template creation
+      // For now, we'll return the error
+      return assignmentResult;
+    }
+
+    // Return both template and assignment data
+    return {
+      success: true as const,
+      data: {
+        template: templateResult.data,
+        assignment: assignmentResult.data,
+      },
+    };
   }
 
-  // Return both template and assignment data
+  // Return only template data if no startDate provided
   return {
     success: true as const,
     data: {
       template: templateResult.data,
-      assignment: assignmentResult.data,
+      assignment: null,
     },
   };
 }
@@ -295,6 +307,7 @@ export async function upsertExerciseTemplate(data: {
   p_distance?: string;
   p_weight?: string;
   p_rest_time?: number;
+  p_tempo?: string[];
   p_rep_override?: number[];
   p_time_override?: number[];
   p_distance_override?: string[];

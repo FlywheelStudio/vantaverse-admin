@@ -1,6 +1,6 @@
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
-import { ProgramBuilder } from './program/program-builder';
+import { ProgramBuilder } from './program/builder';
 
 export default function BuilderPage() {
   return (

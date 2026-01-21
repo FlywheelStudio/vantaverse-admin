@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useProgramAssignmentsInfinite } from '@/hooks/use-program-assignments-for-user';
+import { useProgramAssignmentsInfinite } from '@/hooks/use-passignments-for-user';
 import { assignProgramToUser } from './actions';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useQueryClient } from '@tanstack/react-query';

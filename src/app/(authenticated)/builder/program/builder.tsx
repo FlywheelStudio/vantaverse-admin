@@ -8,9 +8,9 @@ import {
   useProgramAssignments,
   useDeleteProgramAssignment,
   programAssignmentsInfiniteQueryOptions,
-} from '@/hooks/use-program-assignments';
-import { ProgramTemplateCard } from './program-template-card';
-import { CreateTemplateForm } from './create-template-form';
+} from '@/hooks/use-passignments';
+import { ProgramTemplateCard } from './card';
+import { CreateTemplateForm } from './form';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';

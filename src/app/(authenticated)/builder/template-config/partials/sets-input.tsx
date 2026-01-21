@@ -3,9 +3,10 @@ import { Input } from '@/components/ui/input';
 interface SetsInputProps {
   sets: number;
   onChange: (sets: number) => void;
+  disabled?: boolean;
 }
 
-export function SetsInput({ sets, onChange }: SetsInputProps) {
+export function SetsInput({ sets, onChange, disabled }: SetsInputProps) {
   return (
     <div className="px-3 py-2 border-b border-gray-100 bg-blue-50">
       <div className="flex items-center gap-2">
@@ -19,6 +20,7 @@ export function SetsInput({ sets, onChange }: SetsInputProps) {
           type="number"
           value={sets}
           onChange={(e) => onChange(parseInt(e.target.value))}
+          disabled={disabled}
         />
       </div>
     </div>
