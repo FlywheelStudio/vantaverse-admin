@@ -5,12 +5,15 @@ import { getUsersWithStats, getUserProfileById } from '@/app/(authenticated)/use
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
-export function useUsers(filters?: {
-  organization_id?: string;
-  team_id?: string;
-  journey_phase?: string;
-  role?: MemberRole;
-}) {
+export function useUsers(
+  filters?: {
+    organization_id?: string;
+    team_id?: string;
+    journey_phase?: string;
+    role?: MemberRole;
+  },
+  initialData?: ProfileWithStats[]
+) {
   // Normalize undefined to null for stable queryKey serialization
   const orgId = filters?.organization_id ?? null;
   const teamId = filters?.team_id ?? null;
@@ -30,6 +33,7 @@ export function useUsers(filters?: {
 
       return result.data;
     },
+    initialData,
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
