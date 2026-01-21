@@ -2,8 +2,8 @@
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProgramStatusDayCard } from './program-status-day-card';
-import type { CompletionDay } from './program-status-card-utils';
+import { ProgramStatusDayCard } from './day-card';
+import type { CompletionDay } from './card-utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
 
 interface ProgramStatusWeekCardProps {

@@ -30,12 +30,11 @@ import {
   parseCompletion,
   calculateOverallCompletion,
   getProgressColor,
-} from './program-status-card-utils';
-import { ProgramStatusWeekCard } from './program-status-week-card';
-import { AssignProgramModal } from './assign-program-modal';
+} from './card-utils';
+import { ProgramStatusWeekCard } from './week-card';
+import { AssignProgramModal } from '../partials/assign-program-modal';
+import { useDeleteProgram } from '../hooks/use-user-mutations';
 import { useQueryClient } from '@tanstack/react-query';
-import { deleteProgram } from './actions';
-import toast from 'react-hot-toast';
 
 interface ProgramStatusCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
@@ -61,9 +60,9 @@ export function ProgramStatusCard({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const deleteProgram = useDeleteProgram(userId);
 
   const parsedCompletion = parseCompletion(completion);
   const color = 'var(--color-cyan-600)';
@@ -95,36 +94,16 @@ export function ProgramStatusCard({
 
   const handleDelete = async () => {
     if (!assignment?.id) {
-      toast.error('Invalid program assignment');
       return;
     }
 
-    setIsDeleting(true);
-    try {
-      const result = await deleteProgram(assignment.id);
-
-      if (!result.success) {
-        toast.error(result.error || 'Failed to delete program');
-        return;
-      }
-
-      toast.success('Program deleted successfully');
-      setIsDeleteDialogOpen(false);
-      
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['program-assignments'] });
-      queryClient.invalidateQueries({ 
-        queryKey: ['program-assignment', userId] 
-      });
-      
-      // Reload the page to show updated assignment
-      router.refresh();
-    } catch (error) {
-      toast.error('Failed to delete program');
-      console.error('Error deleting program:', error);
-    } finally {
-      setIsDeleting(false);
-    }
+    await deleteProgram.mutateAsync(assignment.id, {
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        // Reload the page to show updated assignment
+        router.refresh();
+      },
+    });
   };
 
   if (!assignment) {
@@ -190,6 +169,7 @@ export function ProgramStatusCard({
     assignment.start_date,
     totalWeeks,
   );
+  const isDeleting = deleteProgram.isPending;
 
   return (
     <Card

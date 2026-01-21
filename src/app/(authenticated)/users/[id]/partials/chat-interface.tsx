@@ -9,7 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { MessagesRealtime } from '@/lib/supabase/realtime/messages';
 import type { Message } from '@/lib/supabase/schemas/messages';
-import { sendMessage, getMessagesByChatId } from './chat-actions';
+import { getMessagesByChatId } from '../chat-actions';
+import { useSendMessage } from '../hooks/use-chat-mutations';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { chatKeys } from '../hooks/use-chat-mutations';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { format } from 'date-fns';
@@ -25,32 +28,29 @@ export function ChatInterface({
   patientName,
   onClose,
 }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [messageContent, setMessageContent] = useState('');
   const [isConnecting, setIsConnecting] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const realtimeRef = useRef<MessagesRealtime | null>(null);
   const { user: currentUser } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const sendMessage = useSendMessage(chatId);
 
-  // Load initial messages
-  useEffect(() => {
-    async function loadMessages() {
-      setIsLoading(true);
+  const messagesKey = chatKeys.messages(chatId);
+
+  // Load initial messages using React Query
+  const { data: messages = [], isLoading } = useQuery<Message[]>({
+    queryKey: messagesKey,
+    queryFn: async () => {
       const result = await getMessagesByChatId(chatId);
-
-      if (result.success) {
-        setMessages(result.data);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load messages');
       }
-      setIsLoading(false);
-    }
-
-    if (chatId) {
-      loadMessages();
-    }
-  }, [chatId]);
+      return result.data;
+    },
+    enabled: !!chatId,
+  });
 
   // Setup realtime subscription
   useEffect(() => {
@@ -66,7 +66,15 @@ export function ChatInterface({
 
       realtime.subscribeToChat(chatId, (newMessage) => {
         if (isMounted) {
-          setMessages((prev) => [...prev, newMessage]);
+          // Update React Query cache with new message
+          queryClient.setQueryData<Message[]>(messagesKey, (old) => {
+            if (!old) return [newMessage];
+            // Avoid duplicates
+            if (old.some((msg) => msg.id === newMessage.id)) {
+              return old;
+            }
+            return [...old, newMessage];
+          });
         }
       });
 
@@ -96,7 +104,7 @@ export function ChatInterface({
       }
       setIsConnecting(false);
     };
-  }, [chatId, isLoading]);
+  }, [chatId, isLoading, messagesKey, queryClient]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -127,19 +135,21 @@ export function ChatInterface({
   };
 
   const handleSend = async () => {
-    if (!messageContent.trim() || isSending || isConnecting || !currentUser) {
+    if (!messageContent.trim() || sendMessage.isPending || isConnecting || !currentUser) {
       return;
     }
 
-    setIsSending(true);
-
-    const result = await sendMessage(chatId, messageContent, currentUser.id);
-
-    if (result.success) {
-      setMessageContent('');
-    }
-
-    setIsSending(false);
+    await sendMessage.mutateAsync(
+      {
+        content: messageContent,
+        userId: currentUser.id,
+      },
+      {
+        onSuccess: () => {
+          setMessageContent('');
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -159,6 +169,8 @@ export function ChatInterface({
         return 'bg-muted/50 text-muted-foreground mx-auto';
     }
   };
+
+  const isSending = sendMessage.isPending;
 
   return (
     <Card className="h-full border-0 shadow-xl flex flex-col">

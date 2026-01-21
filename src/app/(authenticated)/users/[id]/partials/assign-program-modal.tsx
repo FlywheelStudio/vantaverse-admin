@@ -17,10 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useProgramAssignmentsInfinite } from '@/hooks/use-passignments-for-user';
-import { assignProgramToUser } from './actions';
+import { useAssignProgramToUser } from '../hooks/use-user-mutations';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
 import { format, startOfDay, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -43,14 +41,13 @@ export function AssignProgramModal({
 }: AssignProgramModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssigned, setShowAssigned] = useState(false);
-  const [isAssigning, setIsAssigning] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const observerTargetRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
 
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const assignProgram = useAssignProgramToUser(userId);
 
   const {
     data,
@@ -101,36 +98,22 @@ export function AssignProgramModal({
 
   const handleAssignClick = async () => {
     if (!selectedAssignmentId || !startDate) {
-      toast.error('Please select a program and start date');
       return;
     }
 
-    setIsAssigning(true);
-    try {
-      const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-      const result = await assignProgramToUser(selectedAssignmentId, userId, formattedStartDate);
-
-      if (!result.success) {
-        toast.error(result.error || 'Failed to assign program');
-        return;
-      }
-
-      toast.success('Program assigned successfully');
-      
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['program-assignments'] });
-      queryClient.invalidateQueries({ 
-        queryKey: ['program-assignment', userId] 
-      });
-
-      onAssignSuccess?.();
-      handleCancel();
-    } catch (error) {
-      toast.error('Failed to assign program');
-      console.error('Error assigning program:', error);
-    } finally {
-      setIsAssigning(false);
-    }
+    const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+    await assignProgram.mutateAsync(
+      {
+        templateAssignmentId: selectedAssignmentId,
+        startDate: formattedStartDate,
+      },
+      {
+        onSuccess: () => {
+          onAssignSuccess?.();
+          handleCancel();
+        },
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -140,6 +123,8 @@ export function AssignProgramModal({
     setStartDate(undefined);
     onOpenChange(false);
   };
+
+  const isAssigning = assignProgram.isPending;
 
   return (
     <Dialog
