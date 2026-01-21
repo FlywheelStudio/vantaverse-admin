@@ -98,19 +98,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
     fetchNextPage,
   } = useProgramAssignments(debouncedSearch, weeksFilterNumber, pageSize);
 
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const loadedOnceRef = useRef(false);
   const prefetchTriggeredRef = useRef(false);
-
-  // Track if we've loaded data at least once
-  useEffect(() => {
-    if (!isLoading && assignments.length > 0 && !loadedOnceRef.current) {
-      loadedOnceRef.current = true;
-      setTimeout(() => {
-        setHasLoadedOnce(true);
-      }, 0);
-    }
-  }, [isLoading, assignments.length]);
 
   // Delete mutation hook
   const deleteMutation = useDeleteProgramAssignment(
@@ -190,9 +178,7 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
 
   return (
     <>
-      {hasLoadedOnce && (
-        <>
-          {/* Create Form */}
+      {/* Create Form */}
           {showCreateForm && (
             <CreateTemplateForm
               onSuccess={handleCreateSuccess}
@@ -291,8 +277,6 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
               </AnimatePresence>
             </div>
           </Card>
-        </>
-      )}
     </>
   );
 }
