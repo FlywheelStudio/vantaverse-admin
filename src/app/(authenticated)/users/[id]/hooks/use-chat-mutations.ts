@@ -52,6 +52,7 @@ export function useSendMessage(chatId: string) {
         content: variables.content,
         message_type: 'admin',
         user_id: variables.userId,
+        metadata: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

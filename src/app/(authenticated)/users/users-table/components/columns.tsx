@@ -28,7 +28,7 @@ import { deleteUser, makeSuperAdmin, revokeSuperAdmin } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { AssignProgramModal } from '../../[id]/assign-program-modal';
+import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import Link from 'next/link';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
