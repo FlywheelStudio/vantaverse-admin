@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, queryOptions } from '@tanstack/react-query';
 import {
   getOrganizations,
   getOrganizationById,
@@ -22,8 +22,14 @@ export function useOrganizations() {
   });
 }
 
-export function useOrganization(id: string | null | undefined) {
-  return useQuery<Organization | null, Error>({
+/**
+ * Query options factory for organization detail
+ */
+export function organizationQueryOptions(
+  id: string | null | undefined,
+  initialData?: Organization | null,
+) {
+  return queryOptions({
     queryKey: ['organization', id],
     queryFn: async () => {
       if (!id) return null;
@@ -36,5 +42,15 @@ export function useOrganization(id: string | null | undefined) {
       return result.data;
     },
     enabled: !!id,
+    staleTime: 60 * 1000, // 60 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...(initialData !== undefined && initialData !== null && { initialData }),
   });
+}
+
+export function useOrganization(
+  id: string | null | undefined,
+  initialData?: Organization | null,
+) {
+  return useQuery(organizationQueryOptions(id, initialData));
 }

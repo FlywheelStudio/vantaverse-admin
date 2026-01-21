@@ -68,9 +68,19 @@ const cardVariants = {
 
 interface ProgramBuilderProps {
   onTemplateSelect?: (assignment: ProgramAssignmentWithTemplate) => void;
+  initialData?: {
+    pages: Array<{
+      data: ProgramAssignmentWithTemplate[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+    }>;
+    pageParams: number[];
+  };
 }
 
-export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
+export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilderProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -89,6 +99,9 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
       ? Number.parseInt(debouncedWeeksFilter, 10)
       : undefined;
 
+  // Use initialData only when filters match (no search, no weeks filter)
+  const shouldUseInitialData = !debouncedSearch && !weeksFilterNumber;
+
   // Use infinite query with server-side filtering
   const {
     assignments,
@@ -96,7 +109,12 @@ export function ProgramBuilder({ onTemplateSelect }: ProgramBuilderProps) {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
-  } = useProgramAssignments(debouncedSearch, weeksFilterNumber, pageSize);
+  } = useProgramAssignments(
+    debouncedSearch,
+    weeksFilterNumber,
+    pageSize,
+    shouldUseInitialData ? initialData : undefined,
+  );
 
   const prefetchTriggeredRef = useRef(false);
 

@@ -34,7 +34,7 @@ export const HEADER_HEIGHT = 0; // h-16 = 64px
 // Navigation links
 export const NAV_LINKS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/groups', label: 'Groups & Teams', icon: Building2 },
+  { href: '/groups', label: 'Groups', icon: Building2 },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/builder', label: 'Programs', icon: Dumbbell },
   { href: '/exercises', label: 'Exercises', icon: Activity },

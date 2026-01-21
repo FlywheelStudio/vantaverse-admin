@@ -28,6 +28,16 @@ export function programAssignmentsInfiniteQueryOptions(
   search?: string,
   weeks?: number,
   pageSize: number = 16,
+  initialData?: {
+    pages: Array<{
+      data: ProgramAssignmentWithTemplate[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+    }>;
+    pageParams: number[];
+  },
 ) {
   return infiniteQueryOptions({
     queryKey: programAssignmentsKeys.infinite({ search, weeks, pageSize }),
@@ -54,6 +64,7 @@ export function programAssignmentsInfiniteQueryOptions(
     initialPageParam: 1,
     staleTime: 60 * 1000, // 60 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
+    ...(initialData && { initialData }),
   });
 }
 
@@ -88,11 +99,22 @@ export function useProgramAssignments(
   search?: string,
   weeks?: number,
   pageSize: number = 16,
+  initialData?: {
+    pages: Array<{
+      data: ProgramAssignmentWithTemplate[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+    }>;
+    pageParams: number[];
+  },
 ) {
   const queryOptions = programAssignmentsInfiniteQueryOptions(
     search,
     weeks,
     pageSize,
+    initialData,
   );
 
   const query = useInfiniteQuery(queryOptions);

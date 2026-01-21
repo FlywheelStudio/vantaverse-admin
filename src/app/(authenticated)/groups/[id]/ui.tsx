@@ -1,24 +1,26 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageWrapper } from '@/components/page-wrapper';
 import { Card } from '@/components/ui/card';
 import { AddMembersModal } from '../add-members/add-members-modal';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import { getCurrentPhysiologist } from '../actions';
+import { useOrganization } from '@/hooks/use-organizations';
 import {
-  getOrganizationMembersWithPrograms,
-  removeMemberFromOrganization,
-  type GroupMemberWithProgram,
-} from './actions';
-import { GroupDetailsSubheader } from './subheader';
-import { PhysicianCard, type PhysicianInfo } from './physician-card';
-import { OrganizationInfoCard } from './organization-info-card';
-import { MembersTable } from './members-table';
-import type { GroupMemberRow } from './members-table/columns';
+  useGroupMembers,
+  useGroupPhysiologist,
+  type PhysicianInfo,
+} from './hooks/use-groups';
+import { useRemoveGroupMember } from './hooks/use-group-mutations';
+import { GroupDetailsSubheader } from './partials/subheader';
+import { PhysicianCard } from './partials/physician-card';
+import { OrganizationInfoCard } from './partials/organization-info-card';
+import { MembersTable } from './partials/members-table';
+import type { GroupMemberRow } from './partials/members-table-columns';
+import type { GroupMemberWithProgram } from './actions';
 
 export function GroupDetailsPageUI({
   organization,
@@ -26,34 +28,28 @@ export function GroupDetailsPageUI({
   initialMembers,
 }: {
   organization: Organization;
-  physician: {
-    userId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatarUrl: string | null;
-    description: string | null;
-  } | null;
+  physician: PhysicianInfo | null;
   initialMembers: GroupMemberWithProgram[];
 }) {
-  const [org, setOrg] = useState<
-    Pick<Organization, 'id' | 'name' | 'description' | 'picture_url'>
-  >({
-    id: organization.id,
-    name: organization.name,
-    description: organization.description,
-    picture_url: organization.picture_url,
-  });
+  const queryClient = useQueryClient();
 
-  const [members, setMembers] =
-    useState<GroupMemberWithProgram[]>(initialMembers);
-
-  const [currentPhysician, setCurrentPhysician] =
-    useState<PhysicianInfo | null>(physician);
+  // Use React Query hooks instead of useState
+  const { data: org } = useOrganization(organization.id, organization);
+  const { data: members = [] } = useGroupMembers(
+    organization.id,
+    initialMembers,
+  );
+  const { data: currentPhysician } = useGroupPhysiologist(
+    organization.id,
+    physician,
+  );
 
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [membersModalRole, setMembersModalRole] =
     useState<MemberRole>('patient');
+
+  // Remove member mutation
+  const removeMemberMutation = useRemoveGroupMember(organization.id);
 
   const memberRows: GroupMemberRow[] = useMemo(
     () =>
@@ -68,16 +64,6 @@ export function GroupDetailsPageUI({
     [members],
   );
 
-  const refresh = useCallback(async () => {
-    const [membersResult, physicianResult] = await Promise.all([
-      getOrganizationMembersWithPrograms(org.id),
-      getCurrentPhysiologist(org.id),
-    ]);
-
-    if (membersResult.success) setMembers(membersResult.data);
-    if (physicianResult.success) setCurrentPhysician(physicianResult.data);
-  }, [org.id]);
-
   const openAddUsers = () => {
     setMembersModalRole('patient');
     setMembersModalOpen(true);
@@ -88,25 +74,14 @@ export function GroupDetailsPageUI({
     setMembersModalOpen(true);
   };
 
-  const handleRemove = async (userId: string) => {
-    const result = await removeMemberFromOrganization(org.id, userId);
-    if (!result.success) {
-      toast.error(result.error || 'Failed to remove member');
-      return;
-    }
-    toast.success('Member removed');
-    await refresh();
-  };
+  if (!org) {
+    return null;
+  }
 
   return (
     <PageWrapper
       subheader={
-        <GroupDetailsSubheader
-          organization={org}
-          onOrganizationChange={(patch) =>
-            setOrg((prev) => ({ ...prev, ...patch }))
-          }
-        />
+        <GroupDetailsSubheader organization={org} />
       }
     >
       <div className="flex flex-col gap-6">
@@ -132,9 +107,6 @@ export function GroupDetailsPageUI({
             <OrganizationInfoCard
               organization={org}
               memberCount={members.length}
-              onOrganizationChange={(patch) =>
-                setOrg((prev) => ({ ...prev, ...patch }))
-              }
             />
           </motion.div>
         </div>
@@ -149,7 +121,7 @@ export function GroupDetailsPageUI({
               <MembersTable
                 data={memberRows}
                 onAddClick={openAddUsers}
-                onRemove={handleRemove}
+                removeMemberMutation={removeMemberMutation}
                 organizationId={org.id}
               />
             </div>
@@ -159,9 +131,14 @@ export function GroupDetailsPageUI({
 
       <AddMembersModal
         open={membersModalOpen}
-        onOpenChange={async (open) => {
+        onOpenChange={(open) => {
           setMembersModalOpen(open);
-          if (!open) await refresh();
+          if (!open) {
+            // Invalidate queries to refresh data after modal closes
+            queryClient.invalidateQueries({
+              queryKey: ['groups', 'detail', org.id],
+            });
+          }
         }}
         type="organization"
         id={org.id}

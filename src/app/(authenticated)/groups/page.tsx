@@ -637,7 +637,7 @@ export default function OrganizationsPage() {
 
   return (
     <PageWrapper
-      subheader={<h1 className="text-2xl font-medium">Groups & Teams</h1>}
+      subheader={<h1 className="text-2xl font-medium">Groups</h1>}
     >
       <OrganizationsTableProvider value={contextValue}>
         {!isLoading && (

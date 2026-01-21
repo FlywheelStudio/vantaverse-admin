@@ -19,7 +19,7 @@ export const exercisesKeys = {
     [...exercisesKeys.lists(), 'templates-infinite', filters] as const,
 };
 
-export function useExercises() {
+export function useExercises(initialData?: Exercise[]) {
   return useQuery<Exercise[], Error>({
     queryKey: exercisesKeys.all,
     queryFn: async () => {
@@ -31,6 +31,7 @@ export function useExercises() {
 
       return result.data;
     },
+    initialData,
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
