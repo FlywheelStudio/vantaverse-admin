@@ -8,7 +8,7 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 /**
  * Query key factory for user program assignments
  */
-export const userProgramKeys = {
+const userProgramKeys = {
   all: ['user-program'] as const,
   detail: (userId: string | null | undefined) =>
     [...userProgramKeys.all, 'detail', userId] as const,
