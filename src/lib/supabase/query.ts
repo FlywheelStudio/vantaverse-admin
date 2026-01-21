@@ -309,7 +309,7 @@ export async function createParallelQueries<T extends QuerySchema>(
 ): Promise<QueryResults<T>> {
   // Filter and prepare queries based on conditions
   const activeQueries = Object.entries(schema)
-    .filter(([_, def]) => {
+    .filter(([, def]) => {
       if ('condition' in def) {
         return def.condition;
       }

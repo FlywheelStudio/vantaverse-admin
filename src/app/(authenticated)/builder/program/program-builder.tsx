@@ -8,7 +8,6 @@ import {
   useProgramAssignments,
   useDeleteProgramAssignment,
   programAssignmentsInfiniteQueryOptions,
-  programAssignmentsKeys,
 } from '@/hooks/use-program-assignments';
 import { ProgramTemplateCard } from './program-template-card';
 import { CreateTemplateForm } from './create-template-form';
