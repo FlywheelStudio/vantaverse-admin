@@ -32,8 +32,6 @@ interface ImportValidationResult {
   errors: ValidationError[];
 }
 
-const DATA_START_ROW_INDEX = 4; // row 5 (1-indexed), inclusive
-
 function isHeaderRow(row: (string | number | undefined)[] | undefined) {
   if (!row) return false;
   const first = String(row[0] ?? '')
@@ -50,6 +48,18 @@ function isHeaderRow(row: (string | number | undefined)[] | undefined) {
     last === 'last name' &&
     (email === 'email' || email === 'email*')
   );
+}
+
+function findHeaderRowIndex(
+  data: (string | number | undefined)[][],
+): number | null {
+  for (let i = 0; i < data.length; i++) {
+    const isHeader = isHeaderRow(data[i]);
+    if (isHeader) {
+      return i;
+    }
+  }
+  return null;
 }
 
 /**
@@ -229,23 +239,45 @@ async function uploadUsersCSV(
   | { success: false; error: string }
 > {
   try {
-    // Parse CSV file using xlsx library
-    const workbook = XLSX.read(csvText, { type: 'string' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-
-    if (!sheet) {
-      return { success: false, error: 'No data found in CSV file' };
+    // Parse CSV file - use a more direct approach to get all rows
+    // Split by newlines first to get raw CSV rows
+    const rawLines = csvText.split(/\r?\n/);
+    
+    // Parse each line as CSV (handle quoted values)
+    const data: (string | number | undefined)[][] = [];
+    for (const line of rawLines) {
+      if (!line.trim()) {
+        // Empty line - add empty row
+        data.push(['', '', '']);
+        continue;
+      }
+      
+      // Simple CSV parsing (handles basic cases)
+      // Split by comma, but respect quoted strings
+      const row: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          row.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      row.push(current.trim()); // Add last field
+      
+      // Ensure at least 3 columns
+      while (row.length < 3) {
+        row.push('');
+      }
+      
+      data.push(row.slice(0, 3)); // Take first 3 columns
     }
-
-    // Convert to array of arrays
-    const data: (string | number | undefined)[][] = XLSX.utils.sheet_to_json(
-      sheet,
-      {
-        header: 1,
-        defval: '',
-      },
-    );
 
     const profileQuery = new ProfilesQuery();
 
@@ -261,7 +293,19 @@ async function uploadUsersCSV(
 
     const seenEmails = new Set<string>();
 
-    for (let i = DATA_START_ROW_INDEX; i < data.length; i++) {
+    // Find the header row dynamically
+    const headerRowIndex = findHeaderRowIndex(data);
+    const startIndex = headerRowIndex !== null ? headerRowIndex + 1 : 0;
+
+    // Check if we have any data rows after the header
+    if (startIndex >= data.length) {
+      return {
+        success: false,
+        error: 'No user data found in CSV file. Please add user rows after the header row (First Name, Last Name, Email*). The template file should be filled in with actual user data before uploading.',
+      };
+    }
+
+    for (let i = startIndex; i < data.length; i++) {
       const row = data[i];
       if (!row || row.every((cell) => !cell || String(cell).trim() === '')) {
         // Skip empty rows
@@ -390,7 +434,11 @@ async function uploadUsersExcel(
 
     const seenEmails = new Set<string>();
 
-    for (let i = DATA_START_ROW_INDEX; i < data.length; i++) {
+    // Find the header row dynamically
+    const headerRowIndex = findHeaderRowIndex(data);
+    const startIndex = headerRowIndex !== null ? headerRowIndex + 1 : 0;
+
+    for (let i = startIndex; i < data.length; i++) {
       const row = data[i];
       if (!row || row.every((cell) => !cell || String(cell).trim() === '')) {
         // Skip empty rows
@@ -446,6 +494,10 @@ async function uploadUsersExcel(
         usersToAdd.push(userRow);
       }
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/025afd74-7b67-4f45-afd3-6a6b59d4393b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'actions.ts:uploadUsersExcel',message:'Excel parse complete',data:{usersToAddCount:usersToAdd.length,existingUsersCount:existingUsers.length,failedUsersCount:failedUsers.length,errorsCount:errors.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     return {
       success: true,
@@ -640,7 +692,9 @@ export async function importUsersCSV(
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
   const parsed = await uploadUsersCSV(csvText);
-  if (!parsed.success) return parsed;
+  if (!parsed.success) {
+    return parsed;
+  }
 
   const createResult = await createPendingUsers(parsed.data.usersToAdd, role);
   const existingResult = await resolveExistingUsers(
@@ -649,8 +703,8 @@ export async function importUsersCSV(
   );
   if (!existingResult.success) return existingResult;
 
-  return {
-    success: true,
+  const result = {
+    success: true as const,
     data: {
       createdUsers: createResult.createdUsers,
       existingUsers: existingResult.data,
@@ -663,6 +717,8 @@ export async function importUsersCSV(
       errors: [...parsed.data.errors, ...createResult.errors],
     },
   };
+
+  return result;
 }
 
 export async function importUsersExcel(

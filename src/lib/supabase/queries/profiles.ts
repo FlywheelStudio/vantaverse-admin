@@ -358,6 +358,7 @@ export class ProfilesQuery extends SupabaseQuery {
     const superAdminOrgId = superAdminOrg?.id;
 
     let userIds: string[] | null = null;
+    let shouldFilterByRoleInPostProcessing = false;
 
     // Filter by role via organization_members
     if (filters?.role) {
@@ -370,10 +371,15 @@ export class ProfilesQuery extends SupabaseQuery {
       if (orgMembersByRole && orgMembersByRole.length > 0) {
         userIds = orgMembersByRole.map((m) => m.user_id);
       } else {
-        return {
-          success: true,
-          data: [],
-        };
+        if (filters.role === 'patient' && !filters?.organization_id) {
+          shouldFilterByRoleInPostProcessing = true;
+          userIds = null; // Will query all profiles, filter later
+        } else {
+          return {
+            success: true,
+            data: [],
+          };
+        }
       }
     }
 
@@ -532,16 +538,31 @@ export class ProfilesQuery extends SupabaseQuery {
     }
 
     // Add is_super_admin, orgMemberships, and role to each profile
-    const profilesWithAdminStatusAndOrgs = data.map((profile) => {
+    let profilesWithAdminStatusAndOrgs = data.map((profile) => {
       const profileRecord = profile as Record<string, unknown>;
       const userId = profileRecord.id as string;
+      const role = userRoleMap.get(userId);
+      // If user has no role in org_members but is not a super admin, treat as patient
+      const inferredRole = role || (superAdminUserIds.has(userId) ? 'admin' : 'patient');
       return {
         ...profileRecord,
         is_super_admin: superAdminUserIds.has(userId),
         orgMemberships: orgMembershipsMap.get(userId) || [],
-        role: userRoleMap.get(userId),
+        role: inferredRole,
       };
     });
+
+    // If we need to filter by role in post-processing (for patients without org membership)
+    if (shouldFilterByRoleInPostProcessing && filters?.role === 'patient') {
+      profilesWithAdminStatusAndOrgs = profilesWithAdminStatusAndOrgs.filter(
+        (p) => {
+          const profileRecord = p as Record<string, unknown>;
+          const role = profileRecord.role as MemberRole | undefined;
+          // Include if role is patient, or if no role but not a super admin
+          return role === 'patient' || (!role && !superAdminUserIds.has(profileRecord.id as string));
+        },
+      );
+    }
 
     const result = profileWithStatsSchema
       .array()

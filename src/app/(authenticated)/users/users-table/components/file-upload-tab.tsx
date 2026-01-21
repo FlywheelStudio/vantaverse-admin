@@ -81,21 +81,25 @@ export function FileUploadTab({
     }
 
     try {
+      let result: ImportUsersResult;
       if (isCSV) {
         const csvText = await file.text();
-        const result = await importCSVMutation.mutateAsync({
+        result = await importCSVMutation.mutateAsync({
           csvText,
           role,
         });
-        onImported(result);
       } else {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await importExcelMutation.mutateAsync({
+        result = await importExcelMutation.mutateAsync({
           fileData: arrayBuffer,
           role,
         });
-        onImported(result);
       }
+      // Always call onImported with the result, even if arrays are empty
+      // This ensures the pending view is shown
+      onImported(result);
+      // Reset file state after successful import
+      setFile(null);
     } catch (error) {
       // Error handling is done in mutation hooks
       // Only handle file reading errors here

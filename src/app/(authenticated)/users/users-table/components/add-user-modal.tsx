@@ -117,33 +117,43 @@ function AddUserModalInner({
   };
 
   const handleImported = async (result: ImportUsersResult) => {
-    const now = Date.now();
-    addBatch({
-      createdUsers: result.createdUsers.map((u) => ({
-        id: u.id,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        status: u.status,
-      })),
-      existingUsers: result.existingUsers.map((u) => ({
-        id: u.id,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        status: u.status,
-      })),
-      failedUsers: result.failedUsers.map((u, idx) => ({
-        id: `failed:${now}:${u.rowNumber}:${idx}`,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        status: 'failed',
-      })),
-    });
+    try {
+      const now = Date.now();
+      
+      const batchData = {
+        createdUsers: result.createdUsers?.map((u) => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          status: u.status,
+        })) || [],
+        existingUsers: result.existingUsers?.map((u) => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          status: u.status,
+        })) || [],
+        failedUsers: result.failedUsers?.map((u, idx) => ({
+          id: `failed:${now}:${u.rowNumber}:${idx}`,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          status: 'failed',
+        })) || [],
+      };
+      
+      // Always add batch to show results (created, existing, or failed users)
+      addBatch(batchData);
 
-    // Toast messages are handled in mutation hooks
-    setMode('pending');
+      // Always switch to pending view to show results
+      setMode('pending');
+    } catch (error) {
+      console.error('Error handling imported users:', error);
+      // Still switch to pending view even on error
+      setMode('pending');
+    }
   };
 
   return (

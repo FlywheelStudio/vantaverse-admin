@@ -158,8 +158,6 @@ export function useImportUsersCSV() {
         toast.error(
           `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
         );
-      } else {
-        toast.success('Users added');
       }
     },
   });
@@ -194,8 +192,6 @@ export function useImportUsersExcel() {
         toast.error(
           `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
         );
-      } else {
-        toast.success('Users added');
       }
     },
   });
