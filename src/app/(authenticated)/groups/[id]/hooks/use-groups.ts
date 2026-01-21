@@ -20,7 +20,7 @@ export type PhysicianInfo = {
 /**
  * Query options factory for group members
  */
-export function groupMembersQueryOptions(
+function groupMembersQueryOptions(
   organizationId: string | null | undefined,
   initialData?: GroupMemberWithProgram[],
 ) {
@@ -56,7 +56,7 @@ export function useGroupMembers(
 /**
  * Query options factory for group physiologist
  */
-export function groupPhysiologistQueryOptions(
+function groupPhysiologistQueryOptions(
   organizationId: string | null | undefined,
   initialData?: PhysicianInfo | null,
 ) {
