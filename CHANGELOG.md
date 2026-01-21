@@ -1,5 +1,19 @@
 # Changelog
 
+# [0.9.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.8.0...0.9.0) (2026-01-21)
+
+
+### Bug Fixes
+
+* **create-template-form:** update type for assignment mapping to ensure correct type inference ([d1e5485](https://github.com/FlywheelStudio/vantaverse-admin/commit/d1e54854d9af4265d3f45791b96188029907bc92))
+
+
+### Features
+
+* **builder:** refactor workout builder to utilize initial assignment and improve schedule handling ([661adea](https://github.com/FlywheelStudio/vantaverse-admin/commit/661adea248b821c190d10f98cc622a857434a503))
+* **program-assignments:** add paginated fetching for program assignments with server-side filtering ([82d43ca](https://github.com/FlywheelStudio/vantaverse-admin/commit/82d43caf7ea32a361c5e82cceb28946a03f4f10c))
+* **query:** implement createParallelQueries for efficient parallel data fetching ([89e79b1](https://github.com/FlywheelStudio/vantaverse-admin/commit/89e79b11505c957486d4afb457901a9b270b9647))
+
 # [0.8.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.7.0...0.8.0) (2026-01-20)
 
 
