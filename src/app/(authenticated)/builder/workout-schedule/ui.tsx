@@ -61,6 +61,7 @@ export function BuildWorkoutSection({
     upsertScheduleMutation.isPending || updateProgramScheduleMutation.isPending;
   const isDisabled = !programAssignmentId || isSaving;
 
+  console.log('isDisabled', isDisabled, isSaving, programAssignmentId);
   return (
     <div className="w-full">
       <div className="w-full flex items-center justify-between p-4 rounded-t-lg">

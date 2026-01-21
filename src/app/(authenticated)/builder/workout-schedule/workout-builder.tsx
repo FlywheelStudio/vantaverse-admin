@@ -20,7 +20,13 @@ export function WorkoutBuilder({
   assignmentId, 
   initialAssignment,
 }: WorkoutBuilderProps) {
-  const { initializeSchedule } = useBuilder();
+  const { initializeSchedule, setSelectedAssignmentId } = useBuilder();
+  
+  useEffect(() => {
+    if (assignmentId) {
+      setSelectedAssignmentId(assignmentId);
+    }
+  }, [assignmentId, setSelectedAssignmentId]);
   
   const { data: assignment } = useQuery(
     programAssignmentQueryOptions(assignmentId, initialAssignment)
