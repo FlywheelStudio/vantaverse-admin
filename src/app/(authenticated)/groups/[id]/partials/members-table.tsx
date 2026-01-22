@@ -25,12 +25,18 @@ export function MembersTable({
   isLoading,
   onAddClick,
   removeMemberMutation,
+  addAdminMutation,
+  removeAdminMutation,
+  isSuperAdminOrg,
   organizationId,
 }: {
   data: GroupMemberRow[];
   isLoading?: boolean;
   onAddClick: () => void;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
+  addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
+  removeAdminMutation?: UseMutationResult<string, Error, string, unknown>;
+  isSuperAdminOrg?: boolean;
   organizationId: string;
 }) {
   const [searchValue, setSearchValue] = useState('');
@@ -49,7 +55,10 @@ export function MembersTable({
   }, [debouncedSearch]);
 
   const columns = getMembersColumns({
-    removeMemberMutation,
+    removeMemberMutation:
+      isSuperAdminOrg && removeAdminMutation ? removeAdminMutation : removeMemberMutation,
+    addAdminMutation,
+    isSuperAdminOrg,
     organizationId,
   });
 

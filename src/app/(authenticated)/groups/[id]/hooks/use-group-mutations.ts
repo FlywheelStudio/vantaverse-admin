@@ -7,6 +7,11 @@ import {
   updateOrganizationPicture,
 } from '@/app/(authenticated)/groups/actions';
 import { removeMemberFromOrganization } from '../actions';
+import {
+  addAdminToOrganization,
+  removeAdminFromOrganization,
+  type SuperAdminGroupUser,
+} from '../actions';
 import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { GroupMemberWithProgram } from '../actions';
@@ -243,6 +248,68 @@ export function useRemoveGroupMember(organizationId: string) {
       queryClient.invalidateQueries({
         queryKey: membersKey,
       });
+    },
+  });
+}
+
+export function useAddGroupAdmin(organizationId: string) {
+  const queryClient = useQueryClient();
+  const membersKey = groupsKeys.members(organizationId);
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const result = await addAdminToOrganization(organizationId, userId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to add physician');
+      }
+      return userId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: membersKey });
+      toast.success('Physician assigned');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to assign physician');
+    },
+  });
+}
+
+export function useRemoveGroupAdmin(organizationId: string) {
+  const queryClient = useQueryClient();
+  const membersKey = groupsKeys.members(organizationId);
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const result = await removeAdminFromOrganization(organizationId, userId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove physician');
+      }
+      return userId;
+    },
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: membersKey });
+
+      const previous =
+        queryClient.getQueryData<SuperAdminGroupUser[]>(membersKey);
+
+      // Optimistically remove physician; full list will be refetched.
+      queryClient.setQueryData<SuperAdminGroupUser[]>(membersKey, (old) => {
+        if (!old) return old;
+        return old.filter((u) => u.user_id !== userId);
+      });
+
+      toast.success('Physician removed');
+
+      return { previous };
+    },
+    onError: (error, _userId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(membersKey, context.previous);
+      }
+      toast.error(error.message || 'Failed to remove physician');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: membersKey });
     },
   });
 }

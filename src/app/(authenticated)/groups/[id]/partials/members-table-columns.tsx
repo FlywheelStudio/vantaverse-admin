@@ -25,6 +25,7 @@ export type GroupMemberRow = {
   email: string | null;
   avatar_url: string | null;
   program_name: string | null;
+  role: 'unassigned' | 'physician' | null;
 };
 
 function NameEmailCell({
@@ -77,12 +78,20 @@ function ProgramCell({ member }: { member: GroupMemberRow }) {
   );
 }
 
+function RoleCell({ member }: { member: GroupMemberRow }) {
+  return (
+    <span className="text-sm text-[#1E3A5F]">{member.role || '-'}</span>
+  );
+}
+
 function RemoveButton({
   member,
   removeMemberMutation,
+  confirmText,
 }: {
   member: GroupMemberRow;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
+  confirmText: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const isRemoving = removeMemberMutation.isPending;
@@ -110,8 +119,7 @@ function RemoveButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Remove member</AlertDialogTitle>
           <AlertDialogDescription>
-            Remove this user from the group? They will lose access to this
-            program.
+            {confirmText}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -134,15 +142,41 @@ function RemoveButton({
 function ActionsCell({
   member,
   removeMemberMutation,
+  addAdminMutation,
+  isSuperAdminOrg,
 }: {
   member: GroupMemberRow;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
+  addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
+  isSuperAdminOrg?: boolean;
 }) {
+  if (isSuperAdminOrg && member.role === 'unassigned' && addAdminMutation) {
+    const isPending = addAdminMutation.isPending;
+    return (
+      <div className="flex items-center justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="cursor-pointer"
+          disabled={isPending}
+          onClick={() => addAdminMutation.mutate(member.user_id)}
+        >
+          {isPending ? 'Assigning...' : 'Make physician'}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-end">
       <RemoveButton
         member={member}
         removeMemberMutation={removeMemberMutation}
+        confirmText={
+          isSuperAdminOrg
+            ? 'Remove this physician from the organization? They will no longer be an administrator.'
+            : 'Remove this user from the group? They will lose access to this program.'
+        }
       />
     </div>
   );
@@ -151,33 +185,75 @@ function ActionsCell({
 export function getMembersColumns({
   removeMemberMutation,
   organizationId,
+  isSuperAdminOrg,
+  addAdminMutation,
 }: {
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   organizationId: string;
+  isSuperAdminOrg?: boolean;
+  addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
 }): ColumnDef<GroupMemberRow>[] {
+  const nameCol: ColumnDef<GroupMemberRow> = {
+    accessorKey: 'name',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
+    ),
+    cell: ({ row }) => (
+      <NameEmailCell member={row.original} organizationId={organizationId} />
+    ),
+    enableSorting: false,
+    filterFn: (row, _id, value) => {
+      const member = row.original;
+      const searchTerm = String(value).toLowerCase();
+      const fullName =
+        member.first_name && member.last_name
+          ? `${member.first_name} ${member.last_name}`
+          : '';
+      const email = member.email || '';
+      return (
+        fullName.toLowerCase().includes(searchTerm) ||
+        email.toLowerCase().includes(searchTerm)
+      );
+    },
+  };
+
+  const actionsCol: ColumnDef<GroupMemberRow> = {
+    id: 'actions',
+    header: () => (
+      <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>
+    ),
+    cell: ({ row }) => (
+      <ActionsCell
+        member={row.original}
+        removeMemberMutation={removeMemberMutation}
+        addAdminMutation={addAdminMutation}
+        isSuperAdminOrg={isSuperAdminOrg}
+      />
+    ),
+    enableSorting: false,
+    enableColumnFilter: false,
+  };
+
+  if (isSuperAdminOrg) {
+    return [
+      nameCol,
+      {
+        id: 'role',
+        accessorFn: (row) => row.role || '',
+        header: () => (
+          <span className="text-sm font-bold text-[#1E3A5F]">Role</span>
+        ),
+        cell: ({ row }) => <RoleCell member={row.original} />,
+        enableSorting: false,
+        enableColumnFilter: false,
+      },
+      actionsCol,
+    ];
+  }
+
   return [
     {
-      accessorKey: 'name',
-      header: () => (
-        <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
-      ),
-      cell: ({ row }) => (
-        <NameEmailCell member={row.original} organizationId={organizationId} />
-      ),
-      enableSorting: false,
-      filterFn: (row, _id, value) => {
-        const member = row.original;
-        const searchTerm = String(value).toLowerCase();
-        const fullName =
-          member.first_name && member.last_name
-            ? `${member.first_name} ${member.last_name}`
-            : '';
-        const email = member.email || '';
-        return (
-          fullName.toLowerCase().includes(searchTerm) ||
-          email.toLowerCase().includes(searchTerm)
-        );
-      },
+      ...nameCol,
     },
     {
       id: 'program',
@@ -190,18 +266,7 @@ export function getMembersColumns({
       enableColumnFilter: false,
     },
     {
-      id: 'actions',
-      header: () => (
-        <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>
-      ),
-      cell: ({ row }) => (
-        <ActionsCell
-          member={row.original}
-          removeMemberMutation={removeMemberMutation}
-        />
-      ),
-      enableSorting: false,
-      enableColumnFilter: false,
+      ...actionsCol,
     },
   ];
 }

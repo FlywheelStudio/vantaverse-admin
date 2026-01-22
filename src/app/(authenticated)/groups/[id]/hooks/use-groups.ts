@@ -3,7 +3,10 @@
 import { useQuery, queryOptions } from '@tanstack/react-query';
 import {
   getOrganizationMembersWithPrograms,
+  getOrganizationAdmins,
+  getUnassignedUsers,
   type GroupMemberWithProgram,
+  type SuperAdminGroupUser,
 } from '../actions';
 import { getCurrentPhysiologist } from '@/app/(authenticated)/groups/actions';
 import { groupsKeys } from './use-group-mutations';
@@ -51,6 +54,49 @@ export function useGroupMembers(
   initialData?: GroupMemberWithProgram[],
 ) {
   return useQuery(groupMembersQueryOptions(organizationId, initialData));
+}
+
+function superAdminGroupUsersQueryOptions(
+  organizationId: string | null | undefined,
+  initialData?: SuperAdminGroupUser[],
+) {
+  return queryOptions({
+    queryKey: groupsKeys.members(organizationId),
+    queryFn: async () => {
+      if (!organizationId) return [];
+
+      const [adminsResult, unassignedResult] = await Promise.all([
+        getOrganizationAdmins(organizationId),
+        getUnassignedUsers(),
+      ]);
+
+      if (!adminsResult.success) {
+        throw new Error(adminsResult.error);
+      }
+      if (!unassignedResult.success) {
+        throw new Error(unassignedResult.error);
+      }
+
+      const byId = new Map<string, SuperAdminGroupUser>();
+      for (const a of adminsResult.data) byId.set(a.user_id, a);
+      for (const u of unassignedResult.data) {
+        if (!byId.has(u.user_id)) byId.set(u.user_id, u);
+      }
+
+      return Array.from(byId.values());
+    },
+    enabled: !!organizationId,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    ...(initialData !== undefined && { initialData }),
+  });
+}
+
+export function useSuperAdminGroupUsers(
+  organizationId: string | null | undefined,
+  initialData?: SuperAdminGroupUser[],
+) {
+  return useQuery(superAdminGroupUsersQueryOptions(organizationId, initialData));
 }
 
 /**

@@ -2,25 +2,30 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
 import { PageWrapper } from '@/components/page-wrapper';
 import { Card } from '@/components/ui/card';
 import { AddMembersModal } from '../add-members/add-members-modal';
+import { AddUserModal } from '@/app/(authenticated)/users/users-table/components/add-user-modal';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganization } from '@/hooks/use-organizations';
 import {
   useGroupMembers,
   useGroupPhysiologist,
+  useSuperAdminGroupUsers,
   type PhysicianInfo,
 } from './hooks/use-groups';
-import { useRemoveGroupMember } from './hooks/use-group-mutations';
+import {
+  useAddGroupAdmin,
+  useRemoveGroupAdmin,
+  useRemoveGroupMember,
+} from './hooks/use-group-mutations';
 import { GroupDetailsSubheader } from './partials/subheader';
 import { PhysicianCard } from './partials/physician-card';
 import { OrganizationInfoCard } from './partials/organization-info-card';
 import { MembersTable } from './partials/members-table';
 import type { GroupMemberRow } from './partials/members-table-columns';
-import type { GroupMemberWithProgram } from './actions';
+import type { GroupMemberWithProgram, SuperAdminGroupUser } from './actions';
 
 export function GroupDetailsPageUI({
   organization,
@@ -29,27 +34,61 @@ export function GroupDetailsPageUI({
 }: {
   organization: Organization;
   physician: PhysicianInfo | null;
-  initialMembers: GroupMemberWithProgram[];
+  initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
 }) {
-  const queryClient = useQueryClient();
-
   // Use React Query hooks instead of useState
   const { data: org } = useOrganization(organization.id, organization);
-  const { data: members = [] } = useGroupMembers(
-    organization.id,
-    initialMembers,
+  // Ensure initialMembers is always an array
+  const safeInitialMembers = useMemo(
+    () => (Array.isArray(initialMembers) ? initialMembers : []),
+    [initialMembers],
+  );
+  const isSuperAdminOrg = organization.is_super_admin === true;
+
+  const initialPatients = useMemo(
+    () =>
+      safeInitialMembers.filter(
+        (m): m is GroupMemberWithProgram => 'program_name' in m,
+      ),
+    [safeInitialMembers],
+  );
+
+  const initialSuperAdminUsers = useMemo(
+    () =>
+      safeInitialMembers.filter(
+        (m): m is SuperAdminGroupUser => 'role' in m,
+      ),
+    [safeInitialMembers],
+  );
+  
+  const { data: membersData } = useGroupMembers(
+    isSuperAdminOrg ? null : organization.id,
+    initialPatients,
+  );
+  const { data: superAdminUsersData } = useSuperAdminGroupUsers(
+    isSuperAdminOrg ? organization.id : null,
+    initialSuperAdminUsers,
   );
   const { data: currentPhysician } = useGroupPhysiologist(
-    organization.id,
+    isSuperAdminOrg ? null : organization.id,
     physician,
   );
+
+  const members = useMemo(() => {
+    // Ensure result is always an array, even if membersData is null, undefined, or not an array
+    const data = isSuperAdminOrg ? superAdminUsersData : membersData;
+    return Array.isArray(data) ? data : [];
+  }, [isSuperAdminOrg, membersData, superAdminUsersData]);
 
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [membersModalRole, setMembersModalRole] =
     useState<MemberRole>('patient');
+  const [inviteUsersModalOpen, setInviteUsersModalOpen] = useState(false);
 
   // Remove member mutation
   const removeMemberMutation = useRemoveGroupMember(organization.id);
+  const addAdminMutation = useAddGroupAdmin(organization.id);
+  const removeAdminMutation = useRemoveGroupAdmin(organization.id);
 
   const memberRows: GroupMemberRow[] = useMemo(
     () =>
@@ -59,12 +98,17 @@ export function GroupDetailsPageUI({
         last_name: m.last_name,
         email: m.email,
         avatar_url: m.avatar_url,
-        program_name: m.program_name,
+        program_name: 'program_name' in m ? m.program_name : null,
+        role: 'role' in m ? m.role : null,
       })),
     [members],
   );
 
   const openAddUsers = () => {
+    if (isSuperAdminOrg) {
+      setInviteUsersModalOpen(true);
+      return;
+    }
     setMembersModalRole('patient');
     setMembersModalOpen(true);
   };
@@ -92,11 +136,19 @@ export function GroupDetailsPageUI({
             transition={{ duration: 0.3, delay: 0 }}
             className="h-full"
           >
-            <PhysicianCard
-              physician={currentPhysician ?? null}
-              onAssignClick={openAssignPhysician}
-              organizationId={org.id}
-            />
+            {isSuperAdminOrg ? (
+              <Card className="p-6 border-2 border-blue-200 bg-blue-50 h-full flex items-center">
+                <div className="text-sm font-medium text-blue-900">
+                  This organization is only for administrators & physicians
+                </div>
+              </Card>
+            ) : (
+              <PhysicianCard
+                physician={currentPhysician ?? null}
+                onAssignClick={openAssignPhysician}
+                organizationId={org.id}
+              />
+            )}
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -106,7 +158,7 @@ export function GroupDetailsPageUI({
           >
             <OrganizationInfoCard
               organization={org}
-              memberCount={members.length}
+              memberCount={Array.isArray(members) ? members.length : 0}
             />
           </motion.div>
         </div>
@@ -122,6 +174,9 @@ export function GroupDetailsPageUI({
                 data={memberRows}
                 onAddClick={openAddUsers}
                 removeMemberMutation={removeMemberMutation}
+                addAdminMutation={addAdminMutation}
+                removeAdminMutation={removeAdminMutation}
+                isSuperAdminOrg={isSuperAdminOrg}
                 organizationId={org.id}
               />
             </div>
@@ -129,22 +184,26 @@ export function GroupDetailsPageUI({
         </motion.div>
       </div>
 
-      <AddMembersModal
-        open={membersModalOpen}
-        onOpenChange={(open) => {
-          setMembersModalOpen(open);
-          if (!open) {
-            // Invalidate queries to refresh data after modal closes
-            queryClient.invalidateQueries({
-              queryKey: ['groups', 'detail', org.id],
-            });
-          }
-        }}
-        type="organization"
-        id={org.id}
-        name={org.name}
-        initialRole={membersModalRole}
-      />
+      {!isSuperAdminOrg && (
+        <AddMembersModal
+          open={membersModalOpen}
+          onOpenChange={(open) => {
+            setMembersModalOpen(open);
+          }}
+          type="organization"
+          id={org.id}
+          name={org.name}
+          initialRole={membersModalRole}
+        />
+      )}
+
+      {isSuperAdminOrg && (
+        <AddUserModal
+          open={inviteUsersModalOpen}
+          onOpenChange={setInviteUsersModalOpen}
+          role="admin"
+        />
+      )}
     </PageWrapper>
   );
 }

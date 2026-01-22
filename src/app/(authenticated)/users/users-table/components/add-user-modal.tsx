@@ -30,16 +30,23 @@ interface AddUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   role: MemberRole;
+  title?: string;
 }
 
 export function AddUserModal({
   open,
   onOpenChange,
   role = 'patient',
+  title,
 }: AddUserModalProps) {
   return (
     <PendingUsersProvider>
-      <AddUserModalInner open={open} onOpenChange={onOpenChange} role={role} />
+      <AddUserModalInner
+        open={open}
+        onOpenChange={onOpenChange}
+        role={role}
+        title={title}
+      />
     </PendingUsersProvider>
   );
 }
@@ -48,6 +55,7 @@ function AddUserModalInner({
   open,
   onOpenChange,
   role = 'patient',
+  title,
 }: AddUserModalProps) {
   const { addBatch, reset, rows } = usePendingUsers();
   const createUserMutation = useCreateUserQuickAdd();
@@ -181,7 +189,8 @@ function AddUserModalInner({
             <>
               <DialogHeader>
                 <DialogTitle className="text-[#1E3A5F]">
-                  Invite Users
+                  {title ??
+                    (role === 'admin' ? 'Invite physicians' : 'Invite members')}
                 </DialogTitle>
                 <DialogDescription>
                   Add users to your platform. Invitations will be sent

@@ -38,7 +38,7 @@ function filterByRole(
   if (role === 'patient') {
     // Members tab: show all non-admins
     return profiles.filter((profile) => {
-      const hasAdminRole = profile.orgMemberships.some(
+      const hasAdminRole = (profile.orgMemberships ?? []).some(
         (om) => om.role === 'admin',
       );
       return !hasAdminRole;
@@ -47,7 +47,7 @@ function filterByRole(
 
   // Physiologist tab: show only admins
   return profiles.filter((profile) => {
-    const hasAdminRole = profile.orgMemberships.some(
+    const hasAdminRole = (profile.orgMemberships ?? []).some(
       (om) => om.role === 'admin',
     );
     return hasAdminRole;
@@ -126,8 +126,8 @@ export function AddMembersModal({
     if (selectedRole === 'patient' && viewUnassigned) {
       filtered = filtered.filter(
         (profile) =>
-          profile.orgMemberships.length === 0 &&
-          profile.teamMemberships.length === 0,
+          (profile.orgMemberships?.length ?? 0) === 0 &&
+          (profile.teamMemberships?.length ?? 0) === 0,
       );
     }
 
@@ -185,6 +185,11 @@ export function AddMembersModal({
       ? selectedMemberIds.size > 0
       : selectedPhysiologistId !== null);
 
+  const inviteTitle = selectedRole === 'admin' ? 'Invite physicians' : 'Invite members';
+  const targetLabel =
+    type === 'team' && organizationName ? `${organizationName}/${name}` : name;
+  const targetKind = type === 'organization' ? 'Group' : 'Team';
+
   return (
     <Dialog
       open={open}
@@ -203,14 +208,10 @@ export function AddMembersModal({
         >
           <DialogHeader>
             <DialogTitle className="text-[#1E3A5F]">
-              Add to{' '}
-              {type === 'team' && organizationName
-                ? `${organizationName}/${name}`
-                : name}{' '}
-              ({type === 'organization' ? 'Group' : 'Team'})
+              {inviteTitle}
             </DialogTitle>
             <DialogDescription>
-              Select users and assign their role in this group.
+              {targetLabel} ({targetKind})
             </DialogDescription>
           </DialogHeader>
 
