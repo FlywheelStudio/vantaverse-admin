@@ -13,7 +13,7 @@ interface ProgramStatusDayCardProps {
   day: DatabaseSchedule[number][number];
   dayIndex: number;
   weekIndex: number;
-  startDate: string;
+  startDate: string | null;
   completionDay: CompletionDay;
   exerciseNamesMap: Map<string, string>;
   groupsMap: Map<string, { exercise_template_ids: string[] | null }>;

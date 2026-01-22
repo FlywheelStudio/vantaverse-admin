@@ -39,11 +39,11 @@ export function parseCompletion(
 }
 
 export function getDayDate(
-  startDate: string,
+  startDate: string | null,
   weekIndex: number,
   dayIndex: number,
 ): Date {
-  const start = new Date(startDate);
+  const start = startDate ? new Date(startDate) : new Date();
   const dayOffset = weekIndex * 7 + dayIndex;
   const dayDate = new Date(start);
   dayDate.setDate(start.getDate() + dayOffset);
@@ -74,9 +74,12 @@ export function calculateDayCompletion(completionDay: CompletionDay): number {
 }
 
 export function calculateOverallCompletion(
-  startDate: string,
+  startDate: string | null,
   weeks: number,
 ): number {
+  if (!startDate) {
+    return 0;
+  }
   const start = new Date(startDate);
   const now = new Date();
   const totalDays = weeks * 7;

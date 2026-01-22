@@ -9,7 +9,7 @@ import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-sch
 interface ProgramStatusWeekCardProps {
   week: DatabaseSchedule[number];
   weekIndex: number;
-  startDate: string;
+  startDate: string | null;
   isExpanded: boolean;
   onToggle: () => void;
   parsedCompletion: Array<Array<CompletionDay>>;
