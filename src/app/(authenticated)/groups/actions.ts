@@ -69,24 +69,39 @@ export async function uploadOrganizationPicture(
 
   const storage = new SupabaseStorage();
   const extension = isJpeg ? 'jpg' : 'png';
-  const path = `${organizationId}/picture.${extension}`;
   const contentType = isJpeg ? 'image/jpeg' : 'image/png';
 
-  // Delete old picture if it exists
+  // Delete old picture if it exists (extract path from URL)
   if (oldPictureUrl) {
-    // Extract path from URL
-    const urlParts = oldPictureUrl.split('/');
-    const oldPath = urlParts.slice(-2).join('/'); // Get {orgId}/picture.{ext}
-    await storage.delete('organization_assets', oldPath);
+    try {
+      const url = new URL(oldPictureUrl);
+      // Extract path from URL: /storage/v1/object/public/organization_assets/{orgId}/filename
+      // or similar format - get the part after organization_assets/
+      const pathMatch = url.pathname.match(/organization_assets\/(.+)$/);
+      if (pathMatch) {
+        const oldPath = pathMatch[1];
+        await storage.delete('organization_assets', oldPath);
+      }
+    } catch {
+      // If URL parsing fails, try to extract path manually
+      const pathMatch = oldPictureUrl.match(/organization_assets[^/]*\/(.+)$/);
+      if (pathMatch) {
+        const oldPath = pathMatch[1];
+        await storage.delete('organization_assets', oldPath);
+      }
+    }
   }
 
-  // Upload new picture
+  // Upload new picture with timestamp in filename
+  const timestamp = Date.now();
+  const path = `${organizationId}/picture-${timestamp}.${extension}`;
+
   const result = await storage.upload({
     bucket: 'organization_assets',
     path,
     body: fileBase64,
     contentType,
-    upsert: true,
+    upsert: false, // Don't upsert since we're using unique filenames
     getPublicUrl: true,
   });
 

@@ -66,44 +66,36 @@ export async function createProgramTemplate(
 
   const templateId = templateResult.data.id;
 
-  // Only create program_assignment if startDate is provided
-  if (startDate) {
-    // Calculate end date from start date + weeks
-    const start = new Date(startDate);
-    const endDate = new Date(start);
-    endDate.setDate(endDate.getDate() + weeks * 7);
-    const endDateString = endDate.toISOString().split('T')[0];
+  const endDateString = startDate
+    ? (() => {
+        // Calculate end date from start date + weeks
+        const start = new Date(startDate);
+        const endDate = new Date(start);
+        endDate.setDate(endDate.getDate() + weeks * 7);
+        return endDate.toISOString().split('T')[0];
+      })()
+    : null;
 
-    // Create program_assignment with status='template'
-    const assignmentResult = await assignmentQuery.create(
-      templateId,
-      startDate,
-      endDateString,
-      organizationId,
-    );
+  // Always create program_assignment with status='template'
+  const assignmentResult = await assignmentQuery.create(
+    templateId,
+    startDate ?? null,
+    endDateString,
+    organizationId,
+  );
 
-    if (!assignmentResult.success) {
-      // If assignment creation fails, we could optionally rollback template creation
-      // For now, we'll return the error
-      return assignmentResult;
-    }
-
-    // Return both template and assignment data
-    return {
-      success: true as const,
-      data: {
-        template: templateResult.data,
-        assignment: assignmentResult.data,
-      },
-    };
+  if (!assignmentResult.success) {
+    // If assignment creation fails, we could optionally rollback template creation
+    // For now, we'll return the error
+    return assignmentResult;
   }
 
-  // Return only template data if no startDate provided
+  // Return both template and assignment data
   return {
     success: true as const,
     data: {
       template: templateResult.data,
-      assignment: null,
+      assignment: assignmentResult.data,
     },
   };
 }

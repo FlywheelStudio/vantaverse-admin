@@ -144,6 +144,7 @@ function PictureCell({ org }: { org: Organization }) {
           className="aspect-square size-full object-contain"
           width={48}
           height={48}
+          key={pictureUrl}
         />
         {isUploading && (
           <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">

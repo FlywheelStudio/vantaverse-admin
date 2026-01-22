@@ -354,8 +354,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
    */
   public async create(
     programTemplateId: string,
-    startDate: string,
-    endDate: string,
+    startDate: string | null,
+    endDate: string | null,
     organizationId?: string | null,
   ): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
@@ -364,8 +364,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .from('program_assignment')
       .insert({
         program_template_id: programTemplateId,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: startDate ?? null,
+        end_date: endDate ?? null,
         status: 'template',
         user_id: null,
         organization_id: organizationId || null,

@@ -194,6 +194,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
 
 function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   const status = profile.status;
+
   if (!status) {
     return <span className="text-[#64748B] text-sm">—</span>;
   }

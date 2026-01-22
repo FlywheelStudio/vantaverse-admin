@@ -191,6 +191,7 @@ export function GroupImageUploader({
             className="aspect-square size-full object-contain bg-white/80"
             width={64}
             height={64}
+            key={pictureUrl}
           />
         )}
         {isUploading && (

@@ -7,7 +7,7 @@ export const programAssignmentSchema = z.object({
   organization_id: z.string().nullable(),
   program_template_id: z.string(),
   workout_schedule_id: z.string().nullable(),
-  start_date: z.string(),
+  start_date: z.string().nullable(),
   end_date: z.string().nullable(),
   status: z.string().nullable(),
   completion: z.unknown().nullable(),
