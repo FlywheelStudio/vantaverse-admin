@@ -765,7 +765,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       }>
     | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     let query = supabase
       .from('program_assignment')
