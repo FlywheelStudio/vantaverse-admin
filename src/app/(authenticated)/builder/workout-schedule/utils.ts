@@ -160,6 +160,10 @@ export async function convertSelectedItemsToDatabaseSchedule(
 
         // Handle templates
         if (item.type === 'template') {
+          // Skip templates with empty or invalid IDs
+          if (!item.data.id || item.data.id.trim() === '') {
+            continue;
+          }
           dbDay.exercises.push({
             id: item.data.id,
             type: 'exercise_template',
@@ -172,8 +176,8 @@ export async function convertSelectedItemsToDatabaseSchedule(
         if (item.type === 'group') {
           let groupId = item.data.id;
 
-          // If group doesn't have an ID, upsert it first
-          if (!groupId) {
+          // If group doesn't have an ID or has empty string, upsert it first
+          if (!groupId || groupId.trim() === '') {
             // Extract exercise template IDs from group items
             const exerciseTemplateIds: string[] = [];
             if (item.data.items && Array.isArray(item.data.items)) {
@@ -187,7 +191,8 @@ export async function convertSelectedItemsToDatabaseSchedule(
                   typeof groupItem.data === 'object' &&
                   groupItem.data !== null &&
                   'id' in groupItem.data &&
-                  typeof groupItem.data.id === 'string'
+                  typeof groupItem.data.id === 'string' &&
+                  groupItem.data.id.trim() !== ''
                 ) {
                   exerciseTemplateIds.push(groupItem.data.id);
                 }
@@ -212,6 +217,11 @@ export async function convertSelectedItemsToDatabaseSchedule(
             }
 
             groupId = result.data.id;
+          }
+
+          // Skip groups with empty or invalid IDs
+          if (!groupId || groupId.trim() === '') {
+            continue;
           }
 
           dbDay.exercises.push({
