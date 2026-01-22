@@ -34,8 +34,8 @@ export function useProgramFormSubmit({
           ? initialData.image_url
           : typeof initialData.image_url === 'object' &&
               initialData.image_url !== null &&
-              'url' in initialData.image_url
-            ? String(initialData.image_url.url)
+              'image_url' in initialData.image_url
+            ? String(initialData.image_url.image_url)
             : null;
 
       updateMutation.mutate({

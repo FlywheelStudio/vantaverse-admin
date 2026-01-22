@@ -107,7 +107,7 @@ export async function uploadProgramTemplateImage(
   templateId: string,
   organizationId: string | null,
   fileBase64: string,
-  oldImageUrl?: string | null,
+  oldImageUrl?: string | null | { image_url: string; blur_hash: string },
 ) {
   // Validate file type
   const base64Header = fileBase64.substring(0, 30);
@@ -134,13 +134,25 @@ export async function uploadProgramTemplateImage(
   // Delete old image if it exists
   if (oldImageUrl) {
     // Extract path from URL - format: {orgId}/program-templates/{templateId}/image.{ext}
-    const urlParts = oldImageUrl.split('/');
-    const oldPathIndex = urlParts.findIndex((part) =>
-      part.includes('program-templates'),
-    );
-    if (oldPathIndex !== -1) {
-      const oldPath = urlParts.slice(oldPathIndex - 1).join('/');
-      await storage.delete('organization_assets', oldPath);
+    // oldImageUrl can be a string or extracted from JSONB object
+    const urlToUse =
+      typeof oldImageUrl === 'string'
+        ? oldImageUrl
+        : typeof oldImageUrl === 'object' &&
+            oldImageUrl !== null &&
+            'image_url' in oldImageUrl
+          ? String(oldImageUrl.image_url)
+          : null;
+
+    if (urlToUse) {
+      const urlParts = urlToUse.split('/');
+      const oldPathIndex = urlParts.findIndex((part) =>
+        part.includes('program-templates'),
+      );
+      if (oldPathIndex !== -1) {
+        const oldPath = urlParts.slice(oldPathIndex - 1).join('/');
+        await storage.delete('organization_assets', oldPath);
+      }
     }
   }
 
@@ -257,7 +269,14 @@ export async function updateProgramTemplateImage(
   imageUrl: string | null,
 ) {
   const query = new ProgramTemplatesQuery();
-  return query.update(templateId, { image_url: imageUrl as unknown });
+  // Database constraint requires JSONB format: { image_url: string, blur_hash: string }
+  const imageUrlData = imageUrl
+    ? {
+        image_url: imageUrl,
+        blur_hash: '', // Empty string for now, can be generated later if needed
+      }
+    : null;
+  return query.update(templateId, { image_url: imageUrlData as unknown });
 }
 
 /**

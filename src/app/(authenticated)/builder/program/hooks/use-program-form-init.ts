@@ -26,12 +26,13 @@ export function useProgramFormInit({
     if (typeof initialData.image_url === 'string') {
       return initialData.image_url;
     }
+    // Database constraint requires: { image_url: string, blur_hash: string }
     if (
       typeof initialData.image_url === 'object' &&
       initialData.image_url !== null &&
-      'url' in initialData.image_url
+      'image_url' in initialData.image_url
     ) {
-      return String(initialData.image_url.url);
+      return String(initialData.image_url.image_url);
     }
     return null;
   }, [initialData?.image_url]);

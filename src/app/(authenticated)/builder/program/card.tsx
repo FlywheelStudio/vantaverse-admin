@@ -41,12 +41,13 @@ export function ProgramTemplateCard({
       return template.image_url;
     }
 
+    // Database constraint requires: { image_url: string, blur_hash: string }
     if (
       typeof template.image_url === 'object' &&
       template.image_url !== null &&
-      'url' in template.image_url
+      'image_url' in template.image_url
     ) {
-      return String(template.image_url.url);
+      return String(template.image_url.image_url);
     }
 
     return null;
@@ -87,9 +88,9 @@ export function ProgramTemplateCard({
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt={template.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            alt={template.name}
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
             unoptimized
           />
         ) : (

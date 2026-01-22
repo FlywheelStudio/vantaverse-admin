@@ -159,6 +159,17 @@ export async function getCurrentPhysiologist(organizationId: string) {
 }
 
 /**
+ * Add a user to an organization (idempotent)
+ */
+export async function addUserToOrganization(
+  organizationId: string,
+  userId: string,
+) {
+  const query = new OrganizationMembers();
+  return query.addOrUpdateMembership(userId, organizationId, 'patient');
+}
+
+/**
  * Update organization members (add and remove)
  */
 export async function updateOrganizationMembers(

@@ -19,6 +19,8 @@ import { useOrganizations } from '@/hooks/use-organizations';
 import { getTeamsByOrganizationId } from '@/app/(authenticated)/groups/teams-actions';
 import type { Team } from '@/lib/supabase/schemas/teams';
 
+const FL_TEAMS_ENABLED = process.env.NEXT_PUBLIC_FL_TEAMS === 'true';
+
 interface OrgTeamFilterProps {
   selectedOrgId?: string;
   selectedOrgName?: string;
@@ -46,19 +48,21 @@ export function OrgTeamFilter({
   // Set up queries for all organizations, but only enable them when needed
   const teamQueries = useQueries({
     queries:
-      organizations?.map((org) => ({
-        queryKey: ['teams', org.id],
-        queryFn: async () => {
-          const result = await getTeamsByOrganizationId(org.id);
-          if (!result.success) {
-            throw new Error(result.error);
-          }
-          return result.data;
-        },
-        enabled: enabledOrgs.has(org.id) || selectedOrgId === org.id,
-        staleTime: 60 * 1000, // 1 minute
-        gcTime: 5 * 60 * 1000, // 5 minutes
-      })) || [],
+      FL_TEAMS_ENABLED && organizations
+        ? organizations.map((org) => ({
+            queryKey: ['teams', org.id],
+            queryFn: async () => {
+              const result = await getTeamsByOrganizationId(org.id);
+              if (!result.success) {
+                throw new Error(result.error);
+              }
+              return result.data;
+            },
+            enabled: enabledOrgs.has(org.id) || selectedOrgId === org.id,
+            staleTime: 60 * 1000, // 1 minute
+            gcTime: 5 * 60 * 1000, // 5 minutes
+          }))
+        : [],
   });
 
   // Create a map of org ID to query result for easy lookup
@@ -86,6 +90,7 @@ export function OrgTeamFilter({
   // Load teams for an organization on demand
   const loadTeams = React.useCallback(
     (orgId: string) => {
+      if (!FL_TEAMS_ENABLED) return;
       if (!enabledOrgs.has(orgId)) {
         setEnabledOrgs((prev) => new Set(prev).add(orgId));
       } else {
@@ -110,10 +115,13 @@ export function OrgTeamFilter({
       ? `${selectedOrgName || ''} / ${selectedTeamName}`
       : selectedOrgId && selectedOrgName
         ? selectedOrgName
-        : 'All Groups / Teams';
+        : !FL_TEAMS_ENABLED
+          ? 'All Groups / Teams'
+          : 'All Groups';
 
   // Load teams for selected org when it changes
   React.useEffect(() => {
+    if (!FL_TEAMS_ENABLED) return;
     if (selectedOrgId && !enabledOrgs.has(selectedOrgId)) {
       setEnabledOrgs((prev) => new Set(prev).add(selectedOrgId));
     }
@@ -142,57 +150,73 @@ export function OrgTeamFilter({
           data-selected={isAllSelected}
           className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
         >
-          All Groups / Teams
+          {!FL_TEAMS_ENABLED ? 'All Groups / Teams' : 'All Groups'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {organizations?.map((org) => {
-          const teams = teamsByOrg[org.id];
-          const isLoading = loadingTeams[org.id];
+          if (!FL_TEAMS_ENABLED) {
+            const teams = teamsByOrg[org.id];
+            const isLoading = loadingTeams[org.id];
+
+            return (
+              <DropdownMenuSub key={org.id}>
+                <DropdownMenuSubTrigger
+                  onMouseEnter={() => loadTeams(org.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOrgSelect(org.id, org.name);
+                    setIsOpen(false);
+                  }}
+                  data-selected={selectedOrgId === org.id && !selectedTeamId}
+                  className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10! data-[selected=true]:data-[state=open]:bg-[#2454FF]/10!`}
+                >
+                  {org.name}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuLabel>Teams</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isLoading ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : teams?.length === 0 ? (
+                    <DropdownMenuItem disabled>No teams</DropdownMenuItem>
+                  ) : (
+                    teams?.map((team) => {
+                      const isSelected =
+                        selectedOrgId === org.id && selectedTeamId === team.id;
+                      return (
+                        <DropdownMenuItem
+                          key={team.id}
+                          onClick={() => {
+                            onOrgSelect(org.id, org.name);
+                            onTeamSelect(team.id, team.name);
+                            setIsOpen(false);
+                          }}
+                          data-selected={isSelected}
+                          className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+                        >
+                          {team.name}
+                        </DropdownMenuItem>
+                      );
+                    })
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            );
+          }
 
           return (
-            <DropdownMenuSub key={org.id}>
-              <DropdownMenuSubTrigger
-                onMouseEnter={() => loadTeams(org.id)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onOrgSelect(org.id, org.name);
-                  setIsOpen(false);
-                }}
-                data-selected={selectedOrgId === org.id && !selectedTeamId}
-                className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10! data-[selected=true]:data-[state=open]:bg-[#2454FF]/10!`}
-              >
-                {org.name}
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {isLoading ? (
-                  <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
-                ) : teams?.length === 0 ? (
-                  <DropdownMenuItem disabled>No teams</DropdownMenuItem>
-                ) : (
-                  teams?.map((team) => {
-                    const isSelected =
-                      selectedOrgId === org.id && selectedTeamId === team.id;
-                    return (
-                      <DropdownMenuItem
-                        key={team.id}
-                        onClick={() => {
-                          onOrgSelect(org.id, org.name);
-                          onTeamSelect(team.id, team.name);
-                          setIsOpen(false);
-                        }}
-                        data-selected={isSelected}
-                        className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
-                      >
-                        {team.name}
-                      </DropdownMenuItem>
-                    );
-                  })
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+            <DropdownMenuItem
+              key={org.id}
+              onClick={() => {
+                onOrgSelect(org.id, org.name);
+                setIsOpen(false);
+              }}
+              data-selected={selectedOrgId === org.id}
+              className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+            >
+              {org.name}
+            </DropdownMenuItem>
           );
         })}
       </DropdownMenuContent>

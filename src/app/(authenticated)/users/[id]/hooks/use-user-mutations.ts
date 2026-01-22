@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { assignProgramToUser, deleteProgram } from '../actions';
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import { addUserToOrganization } from '@/app/(authenticated)/groups/actions';
 
 /**
  * Query key factory for user program assignments
@@ -156,6 +157,29 @@ export function useDeleteProgram(userId: string) {
         queryKey: detailKey,
       });
       toast.success('Program deleted successfully');
+    },
+  });
+}
+
+/**
+ * Mutation hook for adding a user to an organization (patient role)
+ */
+export function useAddUserToOrganization(userId: string) {
+  return useMutation({
+    mutationFn: async (organizationId: string) => {
+      const result = await addUserToOrganization(organizationId, userId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to assign group');
+      }
+
+      return result.data;
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to assign group');
+    },
+    onSuccess: () => {
+      toast.success('Group assigned successfully');
     },
   });
 }

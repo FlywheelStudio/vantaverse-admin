@@ -906,6 +906,32 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
 
     const templateAssignment = templateResult.data;
 
+    // Get user's organization where role='patient'
+    const { data: orgMember, error: orgError } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .eq('role', 'patient')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (orgError) {
+      return this.parseResponsePostgresError(
+        orgError,
+        'Failed to get user organization',
+      );
+    }
+
+    if (!orgMember || !orgMember.organization_id) {
+      return {
+        success: false,
+        error: 'User does not belong to any organization with patient role',
+      };
+    }
+
+    const userOrganizationId = orgMember.organization_id;
+
     // Check if user already has an active assignment for this template
     const { data: existingAssignment } = await supabase
       .from('program_assignment')
@@ -935,7 +961,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .insert({
         program_template_id: templateAssignment.program_template_id,
         user_id: userId,
-        organization_id: templateAssignment.organization_id,
+        organization_id: userOrganizationId,
         workout_schedule_id: templateAssignment.workout_schedule_id,
         start_date: startDate,
         end_date: endDate,

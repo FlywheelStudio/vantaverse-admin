@@ -27,6 +27,7 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
+import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assign-group-modal';
 import Link from 'next/link';
 import {
   useDeleteUser,
@@ -91,9 +92,41 @@ function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
 function GroupsCell({ profile }: { profile: ProfileWithStats }) {
   const orgs = profile.orgMemberships || [];
   const router = useRouter();
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const queryClient = useQueryClient();
 
   if (orgs.length === 0) {
-    return <span className="text-[#64748B] text-sm">—</span>;
+    const handleAssignSuccess = () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setModalOpen(false);
+    };
+
+    return (
+      <>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer"
+            >
+              —
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Click to assign group</p>
+          </TooltipContent>
+        </Tooltip>
+        <AssignGroupModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          userId={profile.id}
+          onAssignSuccess={handleAssignSuccess}
+          userFirstName={profile.first_name}
+          userLastName={profile.last_name}
+        />
+      </>
+    );
   }
 
   const handleGroupClick = (orgId: string) => {
@@ -147,6 +180,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
 
   const hasProgram =
     profile.program_assignment_id && profile.program_assignment_name;
+  const hasOrganization = (profile.orgMemberships?.length ?? 0) > 0;
 
   const handleAssignSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -168,16 +202,23 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer"
-          >
-            —
-          </button>
+          <span className="inline-flex">
+            <button
+              type="button"
+              onClick={() => hasOrganization && setModalOpen(true)}
+              disabled={!hasOrganization}
+              className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              —
+            </button>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Click to assign program</p>
+          <p>
+            {hasOrganization
+              ? 'Click to assign program'
+              : 'Assign a group before assigning a program'}
+          </p>
         </TooltipContent>
       </Tooltip>
       <AssignProgramModal

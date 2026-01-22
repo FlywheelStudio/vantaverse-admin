@@ -31,11 +31,11 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
       {/* Card Header */}
       <div
         className="bg-linear-to-b from-white to-gray-50/30"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={pledge ? () => setIsExpanded(!isExpanded) : undefined}
       >
         {/* Title and Badge Section */}
         <div
-          className={cn('p-4 border-b-2 cursor-pointer')}
+          className={cn('p-4 border-b-2', pledge && 'cursor-pointer')}
           style={{ borderColor: color }}
         >
           <div className="flex items-start justify-between gap-3">
@@ -48,20 +48,22 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
                 Pledge
               </h3>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                className={cn(
-                  'transition-transform duration-200',
-                  isExpanded && 'rotate-180',
-                )}
-              >
-                {isExpanded ? (
-                  <ChevronUp className="h-5 w-5" style={{ color }} />
-                ) : (
-                  <ChevronDown className="h-5 w-5" style={{ color }} />
-                )}
-              </button>
-            </div>
+            {pledge && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  className={cn(
+                    'transition-transform duration-200',
+                    isExpanded && 'rotate-180',
+                  )}
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="h-5 w-5" style={{ color }} />
+                  ) : (
+                    <ChevronDown className="h-5 w-5" style={{ color }} />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
