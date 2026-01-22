@@ -56,7 +56,7 @@ function NameEmailCell({
           src={member.avatar_url}
           firstName={member.first_name || ''}
           lastName={member.last_name || ''}
-          userId={member.user_id}
+          userId={member.user_id || 'unknown'}
           size={40}
         />
       </div>

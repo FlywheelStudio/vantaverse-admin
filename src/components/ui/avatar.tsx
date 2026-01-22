@@ -4,7 +4,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 // Generate a consistent color from a seed string
-export function generateColorFromSeed(seed: string): string {
+export function generateColorFromSeed(seed: string | null | undefined): string {
+  if (!seed) {
+    // Fallback color for undefined/null seeds
+    return 'hsl(0, 0%, 50%)';
+  }
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
@@ -46,7 +50,7 @@ export function Avatar({
   size = 36,
   className = '',
 }: AvatarProps) {
-  const colorSeed = userId;
+  const colorSeed = userId || 'default';
   const avatarColor = generateColorFromSeed(colorSeed);
   const fontSize = size * 0.35;
   const initials = getInitials(firstName, lastName);

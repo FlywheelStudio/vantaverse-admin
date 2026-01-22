@@ -25,6 +25,8 @@ export const groupsKeys = {
     [...groupsKeys.all, 'detail', id] as const,
   members: (id: string | null | undefined) =>
     [...groupsKeys.detail(id), 'members'] as const,
+  memberIds: (id: string | null | undefined) =>
+    [...groupsKeys.detail(id), 'member-ids'] as const,
   physiologist: (id: string | null | undefined) =>
     [...groupsKeys.detail(id), 'physiologist'] as const,
   teamMembers: (teamId: string | null | undefined) =>
@@ -222,13 +224,10 @@ export function useRemoveGroupMember(organizationId: string) {
       const previousData =
         queryClient.getQueryData<GroupMemberWithProgram[]>(membersKey);
 
-      // Optimistically remove the member from cache
+      // Optimistically remove the member from cache (never write undefined)
       queryClient.setQueryData<GroupMemberWithProgram[]>(
         membersKey,
-        (old) => {
-          if (!old) return old;
-          return old.filter((member) => member.user_id !== userId);
-        },
+        (old) => (old ?? []).filter((member) => member.user_id !== userId),
       );
 
       // Show toast immediately
@@ -292,11 +291,11 @@ export function useRemoveGroupAdmin(organizationId: string) {
       const previous =
         queryClient.getQueryData<SuperAdminGroupUser[]>(membersKey);
 
-      // Optimistically remove physician; full list will be refetched.
-      queryClient.setQueryData<SuperAdminGroupUser[]>(membersKey, (old) => {
-        if (!old) return old;
-        return old.filter((u) => u.user_id !== userId);
-      });
+      // Optimistically remove physician; full list will be refetched (never write undefined).
+      queryClient.setQueryData<SuperAdminGroupUser[]>(
+        membersKey,
+        (old) => (old ?? []).filter((u) => u.user_id !== userId),
+      );
 
       toast.success('Physician removed');
 

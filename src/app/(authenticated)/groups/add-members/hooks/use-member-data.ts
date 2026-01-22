@@ -23,7 +23,7 @@ export function useMemberData(
   const { data: currentMembersData, isLoading: membersLoading } = useQuery({
     queryKey:
       type === 'organization'
-        ? groupsKeys.members(id)
+        ? groupsKeys.memberIds(id)
         : groupsKeys.teamMembers(id),
     queryFn: async () => {
       const result =

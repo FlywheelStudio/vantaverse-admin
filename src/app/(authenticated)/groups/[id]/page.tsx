@@ -3,9 +3,12 @@ import {
   getOrganizationMembersWithPrograms,
   getOrganizationAdmins,
   getUnassignedUsers,
+  type GroupMemberWithProgram,
+  type SuperAdminGroupUser,
 } from './actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { GroupDetailsPageUI } from './ui';
+import { notFound } from 'next/navigation';
 
 export default async function GroupDetailsPage({
   params,
@@ -14,61 +17,51 @@ export default async function GroupDetailsPage({
 }) {
   const { id } = await params;
 
-  const base = await createParallelQueries({
-    organization: {
-      query: () => getOrganizationById(id),
-      required: true,
-    },
-  });
+  const organization = await getOrganizationById(id);
 
-  // Ensure all props are safe before rendering
-  if (!base.organization) {
-    throw new Error('Organization data is required');
+  if (!organization.success) {
+    notFound();
   }
 
-  const isSuperAdminOrg = base.organization.is_super_admin === true;
+  const isSuperAdminOrg = organization.data.is_super_admin === true;
 
-  const data = isSuperAdminOrg
-    ? await createParallelQueries({
-        admins: {
-          query: () => getOrganizationAdmins(id),
-          defaultValue: [],
-        },
-        unassigned: {
-          query: () => getUnassignedUsers(),
-          defaultValue: [],
-        },
-      })
-    : await createParallelQueries({
-        physician: {
-          query: () => getCurrentPhysiologist(id),
-          defaultValue: null,
-        },
-        members: {
-          query: () => getOrganizationMembersWithPrograms(id),
-          defaultValue: [],
-        },
-      });
+  let physician = null;
+  let members: Array<GroupMemberWithProgram | SuperAdminGroupUser> = [];
 
-  const safePhysician =
-    !isSuperAdminOrg && 'physician' in data ? data.physician ?? null : null;
+  if (isSuperAdminOrg) {
+    const {admins, unassigned} = await createParallelQueries({
+      admins: {
+        query: () => getOrganizationAdmins(id),
+        defaultValue: [],
+      },
+      unassigned: {
+        query: () => getUnassignedUsers(),
+        defaultValue: [],
+      },
+    });
 
-  const safeMembers = isSuperAdminOrg
-    ? [
-        ...('admins' in data && Array.isArray(data.admins) ? data.admins : []),
-        ...('unassigned' in data && Array.isArray(data.unassigned)
-          ? data.unassigned
-          : []),
-      ]
-    : 'members' in data && Array.isArray(data.members)
-      ? data.members
-      : [];
+    members = [...(admins ?? []), ...(unassigned ?? [])]; 
+  } else {
+    const result = await createParallelQueries({
+      physician: {
+        query: () => getCurrentPhysiologist(id),
+        defaultValue: null,
+      },
+      members: {
+        query: () => getOrganizationMembersWithPrograms(id),
+        defaultValue: [],
+      },
+    });
+
+    physician = result.physician ?? null;
+    members = result.members ?? [];
+  }
 
   return (
     <GroupDetailsPageUI
-      organization={base.organization}
-      physician={safePhysician}
-      initialMembers={safeMembers}
+      organization={organization.data}
+      physician={physician}
+      initialMembers={members}
     />
   );
 }

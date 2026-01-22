@@ -38,6 +38,7 @@ export function GroupDetailsPageUI({
 }) {
   // Use React Query hooks instead of useState
   const { data: org } = useOrganization(organization.id, organization);
+
   // Ensure initialMembers is always an array
   const safeInitialMembers = useMemo(
     () => (Array.isArray(initialMembers) ? initialMembers : []),
@@ -48,7 +49,8 @@ export function GroupDetailsPageUI({
   const initialPatients = useMemo(
     () =>
       safeInitialMembers.filter(
-        (m): m is GroupMemberWithProgram => 'program_name' in m,
+        (m): m is GroupMemberWithProgram =>
+          typeof m === 'object' && m !== null && 'program_name' in m,
       ),
     [safeInitialMembers],
   );
@@ -56,7 +58,8 @@ export function GroupDetailsPageUI({
   const initialSuperAdminUsers = useMemo(
     () =>
       safeInitialMembers.filter(
-        (m): m is SuperAdminGroupUser => 'role' in m,
+        (m): m is SuperAdminGroupUser =>
+          typeof m === 'object' && m !== null && 'role' in m,
       ),
     [safeInitialMembers],
   );
@@ -92,15 +95,21 @@ export function GroupDetailsPageUI({
 
   const memberRows: GroupMemberRow[] = useMemo(
     () =>
-      members.map((m) => ({
-        user_id: m.user_id,
-        first_name: m.first_name,
-        last_name: m.last_name,
-        email: m.email,
-        avatar_url: m.avatar_url,
-        program_name: 'program_name' in m ? m.program_name : null,
-        role: 'role' in m ? m.role : null,
-      })),
+      members
+        .filter((m) => m && typeof m === 'object' && m.user_id)
+        .map((m) => ({
+          user_id: m.user_id,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          email: m.email,
+          avatar_url: m.avatar_url,
+          program_name:
+            typeof m === 'object' && m !== null && 'program_name' in m
+              ? m.program_name
+              : null,
+          role:
+            typeof m === 'object' && m !== null && 'role' in m ? m.role : null,
+        })),
     [members],
   );
 
@@ -187,9 +196,7 @@ export function GroupDetailsPageUI({
       {!isSuperAdminOrg && (
         <AddMembersModal
           open={membersModalOpen}
-          onOpenChange={(open) => {
-            setMembersModalOpen(open);
-          }}
+          onOpenChange={setMembersModalOpen}
           type="organization"
           id={org.id}
           name={org.name}
