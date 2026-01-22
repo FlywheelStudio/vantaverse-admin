@@ -24,7 +24,7 @@ export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
         {isMobile ? (
           <Plus className="h-4 w-4" />
         ) : role === 'admin' ? (
-          'Add Physician'
+          'Add Admin'
         ) : (
           'Add Member'
         )}

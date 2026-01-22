@@ -1,6 +1,10 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryKey,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { upsertExerciseTemplate } from '@/app/(authenticated)/builder/actions';
 import { exercisesKeys } from './use-exercises';
 import toast from 'react-hot-toast';
@@ -22,8 +26,18 @@ interface UpdateExerciseTemplateData {
   rest_time_override?: number[];
 }
 
+/** RPC upsert_exercise_template success payload */
+export interface UpsertExerciseTemplateResult {
+  id: string;
+  template_hash: string;
+}
+
+type MutationContext = {
+  previousData: Array<[QueryKey, unknown]>;
+};
+
 interface UseUpdateExerciseTemplateOptions {
-  onSuccess?: () => void;
+  onSuccess?: (data: UpsertExerciseTemplateResult) => void;
   onMutate?: (data: UpdateExerciseTemplateData) => void;
 }
 
@@ -35,7 +49,12 @@ export function useUpdateExerciseTemplate(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    UpsertExerciseTemplateResult,
+    Error,
+    UpdateExerciseTemplateData,
+    MutationContext
+  >({
     mutationFn: async (data: UpdateExerciseTemplateData) => {
       const result = await upsertExerciseTemplate({
         p_exercise_id: data.exerciseId,
@@ -57,7 +76,11 @@ export function useUpdateExerciseTemplate(
         throw new Error(result.error || 'Failed to update exercise template');
       }
 
-      return result.data;
+      const payload = result.data as UpsertExerciseTemplateResult;
+      if (!payload?.id || !payload?.template_hash) {
+        throw new Error('Invalid upsert_exercise_template response');
+      }
+      return payload;
     },
     onMutate: async (variables) => {
       // Call optional onMutate callback for optimistic UI updates
@@ -124,22 +147,20 @@ export function useUpdateExerciseTemplate(
 
       return { previousData };
     },
-    onError: (error, __variables, context) => {
-      // Rollback on error
+    onError: (error, _variables, context) => {
       if (context?.previousData) {
-        context.previousData.forEach(([queryKey, data]) => {
+        for (const [queryKey, data] of context.previousData) {
           queryClient.setQueryData(queryKey, data);
-        });
+        }
       }
       toast.error(error.message || 'Failed to update exercise template');
     },
-    onSuccess: () => {
-      // Invalidate queries to ensure consistency
+    onSuccess: (data: UpsertExerciseTemplateResult) => {
       queryClient.invalidateQueries({
         queryKey: exercisesKeys.lists(),
       });
       toast.success('Template updated successfully');
-      options?.onSuccess?.();
+      options?.onSuccess?.(data);
     },
   });
 }

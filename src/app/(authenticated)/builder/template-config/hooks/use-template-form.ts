@@ -44,6 +44,7 @@ export function useTemplateForm(
   onClose: () => void,
   copiedData: Partial<ExerciseTemplate> | null,
   onUpdate?: (data: Partial<ExerciseTemplate>) => void,
+  onSuccessWithTemplate?: (template: ExerciseTemplate) => void,
 ) {
   const form = useForm<TemplateFormData>({
     resolver: zodResolver(templateFormSchema),
@@ -148,6 +149,7 @@ export function useTemplateForm(
         rest_time_override: hasRestTimeOverrides ? restTimeOverrides : undefined,
       });
     },
+    onSuccessWithTemplate,
   });
 
   const handleSetsChange = (newSets: number) => {

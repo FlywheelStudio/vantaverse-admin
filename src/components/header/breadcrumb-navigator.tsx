@@ -149,8 +149,10 @@ export default function BreadcrumbNavigator({
   const controls = useAnimation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isHome = pathname === '/';
 
   useEffect(() => {
+    if (isHome) return;
     if (isAtTop) {
       if (scrollDirection > 0 && !isHiddenRef.current) {
         isHiddenRef.current = true;
@@ -160,7 +162,7 @@ export default function BreadcrumbNavigator({
         controls.start('slideDown');
       }
     }
-  }, [scrollDirection, isAtTop, controls]);
+  }, [isHome, scrollDirection, isAtTop, controls]);
 
   const fromParam = searchParams.get('from');
   const fromSegments = useMemo(
@@ -254,7 +256,7 @@ export default function BreadcrumbNavigator({
 
   return (
     <motion.div
-      className="mb-4 px-4 h-12 text-card-foreground flex items-center bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm"
+      className={`mb-4 px-4 h-12 text-card-foreground flex items-center bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm ${isHome ? 'sticky top-0 z-10 shrink-0' : ''}`}
       variants={variants}
       animate={controls}
       initial="visible"

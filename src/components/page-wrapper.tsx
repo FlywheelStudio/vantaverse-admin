@@ -7,10 +7,11 @@ import BreadcrumbNavigator from './header/breadcrumb-navigator';
 
 interface PageWrapperProps {
   subheader: ReactNode;
+  topContent?: ReactNode | null;
   children: ReactNode;
 }
 
-export function PageWrapper({ subheader, children }: PageWrapperProps) {
+export function PageWrapper({ subheader, topContent, children }: PageWrapperProps) {
   const { isOpen, isExpanded } = useSidebar();
 
   const paddingLeft =
@@ -60,9 +61,13 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
           scrollBehavior: 'smooth',
         }}
       >
-        <Suspense fallback={<div className="h-12 mb-4" />}>
-          <BreadcrumbNavigator scrollPosition={scrollPosition} />
-        </Suspense>
+        {topContent === undefined || topContent === null ? (
+          <Suspense fallback={<div className="h-12 mb-4" />}>
+            <BreadcrumbNavigator scrollPosition={scrollPosition} />
+          </Suspense>
+        ) : (
+          topContent
+        )}
         {children}
       </div>
     </div>

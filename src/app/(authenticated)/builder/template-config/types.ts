@@ -19,6 +19,7 @@ export interface TemplateConfigProps {
   copiedData: Partial<ExerciseTemplate> | null;
   onCopy: (data: Partial<ExerciseTemplate>) => void;
   onUpdate?: (data: Partial<ExerciseTemplate>) => void;
+  onSuccessWithTemplate?: (template: ExerciseTemplate) => void;
 }
 
 export type TabType = 'all' | 'set';

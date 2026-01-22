@@ -31,6 +31,7 @@ export function TemplateConfig({
   copiedData,
   onCopy,
   onUpdate,
+  onSuccessWithTemplate,
 }: TemplateConfigProps) {
   const { modalRef, modalPosition, handleMouseDown } = useModalDrag(position);
   const formRef = useRef<HTMLFormElement>(null);
@@ -48,7 +49,7 @@ export function TemplateConfig({
     handlePaste,
     onSubmit,
     isSubmitting,
-  } = useTemplateForm(item, onClose, copiedData, onUpdate);
+  } = useTemplateForm(item, onClose, copiedData, onUpdate, onSuccessWithTemplate);
 
   // Click outside detection - save on outside click
   useEffect(() => {

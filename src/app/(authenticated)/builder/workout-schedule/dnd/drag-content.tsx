@@ -173,6 +173,26 @@ export function DragContent({
               onUpdate(modalState.itemIndex, optimisticItem);
             }
           }}
+          onSuccessWithTemplate={(template) => {
+            const gIdx = modalState.groupIndex;
+            const iIdx = modalState.groupItemIndex;
+            if (gIdx != null && iIdx != null) {
+              const group = items[gIdx];
+              if (group?.type === 'group') {
+                const next = [...(group.data.items ?? [])];
+                next[iIdx] = { type: 'template' as const, data: template };
+                onUpdate(gIdx, {
+                  ...group,
+                  data: { ...group.data, items: next },
+                });
+              }
+            } else if (modalState.itemIndex !== null) {
+              onUpdate(modalState.itemIndex, {
+                type: 'template',
+                data: template,
+              });
+            }
+          }}
         />
       )}
     </>

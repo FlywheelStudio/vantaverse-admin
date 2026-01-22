@@ -36,7 +36,7 @@ export function RoleFilter({
             : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
         }`}
       >
-        Physicians
+        Admins
       </Button>
     </div>
   );
