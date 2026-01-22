@@ -189,7 +189,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       }>
     | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     // Filter by weeks if provided
     let templateIds: string[] | undefined;
