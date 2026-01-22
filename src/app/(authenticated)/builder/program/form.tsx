@@ -26,12 +26,14 @@ interface CreateTemplateFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   initialData?: ProgramTemplate | null;
+  showDates?: boolean;
 }
 
 export function CreateTemplateForm({
   onSuccess,
   onCancel,
   initialData,
+  showDates = true,
 }: CreateTemplateFormProps) {
   const loadedDatesForTemplateIdRef = useRef<string | null>(null);
 
@@ -121,16 +123,18 @@ export function CreateTemplateForm({
               required
             />
 
-            <DateRangePicker
+            {showDates && (
+              <DateRangePicker
               weeks={weeks}
               startDate={startDate}
               dateRange={dateRange}
               onDateSelect={handleDateSelect}
               errors={{
                 startDate: form.formState.errors.startDate,
-                endDate: form.formState.errors.endDate,
-              }}
-            />
+                  endDate: form.formState.errors.endDate,
+                }}
+              />
+            )}
 
             <FormTextField
               register={form.register}

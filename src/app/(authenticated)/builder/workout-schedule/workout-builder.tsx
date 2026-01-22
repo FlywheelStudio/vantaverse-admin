@@ -70,7 +70,7 @@ export function WorkoutBuilder({
       >
         <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
           <div className="p-6 sm:p-8 space-y-6">
-            <ProgramDetailsSection template={template} />
+            <ProgramDetailsSection template={template} status={initialAssignment.status} />
             <BuildWorkoutSection initialWeeks={template.weeks} />
           </div>
         </Card>

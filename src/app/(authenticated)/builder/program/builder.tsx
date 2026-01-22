@@ -201,6 +201,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
             <CreateTemplateForm
               onSuccess={handleCreateSuccess}
               onCancel={handleCreateCancel}
+              showDates={false}
             />
           )}
 

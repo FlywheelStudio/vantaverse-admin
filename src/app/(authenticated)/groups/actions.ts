@@ -75,8 +75,7 @@ export async function uploadOrganizationPicture(
   if (oldPictureUrl) {
     try {
       const url = new URL(oldPictureUrl);
-      // Extract path from URL: /storage/v1/object/public/organization_assets/{orgId}/filename
-      // or similar format - get the part after organization_assets/
+
       const pathMatch = url.pathname.match(/organization_assets\/(.+)$/);
       if (pathMatch) {
         const oldPath = pathMatch[1];
