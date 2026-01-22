@@ -173,17 +173,27 @@ export function UserProfileCard({
       return;
     }
 
+    // Set default values if empty
+    let valueToSave = editingValue.trim();
+    if (!valueToSave) {
+      if (field === 'firstName') {
+        valueToSave = 'Unknown';
+      } else if (field === 'lastName') {
+        valueToSave = 'User';
+      }
+    }
+
     const result = await updateUserProfile(userId, {
-      [fieldKeyMap[field]]: editingValue,
+      [fieldKeyMap[field]]: valueToSave,
     });
 
     if (result.success) {
       if (field === 'firstName') {
-        setFirstName(editingValue);
+        setFirstName(valueToSave);
       } else if (field === 'lastName') {
-        setLastName(editingValue);
+        setLastName(valueToSave);
       } else {
-        setDescription(editingValue);
+        setDescription(valueToSave);
       }
       toast.success(fieldSuccessMessages[field]);
     } else {
@@ -336,6 +346,7 @@ export function UserProfileCard({
                   }
                 }}
                 className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                placeholder="First Name"
                 autoFocus
               />
             ) : (
@@ -362,6 +373,7 @@ export function UserProfileCard({
                   }
                 }}
                 className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
+                placeholder="Last Name"
                 autoFocus
               />
             ) : (
