@@ -1,6 +1,6 @@
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
 import type { CollisionDetection } from '@dnd-kit/core';
-import { closestCenter } from '@dnd-kit/core';
+import { closestCenter, pointerWithin } from '@dnd-kit/core';
 
 /**
  * Represents a flattened item for drag and drop operations
@@ -468,19 +468,31 @@ export function createGroupCollisionDetection(
   flatItems: FlatItem[],
 ): CollisionDetection {
   return (args) => {
-    // Use default closestCenter collision detection
-    const collisions = closestCenter(args);
+    // Use pointerWithin for droppable zones, closestCenter for sortable items
+    const pointerCollisions = pointerWithin(args);
+    const centerCollisions = closestCenter(args);
 
     const activeId = args.active.id as string;
     const activeItem = findFlatItemById(flatItems, activeId);
 
     if (!activeItem) {
-      return collisions;
+      return centerCollisions;
     }
+
+    // Check if pointer is within a group droppable zone (not top-level, since that's always true)
+    const groupDroppableCollision = pointerCollisions.find(
+      (c) => isDroppableGroupId(c.id as string)
+    );
+
+    // Check if pointer is within top-level droppable
+    const topLevelDroppableCollision = pointerCollisions.find(
+      (c) => isTopLevelDroppable(c.id as string)
+    );
+
 
     // When dragging a group, filter collisions to only include top-level items
     if (activeItem.item.type === 'group') {
-      return collisions.filter((collision) => {
+      return centerCollisions.filter((collision) => {
         const collisionId = collision.id as string;
         const collisionItem = findFlatItemById(flatItems, collisionId);
 
@@ -499,9 +511,35 @@ export function createGroupCollisionDetection(
       });
     }
 
-    // When dragging an item FROM a group, prioritize top-level items and droppable zones
+    // When dragging an item FROM a group
     if (activeItem.parentId !== null) {
-      return collisions.filter((collision) => {
+      // If pointer is specifically over a different group's droppable, prioritize that
+      if (groupDroppableCollision) {
+        const targetGroupId = getGroupIdFromDroppable(groupDroppableCollision.id as string);
+        if (targetGroupId !== activeItem.parentId) {
+          return [groupDroppableCollision, ...centerCollisions.filter((c) => c.id !== groupDroppableCollision.id)];
+        }
+      }
+
+      // Check if pointer is completely outside ALL group droppables (including our own)
+      // This means we're in the top-level area, not inside any group
+      const isOutsideAllGroups = !groupDroppableCollision;
+
+      // If we're truly outside all groups, prioritize top-level droppable
+      if (isOutsideAllGroups && topLevelDroppableCollision) {
+        // Return top-level first, then top-level items for positioning
+        const topLevelItems = centerCollisions.filter((c) => {
+          const id = c.id as string;
+          if (isTopLevelDroppable(id)) return false; // Already added first
+          if (isDroppableGroupId(id)) return true; // Allow other group droppables
+          const item = findFlatItemById(flatItems, id);
+          return item?.parentId === null; // Only top-level items
+        });
+        return [topLevelDroppableCollision, ...topLevelItems];
+      }
+
+      // Filter to allow reordering within same group + moving to top-level/other groups
+      const filtered = centerCollisions.filter((collision) => {
         const collisionId = collision.id as string;
 
         // Always allow top-level droppable
@@ -516,13 +554,11 @@ export function createGroupCollisionDetection(
 
         const collisionItem = findFlatItemById(flatItems, collisionId);
 
-        // If item not found in flatItems, filter it out (unless it's a droppable we already checked)
         if (!collisionItem) {
           return false;
         }
 
-        // Allow collisions with top-level items (parentId === null)
-        // This allows dropping between top-level items even when groups are present
+        // Allow collisions with top-level items
         if (collisionItem.parentId === null) {
           return true;
         }
@@ -534,9 +570,52 @@ export function createGroupCollisionDetection(
 
         return false;
       });
+
+      // If no sortable items found and top-level droppable is available, use it
+      if (filtered.length === 0 && topLevelDroppableCollision) {
+        return [topLevelDroppableCollision];
+      }
+
+      return filtered;
     }
 
-    // When dragging a top-level item, return all collisions as-is
-    return collisions;
+    // When dragging a top-level item (non-group)
+    if (activeItem.parentId === null) {
+      // If pointer is specifically over a group droppable, prioritize that
+      if (groupDroppableCollision) {
+        return [groupDroppableCollision, ...centerCollisions.filter((c) => c.id !== groupDroppableCollision.id)];
+      }
+
+      // Otherwise, use closestCenter for reordering
+      return centerCollisions.filter((collision) => {
+        const collisionId = collision.id as string;
+
+        // Allow top-level droppable
+        if (isTopLevelDroppable(collisionId)) {
+          return true;
+        }
+
+        // Allow group droppables (for moving into groups)
+        if (isDroppableGroupId(collisionId)) {
+          return true;
+        }
+
+        const collisionItem = findFlatItemById(flatItems, collisionId);
+
+        if (!collisionItem) {
+          return false;
+        }
+
+        // Allow collisions with top-level items for reordering
+        if (collisionItem.parentId === null) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+
+    // Default: return all collisions
+    return centerCollisions;
   };
 }

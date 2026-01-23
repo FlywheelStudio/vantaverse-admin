@@ -40,6 +40,7 @@ interface DragContextValue {
   handleDragStart: (event: DragStartEvent) => void;
   handleDragEnd: (event: DragEndEvent) => void;
   handleDragCancel: () => void;
+  onItemsReorder: (items: SelectedItem[]) => void;
 }
 
 const DragContext = createContext<DragContextValue | null>(null);
@@ -215,6 +216,7 @@ export function DragContextProvider({
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
+    onItemsReorder,
   };
 
   return <DragContext.Provider value={value}>{children}</DragContext.Provider>;

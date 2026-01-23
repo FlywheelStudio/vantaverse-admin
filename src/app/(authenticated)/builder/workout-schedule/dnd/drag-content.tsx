@@ -65,6 +65,7 @@ export function DragContent({
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
+    onItemsReorder,
   } = useDragContext();
 
   return (
@@ -84,7 +85,7 @@ export function DragContent({
           onRemove={onRemove}
           onRemoveGroup={onRemoveGroup}
           onToggleSuperset={onToggleSuperset}
-          onItemsReorder={() => {}}
+          onItemsReorder={onItemsReorder}
           onGroupItemClick={(groupItem, groupIdx, itemIdx, event) => {
             if (groupItem.type === 'template') {
               setModalState({
