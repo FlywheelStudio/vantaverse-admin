@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
@@ -54,6 +55,25 @@ export function ProgramTemplateCard({
   };
 
   const imageUrl = getImageUrl();
+
+  // Extract user info for active assignments
+  const profiles = assignment.profiles as
+    | {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+      }
+    | null
+    | undefined;
+  const userName = profiles
+    ? [
+        profiles.first_name,
+        profiles.last_name,
+      ]
+        .filter(Boolean)
+        .join(' ') || profiles.email || 'Unknown User'
+    : null;
+  const isActive = assignment.status === 'active';
 
   return (
     <Card
@@ -110,6 +130,19 @@ export function ProgramTemplateCard({
           <p className="text-sm text-[#64748B] mb-3 line-clamp-2">
             {template.description}
           </p>
+        )}
+
+        {isActive && userName && assignment.user_id && (
+          <div className="text-sm text-muted-foreground mb-3">
+            Assigned to:{' '}
+            <Link
+              href={`/users/${assignment.user_id}?from=/builder`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[#2454FF] hover:underline font-medium"
+            >
+              {userName}
+            </Link>
+          </div>
         )}
 
         <div className="space-y-2 mt-auto">

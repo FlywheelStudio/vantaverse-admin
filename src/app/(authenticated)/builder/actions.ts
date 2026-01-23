@@ -22,9 +22,10 @@ export async function getProgramAssignmentsPaginated(
   pageSize: number = 16,
   search?: string,
   weeks?: number,
+  showAssigned: boolean = false,
 ) {
   const query = new ProgramAssignmentsQuery();
-  return query.getTemplatesPaginated(page, pageSize, search, weeks);
+  return query.getTemplatesPaginated(page, pageSize, search, weeks, showAssigned);
 }
 
 /**

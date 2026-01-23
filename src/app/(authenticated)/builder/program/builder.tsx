@@ -13,6 +13,7 @@ import { ProgramTemplateCard } from './card';
 import { CreateTemplateForm } from './form';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
@@ -86,6 +87,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
   const isMobile = useIsMobile();
   const [searchValue, setSearchValue] = useState('');
   const [weeksFilter, setWeeksFilter] = useState<string>('');
+  const [showAssigned, setShowAssigned] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const pageSize = 21;
 
@@ -99,8 +101,8 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
       ? Number.parseInt(debouncedWeeksFilter, 10)
       : undefined;
 
-  // Use initialData only when filters match (no search, no weeks filter)
-  const shouldUseInitialData = !debouncedSearch && !weeksFilterNumber;
+  // Use initialData only when filters match (no search, no weeks filter, no showAssigned)
+  const shouldUseInitialData = !debouncedSearch && !weeksFilterNumber && !showAssigned;
 
   // Use infinite query with server-side filtering
   const {
@@ -113,6 +115,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
     debouncedSearch,
     weeksFilterNumber,
     pageSize,
+    showAssigned,
     shouldUseInitialData ? initialData : undefined,
   );
 
@@ -123,6 +126,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
     debouncedSearch,
     weeksFilterNumber,
     pageSize,
+    showAssigned,
   );
 
   const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
@@ -150,7 +154,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
   // Reset prefetch trigger when filters change
   useEffect(() => {
     prefetchTriggeredRef.current = false;
-  }, [debouncedSearch, weeksFilterNumber]);
+  }, [debouncedSearch, weeksFilterNumber, showAssigned]);
 
   // Infinite scroll with prefetching using scroll position
   useEffect(() => {
@@ -160,6 +164,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
       debouncedSearch,
       weeksFilterNumber,
       pageSize,
+      showAssigned,
     );
 
     const handleScroll = () => {
@@ -191,6 +196,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
     queryClient,
     debouncedSearch,
     weeksFilterNumber,
+    showAssigned,
     pageSize,
   ]);
 
@@ -205,8 +211,8 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
             />
           )}
 
-          <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
-            <div className="p-6 sm:p-8">
+          <Card className="text-card-foreground gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-full">
+            <div className="flex-1 flex flex-col p-6 sm:p-8">
               {/* Header with Create Button */}
               {/* Filters */}
               <div className="mb-6 flex gap-3 flex-wrap items-center">
@@ -238,6 +244,19 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                   onChange={(e) => setWeeksFilter(e.target.value)}
                   className="bg-white border-gray-200 w-40 shrink-0"
                 />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-assigned"
+                    checked={showAssigned}
+                    onCheckedChange={(checked) => setShowAssigned(checked === true)}
+                  />
+                  <label
+                    htmlFor="show-assigned"
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Show assigned
+                  </label>
+                </div>
               </div>
 
               {/* Templates Grid */}
@@ -248,6 +267,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                   initial="hidden"
                   animate="visible"
                   exit="exit"
+                  className="flex-1"
                 >
                   {assignments.length === 0 && !isLoading ? (
                     <div className="flex items-center justify-center py-12">
