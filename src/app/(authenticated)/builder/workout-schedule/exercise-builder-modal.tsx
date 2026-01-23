@@ -32,6 +32,7 @@ interface ExerciseBuilderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone?: (selectedItems: SelectedItem[]) => void;
+  onCancel?: () => void;
   initialItems?: SelectedItem[];
   onItemsChange?: (selectedItems: SelectedItem[]) => void;
   weekIndex?: number;
@@ -43,6 +44,7 @@ export function ExerciseBuilderModal({
   open,
   onOpenChange,
   onDone,
+  onCancel,
   initialItems = [],
   onItemsChange,
   weekIndex,
@@ -157,7 +159,7 @@ export function ExerciseBuilderModal({
   };
 
   const handleCancel = () => {
-    onOpenChange(false);
+    onCancel?.();
     setSearch('');
     setShowGroupInput(false);
     setGroupNameInput('');

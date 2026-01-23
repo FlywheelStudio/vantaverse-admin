@@ -34,6 +34,7 @@ export function DayBoxesGrid() {
   } = useBuilder();
 
   const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
+  const initialItemsRef = useRef<SelectedItem[] | null>(null);
 
   // Parse date string to local date (avoiding timezone issues)
   const parseLocalDate = useCallback((dateString: string): Date => {
@@ -112,7 +113,10 @@ export function DayBoxesGrid() {
     setSelectedDay(day);
     previousWeekDayRef.current = { week: currentWeek, day: dayIndex };
     // Load existing items for this day
-    setPendingItems(getDayItems(currentWeek, dayIndex));
+    const initialItems = getDayItems(currentWeek, dayIndex);
+    // Store initial items (deep copy to prevent mutation)
+    initialItemsRef.current = JSON.parse(JSON.stringify(initialItems));
+    setPendingItems(initialItems);
     setModalOpen(true);
   };
 
@@ -215,31 +219,35 @@ export function DayBoxesGrid() {
     setSelectedDay(null);
     previousWeekDayRef.current = null;
     setPendingItems([]);
+    initialItemsRef.current = null;
   };
 
   const handleItemsChange = (items: SelectedItem[]) => {
     setPendingItems(items);
   };
 
+  const handleModalCancel = useCallback(() => {
+    if (selectedDay === null || initialItemsRef.current === null) return;
+
+    const dayIndex = selectedDay - 1;
+    // Revert schedule state to initial items
+    setScheduleItem(currentWeek, dayIndex, initialItemsRef.current);
+    
+    // Clear state
+    setSelectedDay(null);
+    previousWeekDayRef.current = null;
+    setPendingItems([]);
+    initialItemsRef.current = null;
+    setModalOpen(false);
+  }, [selectedDay, currentWeek, setScheduleItem]);
+
   const handleModalClose = async (open: boolean) => {
     if (!open && selectedDay !== null) {
-      // Modal is closing, check if there are pending items
-      const dayIndex = selectedDay - 1;
-      if (pendingItems.length > 0) {
-        const previousItems = getDayItems(currentWeek, dayIndex);
-        const hasChanges =
-          pendingItems.length > 0 ||
-          JSON.stringify(previousItems) !== JSON.stringify(pendingItems);
-
-        if (hasChanges) {
-          await saveDraft(pendingItems, currentWeek, dayIndex);
-        }
-      }
-      setSelectedDay(null);
-      previousWeekDayRef.current = null;
-      setPendingItems([]);
+      // Modal is closing via close button - revert instead of saving
+      handleModalCancel();
+    } else {
+      setModalOpen(open);
     }
-    setModalOpen(open);
   };
 
   const dayItems = useMemo(
@@ -350,6 +358,7 @@ export function DayBoxesGrid() {
         open={modalOpen}
         onOpenChange={handleModalClose}
         onDone={handleModalDone}
+        onCancel={handleModalCancel}
         initialItems={pendingItems}
         onItemsChange={handleItemsChange}
         weekIndex={selectedDay !== null ? currentWeek : undefined}
