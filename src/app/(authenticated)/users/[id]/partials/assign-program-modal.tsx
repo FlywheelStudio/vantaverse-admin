@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, startTransition } from 'react';
 import { motion } from 'framer-motion';
 import { Loader, Clock, CalendarIcon } from 'lucide-react';
 import {
@@ -94,6 +94,9 @@ export function AssignProgramModal({
 
   const handleCardSelect = (assignmentId: string | null) => {
     setSelectedAssignmentId(assignmentId);
+    if (assignmentId) {
+      startTransition(() => setIsDatePickerOpen(true));
+    }
   };
 
   const handleAssignClick = async () => {
