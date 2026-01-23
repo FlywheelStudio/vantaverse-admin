@@ -45,6 +45,7 @@ interface UseCreateProgramTemplateOptions {
 
 interface UseUpdateProgramTemplateOptions {
   onSuccess?: () => void;
+  suppressToast?: boolean;
 }
 
 /**
@@ -257,14 +258,18 @@ export function useUpdateProgramTemplate(
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to update program');
+      if (!options?.suppressToast) {
+        toast.error(error.message || 'Failed to update program');
+      }
     },
     onSuccess: () => {
       // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({
         queryKey: programAssignmentsKeys.lists(),
       });
-      toast.success('Program updated successfully');
+      if (!options?.suppressToast) {
+        toast.success('Program updated successfully');
+      }
       options?.onSuccess?.();
     },
   });

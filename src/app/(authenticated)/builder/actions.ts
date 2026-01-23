@@ -309,6 +309,37 @@ export async function getExerciseTemplatesPaginated(
 }
 
 /**
+ * Get paginated groups with search and sort
+ */
+export async function getGroupsPaginated(
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  sortBy: string = 'updated_at',
+  sortOrder: 'asc' | 'desc' = 'desc',
+) {
+  const query = new GroupsQuery();
+  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+}
+
+/**
+ * Get multiple exercise templates by IDs
+ */
+export async function getExerciseTemplatesByIds(ids: string[]) {
+  const query = new ExerciseTemplatesQuery();
+  const result = await query.getByIds(ids);
+
+  if (!result.success) {
+    return result;
+  }
+
+  return {
+    success: true as const,
+    data: Array.from(result.data.values()),
+  };
+}
+
+/**
  * Upsert exercise template via RPC function
  */
 export async function upsertExerciseTemplate(data: {

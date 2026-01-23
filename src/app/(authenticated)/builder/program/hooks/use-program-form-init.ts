@@ -76,6 +76,7 @@ export function useProgramFormInit({
         startDate: undefined as unknown as Date,
         endDate: undefined as unknown as Date,
         imageFile: undefined,
+        imagePreview: undefined,
       });
     } else {
       reset({
@@ -87,6 +88,7 @@ export function useProgramFormInit({
         startDate: undefined as unknown as Date,
         endDate: undefined as unknown as Date,
         imageFile: undefined,
+        imagePreview: undefined,
       });
     }
   }, [initialData, reset, loadedDatesForTemplateIdRef]);

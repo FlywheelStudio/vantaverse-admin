@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import {
@@ -14,19 +14,23 @@ import {
 import {
   useExercisesInfinite,
   useExerciseTemplatesInfinite,
+  useExerciseTemplatesByIds,
+  useGroupsInfinite,
 } from '@/hooks/use-exercises';
 import { useDebounce } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
 import { ExerciseTabSwitcher } from './partials/exercise-tab-switcher';
 import { ExerciseSearchControls } from './partials/exercise-search-controls';
 import { ExerciseLibraryCard } from './partials/exercise-library-card';
 import { ExerciseTemplateCard } from './partials/exercise-template-card';
+import { GroupCard } from './partials/group-card';
 import { SelectedItemsList } from './selected-items-list';
 
-type TabType = 'library' | 'templates';
+type TabType = 'library' | 'templates' | 'groups';
 
 interface ExerciseBuilderModalProps {
   open: boolean;
@@ -86,8 +90,19 @@ export function ExerciseBuilderModal({
     20,
   );
 
+  const groupsQuery = useGroupsInfinite(
+    debouncedSearch || undefined,
+    sortBy,
+    sortOrder,
+    20,
+  );
+
   const currentQuery =
-    activeTab === 'library' ? exercisesQuery : templatesQuery;
+    activeTab === 'library'
+      ? exercisesQuery
+      : activeTab === 'templates'
+        ? templatesQuery
+        : groupsQuery;
 
   // Infinite scroll observer
   useEffect(() => {
@@ -138,6 +153,52 @@ export function ExerciseBuilderModal({
       ...selectedItems,
       { type: 'template', data: template },
     ]);
+  };
+
+  const allExercises = exercisesQuery.data?.pages.flat() || [];
+  const allTemplates = templatesQuery.data?.pages.flat() || [];
+  const allGroups = groupsQuery.data?.pages.flat() || [];
+
+  const groupTemplateIds = useMemo(() => {
+    if (activeTab !== 'groups') return [];
+    const ids = new Set<string>();
+    for (const group of allGroups) {
+      for (const id of group.exercise_template_ids ?? []) {
+        ids.add(id);
+      }
+    }
+    return Array.from(ids);
+  }, [activeTab, allGroups]);
+
+  const groupTemplatesQuery = useExerciseTemplatesByIds(groupTemplateIds);
+  const groupTemplatesById = useMemo(() => {
+    const map: Record<string, ExerciseTemplate | undefined> = {};
+    for (const t of groupTemplatesQuery.data ?? []) {
+      map[t.id] = t;
+    }
+    return map;
+  }, [groupTemplatesQuery.data]);
+
+  const handleAddDatabaseGroup = (group: DbGroup) => {
+    const items: SelectedItem[] = (group.exercise_template_ids ?? [])
+      .map((id) => groupTemplatesById[id])
+      .filter(Boolean)
+      .map((template) => ({
+        type: 'template' as const,
+        data: template as ExerciseTemplate,
+      }));
+
+    const newGroup: SelectedItem = {
+      type: 'group',
+      data: {
+        id: group.id,
+        name: group.title,
+        isSuperset: group.is_superset ?? false,
+        items,
+      },
+    };
+
+    updateSelectedItems([...selectedItems, newGroup]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -210,9 +271,6 @@ export function ExerciseBuilderModal({
     setShowGroupInput(false);
   };
 
-  const allExercises = exercisesQuery.data?.pages.flat() || [];
-  const allTemplates = templatesQuery.data?.pages.flat() || [];
-
   // Format header title with week, day, and date
   const getHeaderTitle = () => {
     if (
@@ -234,7 +292,7 @@ export function ExerciseBuilderModal({
         <DialogHeader className="p-6 border-b">
           <DialogTitle>{getHeaderTitle()}</DialogTitle>
           <DialogDescription>
-            Select exercises from the library or templates
+            Select exercises, templates, or groups
           </DialogDescription>
         </DialogHeader>
 
@@ -283,7 +341,7 @@ export function ExerciseBuilderModal({
                       </div>
                     )}
                   </>
-                ) : (
+                ) : activeTab === 'templates' ? (
                   <>
                     {allTemplates.map((template, index) => (
                       <ExerciseTemplateCard
@@ -307,6 +365,35 @@ export function ExerciseBuilderModal({
                     {templatesQuery.isError && (
                       <div className="col-span-full text-center py-4 text-red-500">
                         Error loading templates
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {allGroups.map((group, index) => (
+                      <GroupCard
+                        key={`group-${group.id}-${index}`}
+                        group={group}
+                        templatesById={groupTemplatesById}
+                        onAdd={() => handleAddDatabaseGroup(group)}
+                        index={index}
+                      />
+                    ))}
+
+                    {(groupsQuery.isLoading && (
+                      <div className="col-span-full text-center py-4 text-gray-500">
+                        Loading...
+                      </div>
+                    )) ||
+                      (!groupsQuery.hasNextPage && allGroups.length === 0 && (
+                        <div className="col-span-full text-center py-4 text-gray-500">
+                          No groups found
+                        </div>
+                      ))}
+
+                    {groupsQuery.isError && (
+                      <div className="col-span-full text-center py-4 text-red-500">
+                        Error loading groups
                       </div>
                     )}
                   </>

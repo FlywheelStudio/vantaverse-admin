@@ -2,9 +2,15 @@
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { getExercises } from '@/app/(authenticated)/exercises/actions';
-import { getExercisesPaginated, getExerciseTemplatesPaginated } from '@/app/(authenticated)/builder/actions';
+import {
+  getExercisesPaginated,
+  getExerciseTemplatesPaginated,
+  getExerciseTemplatesByIds,
+  getGroupsPaginated,
+} from '@/app/(authenticated)/builder/actions';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
 
 /**
  * Query key factory for exercises
@@ -17,6 +23,10 @@ export const exercisesKeys = {
     [...exercisesKeys.lists(), 'infinite', filters] as const,
   templatesInfinite: (filters: { search?: string; sortBy: string; sortOrder: 'asc' | 'desc'; pageSize: number }) =>
     [...exercisesKeys.lists(), 'templates-infinite', filters] as const,
+  templatesByIds: (ids: string[]) =>
+    [...exercisesKeys.lists(), 'templates-by-ids', ids] as const,
+  groupsInfinite: (filters: { search?: string; sortBy: string; sortOrder: 'asc' | 'desc'; pageSize: number }) =>
+    [...exercisesKeys.lists(), 'groups-infinite', filters] as const,
 };
 
 export function useExercises(initialData?: Exercise[]) {
@@ -108,5 +118,60 @@ export function useExerciseTemplatesInfinite(
     },
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useExerciseTemplatesByIds(ids: string[]) {
+  const stableIds = Array.from(new Set(ids)).sort();
+
+  return useQuery<ExerciseTemplate[], Error>({
+    queryKey: exercisesKeys.templatesByIds(stableIds),
+    enabled: stableIds.length > 0,
+    queryFn: async () => {
+      const result = await getExerciseTemplatesByIds(stableIds);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useGroupsInfinite(
+  search?: string,
+  sortBy: string = 'updated_at',
+  sortOrder: 'asc' | 'desc' = 'desc',
+  pageSize: number = 20,
+) {
+  return useInfiniteQuery<DbGroup[], Error>({
+    queryKey: exercisesKeys.groupsInfinite({ search, sortBy, sortOrder, pageSize }),
+    queryFn: async ({ pageParam = 1 }) => {
+      const result = await getGroupsPaginated(
+        pageParam as number,
+        pageSize,
+        search,
+        sortBy,
+        sortOrder,
+      );
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (lastPage.length < pageSize) {
+        return undefined;
+      }
+      return (lastPageParam as number) + 1;
+    },
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
   });
 }

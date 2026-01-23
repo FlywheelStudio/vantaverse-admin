@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 
-type TabType = 'library' | 'templates';
+type TabType = 'library' | 'templates' | 'groups';
 
 interface ExerciseTabSwitcherProps {
   activeTab: TabType;
@@ -36,6 +36,17 @@ export function ExerciseTabSwitcher({
         )}
       >
         Templates
+      </button>
+      <button
+        onClick={() => onTabChange('groups')}
+        className={cn(
+          'px-4 py-2 rounded-md font-medium transition-colors',
+          activeTab === 'groups'
+            ? 'bg-blue-500 text-white'
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+        )}
+      >
+        Groups
       </button>
     </div>
   );

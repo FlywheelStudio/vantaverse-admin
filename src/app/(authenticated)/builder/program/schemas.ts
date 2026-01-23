@@ -13,6 +13,7 @@ export const programTemplateFormSchema = z
     startDate: z.date().optional(),
     endDate: z.date().optional(),
     imageFile: z.instanceof(File).optional(),
+    imagePreview: z.string().optional(),
   })
   .refine(
     (data) => {

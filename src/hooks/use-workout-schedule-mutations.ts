@@ -20,6 +20,7 @@ interface UpsertWorkoutScheduleData {
 
 interface UseUpsertWorkoutScheduleOptions {
   onSuccess?: (data: { id: string; schedule_hash: string }) => void;
+  suppressToast?: boolean;
 }
 
 /**
@@ -83,7 +84,9 @@ export function useUpsertWorkoutSchedule(
           context.previousData,
         );
       }
-      toast.error(error.message || 'Failed to save workout schedule');
+      if (!options?.suppressToast) {
+        toast.error(error.message || 'Failed to save workout schedule');
+      }
     },
     onSuccess: (data, variables) => {
       // Invalidate queries to ensure consistency
@@ -93,7 +96,9 @@ export function useUpsertWorkoutSchedule(
       queryClient.invalidateQueries({
         queryKey: programAssignmentsKeys.detail(variables.assignmentId),
       });
-      toast.success('Workout schedule saved successfully');
+      if (!options?.suppressToast) {
+        toast.success('Workout schedule saved successfully');
+      }
       options?.onSuccess?.(data);
     },
   });
@@ -106,6 +111,7 @@ interface UpdateProgramScheduleData {
 
 interface UseUpdateProgramScheduleOptions {
   onSuccess?: () => void;
+  suppressToast?: boolean;
 }
 
 /**
@@ -160,7 +166,9 @@ export function useUpdateProgramSchedule(
           context.previousData,
         );
       }
-      toast.error(error.message || 'Failed to update program assignment');
+      if (!options?.suppressToast) {
+        toast.error(error.message || 'Failed to update program assignment');
+      }
     },
     onSuccess: (data) => {
       // Invalidate queries to ensure consistency

@@ -8,35 +8,45 @@ import {
   useUpsertWorkoutSchedule,
   useUpdateProgramSchedule,
 } from '@/hooks/use-workout-schedule-mutations';
+import { useUpdateProgramTemplate } from '@/hooks/use-program-template-mutations';
 import toast from 'react-hot-toast';
+import { useFormContext } from 'react-hook-form';
+import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
+import type { ProgramTemplateFormData } from '../program/schemas';
 
 interface BuildWorkoutSectionProps {
   initialWeeks: number;
+  template: ProgramTemplate;
 }
 
 export function BuildWorkoutSection({
   initialWeeks,
+  template,
 }: BuildWorkoutSectionProps) {
   const { schedule, programAssignmentId } = useBuilder();
+  const programForm = useFormContext<ProgramTemplateFormData>();
 
-  // Chain mutations: first upsert schedule, then update program assignment
-  const updateProgramScheduleMutation = useUpdateProgramSchedule();
-
-  const upsertScheduleMutation = useUpsertWorkoutSchedule({
-    onSuccess: (data) => {
-      // After schedule is saved, update program assignment
-      if (programAssignmentId) {
-        updateProgramScheduleMutation.mutate({
-          assignmentId: programAssignmentId,
-          workoutScheduleId: data.id,
-        });
-      }
-    },
+  const updateProgramTemplateMutation = useUpdateProgramTemplate({
+    suppressToast: true,
   });
 
-  const handleSave = () => {
+  const updateProgramScheduleMutation = useUpdateProgramSchedule({
+    suppressToast: true,
+  });
+
+  const upsertScheduleMutation = useUpsertWorkoutSchedule({
+    suppressToast: true,
+  });
+
+  const handleSave = async () => {
     if (!programAssignmentId) {
       toast.error('No program assignment found');
+      return;
+    }
+
+    const isFormValid = await programForm.trigger();
+    if (!isFormValid) {
+      toast.error('Fix program details errors before saving');
       return;
     }
 
@@ -50,15 +60,55 @@ export function BuildWorkoutSection({
       return;
     }
 
-    // Trigger the mutation chain
-    upsertScheduleMutation.mutate({
-      schedule,
-      assignmentId: programAssignmentId,
-    });
+    const values = programForm.getValues();
+
+    const oldImageUrl =
+      typeof template.image_url === 'string'
+        ? template.image_url
+        : typeof template.image_url === 'object' &&
+            template.image_url !== null &&
+            'image_url' in template.image_url
+          ? String((template.image_url as unknown as { image_url: string }).image_url)
+          : null;
+
+    try {
+      await Promise.all([
+        updateProgramTemplateMutation.mutateAsync({
+          templateId: template.id,
+          name: values.name,
+          weeks: values.weeks,
+          startDate: values.startDate,
+          endDate: values.endDate,
+          description: values.description?.trim() || null,
+          goals: values.goals?.trim() || null,
+          notes: values.notes?.trim() || null,
+          imageFile: values.imageFile || null,
+          imagePreview: values.imagePreview || null,
+          oldImageUrl,
+          organizationId: template.organization_id || null,
+        }),
+        (async () => {
+          const scheduleResult = await upsertScheduleMutation.mutateAsync({
+            schedule,
+            assignmentId: programAssignmentId,
+          });
+          await updateProgramScheduleMutation.mutateAsync({
+            assignmentId: programAssignmentId,
+            workoutScheduleId: scheduleResult.id,
+          });
+        })(),
+      ]);
+      toast.success('Saved');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Save failed';
+      toast.error(message);
+    }
   };
 
   const isSaving =
-    upsertScheduleMutation.isPending || updateProgramScheduleMutation.isPending;
+    upsertScheduleMutation.isPending ||
+    updateProgramScheduleMutation.isPending ||
+    updateProgramTemplateMutation.isPending;
   const isDisabled = !programAssignmentId || isSaving;
 
   return (

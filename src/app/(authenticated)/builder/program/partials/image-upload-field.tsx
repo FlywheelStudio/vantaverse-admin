@@ -32,7 +32,9 @@ export function ImageUploadField({
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImagePreview(reader.result as string);
+      const preview = reader.result as string;
+      setImagePreview(preview);
+      setValue('imagePreview', preview, { shouldDirty: true });
     };
     reader.readAsDataURL(file);
   };

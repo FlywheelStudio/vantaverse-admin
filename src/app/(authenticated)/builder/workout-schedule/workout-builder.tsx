@@ -10,6 +10,12 @@ import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import { FormProvider, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  programTemplateFormSchema,
+  type ProgramTemplateFormData,
+} from '../program/schemas';
 
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
@@ -21,6 +27,20 @@ export function WorkoutBuilder({
   initialAssignment,
 }: WorkoutBuilderProps) {
   const { initializeSchedule, setSelectedAssignmentId } = useBuilder();
+  const programForm = useForm<ProgramTemplateFormData>({
+    resolver: zodResolver(programTemplateFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      weeks: 4,
+      goals: '',
+      notes: '',
+      startDate: undefined as unknown as Date,
+      endDate: undefined as unknown as Date,
+      imageFile: undefined,
+      imagePreview: undefined,
+    },
+  });
   
   useEffect(() => {
     if (assignmentId) {
@@ -70,8 +90,18 @@ export function WorkoutBuilder({
       >
         <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
           <div className="p-6 sm:p-8 space-y-6">
-            <ProgramDetailsSection template={template} status={initialAssignment.status} />
-            <BuildWorkoutSection initialWeeks={template.weeks} />
+            <FormProvider {...programForm}>
+              <ProgramDetailsSection
+                template={template}
+                status={initialAssignment.status}
+                hideActions
+                formMethods={programForm}
+              />
+              <BuildWorkoutSection
+                initialWeeks={template.weeks}
+                template={template}
+              />
+            </FormProvider>
           </div>
         </Card>
       </motion.div>
