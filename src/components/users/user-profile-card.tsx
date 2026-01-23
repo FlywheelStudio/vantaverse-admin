@@ -3,10 +3,8 @@
 import * as React from 'react';
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, MessageSquare, X } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
@@ -36,7 +34,6 @@ export function UserProfileCard({
   const [lastName, setLastName] = useState(initialLastName);
   const [description, setDescription] = useState(initialDescription ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -112,10 +109,6 @@ export function UserProfileCard({
       setIsUploading(false);
       toast.error('An unexpected error occurred during upload.');
     }
-  };
-
-  const handleChatToggle = () => {
-    setIsChatOpen(!isChatOpen);
   };
 
   const getRoleBadgeVariant = (role: string) => {
