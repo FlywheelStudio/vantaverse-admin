@@ -853,10 +853,15 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
           | null
           | undefined;
         if (profiles) {
+          const firstName = profiles.first_name?.toLowerCase() || '';
+          const lastName = profiles.last_name?.toLowerCase() || '';
+          const fullName = `${firstName} ${lastName}`.trim();
+          const email = profiles.email?.toLowerCase() || '';
           if (
-            profiles.first_name?.toLowerCase().includes(searchLower) ||
-            profiles.last_name?.toLowerCase().includes(searchLower) ||
-            profiles.email?.toLowerCase().includes(searchLower)
+            firstName.includes(searchLower) ||
+            lastName.includes(searchLower) ||
+            fullName.includes(searchLower) ||
+            email.includes(searchLower)
           ) {
             return true;
           }

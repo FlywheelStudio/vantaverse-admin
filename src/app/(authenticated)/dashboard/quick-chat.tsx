@@ -32,8 +32,9 @@ export function UsersWithProgramAndGroupCard({
       : users.filter((u) => {
           const fn = (u.first_name ?? '').toLowerCase();
           const ln = (u.last_name ?? '').toLowerCase();
+          const fullName = `${fn} ${ln}`.trim();
           const em = (u.email ?? '').toLowerCase();
-          return fn.includes(q) || ln.includes(q) || em.includes(q);
+          return fn.includes(q) || ln.includes(q) || fullName.includes(q) || em.includes(q);
         });
 
   const handleCloseChat = () => {
