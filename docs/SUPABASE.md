@@ -229,8 +229,6 @@ export function RealtimeNotes() {
           filter: `user_id=eq.${userId}`
         },
         (payload) => {
-          console.log('Change received:', payload);
-
           if (payload.eventType === 'INSERT') {
             setNotes(prev => [payload.new, ...prev]);
           }

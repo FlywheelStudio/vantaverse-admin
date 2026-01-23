@@ -212,45 +212,6 @@ export function UserProfileCard({
 
   return (
     <>
-      {/* Chat Interface - First on mobile, left side on desktop */}
-      <AnimatePresence>
-        {isChatOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: -100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full lg:w-96 order-first lg:order-first"
-          >
-            <Card className="h-full border-0 shadow-xl bg-linear-to-br from-background via-background to-primary/5">
-              <CardHeader className="border-b bg-linear-to-r from-primary/10 to-primary/5">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                    <span>Chat with {firstName}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleChatToggle}
-                    className="h-8 w-8"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="h-[500px] bg-muted/30 rounded-xl border-2 border-dashed border-muted-foreground/20 flex items-center justify-center backdrop-blur-sm">
-                  <p className="text-muted-foreground text-sm">
-                    Chat interface placeholder - UI only
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Main Profile Card */}
 
       {/* Hidden file input */}

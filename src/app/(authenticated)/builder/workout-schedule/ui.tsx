@@ -24,7 +24,6 @@ export function BuildWorkoutSection({
 
   const upsertScheduleMutation = useUpsertWorkoutSchedule({
     onSuccess: (data) => {
-      console.log('Schedule saved', data);
       // After schedule is saved, update program assignment
       if (programAssignmentId) {
         updateProgramScheduleMutation.mutate({
@@ -40,8 +39,6 @@ export function BuildWorkoutSection({
       toast.error('No program assignment found');
       return;
     }
-
-    console.log('Saving schedule', schedule);
 
     // Check if schedule has any content
     const hasContent = schedule.some((week) =>

@@ -39,11 +39,19 @@ function DraggableWeekButton({
   isCurrent,
   isDisabled,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
+  isAnimating,
+  animationType,
 }: {
   week: Week;
   isCurrent: boolean;
   isDisabled: boolean;
   onClick: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  isAnimating?: boolean;
+  animationType?: 'copy' | 'paste' | null;
 }) {
   const {
     attributes,
@@ -88,6 +96,8 @@ function DraggableWeekButton({
       {...attributes}
       {...listeners}
       onClick={handleClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={cn(
         'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all min-w-[100px] h-9 px-4 py-2 select-none touch-none',
         isDisabled
@@ -102,7 +112,20 @@ function DraggableWeekButton({
             : '',
       )}
     >
-      Week {week.number}
+      <div className="relative overflow-hidden h-9 flex items-start">
+        <div
+          className={cn(
+            'flex flex-col transition-transform duration-300 ease-in-out',
+            isAnimating ? '-translate-y-[2.25rem]' : 'translate-y-0',
+          )}
+        >
+          <div className="h-9 flex items-center">Week {week.number}</div>
+          <div className="h-9 flex items-center">
+            {animationType === 'copy' && 'Copied!'}
+            {animationType === 'paste' && 'Pasted!'}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -157,9 +180,15 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     })),
   );
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [hoveredWeekIndex, setHoveredWeekIndex] = useState<number | null>(null);
+  const [animatingWeek, setAnimatingWeek] = useState<{
+    weekIndex: number;
+    type: 'copy' | 'paste';
+  } | null>(null);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -194,6 +223,94 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
       };
     }
   }, [weeks]);
+
+  // Cleanup animation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const triggerAnimation = useCallback(
+    (weekIndex: number, type: 'copy' | 'paste') => {
+      // Clear any existing timeout
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+
+      // Set animation state immediately
+      setAnimatingWeek({ weekIndex, type });
+
+      // Clear animation after 1.5 seconds
+      animationTimeoutRef.current = setTimeout(() => {
+        setAnimatingWeek(null);
+        animationTimeoutRef.current = null;
+      }, 1500);
+    },
+    [],
+  );
+
+  const handleCopyWeek = useCallback(
+    (weekIndex: number) => {
+      copyWeek(weekIndex);
+      triggerAnimation(weekIndex, 'copy');
+    },
+    [copyWeek, triggerAnimation],
+  );
+
+  const handlePasteWeek = useCallback(
+    (weekIndex: number) => {
+      pasteWeek(weekIndex);
+      triggerAnimation(weekIndex, 'paste');
+    },
+    [pasteWeek, triggerAnimation],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle if a week is hovered
+      if (hoveredWeekIndex === null) return;
+
+      // Check for Ctrl+C (Windows/Linux) or Cmd+C (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        // Don't copy if week is disabled
+        if (!isWeekBeforeStart(hoveredWeekIndex)) {
+          event.preventDefault();
+          handleCopyWeek(hoveredWeekIndex);
+        }
+        return;
+      }
+
+      // Check for Ctrl+V (Windows/Linux) or Cmd+V (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+        // Validate paste conditions
+        const canPaste =
+          copiedWeekData &&
+          copiedWeekIndex !== hoveredWeekIndex &&
+          !isWeekBeforeStart(hoveredWeekIndex);
+
+        if (canPaste) {
+          event.preventDefault();
+          handlePasteWeek(hoveredWeekIndex);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    hoveredWeekIndex,
+    handleCopyWeek,
+    handlePasteWeek,
+    copiedWeekData,
+    copiedWeekIndex,
+    isWeekBeforeStart,
+  ]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -249,7 +366,7 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
 
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-x-auto scrollbar-hide flex gap-2 px-2"
+        className="flex-1 overflow-x-auto overflow-y-visible scrollbar-hide flex gap-2 px-2 relative"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <DndContext
@@ -266,6 +383,9 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
               {weeks.map((week, index) => {
                 const weekIndex = index;
                 const isDisabled = isWeekBeforeStart(weekIndex);
+                const isAnimating =
+                  animatingWeek?.weekIndex === weekIndex && !!animatingWeek;
+                const animationType = isAnimating ? animatingWeek.type : null;
                 return (
                   <DraggableWeekButton
                     key={week.id}
@@ -275,6 +395,10 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
                     onClick={() => {
                       setCurrentWeek(weekIndex);
                     }}
+                    onMouseEnter={() => setHoveredWeekIndex(weekIndex)}
+                    onMouseLeave={() => setHoveredWeekIndex(null)}
+                    isAnimating={isAnimating}
+                    animationType={animationType}
                   />
                 );
               })}
@@ -295,8 +419,8 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
 
       <CopyPasteButtons
         size="md"
-        onCopy={() => copyWeek(currentWeek)}
-        onPaste={() => pasteWeek(currentWeek)}
+        onCopy={() => handleCopyWeek(currentWeek)}
+        onPaste={() => handlePasteWeek(currentWeek)}
         isCopied={copiedWeekIndex === currentWeek}
         isPasteDisabled={
           !copiedWeekData ||

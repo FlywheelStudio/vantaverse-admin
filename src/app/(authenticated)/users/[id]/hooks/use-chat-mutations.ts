@@ -72,11 +72,5 @@ export function useSendMessage(chatId: string) {
       }
       toast.error(error.message || 'Failed to send message');
     },
-    onSuccess: () => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({
-        queryKey: messagesKey,
-      });
-    },
   });
 }
