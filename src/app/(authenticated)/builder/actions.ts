@@ -8,9 +8,9 @@ import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createParallelQueries } from '@/lib/supabase/query';
-import { DatabaseSchedule } from './workout-schedule/utils';
+import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
-import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 /**
@@ -358,9 +358,32 @@ export async function upsertExerciseTemplate(data: {
   p_rest_time_override?: number[];
   p_equipment_ids?: number[];
   p_notes?: string;
-}) {
+}): Promise<
+  | { success: true; data: { id: string; template_hash: string } }
+  | { success: false; error: string }
+> {
   const query = new ExerciseTemplatesQuery();
-  return query.upsertExerciseTemplate(data);
+  const result = await query.upsertExerciseTemplate(data);
+  
+  if (!result.success) {
+    return result;
+  }
+  
+  const rpcResult = result.data as {
+    id: string;
+    template_hash: string;
+    cloned?: boolean;
+    reference_count?: number;
+    original_id?: string;
+  };
+  
+  return {
+    success: true,
+    data: {
+      id: rpcResult.id,
+      template_hash: rpcResult.template_hash,
+    },
+  };
 }
 
 /**

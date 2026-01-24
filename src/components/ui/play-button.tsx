@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useDragContextOptional } from '@/app/(authenticated)/builder/workout-schedule/dnd/drag-context';
+import { useDragContextOptional } from '@/app/(authenticated)/builder/[id]/workout-schedule/dnd/drag-context';
 
 interface PlayButtonProps {
   videoUrl: string | null;

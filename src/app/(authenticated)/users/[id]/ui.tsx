@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useMemo } from 'react';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 export function UserProfilePageUI({
   user,

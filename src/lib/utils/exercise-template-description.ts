@@ -1,4 +1,5 @@
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 
 /**
  * Get the value for a specific set index, using override if available, otherwise base value
@@ -175,6 +176,45 @@ export function generateExerciseTemplateDescription(
     if (setDescriptions.length > 0) {
       parts.push(`: ${setDescriptions.join(' | ')}`);
     }
+  }
+
+  return parts.join('');
+}
+
+/**
+ * Generate a description from default values (simplified, no overrides)
+ */
+export function generateDefaultValuesDescription(
+  defaults: DefaultValuesData,
+): string {
+  const sets = defaults.sets || 0;
+  if (sets === 0) {
+    return 'No sets configured';
+  }
+
+  const parts: string[] = [`${sets} set${sets !== 1 ? 's' : ''}`];
+  const setValues: string[] = [];
+
+  if (defaults.rep !== null && defaults.rep !== undefined) {
+    setValues.push(formatValue(defaults.rep, ' reps'));
+  }
+  if (defaults.time !== null && defaults.time !== undefined) {
+    setValues.push(formatValue(defaults.time, 's'));
+  }
+  if (defaults.distance !== null && defaults.distance !== undefined && defaults.distance !== '') {
+    const distanceWithUnit = `${defaults.distance}${defaults.distanceUnit || 'm'}`;
+    setValues.push(distanceWithUnit);
+  }
+  if (defaults.weight !== null && defaults.weight !== undefined && defaults.weight !== '') {
+    const weightWithUnit = `${defaults.weight}${defaults.weightUnit || 'kg'}`;
+    setValues.push(weightWithUnit);
+  }
+  if (defaults.rest_time !== null && defaults.rest_time !== undefined) {
+    setValues.push(formatValue(defaults.rest_time, 's rest'));
+  }
+
+  if (setValues.length > 0) {
+    parts.push(`: ${setValues.join(', ')}`);
   }
 
   return parts.join('');

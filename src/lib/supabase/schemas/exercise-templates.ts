@@ -1,4 +1,4 @@
-import { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import { z } from 'zod';
 
 export const exerciseTemplateSchema = z.object({

@@ -64,6 +64,7 @@ export function CreateTemplateForm({
   const { imagePreview, setImagePreview } = useProgramFormInit({
     initialData,
     reset,
+    getValues: form.getValues,
     loadedDatesForTemplateIdRef,
   });
 

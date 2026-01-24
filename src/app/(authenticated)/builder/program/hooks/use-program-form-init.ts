@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo, RefObject } from 'react';
-import { UseFormReset } from 'react-hook-form';
+import { UseFormReset, UseFormGetValues } from 'react-hook-form';
 import { useProgramAssignments } from '@/hooks/use-passignments';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/program/schemas';
@@ -9,12 +9,14 @@ import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/prog
 interface UseProgramFormInitProps {
   initialData?: ProgramTemplate | null;
   reset: UseFormReset<ProgramTemplateFormData>;
+  getValues: UseFormGetValues<ProgramTemplateFormData>;
   loadedDatesForTemplateIdRef: RefObject<string | null>;
 }
 
 export function useProgramFormInit({
   initialData,
   reset,
+  getValues,
   loadedDatesForTemplateIdRef,
 }: UseProgramFormInitProps) {
   const { assignments } = useProgramAssignments();
@@ -62,8 +64,18 @@ export function useProgramFormInit({
   // Pre-fill form when initialData changes
   useEffect(() => {
     if (initialData) {
+      // Check if this is a different template before modifying ref
+      const isDifferentTemplate = loadedDatesForTemplateIdRef.current !== initialData.id;
+      
+      // Preserve current date values if it's the same template and dates exist
+      // Dates are loaded from assignments by use-program-form-dates, not from template
+      const currentValues = getValues();
+      const shouldPreserveDates = 
+        !isDifferentTemplate && 
+        (currentValues.startDate || currentValues.endDate);
+
       // Reset the ref when initialData changes to a different template
-      if (loadedDatesForTemplateIdRef.current !== initialData.id) {
+      if (isDifferentTemplate) {
         loadedDatesForTemplateIdRef.current = null;
       }
 
@@ -73,8 +85,8 @@ export function useProgramFormInit({
         weeks: initialData.weeks || 4,
         goals: initialData.goals || '',
         notes: initialData.notes || '',
-        startDate: undefined as unknown as Date,
-        endDate: undefined as unknown as Date,
+        startDate: shouldPreserveDates ? currentValues.startDate : (undefined as unknown as Date),
+        endDate: shouldPreserveDates ? currentValues.endDate : (undefined as unknown as Date),
         imageFile: undefined,
         imagePreview: undefined,
       });
@@ -91,7 +103,7 @@ export function useProgramFormInit({
         imagePreview: undefined,
       });
     }
-  }, [initialData, reset, loadedDatesForTemplateIdRef]);
+  }, [initialData, reset, getValues, loadedDatesForTemplateIdRef]);
 
   const setImagePreview = (preview: string | null) => {
     if (preview) {

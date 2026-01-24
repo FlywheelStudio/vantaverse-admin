@@ -1,6 +1,6 @@
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
-import { WorkoutBuilder } from '../workout-schedule/workout-builder';
+import { WorkoutBuilder } from './workout-schedule/workout-builder';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';

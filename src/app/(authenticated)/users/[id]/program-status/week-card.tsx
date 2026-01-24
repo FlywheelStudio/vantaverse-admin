@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProgramStatusDayCard } from './day-card';
 import type { CompletionDay } from './card-utils';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 interface ProgramStatusWeekCardProps {
   week: DatabaseSchedule[number];

@@ -5,17 +5,20 @@ import {
   upsertWorkoutSchedule,
   updateProgramSchedule,
   upsertGroup,
+  upsertExerciseTemplate,
 } from '@/app/(authenticated)/builder/actions';
 import { workoutScheduleKeys, type WorkoutScheduleData } from './use-workout-schedule';
 import { programAssignmentsKeys } from './use-passignments';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import { convertSelectedItemsToDatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
-import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import { convertSelectedItemsToDatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
+import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 import toast from 'react-hot-toast';
 
 interface UpsertWorkoutScheduleData {
   schedule: SelectedItem[][][];
   assignmentId: string;
+  defaultValues: DefaultValuesData;
 }
 
 interface UseUpsertWorkoutScheduleOptions {
@@ -48,6 +51,8 @@ export function useUpsertWorkoutSchedule(
       const conversionResult = await convertSelectedItemsToDatabaseSchedule(
         updatedSchedule,
         upsertGroup,
+        upsertExerciseTemplate,
+        data.defaultValues,
       );
 
       if (!conversionResult.success) {

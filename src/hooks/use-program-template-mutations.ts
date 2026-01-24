@@ -227,8 +227,16 @@ export function useUpdateProgramTemplate(
                 ...page,
                 data: page.data.map((item) => {
                   if (item.program_template?.id === variables.templateId) {
+                    const startDateString = variables.startDate
+                      ? formatDateForDB(variables.startDate)
+                      : null;
+                    const endDateString = variables.endDate
+                      ? formatDateForDB(variables.endDate)
+                      : null;
                     return {
                       ...item,
+                      start_date: startDateString,
+                      end_date: endDateString,
                       program_template: {
                         ...item.program_template,
                         name: variables.name,
@@ -263,9 +271,9 @@ export function useUpdateProgramTemplate(
       }
     },
     onSuccess: () => {
-      // Invalidate queries to ensure consistency
+      // Invalidate queries to ensure consistency (both lists and detail queries)
       queryClient.invalidateQueries({
-        queryKey: programAssignmentsKeys.lists(),
+        queryKey: programAssignmentsKeys.all,
       });
       if (!options?.suppressToast) {
         toast.success('Program updated successfully');

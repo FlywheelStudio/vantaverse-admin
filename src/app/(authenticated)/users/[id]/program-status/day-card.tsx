@@ -7,7 +7,7 @@ import {
   calculateDayCompletion,
   getProgressColor,
 } from './card-utils';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 interface ProgramStatusDayCardProps {
   day: DatabaseSchedule[number][number];
