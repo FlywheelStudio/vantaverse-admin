@@ -19,18 +19,18 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [signatureLoaded, setSignatureLoaded] = useState(false);
 
-  const color = 'var(--color-blue-600)';
+  const color = 'var(--color-primary)';
 
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden hover:shadow-xl bg-white',
+        'border border-border gap-2 overflow-hidden',
       )}
-      style={{ borderColor: color, minHeight: '166px' }}
+      style={{ minHeight: '166px' }}
     >
       {/* Card Header */}
       <div
-        className="bg-linear-to-b from-white to-gray-50/30"
+        className="bg-muted/10"
         onClick={pledge ? () => setIsExpanded(!isExpanded) : undefined}
       >
         {/* Title and Badge Section */}
@@ -44,9 +44,7 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
                 className="shrink-0 w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
-                Pledge
-              </h3>
+              <h3 className="font-semibold text-foreground text-lg truncate">Pledge</h3>
             </div>
             {pledge && (
               <div className="flex items-center gap-2 shrink-0">
@@ -72,17 +70,15 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
           <div className="p-5 pt-4 px-2">
             {pledge !== null ? (
               <>
-                <p className="text-sm text-[#64748B] line-clamp-3 italic">
+                <p className="text-sm text-muted-foreground line-clamp-3 italic">
                   &quot;{pledge.pledge}&quot;
                 </p>
-                <p className="text-sm text-[#64748B] pt-2">
+                <p className="text-sm text-muted-foreground pt-2">
                   {formatDate(pledge.created_at, 'long')}
                 </p>
               </>
             ) : (
-              <p className="text-sm text-[#64748B] italic">
-                Pledge not signed yet
-              </p>
+              <p className="text-sm text-muted-foreground italic">Pledge not signed yet</p>
             )}
           </div>
         )}
@@ -92,7 +88,7 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            className="bg-white overflow-hidden"
+            className="bg-card overflow-hidden"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -137,8 +133,8 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
 
                   {/* Pledge Text Overlay - Bottom Left */}
                   <div className="absolute bottom-6 left-6 z-10">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg w-fit max-w-md">
-                      <p className="text-sm font-semibold text-[#1E3A5F] italic">
+                    <div className="bg-background/90 backdrop-blur-sm rounded-[var(--radius-lg)] p-4 shadow-[var(--shadow-md)] w-fit max-w-md">
+                      <p className="text-sm font-semibold text-foreground italic">
                         {pledge.pledge}
                       </p>
                     </div>
@@ -147,7 +143,7 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
                   {/* Signature Overlay - Bottom Right */}
                   {pledge.signature?.image_url && (
                     <div className="absolute bottom-6 right-6 z-10">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+                      <div className="bg-background/90 backdrop-blur-sm rounded-[var(--radius-lg)] p-2 shadow-[var(--shadow-md)]">
                         <div className="relative w-48 h-20">
                           {!signatureLoaded && pledge.signature.blur_hash && (
                             <Blurhash
@@ -178,9 +174,7 @@ export function HabitPledgeCard({ pledge }: HabitPledgeCardProps) {
                 </div>
               ) : (
                 <div className="flex items-center justify-center py-8">
-                  <p className="text-sm text-[#64748B] italic">
-                    Pledge not signed yet
-                  </p>
+                  <p className="text-sm text-muted-foreground italic">Pledge not signed yet</p>
                 </div>
               )}
             </motion.div>

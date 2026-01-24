@@ -83,18 +83,18 @@ export function IpCard({
       .join(' ');
   };
 
-  const color = 'var(--color-orange-600)';
+  const color = 'var(--color-primary)';
 
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden hover:shadow-xl bg-white',
+        'border border-border gap-2 overflow-hidden',
       )}
-      style={{ borderColor: color, minHeight: '166px' }}
+      style={{ minHeight: '166px' }}
     >
       {/* Card Header */}
       <div
-        className="bg-linear-to-b from-white to-gray-50/30"
+        className="bg-muted/10"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         {/* Title and Badge Section */}
@@ -108,7 +108,7 @@ export function IpCard({
                 className="shrink-0 w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
+              <h3 className="font-semibold text-foreground text-lg truncate">
                 Empowerment
               </h3>
             </div>
@@ -116,12 +116,7 @@ export function IpCard({
               {empowermentTitle && !isExpanded && (
                 <Badge
                   variant="outline"
-                  className="font-semibold border"
-                  style={{
-                    backgroundColor: `${color}1A`,
-                    color: color,
-                    borderColor: `${color}4D`,
-                  }}
+                  className="font-semibold border border-primary/20 bg-primary/10 text-primary"
                 >
                   {empowermentTitle}
                 </Badge>
@@ -145,14 +140,14 @@ export function IpCard({
         {/* Collapsed Preview */}
         {!isExpanded && (
           <div className="p-5 pt-4 px-2 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-[#64748B]">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Zap className="h-4 w-4" style={{ color }} />
-              <span className="font-semibold text-[#1E3A5F]">
+              <span className="font-semibold text-foreground">
                 {empowermentValue}% {gateTitle ? `-> ${gateTitle}` : ''}
               </span>
             </div>
             {!isMaxLevel && pointsMissing !== null && (
-              <div className="flex items-center gap-2 text-sm text-[#64748B]">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4" />
                 <span>
                   {formatNumber(pointsMissing)} points needed for next level
@@ -160,7 +155,7 @@ export function IpCard({
               </div>
             )}
             {isMaxLevel && (
-              <div className="flex items-center gap-2 text-sm text-[#64748B]">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Award className="h-4 w-4" />
                 <span>Maximum level reached</span>
               </div>
@@ -173,7 +168,7 @@ export function IpCard({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            className="bg-white overflow-hidden"
+            className="bg-card overflow-hidden"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -189,11 +184,13 @@ export function IpCard({
               {/* Gate Title and Description */}
               {gateTitle && (
                 <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-[#1E3A5F] mb-1">
+                  <h4 className="text-sm font-semibold text-foreground mb-1">
                     {gateTitle}
                   </h4>
                   {gateDescription && (
-                    <p className="text-sm text-[#64748B]">{gateDescription}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {gateDescription}
+                    </p>
                   )}
                 </div>
               )}
@@ -201,20 +198,20 @@ export function IpCard({
               {/* Current Stats */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-[#64748B]">
+                  <span className="text-sm font-medium text-muted-foreground">
                     Empowerment:
                   </span>
-                  <span className="text-sm font-semibold text-[#1E3A5F]">
+                  <span className="text-sm font-semibold text-foreground">
                     {empowermentValue}%
                   </span>
                 </div>
 
                 {empowermentTitle && (
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-[#64748B]">
+                    <span className="text-sm font-medium text-muted-foreground">
                       Empowerment Title:
                     </span>
-                    <span className="text-sm font-semibold text-[#1E3A5F]">
+                    <span className="text-sm font-semibold text-foreground">
                       {empowermentTitle}
                     </span>
                   </div>
@@ -222,10 +219,10 @@ export function IpCard({
 
                 {currentEffect && (
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-[#64748B]">
+                    <span className="text-sm font-medium text-muted-foreground">
                       Current Effect:
                     </span>
-                    <span className="text-sm font-semibold text-[#1E3A5F]">
+                    <span className="text-sm font-semibold text-foreground">
                       {currentEffect}
                     </span>
                   </div>
@@ -234,12 +231,12 @@ export function IpCard({
                 {/* Progress Bar */}
                 {!isMaxLevel && pointsMissing !== null && (
                   <div className="space-y-2 pt-2">
-                    <div className="flex items-center justify-between text-xs text-[#64748B]">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>Progress to Next Level</span>
                       <span>{Math.round(progressPercentage)}%</span>
                     </div>
                     <Progress value={progressPercentage} className="h-2" />
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-xs text-muted-foreground">
                       {formatNumber(pointsMissing)} points needed
                     </p>
                   </div>
@@ -249,12 +246,7 @@ export function IpCard({
                   <div className="pt-2">
                     <Badge
                       variant="outline"
-                      className="font-semibold"
-                      style={{
-                        backgroundColor: `${color}1A`,
-                        color: color,
-                        borderColor: `${color}4D`,
-                      }}
+                      className="font-semibold border border-primary/20 bg-primary/10 text-primary"
                     >
                       Maximum Level Achieved
                     </Badge>
@@ -266,12 +258,12 @@ export function IpCard({
             {/* History Section */}
             {transactions.length > 0 && (
               <motion.div
-                className="pt-4 border-t border-gray-200"
+                className="pt-4 border-t border-border"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.2 }}
               >
-                <h4 className="font-bold text-[#1E3A5F] mb-3 px-4 pb-4">
+                <h4 className="font-semibold text-foreground mb-3 px-4 pb-4">
                   Transaction History
                 </h4>
                 <motion.div
@@ -292,7 +284,7 @@ export function IpCard({
                   {transactions.map((tx, index) => (
                     <motion.div
                       key={index}
-                      className="flex items-start justify-between gap-3 p-3 bg-[#F5F7FA] rounded-lg"
+                      className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]"
                       variants={{
                         hidden: { opacity: 0, y: -8 },
                         visible: { opacity: 1, y: 0 },
@@ -303,26 +295,21 @@ export function IpCard({
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className="text-xs"
-                            style={{
-                              backgroundColor: `${color}1A`,
-                              color: color,
-                              borderColor: `${color}4D`,
-                            }}
+                            className="text-xs border border-primary/20 bg-primary/10 text-primary"
                           >
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>
-                          <span className="text-sm font-semibold text-[#1E3A5F]">
+                          <span className="text-sm font-semibold text-foreground">
                             {tx.amount > 0 ? '+' : ''}
                             {formatNumber(tx.amount)} IP
                           </span>
                         </div>
                         {tx.description && (
-                          <p className="text-xs text-[#64748B] mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {tx.description}
                           </p>
                         )}
-                        <p className="text-xs text-[#64748B] mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {formatDate(tx.created_at)}
                         </p>
                       </div>
@@ -334,7 +321,7 @@ export function IpCard({
 
             {transactions.length === 0 && (
               <motion.div
-                className="pt-4 px-4 pb-4 text-sm text-[#64748B]"
+                className="pt-4 px-4 pb-4 text-sm text-muted-foreground"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: 0.05 }}

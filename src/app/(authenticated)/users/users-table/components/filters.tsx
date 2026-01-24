@@ -64,7 +64,7 @@ export function UsersTableFilters({
         placeholder="Search users..."
         value={searchValue}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="bg-white border-[#2454FF]/20 rounded-xl placeholder:text-[#64748B]/60 focus:border-[#2454FF] focus:ring-[#2454FF] flex-1"
+        className="flex-1 h-11 rounded-[var(--radius-md)] bg-background"
       />
       <OrgTeamFilter
         selectedOrgId={filters.organization_id}

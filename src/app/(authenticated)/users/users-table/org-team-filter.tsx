@@ -134,7 +134,7 @@ export function OrgTeamFilter({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="bg-white border-[#2454FF]/20 rounded-xl text-[#1E3A5F] hover:bg-[#F5F7FA] min-w-[200px] justify-between"
+          className="min-w-[200px] justify-between h-11 rounded-[var(--radius-pill)] bg-background"
         >
           {displayText}
           <ChevronDown className="h-4 w-4 ml-2" />
@@ -148,7 +148,7 @@ export function OrgTeamFilter({
             setIsOpen(false);
           }}
           data-selected={isAllSelected}
-          className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+          className="cursor-pointer data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
         >
           {!FL_TEAMS_ENABLED ? 'All Groups / Teams' : 'All Groups'}
         </DropdownMenuItem>
@@ -169,7 +169,7 @@ export function OrgTeamFilter({
                     setIsOpen(false);
                   }}
                   data-selected={selectedOrgId === org.id && !selectedTeamId}
-                  className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10! data-[selected=true]:data-[state=open]:bg-[#2454FF]/10!`}
+                  className="cursor-pointer data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10 data-[selected=true]:data-[state=open]:!bg-primary/10"
                 >
                   {org.name}
                 </DropdownMenuSubTrigger>
@@ -193,7 +193,7 @@ export function OrgTeamFilter({
                             setIsOpen(false);
                           }}
                           data-selected={isSelected}
-                          className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+                          className="cursor-pointer data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
                         >
                           {team.name}
                         </DropdownMenuItem>
@@ -213,7 +213,7 @@ export function OrgTeamFilter({
                 setIsOpen(false);
               }}
               data-selected={selectedOrgId === org.id}
-              className={`cursor-pointer data-[selected=true]:bg-[#2454FF]/10! data-[selected=true]:focus:bg-[#2454FF]/10!`}
+              className="cursor-pointer data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
             >
               {org.name}
             </DropdownMenuItem>

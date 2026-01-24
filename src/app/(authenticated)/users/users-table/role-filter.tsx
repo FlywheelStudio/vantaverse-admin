@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { cn } from '@/lib/utils';
 
 interface RoleFilterProps {
   selectedRole: MemberRole;
@@ -13,16 +14,17 @@ export function RoleFilter({
   onRoleSelect,
 }: RoleFilterProps) {
   return (
-    <div className="flex items-center gap-2 bg-white border border-[#2454FF]/20 rounded-xl p-1">
+    <div className="flex items-center gap-2 bg-muted border border-border rounded-[var(--radius-pill)] p-1">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => onRoleSelect('patient')}
-        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
+        className={cn(
+          'cursor-pointer flex-1 rounded-[var(--radius-pill)] transition-colors',
           selectedRole === 'patient'
-            ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
-            : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
-        }`}
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'text-foreground hover:bg-background',
+        )}
       >
         Members
       </Button>
@@ -30,11 +32,12 @@ export function RoleFilter({
         variant="ghost"
         size="sm"
         onClick={() => onRoleSelect('admin')}
-        className={`cursor-pointer flex-1 rounded-lg transition-colors ${
+        className={cn(
+          'cursor-pointer flex-1 rounded-[var(--radius-pill)] transition-colors',
           selectedRole === 'admin'
-            ? 'bg-[#2454FF] text-white hover:bg-[#1E3FCC]'
-            : 'text-[#1E3A5F] hover:bg-[#F5F7FA]'
-        }`}
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'text-foreground hover:bg-background',
+        )}
       >
         Admins
       </Button>

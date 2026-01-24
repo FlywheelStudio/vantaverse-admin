@@ -312,7 +312,7 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
       {!isLoading && (
         <Card
           className={cn(
-            'flex flex-col gap-6 overflow-hidden',
+            'flex flex-col gap-6',
             !state.addingMembersTo && 'backdrop-blur-sm',
           )}
         >

@@ -57,6 +57,19 @@ export function AppointmentCard({
   };
 
   const isDisabled = status === 'not_programmed';
+  const statusBadgeClass = (statusStr: string) => {
+    switch (statusStr) {
+      case 'scheduled':
+        return 'border-primary/20 bg-primary/10 text-primary';
+      case 'attended':
+        return 'bg-[oklch(0.94_0.04_155)] text-[oklch(0.32_0.12_155)] border-[oklch(0.87_0.1_155)]';
+      case 'canceled':
+        return 'border-destructive/20 bg-destructive/10 text-destructive';
+      case 'not_programmed':
+      default:
+        return 'border-border bg-muted/30 text-muted-foreground';
+    }
+  };
 
   // Format date and time
   const formatScheduledTime = (startTime: string, endTime: string) => {
@@ -115,13 +128,13 @@ export function AppointmentCard({
 
     if (isMeeting) {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Video className="h-4 w-4" style={{ color }} />
           <a
             href={locationValue}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm hover:underline truncate"
+            className="text-sm hover:underline truncate min-w-0"
             style={{ color }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -133,9 +146,9 @@ export function AppointmentCard({
 
     if (isPhone) {
       return (
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4 text-[#64748B]" />
-          <span className="text-sm font-semibold text-[#1E3A5F] truncate">
+        <div className="flex items-center gap-2 min-w-0">
+          <Phone className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground truncate min-w-0 flex-1">
             {locationValue}
           </span>
         </div>
@@ -143,9 +156,9 @@ export function AppointmentCard({
     }
 
     return (
-      <div className="flex items-center gap-2">
-        <MapPin className="h-4 w-4 text-[#64748B]" />
-        <span className="text-sm font-semibold text-[#1E3A5F] truncate">
+      <div className="flex items-center gap-2 min-w-0">
+        <MapPin className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-semibold text-foreground truncate min-w-0 flex-1">
           {locationValue}
         </span>
       </div>
@@ -155,16 +168,16 @@ export function AppointmentCard({
   return (
     <Card
       className={cn(
-        'rounded-3xl p-2 gap-0 border-2 transition-all duration-300 overflow-hidden',
+        'gap-0 border transition-all duration-300 overflow-hidden',
         isDisabled
-          ? 'opacity-40! hover:opacity-50! cursor-not-allowed! bg-white/50! shadow-none!'
-          : 'hover:shadow-xl bg-white',
+          ? 'opacity-50 pointer-events-none shadow-none'
+          : 'hover:shadow-[var(--shadow-lg)]',
       )}
       style={{ borderColor: color, minHeight: '166px' }}
     >
       {/* Card Header */}
       <div
-        className="bg-linear-to-b from-white to-gray-50/30"
+        className="bg-muted/10"
         onClick={() => !isDisabled && setIsExpanded(!isExpanded)}
       >
         {/* Title and Badge Section */}
@@ -178,19 +191,12 @@ export function AppointmentCard({
                 className="shrink-0 w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
-                {title}
-              </h3>
+              <h3 className="font-semibold text-foreground text-lg truncate">{title}</h3>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Badge
                 variant="outline"
-                className="font-semibold border"
-                style={{
-                  backgroundColor: `${color}1A`,
-                  color: color,
-                  borderColor: `${color}4D`,
-                }}
+                className={cn('font-semibold border', statusBadgeClass(status))}
               >
                 {getStatusLabel(status)}
               </Badge>
@@ -216,7 +222,7 @@ export function AppointmentCard({
         {!isExpanded && latestAppointment && !isDisabled && (
           <div className="p-5 pt-4 px-2 space-y-2">
             {latestAppointment.start_time && latestAppointment.end_time && (
-              <div className="flex items-center gap-2 text-sm text-[#64748B]">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span>
                   {formatScheduledTime(
@@ -235,7 +241,7 @@ export function AppointmentCard({
       <AnimatePresence>
         {isExpanded && !isDisabled && (
           <motion.div
-            className="bg-white overflow-hidden"
+            className="bg-card overflow-hidden p-5"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -250,8 +256,8 @@ export function AppointmentCard({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: 0.05 }}
                 >
-                  <CheckCircle2 className="h-5 w-5" color={'#00C896'} />
-                  <h4 className="font-bold text-[#1E3A5F]">Current Status</h4>
+                  <CheckCircle2 className="h-5 w-5 text-[oklch(0.66_0.17_155)]" />
+                  <h4 className="font-semibold text-foreground">Current Status</h4>
                 </motion.div>
 
                 <motion.div
@@ -262,10 +268,10 @@ export function AppointmentCard({
                 >
                   {status === 'canceled' && latestAppointment.canceled_by && (
                     <div className="flex items-start gap-2">
-                      <span className="text-sm font-medium text-[#64748B] min-w-[100px]">
+                      <span className="text-sm font-medium text-muted-foreground min-w-[100px]">
                         Canceled by:
                       </span>
-                      <span className="text-sm font-semibold text-[#1E3A5F]">
+                      <span className="text-sm font-semibold text-foreground">
                         {latestAppointment.canceled_by}
                       </span>
                     </div>
@@ -273,10 +279,10 @@ export function AppointmentCard({
                   {status === 'canceled' &&
                     latestAppointment.cancellation_reason && (
                       <div className="flex items-start gap-2">
-                        <span className="text-sm font-medium text-[#64748B] min-w-[100px]">
+                        <span className="text-sm font-medium text-muted-foreground min-w-[100px]">
                           Reason:
                         </span>
-                        <span className="text-sm font-semibold text-[#1E3A5F]">
+                        <span className="text-sm font-semibold text-foreground">
                           {latestAppointment.cancellation_reason}
                         </span>
                       </div>
@@ -284,10 +290,10 @@ export function AppointmentCard({
                   {latestAppointment.start_time &&
                     latestAppointment.end_time && (
                       <div className="flex items-start gap-2">
-                        <span className="text-sm font-medium text-[#64748B] min-w-[100px]">
+                        <span className="text-sm font-medium text-muted-foreground min-w-[100px]">
                           Meeting time:
                         </span>
-                        <span className="text-sm font-semibold text-[#1E3A5F]">
+                        <span className="text-sm font-semibold text-foreground">
                           {formatScheduledTime(
                             latestAppointment.start_time,
                             latestAppointment.end_time,
@@ -297,17 +303,17 @@ export function AppointmentCard({
                     )}
 
                   <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium text-[#64748B] min-w-[100px]">
+                    <span className="text-sm font-medium text-muted-foreground min-w-[100px] whitespace-nowrap">
                       Location:
                     </span>
-                    <div>{getLocationDisplay(latestAppointment)}</div>
+                    <div className="min-w-0 flex-1">{getLocationDisplay(latestAppointment)}</div>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium text-[#64748B] min-w-[100px]">
+                    <span className="text-sm font-medium text-muted-foreground min-w-[100px]">
                       Scheduled on:
                     </span>
-                    <span className="text-sm text-[#64748B]">
+                    <span className="text-sm text-muted-foreground">
                       {formatScheduledAt(latestAppointment.created_at)}
                     </span>
                   </div>
@@ -315,7 +321,7 @@ export function AppointmentCard({
               </>
             ) : (
               <motion.div
-                className="pt-4 text-sm text-[#64748B]"
+                className="pt-4 text-sm text-muted-foreground"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: 0.05 }}
@@ -338,7 +344,7 @@ export function AppointmentCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-w-0 rounded-lg bg-transparent cursor-pointer"
+                      className="flex-1 min-w-0 rounded-[var(--radius-pill)] bg-transparent cursor-pointer hover:bg-muted/40"
                       style={{
                         color: color,
                         borderColor: color,
@@ -352,12 +358,6 @@ export function AppointmentCard({
                           );
                         }
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = `${color}1A`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
                     >
                       <Edit2 className="h-4 w-4 shrink-0 mr-1 sm:mr-2" />
                       <span className="truncate">Reschedule</span>
@@ -367,7 +367,7 @@ export function AppointmentCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-w-0 text-[#FF4D6D] border-[#FF4D6D] hover:bg-[#FF4D6D]/10 rounded-lg bg-transparent cursor-pointer"
+                      className="flex-1 min-w-0 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-[var(--radius-pill)] bg-transparent cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (latestAppointment.cancel_url) {
@@ -390,7 +390,7 @@ export function AppointmentCard({
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.2 }}
               >
-                <h4 className="font-bold text-[#1E3A5F] mb-3 pb-4">History</h4>
+                <h4 className="font-semibold text-foreground mb-3 pb-4">History</h4>
                 <motion.div
                   className="space-y-3"
                   initial="hidden"
@@ -409,7 +409,7 @@ export function AppointmentCard({
                   {history.map((histAppt) => (
                     <motion.div
                       key={histAppt.id}
-                      className="flex items-start justify-between gap-3 p-3 bg-[#F5F7FA] rounded-lg"
+                      className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]"
                       variants={{
                         hidden: { opacity: 0, y: -8 },
                         visible: { opacity: 1, y: 0 },
@@ -418,7 +418,7 @@ export function AppointmentCard({
                     >
                       <div className="flex-1">
                         {histAppt.start_time && (
-                          <p className="text-sm text-[#64748B]">
+                          <p className="text-sm text-muted-foreground">
                             For:{' '}
                             {new Date(histAppt.start_time).toLocaleString(
                               'en-US',
@@ -435,7 +435,7 @@ export function AppointmentCard({
                         )}
                         {histAppt.status === 'canceled' &&
                           histAppt.cancellation_reason && (
-                            <p className="text-xs mt-1 text-[#FF4D6D]">
+                            <p className="text-xs mt-1 text-destructive">
                               &quot;{histAppt.cancellation_reason}&quot;
                             </p>
                           )}
@@ -443,15 +443,11 @@ export function AppointmentCard({
                       <div className="flex items-center gap-2 flex-col">
                         <Badge
                           variant="outline"
-                          style={{
-                            backgroundColor: '#FF4D6D/10',
-                            color: '#FF4D6D',
-                            borderColor: '#FF4D6D/30',
-                          }}
+                          className={cn('cursor-default', statusBadgeClass(histAppt.status))}
                         >
                           {getStatusLabel(histAppt.status)}
                         </Badge>
-                        <span className="text-xs text-[#64748B] whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {new Date(histAppt.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -467,7 +463,7 @@ export function AppointmentCard({
       {/* Disabled State Content */}
       {isDisabled && (
         <div className="p-5 text-center">
-          <p className="text-sm text-[#64748B]">
+          <p className="text-sm text-muted-foreground">
             {title} appointment not scheduled yet.
           </p>
         </div>

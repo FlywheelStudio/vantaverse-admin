@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, Suspense, useEffect, useRef, useState } from 'react';
+import { ReactNode, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import BreadcrumbNavigator from './header/breadcrumb-navigator';
@@ -18,28 +18,40 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
     isExpanded && isOpen ? 10 : isOpen ? 10 : VANTABUDDY_CONFIG.width + 10;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef<number>(0);
 
   const [scrollPosition, setScrollPosition] = useState<number[]>([]);
 
-  const handleWheel = (event: WheelEvent) => {
-    setScrollPosition([event.deltaY, containerRef.current?.scrollTop || 0]);
-  };
+  const handleScroll = useCallback(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const currentScrollTop = element.scrollTop;
+    const lastScrollTop = lastScrollTopRef.current;
+    const direction = currentScrollTop > lastScrollTop ? 1 : currentScrollTop < lastScrollTop ? -1 : 0;
+    
+    lastScrollTopRef.current = currentScrollTop;
+    setScrollPosition([direction, currentScrollTop]);
+  }, []);
 
   useEffect(() => {
     const element = containerRef.current;
     if (element) {
-      element.addEventListener('wheel', handleWheel);
+      element.addEventListener('scroll', handleScroll, { passive: true });
+      // Initialize scroll position
+      lastScrollTopRef.current = element.scrollTop;
+      handleScroll();
     }
 
     return () => {
       if (element) {
-        element.removeEventListener('wheel', handleWheel);
+        element.removeEventListener('scroll', handleScroll);
       }
     };
-  });
+  }, [handleScroll]);
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col">
+    <div className="h-full min-h-0 w-full flex flex-col">
       <header
         suppressHydrationWarning
         className="text-white flex items-center justify-between shrink-0 content-title"

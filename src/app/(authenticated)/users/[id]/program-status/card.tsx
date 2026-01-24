@@ -65,7 +65,7 @@ export function ProgramStatusCard({
   const deleteProgram = useDeleteProgram(userId);
 
   const parsedCompletion = parseCompletion(completion);
-  const color = 'var(--color-cyan-600)';
+  const color = 'var(--color-primary)';
 
   const toggleWeek = (weekIndex: number) => {
     const newExpanded = new Set(expandedWeeks);
@@ -109,25 +109,24 @@ export function ProgramStatusCard({
   if (!assignment) {
     return (
       <Card
-        className="w-full col-span-full rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden shadow-xl bg-white"
-        style={{ borderColor: color }}
+        className="w-full col-span-full overflow-hidden border border-border gap-2"
       >
-        <div className="bg-linear-to-b from-white to-gray-50/30">
-          <div className={cn('p-4 border-b-2')} style={{ borderColor: color }}>
+        <div className="bg-muted/10">
+          <div className={cn('p-4 border-b')} style={{ borderColor: 'var(--color-border)' }}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div
                   className="shrink-0 w-3 h-3 rounded-full"
                   style={{ backgroundColor: color }}
                 />
-                <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
+                <h3 className="font-semibold text-foreground text-lg truncate">
                   Program Status
                 </h3>
               </div>
               <Button
                 onClick={() => setIsModalOpen(true)}
                 size="sm"
-                className="shrink-0 bg-red-500 hover:bg-red-600 text-white"
+                className="shrink-0 rounded-[var(--radius-pill)]"
               >
                 Assign Program
               </Button>
@@ -137,13 +136,11 @@ export function ProgramStatusCard({
         <CardContent className="p-6">
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-lg bg-amber-500/10">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-[var(--radius-lg)] bg-primary/10">
+                <AlertTriangle className="h-5 w-5 text-primary" />
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-[#1E3A5F]">
-                  No program assigned
-                </div>
+                <div className="font-semibold text-foreground">No program assigned</div>
                 <div className="text-sm text-muted-foreground mt-1">
                   Assign a program to start tracking weekly completion and schedule progress.
                 </div>
@@ -174,19 +171,18 @@ export function ProgramStatusCard({
   return (
     <Card
       className={cn(
-        'w-full col-span-full rounded-3xl p-2 border-2 transition-all gap-2 duration-300 overflow-hidden shadow-xl bg-white',
+        'w-full col-span-full overflow-hidden border border-border gap-2',
       )}
-      style={{ borderColor: color }}
     >
-      <div className="bg-linear-to-b from-white to-gray-50/30">
-        <div className={cn('p-4 border-b-2')} style={{ borderColor: color }}>
+      <div className="bg-muted/10">
+        <div className={cn('p-4 border-b')}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
                 className="shrink-0 w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <h3 className="font-bold text-[#1E3A5F] text-lg truncate">
+              <h3 className="font-semibold text-foreground text-lg truncate">
                 Program Status
               </h3>
             </div>
@@ -195,6 +191,7 @@ export function ProgramStatusCard({
                 onClick={assignment ? handleEditProgram : () => setIsModalOpen(true)}
                 variant="outline"
                 size="sm"
+                className="rounded-[var(--radius-pill)]"
               >
                 {assignment ? 'Edit Program' : 'Assign Program'}
               </Button>
@@ -206,7 +203,7 @@ export function ProgramStatusCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-[var(--radius-pill)]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -248,27 +245,21 @@ export function ProgramStatusCard({
         {/* Program Info */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-[#64748B]">
-              Program Name:
-            </span>
+            <span className="text-sm font-medium text-muted-foreground">Program Name:</span>
             {template?.id ? (
               <Link
                 href={`/builder/${template.id}`}
-                className="text-sm font-semibold text-[#1E3A5F] hover:text-cyan-600 hover:underline transition-colors duration-200"
+                className="text-sm font-semibold text-primary hover:underline transition-colors duration-200"
               >
                 {template.name}
               </Link>
             ) : (
-              <span className="text-sm font-semibold text-[#1E3A5F]">N/A</span>
+              <span className="text-sm font-semibold text-foreground">N/A</span>
             )}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-[#64748B]">
-              Overall Completion:
-            </span>
-            <span className="text-sm font-semibold text-[#1E3A5F]">
-              {overallCompletion}%
-            </span>
+            <span className="text-sm font-medium text-muted-foreground">Overall Completion:</span>
+            <span className="text-sm font-semibold text-foreground">{overallCompletion}%</span>
           </div>
           <Progress
             value={overallCompletion}
@@ -280,9 +271,7 @@ export function ProgramStatusCard({
         {/* Weeks */}
         {schedule && schedule.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-[#1E3A5F] mb-3">
-              Workout Schedule
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Workout Schedule</h3>
             {schedule.map((week, weekIndex) => (
               <ProgramStatusWeekCard
                 key={weekIndex}
@@ -300,7 +289,7 @@ export function ProgramStatusCard({
         )}
 
         {(!schedule || schedule.length === 0) && (
-          <div className="text-sm text-[#64748B] text-center py-4">
+          <div className="text-sm text-muted-foreground text-center py-4">
             No workout schedule available
           </div>
         )}

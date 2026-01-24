@@ -153,16 +153,27 @@ export default function BreadcrumbNavigator({
 
   useEffect(() => {
     if (isHome) return;
-    if (isAtTop) {
-      if (scrollDirection > 0 && !isHiddenRef.current) {
-        isHiddenRef.current = true;
-        controls.start('slideUp');
-      } else if (scrollDirection < 0 && isHiddenRef.current) {
-        isHiddenRef.current = false;
-        controls.start('slideDown');
-      }
+    isHiddenRef.current = false;
+    controls.set('slideDown');
+  }, [controls, isHome, pathname]);
+
+  useEffect(() => {
+    if (isHome) return;
+
+    // Scroll container behavior:
+    // - scrolling DOWN (away from top): hide
+    // - returning to scrollTop === 0: show again
+    if (scrollDirection > 0 && scrollTop > 0 && !isHiddenRef.current) {
+      isHiddenRef.current = true;
+      controls.start('slideUp');
+      return;
     }
-  }, [isHome, scrollDirection, isAtTop, controls]);
+
+    if (isAtTop && isHiddenRef.current) {
+      isHiddenRef.current = false;
+      controls.start('slideDown');
+    }
+  }, [isHome, scrollDirection, scrollTop, isAtTop, controls]);
 
   const fromParam = searchParams.get('from');
   const fromSegments = useMemo(
@@ -220,33 +231,29 @@ export default function BreadcrumbNavigator({
   const variants = {
     visible: {
       y: 0,
-      z: 0,
       opacity: 1,
+      rotateX: 0,
+      pointerEvents: 'auto',
       transition: {
         duration: 0.3,
         ease: [0.4, 0, 0.2, 1] as const,
-      },
-      transitionEnd: {
-        display: 'block',
       },
     },
     slideUp: {
-      y: -100,
-      z: -200,
+      y: -64,
       opacity: 0,
+      rotateX: 55,
+      pointerEvents: 'none',
       transition: {
         duration: 0.3,
         ease: [0.4, 0, 0.2, 1] as const,
-      },
-      transitionEnd: {
-        display: 'none',
       },
     },
     slideDown: {
       y: 0,
-      z: 0,
       opacity: 1,
-      display: 'block',
+      rotateX: 0,
+      pointerEvents: 'auto',
       transition: {
         duration: 0.3,
         ease: [0.4, 0, 0.2, 1] as const,
@@ -256,18 +263,18 @@ export default function BreadcrumbNavigator({
 
   return (
     <motion.div
-      className={`mb-4 px-4 h-12 text-card-foreground flex items-center bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm ${isHome ? 'sticky top-0 z-10 shrink-0' : ''}`}
+      className="mb-4 h-12 text-card-foreground flex items-center bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm sticky top-0 z-10 shrink-0"
       variants={variants}
       animate={controls}
       initial="visible"
       style={{
         transformStyle: 'preserve-3d',
         perspective: '1000px',
-        display: 'block',
+        transformOrigin: 'top center',
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
       }}
     >
-      <nav aria-label="Breadcrumb" className="h-full flex items-center">
+      <nav aria-label="Breadcrumb" className="h-full flex items-center px-4">
         <ol className="flex items-center gap-2">
           {breadcrumbItems.map((item, index) => {
             const isLast = index === breadcrumbItems.length - 1;
