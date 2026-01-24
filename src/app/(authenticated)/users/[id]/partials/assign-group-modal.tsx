@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader } from 'lucide-react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -13,10 +14,47 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { generateColorFromSeed } from '@/components/ui/avatar';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
 import { useAddUserToOrganization } from '../hooks/use-user-mutations';
+
+function OrgAvatar({
+  orgId,
+  pictureUrl,
+  size = 40,
+}: {
+  orgId: string;
+  pictureUrl: string | null | undefined;
+  size?: number;
+}) {
+  const bg = generateColorFromSeed(orgId || 'default', { gradient: true });
+  const fontSize = Math.max(10, Math.round(size * 0.35));
+
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden rounded-[var(--radius-md)] ring-1 ring-border/40 bg-muted"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      {pictureUrl ? (
+        <Image
+          src={pictureUrl}
+          alt=""
+          fill
+          sizes={`${size}px`}
+          className="object-cover"
+        />
+      ) : (
+        <div
+          className="size-full flex items-center justify-center text-white font-medium"
+          style={{ backgroundImage: bg, fontSize }}
+        />
+      )}
+    </div>
+  );
+}
 
 interface AssignGroupModalProps {
   open: boolean;
@@ -78,7 +116,13 @@ export function AssignGroupModal({
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
     >
-      <DialogContent className="w-[min(560px,calc(100%-2rem))] h-[560px] max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className={cn(
+          'w-[min(36rem,calc(100%-2rem))] h-[35rem] max-h-[85vh] flex flex-col overflow-hidden',
+          'border-0 bg-card text-card-foreground p-5',
+          'rounded-[var(--radius-xl)] shadow-[var(--shadow-md)]',
+        )}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={
@@ -90,18 +134,24 @@ export function AssignGroupModal({
           className="flex flex-col flex-1 min-h-0"
         >
           <DialogHeader>
-            <DialogTitle className="text-[#1E3A5F]">Assign to group</DialogTitle>
+            <DialogTitle className="text-[var(--text-highlighted)] tracking-tight">
+              Assign to group
+            </DialogTitle>
             <DialogDescription>
               {userName ? `Select a group for ${userName}.` : 'Select a group.'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 pt-4">
+          <div className="pt-4">
             <Input
               placeholder="Search by group name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               disabled={isAssigning}
+              className={cn(
+                'h-11 rounded-[var(--radius-md)] bg-card px-4 text-sm',
+                'focus-visible:ring-ring/60 focus-visible:ring-[3px]',
+              )}
             />
           </div>
 
@@ -111,7 +161,7 @@ export function AssignGroupModal({
                 Loading...
               </div>
             ) : error ? (
-              <div className="py-8 text-center text-red-500">
+              <div className="py-8 text-center text-destructive">
                 Error loading groups: {error.message}
               </div>
             ) : filteredOrganizations.length === 0 ? (
@@ -119,7 +169,7 @@ export function AssignGroupModal({
                 No groups found
               </div>
             ) : (
-              <div className="space-y-2 pr-1">
+              <div className="space-y-3 pr-1">
                 {filteredOrganizations.map((org) => {
                   const isSelected = selectedOrganizationId === org.id;
                   return (
@@ -129,20 +179,32 @@ export function AssignGroupModal({
                       onClick={() => setSelectedOrganizationId(org.id)}
                       disabled={isAssigning}
                       className={cn(
-                        'w-full text-left p-4 border-2 rounded-lg transition-all',
-                        'hover:border-blue-500 hover:bg-blue-50',
+                        'group w-full text-left p-4 transition-all',
+                        'rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-sm)]',
+                        'hover:bg-muted/40 hover:shadow-[var(--shadow-md)]',
+                        'focus-visible:outline-none focus-visible:ring-ring/60 focus-visible:ring-[3px]',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
-                        isSelected && 'border-blue-500 bg-blue-50',
+                        isSelected &&
+                          'bg-primary/5 ring-2 ring-primary/30 shadow-[var(--shadow-md)]',
                       )}
                     >
-                      <div className="font-semibold text-base text-[#1E3A5F] truncate">
-                        {org.name}
-                      </div>
-                      {org.description && (
-                        <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {org.description}
+                      <div className="flex items-start gap-3 min-w-0">
+                        <OrgAvatar
+                          orgId={org.id}
+                          pictureUrl={org.picture_url}
+                          size={40}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm text-foreground truncate">
+                            {org.name}
+                          </div>
+                          {org.description && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {org.description}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </button>
                   );
                 })}
@@ -150,14 +212,19 @@ export function AssignGroupModal({
             )}
           </ScrollArea>
 
-          <div className="flex justify-end gap-2 pt-4 mt-auto">
-            <Button variant="outline" onClick={handleCancel} disabled={isAssigning}>
+          <div className="flex justify-end gap-3 pt-4 mt-auto">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isAssigning}
+              className="h-11 px-5 rounded-[var(--radius-pill)]"
+            >
               Cancel
             </Button>
             <Button
               onClick={handleAssign}
               disabled={!selectedOrganizationId || isAssigning}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="h-11 px-5 rounded-[var(--radius-pill)] shadow-[var(--shadow-md)]"
             >
               {isAssigning ? (
                 <>

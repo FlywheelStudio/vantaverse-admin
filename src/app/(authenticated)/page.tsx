@@ -52,7 +52,7 @@ export default async function HomePage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-6 md:flex-row md:items-stretch min-h-[calc(100dvh-18rem)]">
+      <div className="flex flex-col gap-6 md:flex-row md:items-stretch flex-1 min-h-0 overflow-hidden">
         <QuickTakeActionCard users={data.unassigned ?? []} />
         <UsersWithoutProgramCard users={data.withoutProgram ?? []} />
         <UsersWithProgramAndGroupCard users={data.withProgramAndGroup ?? []} />

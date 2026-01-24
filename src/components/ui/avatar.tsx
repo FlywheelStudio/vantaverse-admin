@@ -2,12 +2,23 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 // Generate a consistent color from a seed string
-export function generateColorFromSeed(seed: string | null | undefined): string {
+export function generateColorFromSeed(
+  seed: string | null | undefined,
+  {
+    gradient = false,
+    style = 'default',
+  }: { gradient?: boolean; style?: 'default' | 'program' } = {},
+): string {
   if (!seed) {
     // Fallback color for undefined/null seeds
-    return 'hsl(0, 0%, 50%)';
+    return gradient
+      ? style === 'program'
+        ? 'linear-gradient(160deg, hsl(0, 0%, 36%), hsl(0, 0%, 62%))'
+        : 'linear-gradient(135deg, hsl(0, 0%, 42%), hsl(0, 0%, 58%))'
+      : 'hsl(0, 0%, 50%)';
   }
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -16,7 +27,27 @@ export function generateColorFromSeed(seed: string | null | undefined): string {
 
   // Generate HSL color with good saturation and lightness for avatars
   const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 50%)`;
+  if (!gradient) return `hsl(${hue}, 65%, 50%)`;
+
+  if (style === 'program') {
+    const angle = 160;
+    const delta = 44 + (Math.abs(hash) % 36); // 44..79
+    const hue2 = (hue + delta) % 360;
+    const sat1 = 58;
+    const sat2 = 70;
+    const light1 = 38;
+    const light2 = 58;
+    return `linear-gradient(${angle}deg, hsl(${hue}, ${sat1}%, ${light1}%), hsl(${hue2}, ${sat2}%, ${light2}%))`;
+  }
+
+  const delta = 26 + (Math.abs(hash) % 28); // 26..53
+  const hue2 = (hue + delta) % 360;
+  const sat1 = 64;
+  const sat2 = 72;
+  const light1 = 44;
+  const light2 = 56;
+
+  return `linear-gradient(135deg, hsl(${hue}, ${sat1}%, ${light1}%), hsl(${hue2}, ${sat2}%, ${light2}%))`;
 }
 
 // Generate initials from name parts
@@ -59,7 +90,11 @@ export function Avatar({
   return src ? (
     <div
       onClick={() => router.push(`/users/${userId}`)}
-      className={`relative w-full h-full bg-gray-200 cursor-pointer overflow-hidden rounded-full ${className}`}
+      className={cn(
+        'relative w-full h-full cursor-pointer overflow-hidden rounded-full',
+        'bg-muted ring-1 ring-border/40',
+        className,
+      )}
     >
       <Image
         src={src}
@@ -70,7 +105,11 @@ export function Avatar({
     </div>
   ) : (
     <div
-      className={`w-full h-full flex items-center justify-center text-white text-xs font-medium cursor-pointer rounded-full ${className}`}
+      className={cn(
+        'w-full h-full flex items-center justify-center cursor-pointer rounded-full',
+        'text-white text-xs font-medium ring-1 ring-border/40',
+        className,
+      )}
       style={{ backgroundColor: avatarColor, fontSize }}
     >
       {initials}

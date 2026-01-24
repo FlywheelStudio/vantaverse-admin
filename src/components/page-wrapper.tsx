@@ -53,7 +53,7 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
       </header>
       <div
         suppressHydrationWarning
-        className="p-4 flex-1 min-h-0 overflow-y-auto slim-scrollbar"
+        className="p-4 flex flex-col flex-1 min-h-0 overflow-y-auto slim-scrollbar"
         ref={containerRef}
         style={{
           scrollBehavior: 'smooth',

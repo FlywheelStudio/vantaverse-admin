@@ -184,7 +184,7 @@ export function ChatInterface({
   const isSending = sendMessage.isPending;
 
   return (
-    <Card className="h-full border-0 shadow-xl flex flex-col">
+    <Card className="h-full min-h-0 overflow-hidden border-0 shadow-xl flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
         <span className="text-sm font-medium text-muted-foreground">
           Chat with {patientName}
@@ -211,7 +211,10 @@ export function ChatInterface({
           </div>
         ) : (
           <>
-            <ScrollArea ref={scrollAreaRef} className="flex-1 h-0 px-4 py-4">
+            <ScrollArea
+              ref={scrollAreaRef}
+              className="flex-1 min-h-0 px-4 py-4 slim-scrollbar"
+            >
               <div className="space-y-4">
                     {messages.map((message) => (
                     <div
