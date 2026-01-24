@@ -20,7 +20,7 @@ function EditableNameCell({ org }: { org: Organization }) {
     <div className="flex items-center gap-2">
       <span
         onClick={() => router.push(`/groups/${org.id}`)}
-        className="font-semibold text-[#1E3A5F] cursor-pointer hover:text-[#2454FF] transition-colors"
+        className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
       >
         {value}
       </span>
@@ -57,7 +57,7 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
             handleCancel();
           }
         }}
-        className="text-[#64748B] min-h-[60px]"
+        className="min-h-[50px] bg-card text-sm"
         autoFocus
       />
     );
@@ -66,7 +66,7 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
   return (
     <span
       onClick={() => handleCellEdit(org.id, 'description')}
-      className="text-[#64748B] cursor-pointer hover:text-[#2454FF] transition-colors"
+      className="text-muted-foreground cursor-pointer hover:text-primary transition-colors"
     >
       {description || '—'}
     </span>
@@ -116,9 +116,9 @@ function PictureCell({ org }: { org: Organization }) {
         <button
           onClick={handleClick}
           disabled={isUploading}
-          className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] bg-muted items-center justify-center hover:border-[#2454FF] hover:bg-[#2454FF]/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring hover:bg-primary/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Upload className="h-5 w-5 text-[#64748B]" />
+          <Upload className="h-5 w-5 text-muted-foreground" />
         </button>
       </>
     );
@@ -136,7 +136,7 @@ function PictureCell({ org }: { org: Organization }) {
       <button
         onClick={handleClick}
         disabled={isUploading}
-        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] hover:border-[#2454FF] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200"
+        className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Image
           src={pictureUrl}
@@ -183,9 +183,7 @@ const isTeamsEnabled =
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Image</span>
-    ),
+    header: () => <span className="text-xs font-semibold text-muted-foreground">Image</span>,
     cell: ({ row }) => <PictureCell org={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
@@ -197,15 +195,15 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           Name
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronUp className="h-4 w-4 text-foreground" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronDown className="h-4 w-4 text-foreground" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
           )}
         </button>
       );
@@ -223,15 +221,15 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           Description
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronUp className="h-4 w-4 text-foreground" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronDown className="h-4 w-4 text-foreground" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
           )}
         </button>
       );
@@ -245,15 +243,15 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           Members
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronUp className="h-4 w-4 text-foreground" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronDown className="h-4 w-4 text-foreground" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
           )}
         </button>
       );
@@ -264,9 +262,7 @@ export const columns: ColumnDef<Organization>[] = [
     ? [
         {
           accessorKey: 'teams_count',
-          header: () => (
-            <span className="text-sm font-bold text-[#1E3A5F]">Teams</span>
-          ),
+          header: () => <span className="text-xs font-semibold text-muted-foreground">Teams</span>,
           cell: ({ row }: { row: { original: Organization } }) => (
             <TeamsCell organization={row.original} />
           ),
@@ -282,24 +278,24 @@ export const columns: ColumnDef<Organization>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F] hover:text-[#2454FF] transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           Created
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronUp className="h-4 w-4 text-foreground" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-[#1E3A5F]" />
+            <ChevronDown className="h-4 w-4 text-foreground" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-[#1E3A5F]/40" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
           )}
         </button>
       );
     },
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string | null;
-      if (!date) return <span className="text-[#64748B]">—</span>;
+      if (!date) return <span className="text-muted-foreground">—</span>;
       return (
-        <span className="text-[#64748B]">
+        <span className="text-muted-foreground">
           {new Date(date).toLocaleDateString()}
         </span>
       );

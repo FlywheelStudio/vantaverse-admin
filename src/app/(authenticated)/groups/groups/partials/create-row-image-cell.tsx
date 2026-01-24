@@ -57,10 +57,10 @@ export function CreateRowImageCell() {
       <button
         onClick={handleClick}
         disabled={isUploading}
-        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-12 w-12 border-2 border-[#E5E9F0] bg-muted items-center justify-center hover:border-[#2454FF] hover:bg-[#2454FF]/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring hover:bg-primary/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {newOrgData.imagePreview ? (
-          <div className="relative w-full h-full rounded-full overflow-hidden bg-gray-200">
+          <div className="relative w-full h-full rounded-full overflow-hidden bg-muted">
             <Image
               src={newOrgData.imagePreview}
               alt=""
@@ -70,7 +70,7 @@ export function CreateRowImageCell() {
             />
           </div>
         ) : (
-          <Upload className="h-5 w-5 text-[#64748B]" />
+          <Upload className="h-5 w-5 text-muted-foreground" />
         )}
         {isUploading && (
           <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">

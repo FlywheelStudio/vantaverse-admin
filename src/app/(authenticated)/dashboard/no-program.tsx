@@ -48,8 +48,7 @@ export function UsersWithoutProgramCard({ users }: { users: UserWithoutProgram[]
       <Card className="h-full min-h-0 flex flex-col gap-0 overflow-hidden">
         <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60">
           <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
-            <span className="text-2xl font-semibold text-foreground">2</span>
-            . <span className="text-2xl">Assign to a</span>{' '}
+            <span className="text-2xl">Assign to a</span>{' '}
             <span className="text-2xl font-semibold text-foreground">
               program
             </span>

@@ -28,18 +28,17 @@ export function ProfileItem({
 
     if (orgMemberships.length === 1) {
       return (
-        <div className="text-xs text-muted-foreground truncate">
+        <div className="text-[0.75rem] text-muted-foreground truncate">
           {orgMemberships[0].orgName}
         </div>
       );
     }
 
-    // Multiple orgs - show +n bubble with tooltip
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="inline-flex items-center">
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+            <span className="text-[0.75rem] text-muted-foreground bg-muted px-2 py-0.5 rounded-[var(--radius-pill)]">
               +{orgMemberships.length}
             </span>
           </div>
@@ -47,7 +46,7 @@ export function ProfileItem({
         <TooltipContent>
           <div className="space-y-1">
             {orgMemberships.map((org) => (
-              <div key={org.orgId} className="text-sm">
+              <div key={org.orgId} className="text-[0.875rem] text-foreground">
                 {org.orgName}
               </div>
             ))}
@@ -59,31 +58,31 @@ export function ProfileItem({
 
   return (
     <div
-      className="flex items-center gap-2 px-2 py-2 hover:bg-muted/50 cursor-pointer min-w-0"
+      className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-lg)] hover:bg-muted/50 cursor-pointer min-w-0 transition-colors"
       onClick={onToggle}
     >
       <Checkbox
         checked={isSelected}
         onCheckedChange={onToggle}
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0"
+        className="shrink-0 rounded-[var(--radius-xs)]"
       />
-      <div className="size-8 shrink-0 flex items-center justify-center">
+      <div className="size-9 shrink-0 flex items-center justify-center rounded-[var(--radius-md)] overflow-hidden">
         <Avatar
           src={profile.avatar_url || null}
           firstName={profile.first_name || ''}
           lastName={profile.last_name || ''}
           userId={profile.id}
-          size={32}
+          size={36}
         />
       </div>
       <div className="flex-1 min-w-0 overflow-hidden flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm text-foreground truncate">
+          <div className="text-[0.875rem] font-medium text-foreground truncate">
             {profile.first_name} {profile.last_name}
           </div>
           {profile.email && (
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="text-[0.75rem] text-muted-foreground truncate">
               {profile.email}
             </div>
           )}

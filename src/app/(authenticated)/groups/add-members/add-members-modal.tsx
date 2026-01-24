@@ -6,7 +6,6 @@ import { Loader } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -195,7 +194,13 @@ export function AddMembersModal({
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
     >
-      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className={
+          'w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden ' +
+          'border border-border bg-card text-card-foreground p-5 ' +
+          'rounded-[var(--radius-xl)] shadow-[var(--shadow-md)]'
+        }
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={
@@ -207,37 +212,35 @@ export function AddMembersModal({
           className="flex flex-col flex-1 min-h-0"
         >
           <DialogHeader>
-            <DialogTitle className="text-[#1E3A5F]">
-              {inviteTitle}
+            <DialogTitle className="text-[1.125rem] font-normal tracking-tight text-muted-foreground">
+              {inviteTitle} to{' '}
+              <span className="font-semibold text-foreground">
+                {targetLabel} ({targetKind})
+              </span>
             </DialogTitle>
-            <DialogDescription>
-              {targetLabel} ({targetKind})
-            </DialogDescription>
           </DialogHeader>
 
-          {/* Role Selection Tabs */}
-          <div className="pt-4 pb-2">
-            <div className="text-sm font-medium mb-3">Assign Role</div>
+          {/* Role Selection */}
+          <div className="pt-5 pb-2">
             <div className="grid grid-cols-2 gap-4">
-              {/* Member Tab */}
               <button
                 type="button"
                 onClick={() => setSelectedRole('patient')}
-                className={`cursor-pointer p-4 border-2 rounded-lg text-left transition-all ${
-                  selectedRole === 'patient'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
+                className={
+                  'cursor-pointer p-4 text-left transition-all rounded-[var(--radius-lg)] ' +
+                  (selectedRole === 'patient'
+                    ? 'border-2 border-primary bg-primary/10'
+                    : 'border border-border bg-card hover:border-muted-foreground/40')
+                }
               >
-                <div className="font-semibold text-base mb-1 justify-self-center">
+                <div className="text-base font-semibold text-foreground mb-1">
                   Member
                 </div>
-                <div className="text-sm text-muted-foreground justify-self-center">
+                <div className="text-[0.875rem] text-muted-foreground">
                   Participates in program
                 </div>
               </button>
 
-              {/* Physiologist Tab */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -246,25 +249,26 @@ export function AddMembersModal({
                       !isPhysiologistDisabled && setSelectedRole('admin')
                     }
                     disabled={isPhysiologistDisabled}
-                    className={`cursor-pointer p-4 border-2 rounded-lg text-left transition-all ${
-                      isPhysiologistDisabled
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                    className={
+                      'cursor-pointer p-4 text-left transition-all rounded-[var(--radius-lg)] ' +
+                      (isPhysiologistDisabled
+                        ? 'border border-border bg-muted cursor-not-allowed opacity-60'
                         : selectedRole === 'admin'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
+                          ? 'border-2 border-primary bg-primary/10'
+                          : 'border border-border bg-card hover:border-muted-foreground/40')
+                    }
                   >
-                    <div className="font-semibold text-base mb-1 justify-self-center">
+                    <div className="text-base font-semibold text-foreground mb-1">
                       Physiologist
                     </div>
-                    <div className="text-sm text-muted-foreground justify-self-center">
+                    <div className="text-[0.875rem] text-muted-foreground">
                       Co-manages group
                     </div>
                   </button>
                 </TooltipTrigger>
                 {isPhysiologistDisabled && (
-                  <TooltipContent>
-                    <p>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-sm">
                       Physiologist is managed at organization level and applies
                       to all teams in the organization
                     </p>
@@ -280,21 +284,22 @@ export function AddMembersModal({
               placeholder="Search by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-[2.75rem] rounded-[var(--radius-md)] px-4 text-[0.875rem] bg-card border border-border"
             />
             {selectedRole === 'patient' && (
-              <div className="flex items-center justify-between border-2 rounded-lg p-2 bg-gray-50">
+              <div className="flex items-center justify-between rounded-[var(--radius-lg)] p-2 bg-muted border border-border">
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    className="text-[0.875rem] text-primary hover:underline font-medium"
                   >
                     Select All
                   </button>
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    className="text-[0.875rem] text-primary hover:underline font-medium"
                   >
                     Clear
                   </button>
@@ -306,10 +311,11 @@ export function AddMembersModal({
                     onCheckedChange={(checked) =>
                       setViewUnassigned(checked === true)
                     }
+                    className="rounded-[var(--radius-xs)]"
                   />
                   <label
                     htmlFor="view-unassigned"
-                    className="text-sm text-muted-foreground cursor-pointer"
+                    className="text-[0.875rem] text-muted-foreground cursor-pointer"
                   >
                     View unassigned
                   </label>
@@ -321,12 +327,11 @@ export function AddMembersModal({
           {/* User List */}
           <ScrollArea className="flex-1 min-h-0 mt-4">
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">
+              <div className="py-8 text-center text-[0.875rem] text-muted-foreground">
                 Loading...
               </div>
             ) : (
-              <div className="space-y-1">
-                {/* Show current physiologist at top of Physiologist tab */}
+              <div className="space-y-1 pr-1">
                 {selectedRole === 'admin' &&
                   currentPhysiologist &&
                   currentPhysiologistProfile &&
@@ -347,12 +352,11 @@ export function AddMembersModal({
                     />
                   )}
                 {filteredProfiles.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground">
+                  <div className="py-8 text-center text-[0.875rem] text-muted-foreground">
                     No users found
                   </div>
                 ) : (
                   filteredProfiles.map((profile) => {
-                    // Skip current physiologist if already shown at top
                     if (
                       selectedRole === 'admin' &&
                       currentPhysiologistProfile &&
@@ -391,29 +395,30 @@ export function AddMembersModal({
             )}
           </ScrollArea>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-4 mt-auto border-t">
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-4 mt-auto border-t border-border">
             <Button
               variant="outline"
               onClick={handleCancel}
               disabled={isPending}
+              className="h-11 px-5 rounded-[var(--radius-pill)]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={!canSave || isPending}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="h-11 px-5 rounded-[var(--radius-pill)] shadow-[var(--shadow-md)]"
             >
               {(isPending || membersLoading) && (
-                <Loader className="h-4 w-4 animate-spin" />
+                <Loader className="h-4 w-4 animate-spin shrink-0" />
               )}
               {!isPending &&
                 !membersLoading &&
                 (selectedRole === 'patient'
                   ? countChange === 0
                     ? `Add ${initialCount} Member${initialCount !== 1 ? 's' : ''}`
-                    : `Add ${initialCount} -> ${newMemberCount} Member${newMemberCount !== 1 ? 's' : ''}`
+                    : `Add ${initialCount} → ${newMemberCount} Member${newMemberCount !== 1 ? 's' : ''}`
                   : hasPhysiologistSelected
                     ? currentPhysiologistName
                       ? 'Replace Physiologist'
