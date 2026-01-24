@@ -17,31 +17,29 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
   const paddingLeft =
     isExpanded && isOpen ? 10 : isOpen ? 10 : VANTABUDDY_CONFIG.width + 10;
 
-    const containerRef = useRef<HTMLDivElement>(null);
-    
-    const [scrollPosition, setScrollPosition] = useState<number[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-    const handleWheel = (event: WheelEvent) => {
-      setScrollPosition([event.deltaY, containerRef.current?.scrollTop || 0]);
-    };
-    
-    useEffect(() => {
-      const element = containerRef.current;
+  const [scrollPosition, setScrollPosition] = useState<number[]>([]);
+
+  const handleWheel = (event: WheelEvent) => {
+    setScrollPosition([event.deltaY, containerRef.current?.scrollTop || 0]);
+  };
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (element) {
+      element.addEventListener('wheel', handleWheel);
+    }
+
+    return () => {
       if (element) {
-        // Add the native event listener with passive: false if you need preventDefault
-        element.addEventListener('wheel', handleWheel);
+        element.removeEventListener('wheel', handleWheel);
       }
-  
-      return () => {
-        // Clean up the event listener on component unmount
-        if (element) {
-          element.removeEventListener('wheel', handleWheel);
-        }
-      };
-    });
+    };
+  });
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="min-h-[100dvh] w-full flex flex-col">
       <header
         suppressHydrationWarning
         className="text-white flex items-center justify-between shrink-0 content-title"
@@ -55,7 +53,7 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
       </header>
       <div
         suppressHydrationWarning
-        className="p-4 flex-1 overflow-y-auto h-full slim-scrollbar"
+        className="p-4 flex-1 min-h-0 overflow-y-auto slim-scrollbar"
         ref={containerRef}
         style={{
           scrollBehavior: 'smooth',

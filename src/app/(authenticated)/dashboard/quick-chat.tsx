@@ -4,10 +4,10 @@ import * as React from 'react';
 import toast from 'react-hot-toast';
 import { Loader2, MessageCircle, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { UserCard } from '@/components/ui/user-card';
 import { Input } from '@/components/ui/input';
 import { ChatInterface } from '@/app/(authenticated)/users/[id]/partials/chat-interface';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
@@ -30,12 +30,12 @@ export function UsersWithProgramAndGroupCard({
     !q
       ? users
       : users.filter((u) => {
-          const fn = (u.first_name ?? '').toLowerCase();
-          const ln = (u.last_name ?? '').toLowerCase();
-          const fullName = `${fn} ${ln}`.trim();
-          const em = (u.email ?? '').toLowerCase();
-          return fn.includes(q) || ln.includes(q) || fullName.includes(q) || em.includes(q);
-        });
+        const fn = (u.first_name ?? '').toLowerCase();
+        const ln = (u.last_name ?? '').toLowerCase();
+        const fullName = `${fn} ${ln}`.trim();
+        const em = (u.email ?? '').toLowerCase();
+        return fn.includes(q) || ln.includes(q) || fullName.includes(q) || em.includes(q);
+      });
 
   const handleCloseChat = () => {
     if (openingUserId) return;
@@ -77,89 +77,65 @@ export function UsersWithProgramAndGroupCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.3 }}
-      className="h-full"
+      className="flex-1 min-w-0"
     >
-      <Card className="h-full min-h-0 flex flex-col gap-y-0 overflow-hidden">
-      {!chatView && (
-        <CardHeader className="p-3 shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-[#1E3A5F]">Quick chat</CardTitle>
-            <div className="relative flex-1 max-w-[200px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
+      <Card className="h-full min-h-0 flex flex-col gap-0 overflow-hidden">
+        {!chatView && (
+          <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60">
+            <div className="flex items-start justify-between gap-3">
+              <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
+                <span className="text-2xl font-semibold text-foreground">Quick chat</span>
+              </CardTitle>
+            </div>
+          </CardHeader>
+        )}
+
+        {chatView ? (
+          <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
+            <ChatInterface
+              chatId={chatView.chatId}
+              patientName={chatView.patientName}
+              onClose={handleCloseChat}
+            />
+          </CardContent>
+        ) : (
+          <CardContent className="p-5 pt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="relative w-full min-w-0 mt-0.5 mb-4 shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Name, email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 bg-white/80 border-[#E2E8F0]"
+                className="h-10 pl-10 bg-card/90 shadow-[var(--shadow-sm)] border-border/60 rounded-[var(--radius-md)] text-sm"
               />
             </div>
-          </div>
-        </CardHeader>
-      )}
-
-      {chatView ? (
-        <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
-          <ChatInterface
-            chatId={chatView.chatId}
-            patientName={chatView.patientName}
-            onClose={handleCloseChat}
-          />
-        </CardContent>
-      ) : (
-        <CardContent className="pb-6 flex-1 flex flex-col min-h-0 overflow-hidden">
-          {users.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-[#64748B]">
+            {users.length === 0 ? (
+<div className="flex-1 flex items-center justify-center text-sm text-dimmed">
               No users to chat with (with program and group).
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-[#64748B]">
-              No matches for &quot;{search.trim()}&quot;.
-            </div>
-          ) : (
-            <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-              <div className="space-y-2 min-w-0 w-full overflow-hidden">
-                {filtered.map((u) => {
-                  const fullName =
-                    u.first_name && u.last_name
-                      ? `${u.first_name} ${u.last_name}`
-                      : u.first_name || u.last_name || 'Unknown';
-
-                  const isOpening = openingUserId === u.user_id;
-
-                  return (
-                    <div key={u.user_id} className="min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-3 rounded-lg border bg-white/50 px-3 py-2 min-w-0">
-                        <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
-                          <div className="size-10 shrink-0 flex items-center justify-center">
-                            <Avatar
-                              src={u.avatar_url}
-                              firstName={u.first_name || ''}
-                              lastName={u.last_name || ''}
-                              userId={u.user_id}
-                              size={40}
-                            />
-                          </div>
-                          <div className="min-w-0 overflow-hidden">
-                            <div className="font-medium text-sm text-[#1E3A5F] truncate">
-                              {fullName}
-                            </div>
-                            {u.email ? (
-                              <div className="text-xs text-[#64748B] truncate">
-                                {u.email}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="shrink-0">
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-sm text-dimmed">
+                No matches for &quot;{search.trim()}&quot;.
+              </div>
+            ) : (
+              <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
+                <div className="space-y-3 min-w-0 w-full overflow-hidden">
+                  {filtered.map((u, i) => {
+                    const isOpening = openingUserId === u.user_id;
+                    return (
+                      <UserCard
+                        key={u.user_id}
+                        user={u}
+                        index={i}
+                        action={
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
                                 onClick={() => handleOpenChat(u)}
                                 disabled={!!openingUserId}
-                                className="text-[#64748B] hover:text-[#1E3A5F] cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="cursor-pointer rounded-[var(--radius-md)] p-2 text-muted-foreground hover:text-primary hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 {isOpening ? (
                                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -172,17 +148,16 @@ export function UsersWithProgramAndGroupCard({
                               <p>Open chat</p>
                             </TooltipContent>
                           </Tooltip>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      )}
-    </Card>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        )}
+      </Card>
     </motion.div>
   );
 }
