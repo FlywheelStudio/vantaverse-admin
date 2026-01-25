@@ -2,16 +2,22 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Trash2, Shield, ShieldOff } from 'lucide-react';
+import { Trash2, Shield, ShieldOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +39,8 @@ import {
   useDeleteUser,
   useToggleSuperAdmin,
 } from '../hooks/use-users-table-mutations';
+import { sendBulkInvitations } from '../../actions';
+import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -58,11 +66,13 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
         />
       </div>
       <div className="flex-1 min-w-0 max-w-44">
-        <div className="font-medium text-sm text-[#1E3A5F] truncate">
+        <div className="font-medium text-sm text-foreground truncate">
           {fullName || 'Unknown'}
         </div>
         {profile.email && (
-          <div className="text-xs text-[#64748B] truncate">{profile.email}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {profile.email}
+          </div>
         )}
       </div>
     </div>
@@ -71,7 +81,7 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
 
 function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
   if (!profile.last_sign_in) {
-    return <span className="text-[#64748B] text-sm">—</span>;
+    return <span className="text-muted-foreground text-sm">—</span>;
   }
 
   let relativeTime: string | null = null;
@@ -83,10 +93,10 @@ function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
   }
 
   if (!relativeTime) {
-    return <span className="text-[#64748B] text-sm">—</span>;
+    return <span className="text-muted-foreground text-sm">—</span>;
   }
 
-  return <span className="text-sm text-[#1E3A5F]">{relativeTime}</span>;
+  return <span className="text-sm text-foreground">{relativeTime}</span>;
 }
 
 function GroupsCell({ profile }: { profile: ProfileWithStats }) {
@@ -108,7 +118,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer"
+              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
             >
               —
             </button>
@@ -145,7 +155,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
       <button
         type="button"
         onClick={() => handleGroupClick(orgs[0].orgId)}
-        className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer truncate text-left"
+        className="text-sm text-primary hover:underline cursor-pointer truncate text-left"
         title={orgNames.join(', ')}
       >
         {displayText}
@@ -161,14 +171,14 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
           key={org.orgId}
           type="button"
           onClick={() => handleGroupClick(org.orgId)}
-          className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer"
+          className="text-sm text-primary hover:underline cursor-pointer"
         >
           {org.orgName}
           {index < Math.min(orgs.length, 2) - 1 && ', '}
         </button>
       ))}
       {orgs.length > 2 && (
-        <span className="text-sm text-[#64748B]">, ...</span>
+        <span className="text-sm text-muted-foreground">, ...</span>
       )}
     </div>
   );
@@ -191,7 +201,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
     return (
       <Link
         href={`/builder/${profile.program_assignment_id}?from=users`}
-        className="text-sm text-[#2454FF] hover:text-[#1E3FCC] hover:underline cursor-pointer truncate"
+        className="text-sm text-primary hover:underline cursor-pointer truncate"
       >
         {profile.program_assignment_name}
       </Link>
@@ -207,7 +217,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
               type="button"
               onClick={() => hasOrganization && setModalOpen(true)}
               disabled={!hasOrganization}
-              className="text-sm text-[#64748B] hover:text-[#1E3A5F] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               —
             </button>
@@ -235,29 +245,88 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
 
 function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   const status = profile.status;
+  const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
 
   if (!status) {
-    return <span className="text-[#64748B] text-sm">—</span>;
+    return <span className="text-muted-foreground text-sm">—</span>;
   }
 
   const getBadgeClasses = () => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-800';
+        return 'bg-[oklch(0.95_0.05_55)] text-[oklch(0.34_0.14_55)] border-[oklch(0.9_0.1_55)]';
       case 'invited':
-        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 hover:text-blue-800';
+        return 'bg-[oklch(0.95_0.03_262.705)] text-[oklch(0.42_0.2_262.705)] border-[oklch(0.86_0.085_262.705)]';
       case 'active':
       case 'assigned':
-        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 hover:text-green-800';
+        return 'bg-[oklch(0.94_0.04_155)] text-[oklch(0.32_0.12_155)] border-[oklch(0.87_0.1_155)]';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100 hover:text-gray-800';
+        return 'bg-muted text-foreground border-border';
     }
   };
 
+  const handleSendInvitation = async () => {
+    if (!profile.email || sending) return;
+    
+    setSending(true);
+    try {
+      const result = await sendBulkInvitations([profile.email], false);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      
+      const { data } = result;
+      const successful = data.results.filter((r) => r.success);
+      if (successful.length > 0) {
+        toast.success('Invitation sent successfully');
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        setOpen(false);
+      } else {
+        const failed = data.results.find((r) => !r.success);
+        toast.error(failed?.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      toast.error('Failed to send invitation');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const isPending = status === 'pending';
+
   return (
-    <Badge variant="outline" className={`${getBadgeClasses()} cursor-default`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Badge
+          variant="outline"
+          className={cn(
+            getBadgeClasses(),
+            isPending ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+          )}
+        >
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
+      </PopoverTrigger>
+      {isPending && (
+        <PopoverContent 
+          side="bottom" 
+          className="w-auto p-0 bg-transparent border-0 shadow-none"
+        >
+          <button
+            type="button"
+            onClick={handleSendInvitation}
+            disabled={sending}
+            className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            {sending ? 'Sending...' : 'Send Invitation'}
+          </button>
+        </PopoverContent>
+      )}
+    </Popover>
   );
 }
 
@@ -286,7 +355,7 @@ function DeleteUserButton({
         <Button
           variant="ghost"
           size="sm"
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer rounded-[var(--radius-pill)]"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -346,7 +415,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
             size="sm"
             onClick={handleToggleAdmin}
             disabled={toggleSuperAdminMutation.isPending}
-            className="text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 font-semibold cursor-pointer disabled:opacity-50"
+            className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
           >
             {isSuperAdmin ? (
               <ShieldOff className="h-4 w-4" />
@@ -370,11 +439,37 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
 export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     accessorKey: 'name',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Name / Email
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <NameEmailCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const profileA = rowA.original;
+      const profileB = rowB.original;
+      const nameA = profileA.first_name && profileA.last_name
+        ? `${profileA.first_name} ${profileA.last_name}`.toLowerCase()
+        : profileA.email?.toLowerCase() || '';
+      const nameB = profileB.first_name && profileB.last_name
+        ? `${profileB.first_name} ${profileB.last_name}`.toLowerCase()
+        : profileB.email?.toLowerCase() || '';
+      return nameA.localeCompare(nameB);
+    },
     filterFn: (row, id, value) => {
       const profile = row.original;
       const searchTerm = String(value).toLowerCase();
@@ -393,38 +488,112 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   },
   {
     accessorKey: 'last_sign_in',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Last login</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Last login
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <LastLoginCell profile={row.original} />,
     enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const dateA = rowA.original.last_sign_in;
+      const dateB = rowB.original.last_sign_in;
+      
+      // Handle null/undefined values - put them at the end
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1; // A is null, put it after B
+      if (!dateB) return -1; // B is null, put it after A
+      
+      // Both have dates, compare them
+      const timeA = new Date(dateA).getTime();
+      const timeB = new Date(dateB).getTime();
+      return timeA - timeB;
+    },
   },
   {
     id: 'groups',
     accessorFn: (row) =>
       row.orgMemberships?.map((org) => org.orgName).join(', ') || '',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Groups</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Groups
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <GroupsCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
     enableColumnFilter: false,
   },
   {
     id: 'program',
     accessorFn: (row) => row.program_assignment_name || '',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Program</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Program
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <ProgramCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
     enableColumnFilter: false,
   },
   {
     accessorKey: 'status',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Registration</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Registration
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <RegistrationCell profile={row.original} />,
     enableSorting: true,
   },
@@ -444,7 +613,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     id: 'actions',
     header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>
+      <span className="text-xs font-semibold tracking-wide">Actions</span>
     ),
     cell: ({ row }) => <ActionsCell profile={row.original} />,
     enableSorting: false,

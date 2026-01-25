@@ -19,7 +19,8 @@ export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
     <>
       <Button
         onClick={() => setOpen(true)}
-        className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer"
+        size="default"
+        className="rounded-[var(--radius-pill)] shadow-[var(--shadow-md)] cursor-pointer"
       >
         {isMobile ? (
           <Plus className="h-4 w-4" />

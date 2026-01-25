@@ -27,7 +27,7 @@ export function FormTextField({
     <div>
       <label
         htmlFor={name}
-        className="block text-sm font-medium text-[#64748B] mb-1"
+        className="block text-sm font-medium text-muted-foreground mb-1"
       >
         {label} {required && '*'}
       </label>
@@ -35,7 +35,6 @@ export function FormTextField({
         id={name}
         {...register(name)}
         placeholder={placeholder}
-        className="bg-white"
       />
       {errors[name] && (
         <p className="text-sm text-red-500 mt-1">
@@ -63,7 +62,7 @@ export function FormNumberField({
     <div>
       <label
         htmlFor={name}
-        className="block text-sm font-medium text-[#64748B] mb-1"
+        className="block text-sm font-medium text-muted-foreground mb-1"
       >
         {label} {required && '*'}
       </label>
@@ -74,7 +73,6 @@ export function FormNumberField({
         {...register(name, {
           valueAsNumber: true,
         })}
-        className="bg-white"
       />
       {errors[name] && (
         <p className="text-sm text-red-500 mt-1">
@@ -102,7 +100,7 @@ export function FormTextareaField({
     <div>
       <label
         htmlFor={name}
-        className="block text-sm font-medium text-[#64748B] mb-1"
+        className="block text-sm font-medium text-muted-foreground mb-1"
       >
         {label}
       </label>
@@ -111,7 +109,6 @@ export function FormTextareaField({
         {...register(name)}
         placeholder={placeholder}
         rows={rows}
-        className="bg-white"
       />
       {errors[name] && (
         <p className="text-sm text-red-500 mt-1">

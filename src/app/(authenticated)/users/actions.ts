@@ -535,6 +535,49 @@ export async function createUserQuickAdd(data: {
   return query.createQuickAdd(data);
 }
 
+type SendBulkInvitationsResult =
+  | { success: true; data: BulkInvitationResponse }
+  | { success: false; error: string };
+
+interface BulkInvitationResponse {
+  success: boolean;
+  total: number;
+  validated: number;
+  successful: number;
+  failed: number;
+  validationErrors?: Array<{ email: string; error: string }>;
+  results: Array<{
+    email: string;
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }>;
+}
+
+export async function sendBulkInvitations(
+  emails: string[],
+  isAdmin: boolean,
+): Promise<SendBulkInvitationsResult> {
+  if (!emails.length) {
+    return { success: false, error: 'No emails provided' };
+  }
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase.functions.invoke(
+    'send_bulk_invitations',
+    {
+      body: { emails, is_admin: isAdmin },
+    },
+  );
+  if (error) {
+    return { success: false, error: error.message };
+  }
+  const body = data as BulkInvitationResponse | null;
+  if (!body || typeof body.success !== 'boolean') {
+    return { success: false, error: 'Invalid response from invite service' };
+  }
+  return { success: true, data: body };
+}
+
 // ============================================================================
 // Bulk Import Types and Functions (simple: first_name, last_name, email)
 // ============================================================================

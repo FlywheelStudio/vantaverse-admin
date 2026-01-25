@@ -8,6 +8,7 @@ import { AddMembersModal } from '../add-members/add-members-modal';
 import { OrganizationsTable } from './partials/organizations-table';
 import { columns } from './partials/columns';
 import { useGroupsState } from './hooks/use-groups-state';
+import { cn } from '@/lib/utils';
 import {
   useCreateOrganization,
   useUpdateOrganization,
@@ -310,11 +311,12 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
     <OrganizationsTableProvider value={contextValue}>
       {!isLoading && (
         <Card
-          className={`text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden ${
-            !state.addingMembersTo ? 'backdrop-blur-sm' : ''
-          }`}
+          className={cn(
+            'flex flex-col gap-6',
+            !state.addingMembersTo && 'backdrop-blur-sm',
+          )}
         >
-          <div className="p-6 sm:p-8">
+          <div className="p-5 sm:p-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key="table"

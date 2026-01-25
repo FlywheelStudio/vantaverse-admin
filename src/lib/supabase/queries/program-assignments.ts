@@ -11,6 +11,7 @@ import {
 } from '../schemas/program-assignments';
 import { GroupsQuery } from './groups';
 import { ExerciseTemplatesQuery } from './exercise-templates';
+import { Database } from '../database.types';
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**
@@ -179,6 +180,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     pageSize: number = 16,
     search?: string,
     weeks?: number,
+    showAssigned: boolean = false,
   ): Promise<
     | SupabaseSuccess<{
         data: ProgramAssignmentWithTemplate[];
@@ -219,17 +221,25 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     }
 
     // Build main query
+    // Always include profiles in select to avoid type issues, but only use it when showAssigned is true
     let query = supabase
       .from('program_assignment')
       .select(
         `
         *,
         program_template (*),
-        workout_schedule:workout_schedules (*)
+        workout_schedule:workout_schedules (*),
+        profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)
       `,
         { count: 'exact' },
-      )
-      .eq('status', 'template');
+      );
+
+    // Filter by status
+    if (showAssigned) {
+      query = query.in('status', ['template', 'active']);
+    } else {
+      query = query.eq('status', 'template');
+    }
 
     // Apply template ID filter if we have one
     if (templateIds && templateIds.length > 0) {
@@ -258,11 +268,14 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     }
 
     // Transform the data to match our schema structure
-    const transformedData = data.map((item: ProgramAssignmentWithTemplate) => ({
+    const transformedData = data.map((item: ProgramAssignmentWithTemplate & { profiles?: {id: string, first_name?: string, last_name?: string, email: string} }) => ({
       ...item,
       program_template: item.program_template || null,
       workout_schedule:
-        (item as { workout_schedule?: unknown }).workout_schedule || null,
+        (item as { workout_schedule?: Database['public']['Tables']['workout_schedules']['Row'] }).workout_schedule || null,
+      profiles: showAssigned
+        ? (item as { profiles?: {id: string, first_name?: string, last_name?: string, email: string}  }).profiles || null
+        : undefined,
     }));
 
     const result = programAssignmentWithTemplateSchema
@@ -840,10 +853,15 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
           | null
           | undefined;
         if (profiles) {
+          const firstName = profiles.first_name?.toLowerCase() || '';
+          const lastName = profiles.last_name?.toLowerCase() || '';
+          const fullName = `${firstName} ${lastName}`.trim();
+          const email = profiles.email?.toLowerCase() || '';
           if (
-            profiles.first_name?.toLowerCase().includes(searchLower) ||
-            profiles.last_name?.toLowerCase().includes(searchLower) ||
-            profiles.email?.toLowerCase().includes(searchLower)
+            firstName.includes(searchLower) ||
+            lastName.includes(searchLower) ||
+            fullName.includes(searchLower) ||
+            email.includes(searchLower)
           ) {
             return true;
           }

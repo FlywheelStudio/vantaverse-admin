@@ -8,7 +8,9 @@ export default async function UsersPage() {
 
   return (
     <PageWrapper
-      subheader={<h1 className="text-2xl font-medium">Members Management</h1>}
+      subheader={
+        <h1 className="text-3xl font-semibold tracking-tight text-white">Members Management</h1>
+      }
     >
       <UsersPageUI initialUsers={initialUsers} />
     </PageWrapper>

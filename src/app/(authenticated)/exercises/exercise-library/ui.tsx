@@ -1,15 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useExercises } from '@/hooks/use-exercises';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
@@ -62,6 +67,12 @@ const cardVariants = {
 
 type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
 
+const ASSIGNMENT_FILTER_LABEL: Record<AssignmentFilter, string> = {
+  all: 'All',
+  unassigned: 'Unassigned',
+  assigned: 'Assigned',
+};
+
 interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
 }
@@ -88,8 +99,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const loadedOnceRef = useRef(false);
 
   // Filter exercises by search term and assignment filter
   const filteredExercises = exercises?.filter((exercise) => {
@@ -130,17 +139,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
 
   const displayExercises = paginatedExercises;
 
-  // Track if we've loaded data at least once
-  useEffect(() => {
-    if (!isLoading && displayExercises.length > 0 && !loadedOnceRef.current) {
-      loadedOnceRef.current = true;
-      // Use setTimeout to defer state update and avoid setState in effect warning
-      setTimeout(() => {
-        setHasLoadedOnce(true);
-      }, 0);
-    }
-  }, [isLoading, displayExercises.length]);
-
   const handleCardClick = (exercise: Exercise) => {
     setSelectedExercise(exercise);
     setIsModalOpen(true);
@@ -155,119 +153,144 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
 
   return (
     <>
-      {hasLoadedOnce && (
-        <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
-          <div className="p-6 sm:p-8">
-            {/* Search and Filter */}
-            <div className="mb-6 flex gap-3 max-w-md">
-              <Input
-                type="text"
-                placeholder="Search exercises..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="bg-white border-gray-200 flex-1"
-              />
-              <Select
-                value={assignmentFilter}
-                onChange={(e) => {
-                  setAssignmentFilter(e.target.value as AssignmentFilter);
-                  handleFilterChange();
-                }}
-                className="bg-white border-gray-200 w-40"
-              >
-                <option value="all">All</option>
-                <option value="unassigned">Unassigned</option>
-                <option value="assigned">Assigned</option>
-              </Select>
+      <Card className="overflow-hidden">
+        <div className="px-6 py-6 overflow-y-auto max-h-[calc(100vh-8rem)] slim-scrollbar">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-24">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-muted-foreground">Loading exercises...</span>
+              </div>
             </div>
-
-            {/* Exercises Grid */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key="grid"
-                variants={contentVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                {displayExercises.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
-                    <p className="text-gray-500">
-                      {debouncedSearch
-                        ? 'No exercises found matching your search.'
-                        : 'No exercises available.'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <motion.div
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
+          ) : (
+            <>
+              {/* Search and Filter */}
+              <div className="mb-6 flex max-w-md gap-3">
+                <Input
+                  type="text"
+                  placeholder="Search exercises..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="flex-1"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-11 w-40 justify-between rounded-[var(--radius-pill)] bg-background"
                     >
-                      <AnimatePresence mode="popLayout">
-                        {displayExercises.map((exercise) => (
-                          <motion.div
-                            key={exercise.id}
-                            variants={cardVariants}
-                            exit="exit"
-                            layout
-                            className="h-full"
-                          >
-                            <ExerciseCard
-                              exercise={exercise}
-                              onClick={() => handleCardClick(exercise)}
-                            />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </motion.div>
+                      {ASSIGNMENT_FILTER_LABEL[assignmentFilter]}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-40">
+                    {(
+                      ['all', 'unassigned', 'assigned'] as const
+                    ).map((value) => (
+                      <DropdownMenuItem
+                        key={value}
+                        onClick={() => {
+                          setAssignmentFilter(value);
+                          handleFilterChange();
+                        }}
+                        data-selected={assignmentFilter === value}
+                        className="cursor-pointer truncate data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
+                      >
+                        {ASSIGNMENT_FILTER_LABEL[value]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                      <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-                        <p className="text-sm text-gray-600">
-                          Showing {(currentPage - 1) * pageSize + 1}-
-                          {Math.min(currentPage * pageSize, totalCount)} of{' '}
-                          {totalCount} exercises
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setCurrentPage((p) => Math.max(1, p - 1))
-                            }
-                            disabled={currentPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Previous
-                          </Button>
-                          <span className="px-3 text-sm text-gray-700">
-                            Page {currentPage} of {totalPages}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setCurrentPage((p) => Math.min(totalPages, p + 1))
-                            }
-                            disabled={currentPage === totalPages}
-                          >
-                            Next
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+              {/* Exercises Grid */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="grid"
+                  variants={contentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  {displayExercises.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground text-sm">
+                        {debouncedSearch
+                          ? 'No exercises found matching your search.'
+                          : 'No exercises available.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <motion.div
+                        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {displayExercises.map((exercise) => (
+                            <motion.div
+                              key={exercise.id}
+                              variants={cardVariants}
+                              exit="exit"
+                              layout
+                              className="h-full"
+                            >
+                              <ExerciseCard
+                                exercise={exercise}
+                                onClick={() => handleCardClick(exercise)}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </motion.div>
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="mt-8 flex items-center justify-between pt-6">
+                          <p className="text-muted-foreground text-sm">
+                            Showing {(currentPage - 1) * pageSize + 1}-
+                            {Math.min(currentPage * pageSize, totalCount)} of{' '}
+                            {totalCount} exercises
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCurrentPage((p) => Math.max(1, p - 1))
+                              }
+                              disabled={currentPage === 1}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                              Previous
+                            </Button>
+                            <span className="text-muted-foreground px-3 text-sm">
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                              }
+                              disabled={currentPage === totalPages}
+                            >
+                              Next
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </Card>
-      )}
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </>
+          )}
+        </div>
+      </Card>
 
       {/* Exercise Modal */}
       <ExerciseModal

@@ -35,7 +35,7 @@ export function TeamsCell({ organization }: TeamsCellProps) {
   return (
     <div className="flex items-center gap-2">
       {teamsCount > 0 && (
-        <span className="border-[#2454FF] rounded-full p-2 cursor-default text-sm font-semibold text-[#1E3A5F]">
+        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-[var(--radius-pill)] bg-secondary px-2 text-xs font-semibold text-foreground">
           {teamsCount}
         </span>
       )}
@@ -44,7 +44,7 @@ export function TeamsCell({ organization }: TeamsCellProps) {
           variant="ghost"
           size="sm"
           onClick={handleClick}
-          className="cursor-pointer h-6 w-6 p-0 text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 rounded"
+          className="cursor-pointer h-8 w-8 p-0 rounded-[var(--radius-md)] text-primary hover:bg-primary/10"
         >
           {isExpanded ? (
             <ChevronUp className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function TeamsCell({ organization }: TeamsCellProps) {
         size="sm"
         onClick={handleCreateClick}
         disabled={creatingTeam}
-        className="cursor-pointer h-6 w-6 p-0 text-[#2454FF] hover:text-[#1E3FCC] hover:bg-[#2454FF]/10 rounded disabled:opacity-50"
+        className="cursor-pointer h-8 w-8 p-0 rounded-[var(--radius-md)] text-primary hover:bg-primary/10 disabled:opacity-50"
       >
         <Plus className="h-4 w-4" />
       </Button>

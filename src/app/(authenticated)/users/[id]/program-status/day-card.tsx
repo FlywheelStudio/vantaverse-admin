@@ -7,7 +7,7 @@ import {
   calculateDayCompletion,
   getProgressColor,
 } from './card-utils';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 interface ProgramStatusDayCardProps {
   day: DatabaseSchedule[number][number];
@@ -37,17 +37,17 @@ export function ProgramStatusDayCard({
 
   if (isRestDay) {
     return (
-      <div className="p-3 bg-gray-100/50 rounded-lg border border-gray-200">
+      <div className="p-3 bg-muted/40 rounded-[var(--radius-lg)] border border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#94A3B8]">
+            <span className="text-sm font-semibold text-muted-foreground">
               {dayName}
             </span>
-            <span className="text-xs text-[#94A3B8]">
+            <span className="text-xs text-muted-foreground">
               {formatDayDate(dayDate)}
             </span>
           </div>
-          <span className="text-xs font-medium text-[#94A3B8] italic">
+          <span className="text-xs font-medium text-muted-foreground italic">
             Rest
           </span>
         </div>
@@ -56,17 +56,17 @@ export function ProgramStatusDayCard({
   }
 
   return (
-    <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+    <div className="p-3 bg-muted/20 rounded-[var(--radius-lg)] space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[#1E3A5F]">
+          <span className="text-sm font-semibold text-foreground">
             {dayName}
           </span>
-          <span className="text-xs text-[#64748B]">
+          <span className="text-xs text-muted-foreground">
             {formatDayDate(dayDate)}
           </span>
         </div>
-        <span className="text-xs font-semibold text-[#64748B]">
+        <span className="text-xs font-semibold text-muted-foreground">
           {dayCompletion}%
         </span>
       </div>
@@ -76,8 +76,8 @@ export function ProgramStatusDayCard({
         indicatorColor={getProgressColor(dayCompletion)}
       />
       <div className="space-y-1 pt-1">
-        <span className="text-xs font-medium text-[#64748B]">Exercises:</span>
-        <ul className="list-disc list-inside space-y-0.5 text-xs text-[#64748B]">
+        <span className="text-xs font-medium text-muted-foreground">Exercises:</span>
+        <ul className="list-disc list-inside space-y-0.5 text-xs text-muted-foreground">
           {dayExercises.map((exercise, exerciseIndex) => {
             if (exercise.type === 'exercise_template') {
               const exerciseName =

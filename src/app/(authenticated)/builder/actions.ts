@@ -8,9 +8,9 @@ import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createParallelQueries } from '@/lib/supabase/query';
-import { DatabaseSchedule } from './workout-schedule/utils';
+import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
-import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 /**
@@ -22,9 +22,10 @@ export async function getProgramAssignmentsPaginated(
   pageSize: number = 16,
   search?: string,
   weeks?: number,
+  showAssigned: boolean = false,
 ) {
   const query = new ProgramAssignmentsQuery();
-  return query.getTemplatesPaginated(page, pageSize, search, weeks);
+  return query.getTemplatesPaginated(page, pageSize, search, weeks, showAssigned);
 }
 
 /**
@@ -308,6 +309,37 @@ export async function getExerciseTemplatesPaginated(
 }
 
 /**
+ * Get paginated groups with search and sort
+ */
+export async function getGroupsPaginated(
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  sortBy: string = 'updated_at',
+  sortOrder: 'asc' | 'desc' = 'desc',
+) {
+  const query = new GroupsQuery();
+  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+}
+
+/**
+ * Get multiple exercise templates by IDs
+ */
+export async function getExerciseTemplatesByIds(ids: string[]) {
+  const query = new ExerciseTemplatesQuery();
+  const result = await query.getByIds(ids);
+
+  if (!result.success) {
+    return result;
+  }
+
+  return {
+    success: true as const,
+    data: Array.from(result.data.values()),
+  };
+}
+
+/**
  * Upsert exercise template via RPC function
  */
 export async function upsertExerciseTemplate(data: {
@@ -326,9 +358,32 @@ export async function upsertExerciseTemplate(data: {
   p_rest_time_override?: number[];
   p_equipment_ids?: number[];
   p_notes?: string;
-}) {
+}): Promise<
+  | { success: true; data: { id: string; template_hash: string } }
+  | { success: false; error: string }
+> {
   const query = new ExerciseTemplatesQuery();
-  return query.upsertExerciseTemplate(data);
+  const result = await query.upsertExerciseTemplate(data);
+  
+  if (!result.success) {
+    return result;
+  }
+  
+  const rpcResult = result.data as {
+    id: string;
+    template_hash: string;
+    cloned?: boolean;
+    reference_count?: number;
+    original_id?: string;
+  };
+  
+  return {
+    success: true,
+    data: {
+      id: rpcResult.id,
+      template_hash: rpcResult.template_hash,
+    },
+  };
 }
 
 /**

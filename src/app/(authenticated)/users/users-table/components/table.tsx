@@ -58,18 +58,18 @@ export function UsersTable({
         onFiltersChange={onFiltersChange}
         onTeamNameChange={handleTeamNameChange}
       />
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-border">
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
                 key={headerGroup.id}
-                className="border-b-2 border-[#2454FF]/20"
+                className="border-b border-border bg-muted/40"
               >
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left py-4 px-4 text-sm font-bold text-[#1E3A5F]"
+                    className="text-left px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground"
                   >
                     {header.isPlaceholder
                       ? null
@@ -90,8 +90,10 @@ export function UsersTable({
                   className="h-24 text-center py-5 px-4"
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                    <span className="text-[#64748B]">Loading members...</span>
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-muted-foreground">
+                      Loading members...
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -106,9 +108,7 @@ export function UsersTable({
                     delay: index * 0.03,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
-                    index === array.length - 1 ? 'border-b-0' : ''
-                  }`}
+                  className={`border-b border-border hover:bg-muted/40 transition-colors ${index === array.length - 1 ? 'border-b-0' : ''}`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="py-5 px-4">
@@ -126,7 +126,9 @@ export function UsersTable({
                   colSpan={columns.length}
                   className="h-24 text-center py-5 px-4"
                 >
-                  {emptyStateMessage}
+                  <span className="text-sm text-muted-foreground">
+                    {emptyStateMessage}
+                  </span>
                 </td>
               </tr>
             )}

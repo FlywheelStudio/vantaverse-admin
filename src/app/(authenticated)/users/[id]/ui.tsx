@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useMemo } from 'react';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 export function UserProfilePageUI({
   user,
@@ -93,7 +93,7 @@ export function UserProfilePageUI({
   return (
     <PageWrapper
       subheader={
-        <h1 className="text-2xl font-medium">
+        <h1 className="text-3xl font-semibold tracking-tight text-white">
           {isYourself
             ? 'Your '
             : `${user.first_name && `${user.first_name}'s `} `}
@@ -101,7 +101,7 @@ export function UserProfilePageUI({
         </h1>
       }
     >
-      <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
+      <Card className="border border-border shadow-[var(--shadow-lg)]">
         {/* User Profile Header */}
         <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
           <UserProfileCard
@@ -121,12 +121,12 @@ export function UserProfilePageUI({
             <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
               <AppointmentCard
                 title="Screening"
-                color="var(--color-blue-600)"
+                color="oklch(0.507 0.211 262.705)"
                 appointments={screeningAppointments}
               />
               <AppointmentCard
                 title="Consultation"
-                color="var(--color-green-600)"
+                color="oklch(0.66 0.17 155)"
                 appointments={consultationAppointments}
               />
               <HpCard

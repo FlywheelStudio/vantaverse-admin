@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProgramStatusDayCard } from './day-card';
 import type { CompletionDay } from './card-utils';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 interface ProgramStatusWeekCardProps {
   week: DatabaseSchedule[number];
@@ -36,12 +36,12 @@ export function ProgramStatusWeekCard({
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-[var(--radius-lg)] overflow-hidden bg-card">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors"
       >
-        <span className="text-sm font-semibold text-[#1E3A5F]">
+        <span className="text-sm font-semibold text-foreground">
           Week {weekIndex + 1}
         </span>
         <motion.div
@@ -49,9 +49,9 @@ export function ProgramStatusWeekCard({
           transition={{ duration: 0.2 }}
         >
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-[#64748B]" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-[#64748B]" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
         </motion.div>
       </button>
@@ -65,7 +65,7 @@ export function ProgramStatusWeekCard({
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="p-4 space-y-3 border-t border-gray-200">
+            <div className="p-4 space-y-3 border-t border-border">
               {week.map((day, dayIndex) => {
                 const completionDay =
                   parsedCompletion[weekIndex]?.[dayIndex] || null;

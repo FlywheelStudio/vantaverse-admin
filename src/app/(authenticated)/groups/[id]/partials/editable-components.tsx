@@ -180,10 +180,10 @@ export function GroupImageUploader({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-16 w-16 border-2 border-white/50 bg-white/20 items-center justify-center hover:bg-white/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-16 w-16 border-2 border-neutral-300 bg-white/20 items-center justify-center hover:bg-white/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {!pictureUrl ? (
-          <Upload className="h-5 w-5 text-white/90" />
+          <Upload className="h-5 w-5 text-primary-600" />
         ) : (
           <Image
             src={pictureUrl}

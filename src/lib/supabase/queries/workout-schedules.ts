@@ -3,8 +3,8 @@ import {
   type SupabaseSuccess,
   type SupabaseError,
 } from '../query';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
-import { formatScheduleDB } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import { formatScheduleDB } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 export class WorkoutSchedulesQuery extends SupabaseQuery {
   /**

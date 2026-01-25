@@ -10,7 +10,11 @@ export default async function ExercisesPage() {
 
   return (
     <PageWrapper
-      subheader={<h1 className="text-2xl font-medium">Exercise Library</h1>}
+      subheader={
+        <h1 className="text-3xl font-semibold tracking-tight text-white">
+          Exercise Library
+        </h1>
+      }
     >
       <ExerciseLibrary initialExercises={initialExercises} />
     </PageWrapper>

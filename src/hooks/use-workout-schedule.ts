@@ -3,8 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryOptions } from '@tanstack/react-query';
 import { getWorkoutScheduleData } from '@/app/(authenticated)/builder/actions';
-import type { DatabaseSchedule } from '@/app/(authenticated)/builder/workout-schedule/utils';
-import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/workout-schedule/utils';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
 export type WorkoutScheduleData = {
   schedule: DatabaseSchedule | null;

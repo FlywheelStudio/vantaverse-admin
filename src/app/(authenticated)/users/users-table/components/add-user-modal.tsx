@@ -25,6 +25,7 @@ import {
 } from '../contexts/pending-users-context';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import { useCreateUserQuickAdd } from '../hooks/use-users-table-mutations';
+import { cn } from '@/lib/utils';
 
 interface AddUserModalProps {
   open: boolean;
@@ -184,11 +185,12 @@ function AddUserModalInner({
             <PendingUsersView
               onClose={handleClose}
               onAddMore={() => setMode('upload')}
+              role={role}
             />
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle className="text-[#1E3A5F]">
+                <DialogTitle className="text-foreground">
                   {title ??
                     (role === 'admin' ? 'Invite physicians' : 'Invite members')}
                 </DialogTitle>
@@ -203,7 +205,7 @@ function AddUserModalInner({
                 onValueChange={(v) => setTab(v as typeof tab)}
                 className="flex flex-col flex-1 min-h-0 pt-3"
               >
-                <TabsList className="bg-[#F5F7FA]">
+                <TabsList className="bg-muted">
                   <TabsTrigger value="individual">Individual</TabsTrigger>
                   <TabsTrigger value="csv">Bulk CSV</TabsTrigger>
                   <TabsTrigger value="excel">Bulk Excel</TabsTrigger>
@@ -269,19 +271,12 @@ function AddUserModalInner({
                               </div>
 
                               <div
-                                className="flex items-start gap-3"
-                                style={{
-                                  background: '#e6f7ff',
-                                  border: '1px solid #91d5ff',
-                                  borderRadius: '8px',
-                                  padding: '12px 16px',
-                                  marginBottom: '20px',
-                                  fontSize: '14px',
-                                  color: '#0050b3',
-                                  lineHeight: '1.5',
-                                }}
+                                className={cn(
+                                  'flex items-start gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-sm leading-relaxed',
+                                  'bg-primary/10 border-primary/20 text-foreground',
+                                )}
                               >
-                                <Info className="h-5 w-5 mt-0.5 shrink-0" />
+                                <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
                                 <div>
                                   Users will be added as{' '}
                                   <span className="font-semibold">Pending</span>
@@ -303,7 +298,7 @@ function AddUserModalInner({
                                 disabled={
                                   !canSubmitIndividual || createUserMutation.isPending
                                 }
-                                className="bg-red-500 hover:bg-red-600 text-white"
+                                className="rounded-[var(--radius-pill)]"
                               >
                                 {createUserMutation.isPending
                                   ? 'Adding...'

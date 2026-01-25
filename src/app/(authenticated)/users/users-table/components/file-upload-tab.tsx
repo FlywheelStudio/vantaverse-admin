@@ -3,8 +3,8 @@
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AlertTriangle, FileText } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 import {
   getTemplateCSVUrl,
@@ -154,19 +154,22 @@ export function FileUploadTab({
             onClick={handleUpload}
             onDragOver={(e) => e.preventDefault()}
             onDrop={acceptDrop}
-            className="w-full rounded-xl border border-dashed border-[#2454FF]/25 bg-[#F5F7FA]/50 px-6 py-10 text-center hover:bg-[#F5F7FA] transition-colors"
+            className={cn(
+              'w-full rounded-[var(--radius-xl)] border border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors',
+              'hover:bg-muted/50',
+            )}
           >
             <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2">
-              <FileText className="h-8 w-8 text-[#64748B]" />
-              <div className="text-base font-medium text-[#1E3A5F]">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <div className="text-base font-medium text-foreground">
                 Upload {isCSV ? 'CSV' : 'Excel'} File
               </div>
               {(file && (
-                <div className="mt-2 text-xs text-[#1E3A5F]">
+                <div className="mt-2 text-xs text-foreground">
                   Selected: {file.name}
                 </div>
               )) || (
-                <div className="text-sm text-[#64748B]">
+                <div className="text-sm text-muted-foreground">
                   Click to browse or drag and drop
                 </div>
               )}
@@ -176,16 +179,7 @@ export function FileUploadTab({
 
         <div className="space-y-3">
           <div
-            style={{
-              background: '#fff7e6',
-              border: '1px solid #ffd591',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              marginBottom: '20px',
-              fontSize: '14px',
-              color: '#ad6800',
-              lineHeight: '1.5',
-            }}
+            className="rounded-[var(--radius-md)] border border-border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground"
           >
             <div>
               Your {isCSV ? 'CSV' : 'Excel'} should include columns:{' '}
@@ -196,26 +190,16 @@ export function FileUploadTab({
             <button
               type="button"
               onClick={handleDownloadTemplate}
-              className="text-sm text-red-500 hover:text-red-600 hover:underline hover:underline-offset-2 text-left cursor-pointer"
+              className="text-sm text-primary hover:underline hover:underline-offset-2 text-left cursor-pointer"
             >
               Download {isCSV ? 'CSV' : 'Excel'} Template
             </button>
           </div>
 
           <div
-            className="flex items-start gap-3"
-            style={{
-              background: '#e6f7ff',
-              border: '1px solid #91d5ff',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              marginBottom: '20px',
-              fontSize: '14px',
-              color: '#0050b3',
-              lineHeight: '1.5',
-            }}
+            className="flex items-start gap-3 rounded-[var(--radius-md)] border border-primary/20 bg-primary/10 px-4 py-3 text-sm leading-relaxed"
           >
-            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
             <div>
               Users will be added as{' '}
               <span className="font-semibold">Pending</span>. Review the list
@@ -231,7 +215,7 @@ export function FileUploadTab({
           <Button
             onClick={handleSubmit}
             disabled={!file || isPending}
-            className="bg-red-500 hover:bg-red-600 text-white"
+            className="rounded-[var(--radius-pill)]"
           >
             {isPending ? 'Uploading...' : 'Upload & Add'}
           </Button>

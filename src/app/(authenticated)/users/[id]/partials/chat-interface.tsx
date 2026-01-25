@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, startTransition } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -69,11 +68,23 @@ export function ChatInterface({
           // Update React Query cache with new message
           queryClient.setQueryData<Message[]>(messagesKey, (old) => {
             if (!old) return [newMessage];
-            // Avoid duplicates
+            // Avoid duplicates by ID
             if (old.some((msg) => msg.id === newMessage.id)) {
               return old;
             }
-            return [...old, newMessage];
+            // Remove optimistic temp message if it matches the real message content
+            const filtered = old.filter((msg) => {
+              const isTemp = msg.id.startsWith('temp-');
+              if (!isTemp) return true;
+              // Remove temp message if content matches (optimistic update being replaced)
+              const contentMatches = msg.content.trim() === newMessage.content.trim();
+              const typeMatches = msg.message_type === newMessage.message_type;
+              if (contentMatches && typeMatches) {
+                return false;
+              }
+              return true;
+            });
+            return [...filtered, newMessage];
           });
         }
       });
@@ -173,7 +184,7 @@ export function ChatInterface({
   const isSending = sendMessage.isPending;
 
   return (
-    <Card className="h-full border-0 shadow-xl flex flex-col">
+    <Card className="h-full min-h-0 overflow-hidden border-0 shadow-xl flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
         <span className="text-sm font-medium text-muted-foreground">
           Chat with {patientName}
@@ -200,17 +211,14 @@ export function ChatInterface({
           </div>
         ) : (
           <>
-            <ScrollArea ref={scrollAreaRef} className="flex-1 h-0 px-4 py-4">
+            <ScrollArea
+              ref={scrollAreaRef}
+              className="flex-1 min-h-0 px-4 py-4 slim-scrollbar"
+            >
               <div className="space-y-4">
-                <AnimatePresence mode="popLayout">
-                  {messages.map((message) => (
-                    <motion.div
+                    {messages.map((message) => (
+                    <div
                       key={message.id}
-                      layout
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      transition={{ duration: 0.2 }}
                       className={cn(
                         'flex w-full',
                         message.message_type === 'admin'
@@ -233,9 +241,8 @@ export function ChatInterface({
                           </p>
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </AnimatePresence>
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>

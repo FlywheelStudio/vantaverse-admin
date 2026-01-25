@@ -7,7 +7,6 @@ import { useSidebar } from '@/context/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   SIDEBAR_CONFIG,
-  HEADER_HEIGHT,
   VANTABUDDY_CONFIG,
 } from '@/lib/configs/sidebar';
 
@@ -31,12 +30,11 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
     >
       <VantaBuddyTrigger />
       {isMobile ? (
-        <div className="flex">
+        <div className="flex h-screen overflow-hidden">
           {isOpen && <Sidebar />}
           <main
-            className="flex flex-col"
+            className="flex flex-col min-h-0 h-full"
             style={{
-              height: `calc(100vh - ${HEADER_HEIGHT}px)`,
               width: isOpen
                 ? `calc(100% - ${VANTABUDDY_CONFIG.width}px)`
                 : '100%',
@@ -50,10 +48,9 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
         <>
           <Sidebar />
           <main
-            className="flex flex-col"
+            className="flex flex-col min-h-0 h-screen overflow-hidden"
             style={{
               marginLeft: isOpen ? `${sidebarOffset}px` : '0',
-              height: `calc(100vh - ${HEADER_HEIGHT}px)`,
               width: isOpen ? `calc(100% - ${sidebarOffset}px)` : '100%',
               transition: `margin-left ${SIDEBAR_CONFIG.animation.duration}s cubic-bezier(${SIDEBAR_CONFIG.animation.ease.join(', ')}), width ${SIDEBAR_CONFIG.animation.duration}s cubic-bezier(${SIDEBAR_CONFIG.animation.ease.join(', ')})`,
             }}

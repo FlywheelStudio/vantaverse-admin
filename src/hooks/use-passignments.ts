@@ -12,9 +12,9 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 export const programAssignmentsKeys = {
   all: ['program-assignments'] as const,
   lists: () => [...programAssignmentsKeys.all, 'list'] as const,
-  list: (filters: { search?: string; weeks?: number; pageSize: number }) =>
+  list: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
     [...programAssignmentsKeys.lists(), filters] as const,
-  infinite: (filters: { search?: string; weeks?: number; pageSize: number }) =>
+  infinite: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
     [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
   detail: (id: string | null | undefined) => 
     [...programAssignmentsKeys.all, 'detail', id] as const,
@@ -28,6 +28,7 @@ export function programAssignmentsInfiniteQueryOptions(
   search?: string,
   weeks?: number,
   pageSize: number = 16,
+  showAssigned: boolean = false,
   initialData?: {
     pages: Array<{
       data: ProgramAssignmentWithTemplate[];
@@ -40,13 +41,14 @@ export function programAssignmentsInfiniteQueryOptions(
   },
 ) {
   return infiniteQueryOptions({
-    queryKey: programAssignmentsKeys.infinite({ search, weeks, pageSize }),
+    queryKey: programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned }),
     queryFn: async ({ pageParam }) => {
       const result = await getProgramAssignmentsPaginated(
         pageParam as number,
         pageSize,
         search,
         weeks,
+        showAssigned,
       );
 
       if (!result.success) {
@@ -99,6 +101,7 @@ export function useProgramAssignments(
   search?: string,
   weeks?: number,
   pageSize: number = 16,
+  showAssigned: boolean = false,
   initialData?: {
     pages: Array<{
       data: ProgramAssignmentWithTemplate[];
@@ -114,6 +117,7 @@ export function useProgramAssignments(
     search,
     weeks,
     pageSize,
+    showAssigned,
     initialData,
   );
 
@@ -140,9 +144,10 @@ export function useDeleteProgramAssignment(
   search?: string,
   weeks?: number,
   pageSize: number = 16,
+  showAssigned: boolean = false,
 ) {
   const queryClient = useQueryClient();
-  const queryKey = programAssignmentsKeys.infinite({ search, weeks, pageSize });
+  const queryKey = programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned });
 
   return useMutation({
     mutationFn: async (assignmentId: string) => {

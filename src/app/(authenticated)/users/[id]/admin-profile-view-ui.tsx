@@ -103,7 +103,7 @@ export function AdminProfileViewUI({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="overflow-hidden shadow-xl bg-white dark:bg-background border border-border">
+          <Card className="overflow-hidden border border-border shadow-[var(--shadow-lg)]">
             <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
               <UserProfileCard
                 userId={user.id}
@@ -143,7 +143,8 @@ export function AdminProfileViewUI({
                   actionButton={
                     <Button
                       onClick={() => setAddMembersModalOpen(true)}
-                      className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer gap-2"
+                      size="lg"
+                      className="rounded-[var(--radius-pill)] shadow-[var(--shadow-md)] cursor-pointer gap-2"
                     >
                       <Plus className="h-4 w-4" />
                       Add Members

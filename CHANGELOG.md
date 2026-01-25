@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.0...0.10.1) (2026-01-25)
+
+# [0.10.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.9.0...0.10.0) (2026-01-25)
+
+
+### Bug Fixes
+
+* enhanced drag and drop functionality for schedule builder ([f1cc90a](https://github.com/FlywheelStudio/vantaverse-admin/commit/f1cc90a43a2d0610a6ab422dc80b8cade4a980a8))
+* username searchbars now properly search first and last name ([fa4ae57](https://github.com/FlywheelStudio/vantaverse-admin/commit/fa4ae57da5ecf004eae4451d1d0d882dc994aff2))
+
+
+### Features
+
+* added group templates with pagination ([2e1bd95](https://github.com/FlywheelStudio/vantaverse-admin/commit/2e1bd95a7fbf0a9ebc5267d37e7ec08f6aee9449))
+* implemented bulk email invitations ([848ab37](https://github.com/FlywheelStudio/vantaverse-admin/commit/848ab3757031ce3d7be920e0cb77815882a68c6a))
+
 # [0.9.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.8.0...0.9.0) (2026-01-21)
 
 

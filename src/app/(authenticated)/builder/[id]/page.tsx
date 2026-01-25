@@ -1,6 +1,6 @@
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
-import { WorkoutBuilder } from '../workout-schedule/workout-builder';
+import { WorkoutBuilder } from './workout-schedule/workout-builder';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
@@ -26,9 +26,7 @@ export default async function BuilderIdPage({ params }: { params: Promise<{ id: 
   return (
     <PageWrapper
       subheader={
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-medium">Program Builder</span>
-        </div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
       }
     >
       <BuilderContextProvider initialWorkoutSchedule={data.workoutScheduleData as WorkoutScheduleData | null}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -63,7 +63,7 @@ function DeleteOrganizationButton({
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer"
+            className="cursor-pointer font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -120,6 +120,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setColumnFilters((prev) => {
@@ -178,12 +179,22 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
 
+  // Smooth scroll to top when creating new row
+  useEffect(() => {
+    if (creatingRow && tableContainerRef.current) {
+      tableContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+  }, [creatingRow]);
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-row gap-4 mb-6">
+    <div className="flex min-h-0 flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <Button
           onClick={handleCreate}
-          className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold px-6 rounded-xl shadow-lg cursor-pointer"
+          className="h-11 rounded-[var(--radius-pill)] px-5 shadow-[var(--shadow-md)] cursor-pointer"
         >
           {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
         </Button>
@@ -191,16 +202,19 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           placeholder="Search groups..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="bg-white border-[#2454FF]/20 rounded-xl placeholder:text-[#64748B]/60 focus:border-[#2454FF] focus:ring-[#2454FF] flex-1"
+          className="h-11 flex-1 rounded-[var(--radius-md)] bg-card"
         />
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
+      <div
+        ref={tableContainerRef}
+        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-[var(--radius-lg)] border border-border/60 bg-card"
+      >
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
                 key={headerGroup.id}
-                className="border-b-2 border-[#2454FF]/20"
+                className="border-b border-border"
               >
                 {headerGroup.headers.map((header) => {
                   const isDescription = header.column.id === 'description';
@@ -208,7 +222,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                   return (
                     <th
                       key={header.id}
-                      className={`text-left py-4 px-4 text-sm font-bold text-[#1E3A5F] ${
+                      className={`text-left py-3 px-4 text-sm font-semibold text-muted-foreground ${
                         isDescription ? 'hidden lg:table-cell' : ''
                       } ${isCreated ? 'hidden md:table-cell' : ''}`}
                     >
@@ -221,7 +235,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                     </th>
                   );
                 })}
-                <th className="text-left py-4 px-4 text-sm font-bold text-[#1E3A5F]">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
                   Actions
                 </th>
               </tr>
@@ -229,7 +243,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           </thead>
           <tbody>
             {creatingRow && (
-              <tr className="border-b border-[#E5E9F0] bg-[#F5F7FA]/50">
+              <tr className="border-b border-border/60 bg-muted/30">
                 <td className="py-5 px-4">
                   <CreateRowImageCell />
                 </td>
@@ -243,7 +257,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       }))
                     }
                     placeholder="Organization name"
-                    className="font-semibold text-[#1E3A5F]"
+                    className="h-10 bg-card text-sm font-medium"
                   />
                 </td>
                 <td className="py-5 px-4 hidden lg:table-cell">
@@ -256,14 +270,14 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       }))
                     }
                     placeholder="Description"
-                    className="text-[#64748B] min-h-[60px]"
+                    className="min-h-[60px] bg-card text-sm"
                   />
                 </td>
                 <td className="py-5 px-4">
-                  <span className="font-semibold text-[#1E3A5F]">—</span>
+                  <span className="font-medium text-muted-foreground">—</span>
                 </td>
                 <td className="py-5 px-4 hidden md:table-cell">
-                  <span className="text-[#64748B]">—</span>
+                  <span className="text-muted-foreground">—</span>
                 </td>
                 <td className="py-5 px-4">
                   <div className="flex gap-2">
@@ -272,7 +286,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       disabled={
                         !newOrgData.name.trim() || !!uploadingImage || savingOrg
                       }
-                      className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-2 rounded-lg cursor-pointer"
+                      size="icon-sm"
+                      className="h-9 w-9 rounded-[var(--radius-md)] cursor-pointer"
                     >
                       <Save className="h-4 w-4" />
                     </Button>
@@ -280,7 +295,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       onClick={handleCancelNewOrg}
                       variant="outline"
                       disabled={!!uploadingImage || savingOrg}
-                      className="text-[#64748B] border-[#E5E9F0] font-semibold py-2 rounded-lg cursor-pointer"
+                      size="icon-sm"
+                      className="h-9 w-9 rounded-[var(--radius-md)] cursor-pointer"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -298,7 +314,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                 return (
                   <React.Fragment key={row.id}>
                     <tr
-                      className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
+                      className={`border-b border-border/60 hover:bg-muted/40 transition-colors ${
                         index === array.length - 1 && !isExpanded
                           ? 'border-b-0'
                           : ''
@@ -308,7 +324,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                           ? {
                               position: 'relative',
                               zIndex: 9999,
-                              backgroundColor: 'white',
+                              backgroundColor: 'var(--card)',
                             }
                           : undefined
                       }
@@ -353,16 +369,16 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                   colSpan={columns.length + 1}
                   className="h-24 text-center py-5 px-4"
                 >
-                  No results.
+                  <span className="text-muted-foreground">No results.</span>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6">
         <div className="flex justify-center md:justify-start">
-          <span className="text-sm text-[#64748B]">
+          <span className="text-sm text-muted-foreground">
             {table.getFilteredRowModel().rows.length} organization(s) total.
           </span>
         </div>
@@ -372,12 +388,12 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
+            className="rounded-[var(--radius-pill)]"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <div className="px-4 py-2 bg-[#2454FF]/10 text-[#2454FF] rounded-lg font-medium text-sm">
+          <div className="px-4 py-2 rounded-[var(--radius-md)] border border-border bg-secondary text-secondary-foreground font-medium text-sm">
             {isMobile
               ? `${table.getState().pagination.pageIndex + 1}/${table.getPageCount()}`
               : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
@@ -387,7 +403,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
+            className="rounded-[var(--radius-pill)]"
           >
             Next
             <ChevronRight className="h-4 w-4 ml-1" />

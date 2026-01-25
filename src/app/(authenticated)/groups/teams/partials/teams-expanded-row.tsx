@@ -82,11 +82,11 @@ export function TeamsExpandedRow({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="border-b border-[#E5E9F0] bg-[#F5F7FA]/50"
+            className="border-b border-border/60 bg-muted/30"
           >
             <td className="py-3 px-4" colSpan={1}>
               <div className="flex items-center justify-center h-full">
-                <ArrowUpRight className="h-4 w-4 text-[#2454FF]" />
+                <ArrowUpRight className="h-4 w-4 text-primary" />
               </div>
             </td>
             <td className="py-3 px-4">
@@ -99,7 +99,7 @@ export function TeamsExpandedRow({
                   }))
                 }
                 placeholder="Team name"
-                className="font-semibold text-[#1E3A5F] text-sm"
+                className="h-10 bg-card text-sm font-medium"
               />
             </td>
             <td className="py-3 px-4 hidden lg:table-cell">
@@ -112,7 +112,7 @@ export function TeamsExpandedRow({
                   }))
                 }
                 placeholder="Description"
-                className="text-[#64748B] min-h-[40px] text-sm"
+                className="min-h-[40px] bg-card text-sm"
               />
             </td>
             <td className="py-3 px-4" colSpan={3} />
@@ -125,7 +125,8 @@ export function TeamsExpandedRow({
                     newTeamData.organizationId !== organizationId ||
                     savingTeam
                   }
-                  className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-sm"
+                  className="h-8 w-8 rounded-[var(--radius-md)] cursor-pointer"
                 >
                   <Save className="h-3 w-3" />
                 </Button>
@@ -133,7 +134,8 @@ export function TeamsExpandedRow({
                   onClick={handleCancelNewTeam}
                   variant="outline"
                   disabled={savingTeam}
-                  className="text-[#64748B] border-[#E5E9F0] font-semibold py-1 px-2 rounded-lg cursor-pointer h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="icon-sm"
+                  className="h-8 w-8 rounded-[var(--radius-md)] cursor-pointer"
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -165,7 +167,7 @@ export function TeamsExpandedRow({
               initial="hidden"
               animate="visible"
               exit="exit"
-              className={`border-b border-[#E5E9F0] bg-[#F5F7FA]/30 ${
+              className={`border-b border-border/60 bg-muted/20 ${
                 rowZIndex === team.id ? 'highlighted-row' : ''
               }`}
               style={
@@ -173,14 +175,14 @@ export function TeamsExpandedRow({
                   ? {
                       position: 'relative',
                       zIndex: 9999,
-                      backgroundColor: 'white',
+                      backgroundColor: 'var(--card)',
                     }
                   : undefined
               }
             >
               <td className="py-3 px-4" colSpan={1}>
                 <div className="flex items-center justify-center h-full">
-                  <ArrowUpRight className="h-4 w-4 text-[#2454FF]" />
+                  <ArrowUpRight className="h-4 w-4 text-primary" />
                 </div>
               </td>
               <td className="py-3 px-4">
@@ -203,13 +205,13 @@ export function TeamsExpandedRow({
                         handleTeamCancel();
                       }
                     }}
-                    className="font-semibold text-[#1E3A5F] text-sm"
+                    className="h-10 bg-card text-sm font-medium"
                     autoFocus
                   />
                 ) : (
                   <span
                     onClick={() => handleTeamEdit(team.id, 'name')}
-                    className="font-semibold text-[#1E3A5F] cursor-pointer hover:text-[#2454FF] transition-colors text-sm"
+                    className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors text-sm"
                   >
                     {team.name}
                   </span>
@@ -235,13 +237,13 @@ export function TeamsExpandedRow({
                         handleTeamCancel();
                       }
                     }}
-                    className="text-[#64748B] min-h-[40px] text-sm"
+                    className="min-h-[40px] bg-card text-sm"
                     autoFocus
                   />
                 ) : (
                   <span
                     onClick={() => handleTeamEdit(team.id, 'description')}
-                    className="text-[#64748B] cursor-pointer hover:text-[#2454FF] transition-colors text-sm"
+                    className="text-muted-foreground cursor-pointer hover:text-primary transition-colors text-sm"
                   >
                     {team.description || '—'}
                   </span>
@@ -259,11 +261,11 @@ export function TeamsExpandedRow({
               </td>
               <td className="py-3 px-4 hidden md:table-cell">
                 {team.created_at ? (
-                  <span className="text-[#64748B] text-sm">
+                  <span className="text-muted-foreground text-sm">
                     {new Date(team.created_at).toLocaleDateString()}
                   </span>
                 ) : (
-                  <span className="text-[#64748B] text-sm">—</span>
+                  <span className="text-muted-foreground text-sm">—</span>
                 )}
               </td>
               <td className="py-3 px-4">
@@ -273,7 +275,7 @@ export function TeamsExpandedRow({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer p-0"
+                        className="cursor-pointer p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -306,9 +308,9 @@ export function TeamsExpandedRow({
         })}
       </AnimatePresence>
       {teams.length === 0 && !creatingTeam && (
-        <tr className="border-b border-[#E5E9F0] bg-[#F5F7FA]/30">
+        <tr className="border-b border-border/60 bg-muted/20">
           <td
-            className="py-3 px-4 text-center text-[#64748B]"
+            className="py-3 px-4 text-center text-muted-foreground"
             colSpan={columnCount}
           >
             No teams yet. Click the &ldquo;+&rdquo; button to create one.

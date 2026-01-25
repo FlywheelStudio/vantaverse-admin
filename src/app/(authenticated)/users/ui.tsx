@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { useUsers } from '@/hooks/use-users';
 import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
@@ -55,40 +55,34 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps) {
   const displayUsers = users || [];
 
   return (
-    <>
-      {isLoading ? (
-        <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
-          <div className="p-6 sm:p-8">
-            <div className="flex items-center justify-center h-24">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                <span className="text-[#64748B]">Loading members...</span>
-              </div>
+    <Card className="gap-6">
+      <CardContent className="py-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-muted-foreground">Loading members...</span>
             </div>
           </div>
-        </Card>
-      ) : (
-        <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
-          <div className="p-6 sm:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key="table"
-                variants={contentVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <UsersTable
-                  columns={columns}
-                  data={displayUsers}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </Card>
-      )}
-    </>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="table"
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <UsersTable
+                columns={columns}
+                data={displayUsers}
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -7,14 +7,14 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
-import type { SelectedItem } from '@/app/(authenticated)/builder/template-config/types';
+import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import {
   convertScheduleToSelectedItems,
 } from '@/app/(authenticated)/builder/actions';
 import {
   mergeScheduleWithOverride,
   type DatabaseSchedule,
-} from '@/app/(authenticated)/builder/workout-schedule/utils';
+} from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { useWorkoutSchedule, type WorkoutScheduleData } from '@/hooks/use-workout-schedule';
 
 interface BuilderContextValue {
