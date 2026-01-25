@@ -5,7 +5,6 @@ import {
   Users,
   Dumbbell,
   Activity,
-  Settings,
 } from 'lucide-react';
 
 // Vantabuddy trigger position and dimensions
@@ -38,5 +37,4 @@ export const NAV_LINKS = [
   { href: '/users', label: 'Users', icon: Users },
   { href: '/builder', label: 'Programs', icon: Dumbbell },
   { href: '/exercises', label: 'Exercises', icon: Activity },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;
