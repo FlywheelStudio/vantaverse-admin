@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { TemplateConfigDefaultValues } from '../template-config/template-config';
 import type { DefaultValuesData } from './schemas';
 

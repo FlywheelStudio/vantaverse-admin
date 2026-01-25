@@ -7,7 +7,6 @@ import { useSidebar } from '@/context/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   SIDEBAR_CONFIG,
-  HEADER_HEIGHT,
   VANTABUDDY_CONFIG,
 } from '@/lib/configs/sidebar';
 
