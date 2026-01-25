@@ -535,7 +535,7 @@ export async function createUserQuickAdd(data: {
   return query.createQuickAdd(data);
 }
 
-export type SendBulkInvitationsResult =
+type SendBulkInvitationsResult =
   | { success: true; data: BulkInvitationResponse }
   | { success: false; error: string };
 
