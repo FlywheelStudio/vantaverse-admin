@@ -27,6 +27,7 @@ type AddBatchInput = {
 type PendingUsersState = {
   addBatch: (input: AddBatchInput) => void;
   removeUser: (id: string) => void;
+  markInvited: (emails: string[]) => void;
   reset: () => void;
 
   rows: PendingUsersRow[];
@@ -131,6 +132,24 @@ export function PendingUsersProvider({
     );
   };
 
+  const markInvited = (emails: string[]) => {
+    const set = new Set(emails.map((e) => e.toLowerCase().trim()));
+    const update = <T extends { email: string; status: string }>(users: T[]) =>
+      users.map((u) =>
+        set.has(u.email.toLowerCase())
+          ? { ...u, status: 'invited' as const }
+          : u,
+      );
+    setBatches((prev) =>
+      prev.map((b) => ({
+        ...b,
+        createdUsers: update(b.createdUsers),
+        existingUsers: update(b.existingUsers),
+        failedUsers: update(b.failedUsers),
+      })),
+    );
+  };
+
   const reset = () => {
     setBatches([]);
     setNextBatchId(1);
@@ -172,6 +191,7 @@ export function PendingUsersProvider({
   const value: PendingUsersState = {
     addBatch,
     removeUser,
+    markInvited,
     reset,
     rows,
     counts,

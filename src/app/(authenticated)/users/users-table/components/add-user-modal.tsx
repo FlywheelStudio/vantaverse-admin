@@ -185,6 +185,7 @@ function AddUserModalInner({
             <PendingUsersView
               onClose={handleClose}
               onAddMore={() => setMode('upload')}
+              role={role}
             />
           ) : (
             <>

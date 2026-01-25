@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePendingUsers } from '../contexts/pending-users-context';
+import { sendBulkInvitations } from '../../actions';
+import { type MemberRole } from '@/lib/supabase/schemas/organization-members';
 import { cn } from '@/lib/utils';
 
 function StatusBadge({ status }: { status: string }) {
@@ -41,14 +44,53 @@ function StatBox({ label, value }: { label: string; value: number }) {
 export function PendingUsersView({
   onClose,
   onAddMore,
+  role = 'patient',
 }: {
   onClose: () => void;
   onAddMore: () => void;
+  role?: MemberRole;
 }) {
-  const { rows, counts, removeUser } = usePendingUsers();
+  const { rows, counts, removeUser, markInvited } = usePendingUsers();
+  const [sending, setSending] = useState(false);
 
-  const handleSendInvitations = () => {
-    toast('Send Invitations: coming soon');
+  const pendingRows = rows.filter(
+    (r) => (r.status || '').toLowerCase() === 'pending',
+  );
+  const pendingEmails = pendingRows.map((r) => r.email);
+
+  const handleSendInvitations = async () => {
+    if (!pendingEmails.length || sending) return;
+    setSending(true);
+    try {
+      const result = await sendBulkInvitations(
+        pendingEmails,
+        role === 'admin',
+      );
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      const { data } = result;
+      const successful = data.results
+        .filter((r) => r.success)
+        .map((r) => r.email);
+      if (successful.length) markInvited(successful);
+      if (data.validationErrors?.length) {
+        const msg = data.validationErrors
+          .map((e) => `${e.email}: ${e.error}`)
+          .join('; ');
+        toast.error(`Validation: ${msg}`);
+      }
+      if (data.successful > 0) {
+        toast.success(
+          `Sent ${data.successful} invitation${data.successful > 1 ? 's' : ''}${data.failed > 0 ? `; ${data.failed} failed` : ''}`,
+        );
+      } else if (data.failed > 0) {
+        toast.error(`All ${data.failed} invitation(s) failed`);
+      }
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -127,16 +169,23 @@ export function PendingUsersView({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onAddMore}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onAddMore} disabled={sending}>
             + Add More Users
           </Button>
           <Button
             onClick={handleSendInvitations}
             className="rounded-[var(--radius-pill)]"
-            disabled={counts.pending === 0}
+            disabled={counts.pending === 0 || sending}
           >
-            Send Invitations ({counts.pending})
+            {sending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending…
+              </>
+            ) : (
+              `Send Invitations (${counts.pending})`
+            )}
           </Button>
         </div>
       </div>
