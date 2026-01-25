@@ -19,7 +19,7 @@ export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
     <>
       <Button
         onClick={() => setOpen(true)}
-        size="lg"
+        size="default"
         className="rounded-[var(--radius-pill)] shadow-[var(--shadow-md)] cursor-pointer"
       >
         {isMobile ? (

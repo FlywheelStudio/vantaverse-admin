@@ -148,7 +148,7 @@ export function BuildWorkoutSection({
   return (
     <div className="w-full">
       <div className="w-full flex items-center justify-between px-5 py-4">
-        <span className="text-lg font-semibold text-foreground">Build Workout</span>
+        <span className="text-base font-semibold text-foreground">Build Workout</span>
         <Button
           onClick={handleSave}
           disabled={isDisabled}
