@@ -14,6 +14,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -34,6 +39,8 @@ import {
   useDeleteUser,
   useToggleSuperAdmin,
 } from '../hooks/use-users-table-mutations';
+import { sendBulkInvitations } from '../../actions';
+import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -238,6 +245,9 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
 
 function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   const status = profile.status;
+  const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
 
   if (!status) {
     return <span className="text-muted-foreground text-sm">—</span>;
@@ -257,10 +267,65 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
     }
   };
 
+  const handleSendInvitation = async () => {
+    if (!profile.email || sending) return;
+    
+    setSending(true);
+    try {
+      const result = await sendBulkInvitations([profile.email], false);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      
+      const { data } = result;
+      const successful = data.results.filter((r) => r.success);
+      if (successful.length > 0) {
+        toast.success('Invitation sent successfully');
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        setOpen(false);
+      } else {
+        const failed = data.results.find((r) => !r.success);
+        toast.error(failed?.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      toast.error('Failed to send invitation');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const isPending = status === 'pending';
+
   return (
-    <Badge variant="outline" className={cn(getBadgeClasses(), 'cursor-default')}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Badge
+          variant="outline"
+          className={cn(
+            getBadgeClasses(),
+            isPending ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+          )}
+        >
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
+      </PopoverTrigger>
+      {isPending && (
+        <PopoverContent 
+          side="bottom" 
+          className="w-auto p-0 bg-transparent border-0 shadow-none"
+        >
+          <button
+            type="button"
+            onClick={handleSendInvitation}
+            disabled={sending}
+            className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            {sending ? 'Sending...' : 'Send Invitation'}
+          </button>
+        </PopoverContent>
+      )}
+    </Popover>
   );
 }
 
