@@ -114,9 +114,9 @@ export function ExerciseModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 text-white border-gray-700">
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-[var(--radius-2xl)] border-border bg-card p-6 shadow-[var(--shadow-hero)] sm:p-8">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-white">
+          <DialogTitle className="text-2xl font-semibold tracking-tight">
             {editingField === 'exercise_name' ? (
               <Input
                 ref={inputRef as React.RefObject<HTMLInputElement>}
@@ -132,13 +132,12 @@ export function ExerciseModal({
                     handleSave('exercise_name');
                   }
                 }}
-                className="bg-gray-800 text-white border-gray-700"
                 autoFocus
               />
             ) : (
               <span
                 onClick={() => handleEdit('exercise_name')}
-                className="cursor-pointer hover:text-blue-400 transition-colors"
+                className="cursor-pointer transition-colors hover:text-primary"
               >
                 {exercise.exercise_name}
               </span>
@@ -148,7 +147,7 @@ export function ExerciseModal({
 
         {/* Video Player */}
         {videoUrl && (
-          <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg bg-black">
+          <div className="bg-muted relative mx-auto aspect-video w-full max-w-2xl overflow-hidden rounded-[var(--radius-lg)]">
             {exercise.video_type === 'youtube' ? (
               <iframe
                 src={videoUrl}
@@ -172,7 +171,7 @@ export function ExerciseModal({
 
         {/* Instructions Section */}
         <div className="space-y-2">
-          <h3 className="text-lg font-bold text-white">Instructions</h3>
+          <h3 className="text-base font-semibold">Instructions</h3>
           {editingField === 'library_tip' ? (
             <Textarea
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
@@ -188,22 +187,22 @@ export function ExerciseModal({
                   handleSave('library_tip');
                 }
               }}
-              className="bg-gray-800 text-white border-gray-700 min-h-[100px]"
+              className="min-h-[7.5rem]"
               autoFocus
             />
           ) : (
             <p
               onClick={() => handleEdit('library_tip')}
-              className="text-white cursor-pointer hover:text-blue-400 transition-colors whitespace-pre-wrap"
+              className="hover:bg-muted/60 cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors hover:text-primary"
             >
               {exercise.library_tip || 'Click to add instructions'}
             </p>
           )}
         </div>
 
-        {/* Common Modifications Section */}
+        {/* Check-in Questions Section */}
         <div className="space-y-2">
-          <h3 className="text-lg font-bold text-white">Common Modifications</h3>
+          <h3 className="text-base font-semibold">Check-in Questions</h3>
           {editingField === 'library_check_in_question' ? (
             <Textarea
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
@@ -219,16 +218,16 @@ export function ExerciseModal({
                   handleSave('library_check_in_question');
                 }
               }}
-              className="bg-gray-800 text-white border-gray-700 min-h-[100px]"
+              className="min-h-[7.5rem]"
               autoFocus
             />
           ) : (
             <p
               onClick={() => handleEdit('library_check_in_question')}
-              className="text-white cursor-pointer hover:text-blue-400 transition-colors whitespace-pre-wrap"
+              className="hover:bg-muted/60 cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors hover:text-primary"
             >
               {exercise.library_check_in_question ||
-                'Click to add common modifications'}
+                'Click to add check-in questions'}
             </p>
           )}
         </div>

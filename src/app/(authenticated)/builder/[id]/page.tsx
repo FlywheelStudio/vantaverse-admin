@@ -26,9 +26,7 @@ export default async function BuilderIdPage({ params }: { params: Promise<{ id: 
   return (
     <PageWrapper
       subheader={
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-medium">Program Builder</span>
-        </div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
       }
     >
       <BuilderContextProvider initialWorkoutSchedule={data.workoutScheduleData as WorkoutScheduleData | null}>

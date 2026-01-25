@@ -9,17 +9,15 @@ export default async function BuilderPage() {
 
   const initialData = initialPageResult.success
     ? {
-        pages: [initialPageResult.data],
-        pageParams: [1] as number[],
-      }
+      pages: [initialPageResult.data],
+      pageParams: [1] as number[],
+    }
     : undefined;
 
   return (
     <PageWrapper
       subheader={
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-medium">Program Builder</h1>
-        </div>
+        <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
       }
     >
       <BuilderContextProvider>

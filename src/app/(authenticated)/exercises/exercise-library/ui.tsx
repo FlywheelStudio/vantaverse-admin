@@ -2,14 +2,19 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useExercises } from '@/hooks/use-exercises';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
@@ -61,6 +66,12 @@ const cardVariants = {
 };
 
 type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
+
+const ASSIGNMENT_FILTER_LABEL: Record<AssignmentFilter, string> = {
+  all: 'All',
+  unassigned: 'Unassigned',
+  assigned: 'Assigned',
+};
 
 interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
@@ -156,29 +167,45 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
   return (
     <>
       {hasLoadedOnce && (
-        <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
-          <div className="p-6 sm:p-8">
+        <Card className="overflow-hidden">
+          <div className="p-5 sm:p-6">
             {/* Search and Filter */}
-            <div className="mb-6 flex gap-3 max-w-md">
+            <div className="mb-6 flex max-w-md gap-3">
               <Input
                 type="text"
                 placeholder="Search exercises..."
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className="bg-white border-gray-200 flex-1"
+                className="flex-1"
               />
-              <Select
-                value={assignmentFilter}
-                onChange={(e) => {
-                  setAssignmentFilter(e.target.value as AssignmentFilter);
-                  handleFilterChange();
-                }}
-                className="bg-white border-gray-200 w-40"
-              >
-                <option value="all">All</option>
-                <option value="unassigned">Unassigned</option>
-                <option value="assigned">Assigned</option>
-              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-40 justify-between rounded-[var(--radius-pill)] bg-background"
+                  >
+                    {ASSIGNMENT_FILTER_LABEL[assignmentFilter]}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-40">
+                  {(
+                    ['all', 'unassigned', 'assigned'] as const
+                  ).map((value) => (
+                    <DropdownMenuItem
+                      key={value}
+                      onClick={() => {
+                        setAssignmentFilter(value);
+                        handleFilterChange();
+                      }}
+                      data-selected={assignmentFilter === value}
+                      className="cursor-pointer truncate data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
+                    >
+                      {ASSIGNMENT_FILTER_LABEL[value]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Exercises Grid */}
@@ -192,7 +219,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
               >
                 {displayExercises.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
-                    <p className="text-gray-500">
+                    <p className="text-muted-foreground text-sm">
                       {debouncedSearch
                         ? 'No exercises found matching your search.'
                         : 'No exercises available.'}
@@ -201,7 +228,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
                 ) : (
                   <>
                     <motion.div
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                       variants={containerVariants}
                       initial="hidden"
                       animate="visible"
@@ -226,8 +253,8 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
 
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
-                      <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-                        <p className="text-sm text-gray-600">
+                      <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+                        <p className="text-muted-foreground text-sm">
                           Showing {(currentPage - 1) * pageSize + 1}-
                           {Math.min(currentPage * pageSize, totalCount)} of{' '}
                           {totalCount} exercises
@@ -244,7 +271,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
                             <ChevronLeft className="h-4 w-4" />
                             Previous
                           </Button>
-                          <span className="px-3 text-sm text-gray-700">
+                          <span className="text-muted-foreground px-3 text-sm">
                             Page {currentPage} of {totalPages}
                           </span>
                           <Button

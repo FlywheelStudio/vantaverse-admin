@@ -71,10 +71,10 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
   return (
     <Card
       onClick={onClick}
-      className="h-full flex flex-col gap-0 group overflow-hidden rounded-2xl border-2 border-[#E5E9F0] hover:border-[#2454FF] hover:shadow-xl transition-all duration-300 cursor-pointer bg-white"
+      className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-[var(--radius-lg)] border border-border/80 bg-card shadow-[var(--shadow-sm)] transition-all duration-300 hover:border-primary/60 hover:shadow-[var(--shadow-md)]"
     >
       {/* Exercise Image */}
-      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-[#F5F7FA] to-[#E5E9F0]">
+      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-muted to-secondary">
         {thumbnailUrl ? (
           <>
             {exercise.video_type === 'youtube' ? (
@@ -95,37 +95,36 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
             )}
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-[#F5F7FA] to-[#E5E9F0]">
-            <span className="text-[#64748B]">No video</span>
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-secondary">
+            <span className="text-muted-foreground text-sm font-medium">
+              No video
+            </span>
           </div>
         )}
       </div>
 
       {/* Exercise Info */}
       <CardContent
-        className={`flex-1 flex flex-col p-5 bg-linear-to-b ${
-          hasAssignments
-            ? 'from-[#D1FAE5]/40 to-[#A8E6E1]/30'
-            : 'from-[#A8E6E1]/30 to-[#D4EEF7]/20'
-        }`}
+        className="flex flex-1 flex-col gap-3 px-4 py-4"
       >
-        <h3 className="font-bold text-[#1E3A5F] text-base mb-3 line-clamp-2 leading-tight">
+        <h3 className="text-foreground line-clamp-2 text-base leading-snug font-semibold">
           {exercise.exercise_name}
         </h3>
 
-        <div className="space-y-2 mt-auto">
+        <div className="mt-auto space-y-2">
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${
+            className={[
+              'inline-flex h-7 items-center rounded-[var(--radius-pill)] border px-2.5 text-xs font-medium',
               hasAssignments
-                ? 'bg-[#D1FAE5] text-[#065F46] border-[#10B981]/30'
-                : 'bg-[#F5F7FA] text-[#64748B] border-[#E5E9F0]'
-            }`}
+                ? 'border-primary/20 bg-primary/10 text-primary'
+                : 'border-border bg-secondary text-secondary-foreground',
+            ].join(' ')}
           >
             {assignmentText}
           </span>
 
           {dateDisplay && (
-            <p className="text-sm text-[#64748B]">{dateDisplay}</p>
+            <p className="text-muted-foreground text-sm">{dateDisplay}</p>
           )}
         </div>
       </CardContent>
