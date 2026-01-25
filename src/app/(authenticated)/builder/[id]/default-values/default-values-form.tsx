@@ -18,9 +18,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
     <div className="p-4 space-y-4">
       {/* Sets */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Sets</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Sets</span>
         <Input
-          className="flex-1 px-3 py-2 border rounded text-sm"
+          className="flex-1"
           min="1"
           type="number"
           {...register('sets', { valueAsNumber: true })}
@@ -29,9 +29,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Reps */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Reps</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Reps</span>
         <Input
-          className="flex-1 px-3 py-2 border rounded text-sm"
+          className="flex-1"
           min="0"
           type="number"
           placeholder="Leave empty for none"
@@ -45,9 +45,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Distance */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Distance</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Distance</span>
         <Input
-          className="flex-[2] px-3 py-2 border rounded text-sm"
+          className="flex-[2]"
           min="0"
           step="0.1"
           type="number"
@@ -56,7 +56,7 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
           onChange={(e) => setValue('distance', e.target.value || null)}
         />
         <Select
-          className="flex-1 px-2 py-2 border rounded text-sm bg-gray-50"
+          className="flex-1"
           value={formData.distanceUnit}
           onChange={(e) => setValue('distanceUnit', e.target.value)}
         >
@@ -70,9 +70,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Weight */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Weight</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Weight</span>
         <Input
-          className="flex-[2] px-3 py-2 border rounded text-sm"
+          className="flex-[2]"
           min="0"
           step="0.1"
           type="number"
@@ -81,7 +81,7 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
           onChange={(e) => setValue('weight', e.target.value || null)}
         />
         <Select
-          className="flex-1 px-2 py-2 border rounded text-sm bg-gray-50"
+          className="flex-1"
           value={formData.weightUnit}
           onChange={(e) => setValue('weightUnit', e.target.value)}
         >
@@ -93,9 +93,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Time */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Time (s)</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Time (s)</span>
         <Input
-          className="flex-1 px-3 py-2 border rounded text-sm"
+          className="flex-1"
           min="0"
           type="number"
           placeholder="Leave empty for none"
@@ -109,9 +109,9 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Rest */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Rest (s)</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Rest (s)</span>
         <Input
-          className="flex-1 px-3 py-2 border rounded text-sm"
+          className="flex-1"
           min="0"
           type="number"
           placeholder="Leave empty for none"
@@ -125,7 +125,7 @@ export function DefaultValuesForm({ form, formData }: DefaultValuesFormProps) {
 
       {/* Tempo */}
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-24 shrink-0">Tempo</span>
+        <span className="text-sm text-muted-foreground w-24 shrink-0">Tempo</span>
         <TempoInput
           value={formData.tempo}
           onChange={(value: (string | null)[]) => {

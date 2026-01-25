@@ -32,25 +32,23 @@ export function DefaultValues() {
   }, [debouncedFormData, form.formState.isValid, setValues]);
 
   return (
-    <div className="flex items-center justify-center min-h-[400px] p-6">
+    <div className="flex items-center justify-center min-h-[400px] p-5">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className="w-full max-w-md"
       >
-        <Card className="text-card-foreground flex flex-col gap-4 bg-white/95 rounded-2xl border-2 border-white/50 shadow-xl overflow-hidden backdrop-blur-sm">
-          <div className="p-6">
-            <h3 className="text-xl font-semibold text-[#1E3A5F] mb-2">
-              Default Exercise Values
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
+        <Card>
+          <div className="p-5">
+            <h3 className="text-xl font-semibold text-foreground mb-2">Default Exercise Values</h3>
+            <p className="text-sm text-muted-foreground mb-6">
               Set default values for exercises added from the library. These values will be used when adding empty exercises.
             </p>
             <form>
               <DefaultValuesForm form={form} formData={formData as DefaultValuesData} />
             </form>
-            <p className="text-xs text-gray-500 mt-4 text-center">
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               Changes are saved automatically
             </p>
           </div>

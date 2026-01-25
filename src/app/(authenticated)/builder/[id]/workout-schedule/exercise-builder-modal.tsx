@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Check, X } from 'lucide-react';
 import {
   Dialog,
@@ -297,13 +298,10 @@ export function ExerciseBuilderModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] h-[85vh] max-w-[90vw] flex flex-col p-0">
+      <DialogContent className="w-[90vw] h-[90vh] max-w-[90vw] flex flex-col p-0">
         <div className="flex flex-col flex-1 min-h-0">
         <DialogHeader className="p-6 border-b">
           <DialogTitle>{getHeaderTitle()}</DialogTitle>
-          <DialogDescription>
-            Select exercises, templates, or groups
-          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 overflow-hidden">
@@ -340,13 +338,13 @@ export function ExerciseBuilderModal({
                       />
                     ))}
                     {(exercisesQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-gray-500">
+                      <div className="col-span-full text-center py-4 text-muted-foreground">
                         Loading...
                       </div>
                     )) ||
                       (!exercisesQuery.hasNextPage &&
                         allExercises.length === 0 && (
-                          <div className="col-span-full text-center py-4 text-gray-500">
+                          <div className="col-span-full text-center py-4 text-muted-foreground">
                             No exercises found
                           </div>
                         ))}
@@ -367,13 +365,13 @@ export function ExerciseBuilderModal({
                       />
                     ))}
                     {(templatesQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-gray-500">
+                      <div className="col-span-full text-center py-4 text-muted-foreground">
                         Loading...
                       </div>
                     )) ||
                       (!templatesQuery.hasNextPage &&
                         allTemplates.length === 0 && (
-                          <div className="col-span-full text-center py-4 text-gray-500">
+                          <div className="col-span-full text-center py-4 text-muted-foreground">
                             No templates found
                           </div>
                         ))}
@@ -396,12 +394,12 @@ export function ExerciseBuilderModal({
                     ))}
 
                     {(groupsQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-gray-500">
+                      <div className="col-span-full text-center py-4 text-muted-foreground">
                         Loading...
                       </div>
                     )) ||
                       (!groupsQuery.hasNextPage && allGroups.length === 0 && (
-                        <div className="col-span-full text-center py-4 text-gray-500">
+                        <div className="col-span-full text-center py-4 text-muted-foreground">
                           No groups found
                         </div>
                       ))}
@@ -425,7 +423,7 @@ export function ExerciseBuilderModal({
                       <Button
                         onClick={() => currentQuery.fetchNextPage()}
                         disabled={currentQuery.isFetchingNextPage}
-                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                        size="sm"
                       >
                         Load More
                       </Button>
@@ -433,7 +431,7 @@ export function ExerciseBuilderModal({
                   )}
                   {currentQuery && currentQuery.isFetchingNextPage && (
                     <div className="mt-4 flex justify-center">
-                      <div className="text-gray-500">Loading more...</div>
+                      <div className="text-muted-foreground">Loading more...</div>
                     </div>
                   )}
                 </>
@@ -447,13 +445,13 @@ export function ExerciseBuilderModal({
             {!showGroupInput ? (
               <button
                 onClick={() => setShowGroupInput(true)}
-                className="cursor-pointer mb-4 p-2 border-2 border-dashed border-gray-300 rounded hover:border-blue-500 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                className="cursor-pointer mb-4 w-full px-4 py-3 border-2 border-dashed border-border rounded-[var(--radius-md)] text-sm font-medium text-muted-foreground hover:border-primary/50 hover:bg-muted/60 hover:text-foreground transition-colors"
               >
                 + Add Group
               </button>
             ) : (
               <div className="flex items-center gap-2 mb-4">
-                <input
+                <Input
                   type="text"
                   value={groupNameInput}
                   onChange={(e) => setGroupNameInput(e.target.value)}
@@ -465,21 +463,24 @@ export function ExerciseBuilderModal({
                     }
                   }}
                   placeholder="Group name..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1"
                   autoFocus
                 />
-                <button
+                <Button
                   onClick={handleAddGroup}
-                  className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+                  size="icon-sm"
+                  className="cursor-pointer shadow-[var(--shadow-sm)]"
                 >
                   <Check className="h-4 w-4" />
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleCancelGroupInput}
-                  className="p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer"
+                  variant="secondary"
+                  size="icon-sm"
+                  className="cursor-pointer"
                 >
                   <X className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             )}
             <SelectedItemsList
@@ -497,10 +498,7 @@ export function ExerciseBuilderModal({
           <Button onClick={handleCancel} variant="outline">
             Cancel
           </Button>
-          <Button
-            onClick={handleDone}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={handleDone}>
             Done
           </Button>
         </DialogFooter>

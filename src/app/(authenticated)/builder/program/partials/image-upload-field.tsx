@@ -43,7 +43,7 @@ export function ImageUploadField({
     <div>
       <label
         htmlFor="image"
-        className="block text-sm font-medium text-[#64748B] mb-1"
+        className="block text-sm font-medium text-muted-foreground mb-1"
       >
         Image
       </label>
@@ -53,10 +53,9 @@ export function ImageUploadField({
         type="file"
         accept="image/*"
         onChange={handleImageChange}
-        className="bg-white"
       />
       {imagePreview && (
-        <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+        <div className="mt-2 relative w-full h-48 rounded-[var(--radius-lg)] overflow-hidden border border-border">
           <Image
             src={imagePreview}
             alt="Preview"

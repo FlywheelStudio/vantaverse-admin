@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Trash2, Shield, ShieldOff } from 'lucide-react';
+import { Trash2, Shield, ShieldOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -373,11 +373,37 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
 export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     accessorKey: 'name',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Name / Email</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Name / Email
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <NameEmailCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const profileA = rowA.original;
+      const profileB = rowB.original;
+      const nameA = profileA.first_name && profileA.last_name
+        ? `${profileA.first_name} ${profileA.last_name}`.toLowerCase()
+        : profileA.email?.toLowerCase() || '';
+      const nameB = profileB.first_name && profileB.last_name
+        ? `${profileB.first_name} ${profileB.last_name}`.toLowerCase()
+        : profileB.email?.toLowerCase() || '';
+      return nameA.localeCompare(nameB);
+    },
     filterFn: (row, id, value) => {
       const profile = row.original;
       const searchTerm = String(value).toLowerCase();
@@ -396,38 +422,112 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   },
   {
     accessorKey: 'last_sign_in',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Last login</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Last login
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <LastLoginCell profile={row.original} />,
     enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const dateA = rowA.original.last_sign_in;
+      const dateB = rowB.original.last_sign_in;
+      
+      // Handle null/undefined values - put them at the end
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1; // A is null, put it after B
+      if (!dateB) return -1; // B is null, put it after A
+      
+      // Both have dates, compare them
+      const timeA = new Date(dateA).getTime();
+      const timeB = new Date(dateB).getTime();
+      return timeA - timeB;
+    },
   },
   {
     id: 'groups',
     accessorFn: (row) =>
       row.orgMemberships?.map((org) => org.orgName).join(', ') || '',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Groups</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Groups
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <GroupsCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
     enableColumnFilter: false,
   },
   {
     id: 'program',
     accessorFn: (row) => row.program_assignment_name || '',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Program</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Program
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <ProgramCell profile={row.original} />,
-    enableSorting: false,
+    enableSorting: true,
     enableColumnFilter: false,
   },
   {
     accessorKey: 'status',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Registration</span>
-    ),
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <button
+          onClick={() => column.toggleSorting(sorted === 'asc')}
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Registration
+          {sorted === 'asc' ? (
+            <ChevronUp className="h-4 w-4 text-foreground" />
+          ) : sorted === 'desc' ? (
+            <ChevronDown className="h-4 w-4 text-foreground" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+          )}
+        </button>
+      );
+    },
     cell: ({ row }) => <RegistrationCell profile={row.original} />,
     enableSorting: true,
   },

@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { useFormContext } from 'react-hook-form';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramTemplateFormData } from '../../program/schemas';
+import { cn } from '@/lib/utils';
 import { createParallelQueries } from '@/lib/supabase/query';
 import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
@@ -146,21 +147,23 @@ export function BuildWorkoutSection({
 
   return (
     <div className="w-full">
-      <div className="w-full flex items-center justify-between p-4 rounded-t-lg">
-        <span className="text-lg font-semibold text-[#1E3A5F]">
-          Build Workout
-        </span>
+      <div className="w-full flex items-center justify-between px-5 py-4">
+        <span className="text-lg font-semibold text-foreground">Build Workout</span>
         <Button
           onClick={handleSave}
           disabled={isDisabled}
-          variant="default"
           size="sm"
-          className="bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer"
+          className="cursor-pointer"
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
       </div>
-      <div className={`p-4 border-t border-gray-200 ${isDisabled ? 'disabled-div' : ''}`}>
+      <div
+        className={cn(
+          'px-5 pb-5 pt-4 border-t border-border',
+          isDisabled && 'disabled-div',
+        )}
+      >
         <div className="space-y-6">
           <WeekNavigation initialWeeks={initialWeeks} />
           <DayBoxesGrid />

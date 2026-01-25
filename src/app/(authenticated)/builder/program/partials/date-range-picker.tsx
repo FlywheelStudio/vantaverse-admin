@@ -36,7 +36,7 @@ export function DateRangePicker({
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <label className="block text-sm font-medium text-[#64748B] mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           Start Date
         </label>
         <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -45,7 +45,7 @@ export function DateRangePicker({
               type="button"
               variant="outline"
               className={cn(
-                'w-full justify-start text-left font-normal bg-white',
+                'w-full justify-start text-left font-normal',
                 !startDate && 'text-muted-foreground',
               )}
             >
@@ -102,7 +102,7 @@ export function DateRangePicker({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#64748B] mb-1">
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
           End Date
         </label>
         <Input
@@ -114,7 +114,7 @@ export function DateRangePicker({
                 : 'Select start date and weeks'
           }
           disabled
-          className="bg-gray-50 text-gray-500"
+          className="bg-muted/50 text-muted-foreground"
         />
         {errors.endDate && (
           <p className="text-sm text-red-500 mt-1">{errors.endDate.message}</p>

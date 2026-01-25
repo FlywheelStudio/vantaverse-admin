@@ -111,11 +111,11 @@ export function DragContent({
               {activeId && activeItem ? (
                 <div className="opacity-80">
                   {activeItem.type === 'group' ? (
-                    <div className="border rounded-lg p-3 border-purple-300 bg-purple-50/50 shadow-lg">
-                      <div className="font-semibold text-sm">
+                    <div className="border border-border rounded-[var(--radius-lg)] p-4 bg-card shadow-[var(--shadow-lg)]">
+                      <div className="font-semibold text-sm text-foreground">
                         {activeItem.data.name}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {activeItem.data.items.length} items
                       </div>
                     </div>

@@ -70,7 +70,7 @@ export function DayBox({
         <h3
           className={cn(
             'text-base font-semibold text-center',
-            isBeforeStart ? 'text-red-500' : 'text-[#1E3A5F]',
+            isBeforeStart ? 'text-destructive' : 'text-foreground',
           )}
         >
           {getDayOfWeek(day)}
@@ -80,7 +80,7 @@ export function DayBox({
         <p
           className={cn(
             'text-xs mb-3 text-center',
-            isBeforeStart ? 'text-red-400' : 'text-gray-500',
+            isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
           )}
         >
           {formattedDate} {isBeforeStart ? ' (Before Start)' : ''}
@@ -88,10 +88,10 @@ export function DayBox({
       )}
       <div
         className={cn(
-          'group relative border-2 border-dashed rounded-lg p-6 min-h-[200px] flex flex-col items-center justify-center gap-4',
+          'group relative border-2 border-dashed rounded-[var(--radius-xl)] p-6 min-h-[200px] flex flex-col items-center justify-center gap-4',
           isBeforeStart
-            ? 'border-red-400 bg-red-50/50'
-            : 'border-gray-300 bg-gray-50/50',
+            ? 'border-destructive/40 bg-destructive/5'
+            : 'border-border bg-muted/30',
         )}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -113,7 +113,7 @@ export function DayBox({
                   key={`week-${weekIndex}-day-${day}-exercises`}
                   className={cn(
                     'cursor-default text-sm',
-                    isBeforeStart ? 'text-red-400' : 'text-gray-600',
+                    isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
                   )}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -128,7 +128,7 @@ export function DayBox({
                   key={`week-${weekIndex}-day-${day}-groups`}
                   className={cn(
                     'cursor-default text-sm',
-                    isBeforeStart ? 'text-red-400' : 'text-gray-600',
+                    isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
                   )}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -148,7 +148,7 @@ export function DayBox({
               key={`week-${weekIndex}-day-${day}-rest`}
               className={cn(
                 'h-full flex flex-col items-center justify-center text-sm cursor-default',
-                isBeforeStart ? 'text-red-400' : 'text-gray-400',
+                isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
               )}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -165,8 +165,8 @@ export function DayBox({
           className={cn(
             'border-dashed',
             isBeforeStart
-              ? 'border-red-400 text-red-500 cursor-not-allowed bg-red-50/30'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer',
+              ? 'border-destructive/40 text-destructive cursor-not-allowed bg-destructive/5'
+              : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground cursor-pointer',
           )}
           onClick={() => onAddExercise(day)}
         >

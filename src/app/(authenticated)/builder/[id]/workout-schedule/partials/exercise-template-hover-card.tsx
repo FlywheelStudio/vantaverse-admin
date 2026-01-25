@@ -30,7 +30,7 @@ export function ExerciseTemplateHoverCard({
           type="button"
           className={cn(
             'shrink-0 inline-flex items-center justify-center',
-            'h-6 w-6 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600',
+            'h-6 w-6 rounded-[var(--radius-sm)] hover:bg-muted/60 text-muted-foreground hover:text-primary',
             className,
           )}
           onMouseEnter={() => setOpen(true)}

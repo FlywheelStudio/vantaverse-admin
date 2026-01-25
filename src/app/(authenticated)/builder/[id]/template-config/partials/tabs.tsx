@@ -29,7 +29,7 @@ const NavigationButtons = ({
         <button
           onClick={() => onSetIndexChange(Math.max(0, currentSetIndex - 1))}
           disabled={currentSetIndex === 0}
-          className="p-0.5 hover:bg-blue-100 rounded disabled:opacity-50"
+          className="p-1 hover:bg-muted/60 rounded-[var(--radius-sm)] disabled:opacity-50"
         >
           <ChevronLeft className="h-3 w-3" />
         </button>
@@ -41,7 +41,7 @@ const NavigationButtons = ({
             onSetIndexChange(Math.min(sets - 1, currentSetIndex + 1))
           }
           disabled={currentSetIndex >= sets - 1}
-          className="p-0.5 hover:bg-blue-100 rounded disabled:opacity-50"
+          className="p-1 hover:bg-muted/60 rounded-[var(--radius-sm)] disabled:opacity-50"
         >
           <ChevronRight className="h-3 w-3" />
         </button>
@@ -60,13 +60,13 @@ export function TemplateConfigTabs({
   onSetIndexChange,
 }: TemplateConfigTabsProps) {
   return (
-    <div className="flex border-b border-gray-200">
+    <div className="flex border-b border-border">
       <button
         className={cn(
           'flex-1 px-3 py-1.5 text-xs font-medium cursor-pointer',
           activeTab === 'all'
-            ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+            ? 'border-b-2 border-primary text-primary bg-muted/50'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
         )}
         onClick={() => onTabChange('all')}
       >
@@ -77,8 +77,8 @@ export function TemplateConfigTabs({
           className={cn(
             'flex-1 px-3 py-1.5 text-xs font-medium flex items-center justify-center gap-1 cursor-pointer',
             activeTab === 'set'
-              ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+              ? 'border-b-2 border-primary text-primary bg-muted/50'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
           )}
           onClick={() => onTabChange('set')}
         >

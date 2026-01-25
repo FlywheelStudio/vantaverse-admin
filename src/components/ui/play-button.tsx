@@ -71,7 +71,7 @@ export function PlayButton({
     >
       <PopoverTrigger asChild>
         <div
-          className="w-5 h-5 mx-3 text-gray-500 hover:text-blue-600 cursor-pointer"
+          className="w-5 h-5 mx-3 text-muted-foreground hover:text-primary cursor-pointer"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           onClick={(e) => {
@@ -79,7 +79,7 @@ export function PlayButton({
           }}
         >
           <svg
-            className="w-5 h-5 text-gray-500 hover:text-blue-600 cursor-pointer"
+            className="w-5 h-5"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -93,7 +93,7 @@ export function PlayButton({
         onMouseLeave={handleMouseLeave}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative aspect-video w-[300px] min-w-[300px] max-w-[300px] overflow-hidden rounded-lg bg-black">
+        <div className="relative aspect-video w-[300px] min-w-[300px] max-w-[300px] overflow-hidden rounded-[var(--radius-lg)] bg-black">
           {videoType === 'youtube' ? (
             <iframe
               src={embeddedUrl}

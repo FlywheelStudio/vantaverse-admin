@@ -83,7 +83,7 @@ export function TemplateConfig({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-white rounded-lg shadow-2xl border border-gray-300"
+      className="bg-card text-card-foreground rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] border border-border"
       style={{
         position: 'fixed',
         left: `${modalPosition.x}px`,

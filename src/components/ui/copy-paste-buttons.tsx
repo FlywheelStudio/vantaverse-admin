@@ -23,19 +23,19 @@ interface CopyPasteButtonsProps {
 
 const sizeClasses = {
   sm: {
-    container: 'h-7 px-1.5',
+    container: '',
     icon: 'h-3 w-3',
-    button: 'px-1.5',
+    button: 'h-9 px-3',
   },
   md: {
-    container: 'h-9 px-2',
+    container: '',
     icon: 'h-4 w-4',
-    button: 'px-2',
+    button: 'h-10 px-4',
   },
   lg: {
-    container: 'h-11 px-2.5',
+    container: '',
     icon: 'h-5 w-5',
-    button: 'px-2.5',
+    button: 'h-11 px-5',
   },
 };
 
@@ -61,11 +61,11 @@ export function CopyPasteButtons({
             <button
               onClick={onCopy}
               className={cn(
-                'flex items-center justify-center h-full rounded transition-colors',
+                'flex items-center justify-center rounded-[var(--radius-pill)] transition-colors shadow-[var(--shadow-sm)]',
                 sizeClass.button,
                 isCopied
-                  ? 'bg-green-500 cursor-not-allowed'
-                  : 'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
+                  ? 'bg-[oklch(0.66_0.17_155)] cursor-not-allowed'
+                  : 'bg-primary hover:bg-primary/90 cursor-pointer',
               )}
             >
               <CopyIcon className={cn(sizeClass.icon, 'text-white')} />
@@ -84,11 +84,11 @@ export function CopyPasteButtons({
               onClick={onPaste}
               disabled={isPasteDisabled}
               className={cn(
-                'flex items-center justify-center h-full rounded transition-colors',
+                'flex items-center justify-center rounded-[var(--radius-pill)] transition-colors shadow-[var(--shadow-sm)]',
                 sizeClass.button,
                 isPasteDisabled
-                  ? 'opacity-50 cursor-not-allowed bg-[#2454FF] hover:bg-[#1E3FCC]'
-                  : 'bg-[#2454FF] hover:bg-[#1E3FCC] cursor-pointer',
+                  ? 'opacity-50 cursor-not-allowed bg-primary'
+                  : 'bg-primary hover:bg-primary/90 cursor-pointer',
               )}
             >
               <ClipboardIcon className={cn(sizeClass.icon, 'text-white')} />

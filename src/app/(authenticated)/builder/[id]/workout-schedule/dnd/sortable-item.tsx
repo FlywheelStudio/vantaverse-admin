@@ -40,8 +40,8 @@ export function SortableItem({
       style={style}
       className={cn(
         'relative touch-none',
-        isDragging && 'opacity-50 z-50 shadow-lg scale-[1.02]',
-        isOver && !isDragging && 'ring-2 ring-blue-400 ring-offset-2',
+        isDragging && 'opacity-50 z-50 shadow-[var(--shadow-lg)] scale-[1.02]',
+        isOver && !isDragging && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
         !disabled && 'cursor-grab active:cursor-grabbing',
       )}
       {...attributes}

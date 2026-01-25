@@ -46,7 +46,7 @@ export function SelectedItemComponent({
   return (
     <div
       className={cn(
-        'border rounded-lg p-3 flex items-center gap-2 border-blue-500 bg-blue-50',
+        'border border-primary/40 bg-muted/30 rounded-[var(--radius-lg)] p-4 flex items-center gap-3',
         'cursor-pointer',
       )}
       onClick={onClick}
@@ -62,8 +62,8 @@ export function SelectedItemComponent({
           </div>
         )}
         <div className="flex-1">
-          <div className="font-medium text-sm">{exerciseName}</div>
-          <div className="text-xs text-gray-600 mt-1">
+          <div className="font-medium text-sm text-foreground">{exerciseName}</div>
+          <div className="text-xs text-muted-foreground mt-1">
             {getDescription()}
           </div>
         </div>
@@ -73,7 +73,7 @@ export function SelectedItemComponent({
           e.stopPropagation();
           onRemove();
         }}
-        className="text-red-500 hover:text-red-700 text-lg leading-none cursor-pointer"
+        className="text-destructive hover:text-destructive text-lg leading-none cursor-pointer"
       >
         ×
       </button>

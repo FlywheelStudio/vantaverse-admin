@@ -57,11 +57,11 @@ export function TemplateConfigForm({
     activeTab === 'all' ? formData.tempo : formData.tempo;
 
   return (
-    <div className="p-3 space-y-2">
+    <div className="p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Reps</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Reps</span>
         <Input
-          className="flex-1 px-2 py-1 border rounded text-xs"
+          className="flex-1 h-10 text-xs"
           min="0"
           placeholder={
             activeTab === 'set' && formData.rep ? String(formData.rep) : ''
@@ -84,14 +84,14 @@ export function TemplateConfigForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Distance</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Distance</span>
         <Controller
           name={activeTab === 'all' ? 'distance' : 'distance_override'}
           control={control}
           render={({ field }) => (
             <Input
               {...field}
-              className="flex-3 min-w-0 px-2 py-1 border rounded text-xs"
+              className="flex-[3] min-w-0 h-10 text-xs"
               min="0"
               step="0.1"
               placeholder={
@@ -133,7 +133,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Select
               {...field}
-              className="flex-1 min-w-0 px-1 py-1 border rounded text-xs bg-gray-50"
+              className="flex-[1] min-w-0 h-10 text-xs"
               value={
                 activeTab === 'all'
                   ? currentDistanceUnit
@@ -161,14 +161,14 @@ export function TemplateConfigForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Weight</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Weight</span>
         <Controller
           name={activeTab === 'all' ? 'weight' : 'weight_override'}
           control={control}
           render={({ field }) => (
             <Input
               {...field}
-              className="flex-3 min-w-0 px-2 py-1 border rounded text-xs"
+              className="flex-[3] min-w-0 h-10 text-xs"
               min="0"
               step="0.1"
               placeholder={
@@ -202,7 +202,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Select
               {...field}
-              className="flex-1 min-w-0 px-1 py-1 border rounded text-xs bg-gray-50"
+              className="flex-[1] min-w-0 h-10 text-xs"
               value={activeTab === 'all' ? currentWeightUnit : currentWeightUnit}
               onChange={(e) => {
                 if (activeTab === 'all') {
@@ -224,9 +224,9 @@ export function TemplateConfigForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Time (s)</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Time (s)</span>
         <Input
-          className="flex-1 px-2 py-1 border rounded text-xs"
+          className="flex-1 h-10 text-xs"
           min="0"
           placeholder={
             activeTab === 'set' && formData.time ? String(formData.time) : ''
@@ -249,9 +249,9 @@ export function TemplateConfigForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Rest (s)</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Rest (s)</span>
         <Input
-          className="flex-1 px-2 py-1 border rounded text-xs"
+          className="flex-1 h-10 text-xs"
           min="0"
           placeholder={
             activeTab === 'set' && formData.rest_time
@@ -276,7 +276,7 @@ export function TemplateConfigForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600 w-14 shrink-0">Tempo</span>
+        <span className="text-xs text-muted-foreground w-14 shrink-0">Tempo</span>
         <Controller
           name="tempo"
           control={control}

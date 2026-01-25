@@ -62,7 +62,7 @@ export function ExerciseTemplateSetsTable({
   const sets = template.sets || 0;
   if (sets === 0) {
     return (
-      <div className={cn('text-xs text-gray-600', className)}>
+      <div className={cn('text-xs text-muted-foreground', className)}>
         No sets configured
       </div>
     );
@@ -160,7 +160,7 @@ export function ExerciseTemplateSetsTable({
 
   if (metricsWithData.length === 0) {
     return (
-      <div className={cn('text-xs text-gray-600', className)}>
+      <div className={cn('text-xs text-muted-foreground', className)}>
         {sets} set{sets !== 1 ? 's' : ''}
       </div>
     );
@@ -175,17 +175,17 @@ export function ExerciseTemplateSetsTable({
               <TableRow>
                 <TableHead
                   colSpan={sets + 1}
-                  className="text-center font-medium text-gray-700"
+                  className="text-center font-medium text-foreground"
                 >
                   Sets ({sets})
                 </TableHead>
               </TableRow>
               <TableRow>
-                <TableHead className="font-medium text-gray-600"></TableHead>
+                <TableHead className="font-medium text-muted-foreground"></TableHead>
                 {Array.from({ length: sets }, (_, i) => (
                   <TableHead
                     key={i}
-                    className="text-center font-medium text-gray-600"
+                    className="text-center font-medium text-muted-foreground"
                   >
                     Set {i + 1}
                   </TableHead>
@@ -197,7 +197,7 @@ export function ExerciseTemplateSetsTable({
               <TableRow>
                 <TableHead
                   colSpan={sets + 1}
-                  className="text-center font-medium text-gray-700"
+                  className="text-center font-medium text-foreground"
                 >
                   Sets ({sets})
                 </TableHead>
@@ -220,12 +220,12 @@ export function ExerciseTemplateSetsTable({
               // Label in first column, value merged across remaining columns
               return (
                 <TableRow key={metric.label}>
-                  <TableCell className="font-medium text-gray-700">
+                  <TableCell className="font-medium text-foreground">
                     {metric.label}
                   </TableCell>
                   <TableCell
                     colSpan={sets}
-                    className="text-center text-gray-700 font-medium"
+                    className="text-center text-foreground font-medium"
                   >
                     {displayValue}
                   </TableCell>
@@ -235,7 +235,7 @@ export function ExerciseTemplateSetsTable({
               // Label in first column, individual cells for each set
               return (
                 <TableRow key={metric.label}>
-                  <TableCell className="font-medium text-gray-700">
+                  <TableCell className="font-medium text-foreground">
                     {metric.label}
                   </TableCell>
                   {metric.values.map((value, idx) => {
@@ -251,7 +251,7 @@ export function ExerciseTemplateSetsTable({
                     return (
                       <TableCell
                         key={idx}
-                        className="text-center text-gray-600"
+                        className="text-center text-muted-foreground"
                       >
                         {cellDisplayValue || '-'}
                       </TableCell>

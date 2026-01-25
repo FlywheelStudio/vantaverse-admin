@@ -49,16 +49,18 @@ export function TopLevelDroppable({
     <div
       ref={setNodeRef}
       className={cn(
-        'border-2 border-dashed rounded-lg p-4 transition-all duration-200 border-gray-300 bg-gray-50 min-h-full w-full',
+        'border-2 border-dashed rounded-[var(--radius-xl)] p-4 transition-all duration-200 border-border bg-muted/30 min-h-full w-full',
         isOver &&
           isDraggingFromGroup &&
-          'ring-2 ring-blue-400 ring-offset-2 bg-blue-50/50',
+          'ring-2 ring-ring ring-offset-2 ring-offset-background bg-muted/40',
       )}
     >
       {items.length === 0 ? (
-        <div className="text-center text-gray-400 py-8">
+        <div className="text-center text-muted-foreground py-8">
           <p>No items selected</p>
-          <p className="text-sm mt-2">Click cards to add items</p>
+          <p className="text-sm mt-2 text-muted-foreground">
+            Click cards to add items
+          </p>
         </div>
       ) : (
         <SortableContext

@@ -19,11 +19,11 @@ export function ExerciseLibraryCard({
       onClick={onAdd}
       id={`exercise-library-card-${index}-${exercise.id}`}
       className={cn(
-        'border rounded p-3 cursor-pointer hover:bg-gray-100 transition-colors',
+        'border border-border rounded-[var(--radius-lg)] p-4 cursor-pointer hover:bg-muted/60 transition-colors',
       )}
     >
       {exercise.video_url ? (
-        <div className="mb-2 aspect-video bg-gray-200 rounded overflow-hidden">
+        <div className="mb-2 aspect-video bg-muted rounded-[var(--radius-md)] overflow-hidden">
           {exercise.video_type === 'youtube' ? (
             <iframe
               src={`https://www.youtube.com/embed/${exercise.video_url}`}
@@ -40,10 +40,10 @@ export function ExerciseLibraryCard({
           )}
         </div>
       ) : (
-        <div className="mb-2 aspect-video bg-gray-200 rounded" />
+        <div className="mb-2 aspect-video bg-muted rounded-[var(--radius-md)]" />
       )}
       <div
-        className="text-sm font-medium truncate mb-1"
+        className="text-sm font-medium text-foreground truncate mb-1"
         title={exercise.exercise_name}
       >
         {exercise.exercise_name}

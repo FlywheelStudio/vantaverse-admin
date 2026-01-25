@@ -77,7 +77,7 @@ export function WorkoutBuilder({
         suppressHydrationWarning
         className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
-        <p className="text-gray-500">Program not found</p>
+        <p className="text-muted-foreground">Program not found</p>
       </div>
     );
   }
@@ -89,9 +89,9 @@ export function WorkoutBuilder({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="text-card-foreground flex flex-col bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
+        <Card className="flex flex-col overflow-hidden">
           <div className="flex-1">
-            <div className="p-6 sm:p-8 space-y-6">
+            <div className="p-5 sm:p-6 space-y-6">
               <FormProvider {...programForm}>
                 <ProgramDetailsSection
                   template={template}

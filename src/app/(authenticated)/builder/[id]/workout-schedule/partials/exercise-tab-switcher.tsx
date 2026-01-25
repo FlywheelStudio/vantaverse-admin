@@ -18,10 +18,10 @@ export function ExerciseTabSwitcher({
       <button
         onClick={() => onTabChange('library')}
         className={cn(
-          'px-4 py-2 rounded-md font-medium transition-colors',
+          'h-10 px-4 rounded-[var(--radius-pill)] text-sm font-medium transition-colors',
           activeTab === 'library'
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            ? 'bg-primary text-primary-foreground shadow-[var(--shadow-sm)]'
+            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         )}
       >
         Library
@@ -29,10 +29,10 @@ export function ExerciseTabSwitcher({
       <button
         onClick={() => onTabChange('templates')}
         className={cn(
-          'px-4 py-2 rounded-md font-medium transition-colors',
+          'h-10 px-4 rounded-[var(--radius-pill)] text-sm font-medium transition-colors',
           activeTab === 'templates'
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            ? 'bg-primary text-primary-foreground shadow-[var(--shadow-sm)]'
+            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         )}
       >
         Templates
@@ -40,10 +40,10 @@ export function ExerciseTabSwitcher({
       <button
         onClick={() => onTabChange('groups')}
         className={cn(
-          'px-4 py-2 rounded-md font-medium transition-colors',
+          'h-10 px-4 rounded-[var(--radius-pill)] text-sm font-medium transition-colors',
           activeTab === 'groups'
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            ? 'bg-primary text-primary-foreground shadow-[var(--shadow-sm)]'
+            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         )}
       >
         Groups
@@ -51,10 +51,10 @@ export function ExerciseTabSwitcher({
       <button
         onClick={() => onTabChange('default-values')}
         className={cn(
-          'px-4 py-2 rounded-md font-medium transition-colors',
+          'h-10 px-4 rounded-[var(--radius-pill)] text-sm font-medium transition-colors',
           activeTab === 'default-values'
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            ? 'bg-primary text-primary-foreground shadow-[var(--shadow-sm)]'
+            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         )}
       >
         Default Values

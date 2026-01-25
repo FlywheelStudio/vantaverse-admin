@@ -79,15 +79,15 @@ export function TemplateConfigActions({
   }, [handleCopy, handlePaste, canPaste, handleSubmit]);
 
   return (
-    <div className="flex gap-2 px-3 py-2 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+    <div className="flex gap-2 px-4 py-3 border-t border-border bg-muted/50 rounded-b-[var(--radius-xl)]">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             {showCopyCheck ? (
-              <Check className="size-4 m-3 cursor-pointer text-green-500" />
+              <Check className="size-4 m-3 cursor-pointer text-[oklch(0.66_0.17_155)]" />
             ) : (
               <Copy
-                className="size-4 m-3 cursor-pointer"
+                className="size-4 m-3 cursor-pointer text-muted-foreground hover:text-foreground"
                 onClick={handleCopy}
               />
             )}
@@ -101,13 +101,13 @@ export function TemplateConfigActions({
         <Tooltip>
           <TooltipTrigger asChild>
             {showPasteCheck ? (
-              <Check className="size-4 m-3 cursor-pointer text-green-500" />
+              <Check className="size-4 m-3 cursor-pointer text-[oklch(0.66_0.17_155)]" />
             ) : (
               <ClipboardPaste
                 className={cn(
                   canPaste
-                    ? 'cursor-pointer'
-                    : 'cursor-not-allowed text-gray-500',
+                    ? 'cursor-pointer text-muted-foreground hover:text-foreground'
+                    : 'cursor-not-allowed text-muted-foreground/60',
                   'size-4 m-3',
                 )}
                 onClick={handlePaste}
@@ -124,14 +124,14 @@ export function TemplateConfigActions({
         <Tooltip>
           <TooltipTrigger asChild>
             {showSaveCheck ? (
-              <Check className="size-4 m-3 cursor-pointer text-green-500" />
+              <Check className="size-4 m-3 cursor-pointer text-[oklch(0.66_0.17_155)]" />
             ) : (
               <Save
                 className={cn(
                   'size-4 m-3',
                   isSubmitting
-                    ? 'cursor-not-allowed text-gray-400'
-                    : 'cursor-pointer',
+                    ? 'cursor-not-allowed text-muted-foreground/60'
+                    : 'cursor-pointer text-muted-foreground hover:text-foreground',
                 )}
                 onClick={handleSubmit}
               />

@@ -23,14 +23,14 @@ export function CollapsibleSection({
       <Button
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-t-lg cursor-pointer"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/60 rounded-[var(--radius-xl)] cursor-pointer"
       >
-        <span className="text-lg font-semibold text-[#1E3A5F]">{title}</span>
+        <span className="text-lg font-semibold text-foreground">{title}</span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown className="h-5 w-5 text-[#64748B]" />
+          <ChevronDown className="h-5 w-5 text-muted-foreground" />
         </motion.div>
       </Button>
       <AnimatePresence>
@@ -42,7 +42,7 @@ export function CollapsibleSection({
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <div className="p-4 border-t border-gray-200">{children}</div>
+            <div className="px-5 pb-5 pt-4 border-t border-border">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

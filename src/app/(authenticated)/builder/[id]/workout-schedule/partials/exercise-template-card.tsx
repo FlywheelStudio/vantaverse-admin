@@ -22,13 +22,13 @@ export function ExerciseTemplateCard({
     <div
       id={`exercise-template-card-${index}-${template.id}`}
       className={cn(
-        'border rounded p-3 hover:bg-gray-100 transition-colors cursor-pointer',
+        'border border-border rounded-[var(--radius-lg)] p-4 hover:bg-muted/60 transition-colors cursor-pointer',
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div
           onClick={onAdd}
-          className="text-sm font-medium truncate flex-1"
+          className="text-sm font-medium text-foreground truncate flex-1"
           title={template.exercise_name || 'Unnamed Exercise'}
         >
           {template.exercise_name || 'Unnamed Exercise'}

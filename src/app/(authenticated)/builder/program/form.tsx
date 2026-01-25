@@ -107,11 +107,9 @@ export function CreateTemplateForm({
         exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Card className="p-6 mb-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-xl">
+        <Card className="p-5 mb-6">
           {!initialData && (
-            <h3 className="text-lg font-semibold mb-4 text-[#1E3A5F]">
-              Create New Program
-            </h3>
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Create New Program</h3>
           )}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-4">
@@ -192,7 +190,6 @@ export function CreateTemplateForm({
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white"
                 >
                   {isSubmitting
                     ? initialData

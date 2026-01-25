@@ -52,15 +52,15 @@ export function SelectedGroupComponent({
     <div
       ref={setNodeRef}
       className={cn(
-        'border rounded-lg p-3 mb-3 border-purple-300 bg-purple-50/50 transition-all duration-200',
-        isOver && 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-300',
+        'border border-border rounded-[var(--radius-lg)] p-4 mb-3 bg-muted/30 transition-all duration-200',
+        isOver && 'border-primary/40 bg-muted/40 ring-2 ring-ring ring-offset-2 ring-offset-background',
       )}
       role="group"
       aria-label={`Group: ${group.name}. ${group.items.length} items.`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-1">
-          <div className="font-semibold text-sm">{group.name}</div>
+          <div className="font-semibold text-sm text-foreground">{group.name}</div>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 ">
@@ -72,7 +72,7 @@ export function SelectedGroupComponent({
             />
             <label
               htmlFor={`superset-${index}`}
-              className="text-sm text-gray-700 cursor-pointer"
+              className="text-sm text-muted-foreground cursor-pointer"
             >
               Superset
             </label>
@@ -82,7 +82,7 @@ export function SelectedGroupComponent({
               e.stopPropagation();
               onRemove();
             }}
-            className="text-red-500 hover:text-red-700 text-lg leading-none cursor-pointer"
+            className="text-destructive hover:text-destructive text-lg leading-none cursor-pointer"
             aria-label="Remove group"
           >
             ×
@@ -131,9 +131,9 @@ export function SelectedGroupComponent({
 
       <div
         className={cn(
-          'w-full p-3 border-2 border-dashed rounded text-center text-sm transition-all duration-200',
-          'border-gray-300 hover:border-blue-400 hover:bg-blue-50/50 text-gray-600 hover:text-blue-600',
-          isOver && 'border-blue-500 bg-blue-100',
+          'w-full p-3 border-2 border-dashed rounded-[var(--radius-md)] text-center text-sm transition-all duration-200',
+          'border-border hover:border-primary/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground',
+          isOver && 'border-primary/50 bg-muted/50',
         )}
         role="button"
         aria-label="Add exercises to group"

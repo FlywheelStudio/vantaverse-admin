@@ -99,28 +99,28 @@ function DraggableWeekButton({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all min-w-[100px] h-9 px-4 py-2 select-none touch-none',
+        'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-pill)] text-sm font-medium transition-all min-w-[108px] h-10 px-4 select-none touch-none',
         isDisabled
-          ? 'opacity-70 cursor-not-allowed border-red-400 bg-red-50/50 text-red-500'
+          ? 'opacity-70 cursor-not-allowed border border-destructive/40 bg-destructive/5 text-destructive'
           : isDragging
-            ? 'cursor-grabbing border bg-background shadow-xs'
+            ? 'cursor-grabbing border border-border bg-background shadow-[var(--shadow-sm)]'
             : 'cursor-pointer active:cursor-grabbing',
         !isDisabled && !isDragging && isCurrent
-          ? 'bg-[#2454FF] hover:bg-[#1E3FCC] text-white border-none'
+          ? 'bg-primary text-primary-foreground shadow-[var(--shadow-md)]'
           : !isDisabled
-            ? 'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50'
+            ? 'border border-border bg-background shadow-[var(--shadow-sm)] hover:bg-muted/60 hover:text-foreground'
             : '',
       )}
     >
-      <div className="relative overflow-hidden h-9 flex items-start">
+      <div className="relative overflow-hidden h-10 flex items-start">
         <div
           className={cn(
             'flex flex-col transition-transform duration-300 ease-in-out',
-            isAnimating ? '-translate-y-[2.25rem]' : 'translate-y-0',
+            isAnimating ? '-translate-y-10' : 'translate-y-0',
           )}
         >
-          <div className="h-9 flex items-center">Week {week.number}</div>
-          <div className="h-9 flex items-center">
+          <div className="h-10 flex items-center">Week {week.number}</div>
+          <div className="h-10 flex items-center">
             {animationType === 'copy' && 'Copied!'}
             {animationType === 'paste' && 'Pasted!'}
           </div>
