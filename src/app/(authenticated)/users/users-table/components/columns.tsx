@@ -289,6 +289,7 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
         toast.error(failed?.error || 'Failed to send invitation');
       }
     } catch (error) {
+      console.error('Error sending invitation:', error);
       toast.error('Failed to send invitation');
     } finally {
       setSending(false);
