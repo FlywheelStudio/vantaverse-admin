@@ -1,7 +1,7 @@
 import { PageWrapper } from '@/components/page-wrapper';
-import { BuilderContextProvider } from '@/context/builder-context';
 import { ProgramBuilder } from './program/builder';
 import { getProgramAssignmentsPaginated } from './actions';
+import { BuilderContextProvider } from '@/context/builder-context';
 
 export default async function BuilderPage() {
   const pageSize = 21;
@@ -20,7 +20,7 @@ export default async function BuilderPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
       }
     >
-      <BuilderContextProvider>
+      <BuilderContextProvider initialAssignment={null} initialSchedule={null}>
         <ProgramBuilder initialData={initialData} />
       </BuilderContextProvider>
     </PageWrapper>

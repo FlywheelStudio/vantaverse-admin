@@ -242,34 +242,61 @@ function toActionResult<T>(
 }
 
 /**
- * Configuration for a query in the parallel query builder
+ * Base query configuration without dependencies
  */
-export type QueryConfig<T> = {
+export type IndependentQueryConfig<T> = {
   query: () => Promise<SupabaseSuccess<T> | SupabaseError>;
   required?: boolean;
   defaultValue?: T;
   statusCode?: number;
+  condition?: boolean;
 };
 
 /**
- * Configuration for a conditional query in the parallel query builder
+ * Query configuration with dependencies on other queries
+ * @template T - The return type of this query
+ * @template TDeps - Record of dependency results keyed by query name
  */
-export type ConditionalQueryConfig<T> = QueryConfig<T> & {
+export type DependentQueryConfig<T, TDeps = Record<string, unknown>> = {
+  query: (deps: TDeps) => Promise<SupabaseSuccess<T> | SupabaseError>;
+  required?: boolean;
+  defaultValue?: T;
+  statusCode?: number;
+  dependsOn: ReadonlyArray<string>;
+  condition?: boolean;
+};
+
+/**
+ * Union type for query configurations (independent or dependent)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type QueryConfig<T, TDeps = any> =
+  | IndependentQueryConfig<T>
+  | DependentQueryConfig<T, TDeps>;
+
+/**
+ * Configuration for a conditional query
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ConditionalQueryConfig<T, TDeps = any> = QueryConfig<T, TDeps> & {
   condition: boolean;
 };
 
 /**
- * Schema type for parallel queries - allows both regular and conditional queries
+ * Schema type for parallel queries
  */
-type QuerySchema = Record<
-  string,
-  QueryConfig<unknown> | ConditionalQueryConfig<unknown>
->;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QuerySchema = Record<string, QueryConfig<any, any>>;
 
 /**
  * Extract the result type from a query config
  */
-type ExtractResultType<T> = T extends QueryConfig<infer U> ? U : never;
+type ExtractResultType<T> = T extends
+  | IndependentQueryConfig<infer U>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | DependentQueryConfig<infer U, any>
+  ? U
+  : never;
 
 /**
  * Extract result types from a query schema
@@ -280,7 +307,7 @@ type QueryResults<T extends QuerySchema> = {
 
 /**
  * Execute multiple queries in parallel with support for conditional queries,
- * required vs optional queries, and automatic error handling.
+ * required vs optional queries, dependency chains, and automatic error handling.
  *
  * @param schema - Object defining queries to execute
  * @returns Promise resolving to type-safe object with query results
@@ -301,6 +328,14 @@ type QueryResults<T extends QuerySchema> = {
  *     query: () => orgQuery.getById(id),
  *     required: true, // Will call resolveActionResult if fails
  *   },
+ *   assignment: {
+ *     query: (deps) => {
+ *       // deps.template and deps.schedule available here
+ *       return assignmentQuery.update(deps.template.id, deps.schedule.id);
+ *     },
+ *     dependsOn: ['template', 'schedule'],
+ *     required: false,
+ *   },
  * });
  * ```
  */
@@ -310,43 +345,149 @@ export async function createParallelQueries<T extends QuerySchema>(
   // Filter and prepare queries based on conditions
   const activeQueries = Object.entries(schema)
     .filter(([, def]) => {
-      if ('condition' in def) {
+      if (def.condition !== undefined) {
         return def.condition;
       }
       return true;
     })
-    .map(([key, def]) => ({
-      key,
-      query: def.query,
-      required: def.required ?? false,
-      defaultValue: def.defaultValue,
-      statusCode: def.statusCode,
-    }));
+    .map(([key, def]) => {
+      const dependsOn =
+        'dependsOn' in def && def.dependsOn
+          ? Array.isArray(def.dependsOn)
+            ? (def.dependsOn as readonly string[]).slice()
+            : []
+          : [];
 
-  // Execute all queries in parallel
-  const results = await Promise.all(
-    activeQueries.map(async ({ key, query, required, defaultValue, statusCode }) => {
-      const result = await query();
-      const actionResult = toActionResult(result, statusCode);
+      return {
+        key,
+        query: def.query,
+        required: def.required ?? false,
+        defaultValue: def.defaultValue,
+        statusCode: def.statusCode,
+        dependsOn,
+      };
+    });
 
-      return { key, result: actionResult, required, defaultValue };
-    }),
-  );
-
-  // Process results and handle errors
-  const output = {} as QueryResults<T>;
-
-  for (const { key, result, required, defaultValue } of results) {
-    if (required && !result.success) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to execute required query:', key, result);
+  // Validate dependencies exist
+  const queryKeys = new Set(activeQueries.map((q) => q.key));
+  for (const query of activeQueries) {
+    for (const dep of query.dependsOn) {
+      if (!queryKeys.has(dep)) {
+        throw new Error(
+          `Query "${query.key}" depends on "${dep}" which is not in the schema`,
+        );
       }
-      resolveActionResult(result);
+    }
+  }
+
+  // Detect circular dependencies
+  const visited = new Set<string>();
+  const recStack = new Set<string>();
+
+  function hasCycle(key: string): boolean {
+    if (recStack.has(key)) {
+      return true;
+    }
+    if (visited.has(key)) {
+      return false;
     }
 
-    output[key as keyof T] = (result.success
-      ? result.data
-      : defaultValue ?? null) as ExtractResultType<T[typeof key]>;
+    visited.add(key);
+    recStack.add(key);
+
+    const query = activeQueries.find((q) => q.key === key);
+    if (query) {
+      for (const dep of query.dependsOn) {
+        if (hasCycle(dep)) {
+          return true;
+        }
+      }
+    }
+
+    recStack.delete(key);
+    return false;
+  }
+
+  for (const query of activeQueries) {
+    if (hasCycle(query.key)) {
+      throw new Error(
+        `Circular dependency detected involving query "${query.key}"`,
+      );
+    }
+  }
+
+  // Group queries by dependency level (topological sort)
+  const levels: (typeof activeQueries)[] = [];
+  const scheduled = new Set<string>();
+  const remaining = new Set(activeQueries.map((q) => q.key));
+
+  while (remaining.size > 0) {
+    const currentLevel: typeof activeQueries = [];
+
+    for (const query of activeQueries) {
+      if (!remaining.has(query.key)) continue;
+
+      // Check if all dependencies are satisfied
+      const allDepsSatisfied = query.dependsOn.every((dep) =>
+        scheduled.has(dep),
+      );
+
+      if (allDepsSatisfied) {
+        currentLevel.push(query);
+        remaining.delete(query.key);
+      }
+    }
+
+    if (currentLevel.length === 0) {
+      // Debug information
+      const remainingQueries = Array.from(remaining);
+      const debugInfo = remainingQueries
+        .map((key) => {
+          const query = activeQueries.find((q) => q.key === key);
+          return `"${key}" depends on [${query?.dependsOn.join(', ')}]`;
+        })
+        .join(', ');
+
+      throw new Error(
+        `Cannot resolve dependencies - possible circular dependency. Remaining: ${debugInfo}. Scheduled: ${Array.from(scheduled).join(', ')}`,
+      );
+    }
+
+    // Mark all queries in current level as scheduled AFTER building the level
+    for (const query of currentLevel) {
+      scheduled.add(query.key);
+    }
+
+    levels.push(currentLevel);
+  }
+
+  // Execute queries level by level
+  const output = {} as QueryResults<T>;
+
+  for (const level of levels) {
+    // Execute all queries in this level in parallel
+    const results = await Promise.all(
+      level.map(async ({ key, query, required, defaultValue, statusCode }) => {
+        const result = await query(output as Record<string, unknown>);
+        const actionResult = toActionResult(result, statusCode);
+
+        return { key, result: actionResult, required, defaultValue };
+      }),
+    );
+
+    // Process results and handle errors
+    for (const { key, result, required, defaultValue } of results) {
+      if (required && !result.success) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to execute required query:', key, result);
+        }
+        resolveActionResult(result);
+      }
+
+      output[key as keyof T] = (
+        result.success ? result.data : (defaultValue ?? null)
+      ) as ExtractResultType<T[typeof key]>;
+    }
   }
 
   return output;

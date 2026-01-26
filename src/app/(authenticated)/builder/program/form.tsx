@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import {
   programTemplateFormSchema,
   type ProgramTemplateFormData,
@@ -26,6 +27,7 @@ interface CreateTemplateFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   initialData?: ProgramTemplate | null;
+  initialAssignment?: ProgramAssignmentWithTemplate | null;
   showDates?: boolean;
   hideActions?: boolean;
   formMethods?: UseFormReturn<ProgramTemplateFormData>;
@@ -35,6 +37,7 @@ export function CreateTemplateForm({
   onSuccess,
   onCancel,
   initialData,
+  initialAssignment,
   showDates = true,
   hideActions = false,
   formMethods,
@@ -71,6 +74,7 @@ export function CreateTemplateForm({
   const { startDate, dateRange, handleDateSelect } =
     useProgramFormDates({
       initialData,
+      initialAssignment,
       form,
       loadedDatesForTemplateIdRef,
     });

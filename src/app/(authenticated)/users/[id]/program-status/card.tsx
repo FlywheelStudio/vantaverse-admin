@@ -248,7 +248,7 @@ export function ProgramStatusCard({
             <span className="text-sm font-medium text-muted-foreground">Program Name:</span>
             {template?.id ? (
               <Link
-                href={`/builder/${template.id}`}
+                href={`/builder/${assignment.id}?from=/users/${userId}`}
                 className="text-sm font-semibold text-primary hover:underline transition-colors duration-200"
               >
                 {template.name}
@@ -272,6 +272,7 @@ export function ProgramStatusCard({
         {schedule && schedule.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground mb-3">Workout Schedule</h3>
+            <div className="max-h-[300px] overflow-y-auto slim-scrollbar space-y-2">
             {schedule.map((week, weekIndex) => (
               <ProgramStatusWeekCard
                 key={weekIndex}
@@ -285,6 +286,7 @@ export function ProgramStatusCard({
                 groupsMap={groupsMap}
               />
             ))}
+            </div>
           </div>
         )}
 

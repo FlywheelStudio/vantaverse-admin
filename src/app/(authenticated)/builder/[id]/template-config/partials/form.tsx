@@ -91,7 +91,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Input
               {...field}
-              className="flex-[3] min-w-0 h-10 text-xs"
+              className="flex-3 min-w-0 h-10 text-xs"
               min="0"
               step="0.1"
               placeholder={

@@ -30,22 +30,32 @@ type Result<T> = SupabaseSuccess<T> | SupabaseError;
 
 ## Configuration Types
 
-### QueryConfig<T>
+### IndependentQueryConfig<T>
+For queries without dependencies:
 ```typescript
 {
   query: () => Promise<Result<T>>;
   required?: boolean;        // Default: false - calls resolveActionResult() if fails
   defaultValue?: T;          // Fallback value if query fails
   statusCode?: number;        // Custom status code for error (default: 500)
+  condition?: boolean;        // If false, query is skipped entirely
 }
 ```
 
-### ConditionalQueryConfig<T>
+### DependentQueryConfig<T, TDeps>
+For queries that depend on other queries (with type-safe dependencies):
 ```typescript
-QueryConfig<T> & {
-  condition: boolean;         // If false, query is skipped entirely
+{
+  query: (deps: TDeps) => Promise<Result<T>>;
+  required?: boolean;
+  defaultValue?: T;
+  statusCode?: number;
+  dependsOn: ReadonlyArray<string>;  // Keys of queries this depends on
+  condition?: boolean;
 }
 ```
+
+**Note:** For dependent queries, explicitly type the `deps` parameter with the expected dependency types for full type safety.
 
 ## Quick Start
 

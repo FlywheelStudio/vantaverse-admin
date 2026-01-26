@@ -1,27 +1,34 @@
 import { PageWrapper } from '@/components/page-wrapper';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { WorkoutBuilder } from './workout-schedule/workout-builder';
-import { createParallelQueries } from '@/lib/supabase/query';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
-import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
-import type { WorkoutScheduleData } from '@/hooks/use-workout-schedule';
+import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
+import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 
 export default async function BuilderIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const programAssignmentsQuery = new ProgramAssignmentsQuery();
-  const workoutSchedulesQuery = new WorkoutSchedulesQuery();
+  const result = await programAssignmentsQuery.getById(id);
 
-  const data = await createParallelQueries({
-    programAssignment: {
-      query: () => programAssignmentsQuery.getById(id),
-      required: true,
-    },
-    workoutScheduleData: {
-      query: () => workoutSchedulesQuery.getScheduleDataByAssignmentId(id),
-      defaultValue: null,
-    },
-  });
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to load program assignment');
+  }
+
+  const programAssignment = result.data;
+
+  // Convert schedule server-side
+  const dbSchedule = programAssignment?.workout_schedule?.schedule;
+  let convertedSchedule: SelectedItem[][][] | null = null;
+  
+  if (dbSchedule) {
+    const conversionResult = await convertScheduleToSelectedItems(dbSchedule);
+    if (conversionResult.success) {
+      convertedSchedule = conversionResult.data as SelectedItem[][][];
+    } else {
+      console.error('Failed to convert schedule:', conversionResult.error);
+    }
+  }
 
   return (
     <PageWrapper
@@ -29,10 +36,13 @@ export default async function BuilderIdPage({ params }: { params: Promise<{ id: 
           <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
       }
     >
-      <BuilderContextProvider initialWorkoutSchedule={data.workoutScheduleData as WorkoutScheduleData | null}>
+      <BuilderContextProvider
+        initialAssignment={programAssignment}
+        initialSchedule={convertedSchedule}
+      >
         <WorkoutBuilder 
           assignmentId={id} 
-          initialAssignment={data.programAssignment}
+          initialAssignment={programAssignment}
         />
       </BuilderContextProvider>
     </PageWrapper>

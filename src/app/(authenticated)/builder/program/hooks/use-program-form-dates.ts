@@ -5,7 +5,6 @@ import { UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { startOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { useBuilder } from '@/context/builder-context';
-import { useProgramAssignments } from '@/hooks/use-passignments';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { formatDateForDB, calculateEndDate } from '@/lib/utils';
@@ -13,6 +12,7 @@ import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/prog
 
 interface UseProgramFormDatesProps {
   initialData?: ProgramTemplate | null;
+  initialAssignment?: ProgramAssignmentWithTemplate | null;
   form: {
     watch: UseFormWatch<ProgramTemplateFormData>;
     setValue: UseFormSetValue<ProgramTemplateFormData>;
@@ -22,44 +22,49 @@ interface UseProgramFormDatesProps {
 
 export function useProgramFormDates({
   initialData,
+  initialAssignment,
   form,
   loadedDatesForTemplateIdRef,
 }: UseProgramFormDatesProps) {
   const { setProgramStartDate } = useBuilder();
-  const { assignments } = useProgramAssignments();
   const { watch, setValue } = form;
   const weeks = watch('weeks');
   const startDate = watch('startDate');
   const endDate = watch('endDate');
 
-  // Load assignment dates when assignments become available
+  // Load dates from initialAssignment if provided
   useEffect(() => {
     if (
-      initialData &&
-      assignments &&
-      assignments.length > 0 &&
-      loadedDatesForTemplateIdRef.current !== initialData.id
+      !initialAssignment ||
+      loadedDatesForTemplateIdRef.current === initialAssignment.id
     ) {
-      const assignment = assignments.find(
-        (a: ProgramAssignmentWithTemplate) =>
-          a.program_template?.id === initialData.id,
-      );
-      if (assignment?.start_date) {
-        const start = new Date(assignment.start_date);
-        const end = assignment.end_date
-          ? new Date(assignment.end_date)
-          : calculateEndDate(start, initialData.weeks || 4);
-        if (end) {
-          const normalizedStart = startOfDay(start);
-          const normalizedEnd = startOfDay(end);
-          setValue('startDate', normalizedStart);
-          setValue('endDate', normalizedEnd);
-          setProgramStartDate(formatDateForDB(normalizedStart));
-          loadedDatesForTemplateIdRef.current = initialData.id;
-        }
+      return;
+    }
+
+    if (initialAssignment.start_date) {
+      const start = new Date(initialAssignment.start_date);
+      const end = initialAssignment.end_date
+        ? new Date(initialAssignment.end_date)
+        : calculateEndDate(
+            start,
+            initialAssignment.program_template?.weeks || 4,
+          );
+
+      if (end) {
+        const normalizedStart = startOfDay(start);
+        const normalizedEnd = startOfDay(end);
+        setValue('startDate', normalizedStart);
+        setValue('endDate', normalizedEnd);
+        setProgramStartDate(formatDateForDB(normalizedStart));
+        loadedDatesForTemplateIdRef.current = initialAssignment.id;
       }
     }
-  }, [initialData, assignments, setValue, setProgramStartDate, loadedDatesForTemplateIdRef]);
+  }, [
+    initialAssignment,
+    setValue,
+    setProgramStartDate,
+    loadedDatesForTemplateIdRef,
+  ]);
 
   // Update end date when start date or weeks change
   useEffect(() => {
@@ -106,7 +111,7 @@ export function useProgramFormDates({
     // Handle date selection
     if (range?.from) {
       const normalizedFrom = startOfDay(range.from);
-      
+
       // If weeks > 0, automatically extend to show full range
       if (weeks >= 1) {
         const calculatedEndDate = calculateEndDate(normalizedFrom, weeks);

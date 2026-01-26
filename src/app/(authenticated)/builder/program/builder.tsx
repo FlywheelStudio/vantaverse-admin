@@ -211,8 +211,8 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
             />
           )}
 
-          <Card className="gap-6 overflow-hidden flex flex-col min-h-full">
-            <div className="flex-1 flex flex-col p-5 sm:p-6">
+          <Card className="gap-6 flex flex-col">
+            <div className="flex flex-col p-5 sm:p-6">
               {/* Header with Create Button */}
               {/* Filters */}
               <div className="mb-6 flex gap-3 flex-wrap items-center">
@@ -267,7 +267,6 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  className="flex-1"
                 >
                   {assignments.length === 0 && !isLoading ? (
                     <div className="flex items-center justify-center py-12">

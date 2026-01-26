@@ -43,10 +43,37 @@ export function getDayDate(
   weekIndex: number,
   dayIndex: number,
 ): Date {
-  const start = startDate ? new Date(startDate) : new Date();
-  const dayOffset = weekIndex * 7 + dayIndex;
-  const dayDate = new Date(start);
-  dayDate.setDate(start.getDate() + dayOffset);
+  // Parse YYYY-MM-DD format to local date (avoiding timezone issues)
+  const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  };
+
+  // If no start date, use today
+  if (!startDate) {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - mondayOffset);
+    const dayDate = new Date(monday);
+    dayDate.setDate(monday.getDate() + weekIndex * 7 + dayIndex);
+    return dayDate;
+  }
+
+  // Get the Monday of the week containing the start date
+  const start = parseLocalDate(startDate);
+  // getDay() returns 0=Sunday, 1=Monday, ..., 6=Saturday
+  // Convert to 0=Monday, 1=Tuesday, ..., 6=Sunday
+  const dayOfWeek = start.getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(start);
+  monday.setDate(start.getDate() - mondayOffset);
+
+  // Calculate the actual date for the specific week and day
+  // dayIndex: 0=Monday, 1=Tuesday, ..., 6=Sunday
+  const dayDate = new Date(monday);
+  dayDate.setDate(monday.getDate() + weekIndex * 7 + dayIndex);
   return dayDate;
 }
 
