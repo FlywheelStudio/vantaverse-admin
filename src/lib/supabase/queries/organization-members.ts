@@ -25,6 +25,7 @@ export class OrganizationMembers extends SupabaseQuery {
       .eq('profiles.email', email)
       .eq('role', 'admin')
       .eq('is_active', true)
+      .limit(1)
       .maybeSingle();
 
     if (error) {
