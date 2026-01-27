@@ -2,19 +2,11 @@
 
 import * as React from 'react';
 import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
-import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assign-group-modal';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
@@ -26,7 +18,6 @@ interface UserProfileCardProps {
   email: string;
   avatarUrl?: string | null;
   role?: MemberRole;
-  organizations?: Array<{ id: string; name: string }>;
 }
 
 export function UserProfileCard({
@@ -37,16 +28,13 @@ export function UserProfileCard({
   email,
   avatarUrl: initialAvatarUrl,
   role = 'patient',
-  organizations,
 }: UserProfileCardProps) {
-  const router = useRouter();
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [description, setDescription] = useState(initialDescription ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<
@@ -122,27 +110,6 @@ export function UserProfileCard({
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-      case 'super_admin':
-        return 'destructive';
-      default:
-        return 'default';
-    }
-  };
-
-  const getDisplayRole = (role: MemberRole | undefined): string => {
-    if (!role) return 'member';
-    switch (role) {
-      case 'patient':
-        return 'member';
-      case 'admin':
-        return 'physician';
-      default:
-        return role;
-    }
-  };
 
   const fieldValueMap = {
     firstName,
@@ -348,56 +315,6 @@ export function UserProfileCard({
               >
                 {lastName || 'User'}
               </span>
-            )}
-            <Badge
-              variant={getRoleBadgeVariant(role)}
-              className="text-xs font-semibold px-3 py-1 capitalize"
-            >
-              {getDisplayRole(role)}
-            </Badge>
-            {role === 'patient' && (
-              <>
-                {organizations && organizations.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      router.push(
-                        `/groups/${organizations[0].id}?from=users`,
-                      )
-                    }
-                    className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                  >
-                    {organizations.length > 2
-                      ? `${organizations.slice(0, 2).map((o) => o.name).join(', ')}, ...`
-                      : organizations.map((o) => o.name).join(', ')}
-                  </button>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setAssignModalOpen(true)}
-                        className="inline-flex items-center rounded-full border border-input bg-background px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                      >
-                        Assign group
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Click to assign group</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                <AssignGroupModal
-                  open={assignModalOpen}
-                  onOpenChange={setAssignModalOpen}
-                  userId={userId}
-                  onAssignSuccess={() => {
-                    router.refresh();
-                  }}
-                  userFirstName={firstName || null}
-                  userLastName={lastName || null}
-                />
-              </>
             )}
           </div>
           <p className="text-muted-foreground mb-3 text-sm cursor-default">

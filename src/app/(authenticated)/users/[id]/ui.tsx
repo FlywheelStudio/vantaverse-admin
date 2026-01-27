@@ -136,7 +136,6 @@ export function UserProfilePageUI({
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}
-            organizations={organizations}
           />
         </div>
 
