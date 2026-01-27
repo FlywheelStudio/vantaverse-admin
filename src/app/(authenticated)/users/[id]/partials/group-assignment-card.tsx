@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  ChevronDown,
   ChevronUp,
   Building2,
   CheckCircle2,
