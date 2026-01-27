@@ -22,13 +22,11 @@ import { Button } from '@/components/ui/button';
 
 interface AppointmentCardProps {
   title: string;
-  color: string;
   appointments: Appointment[];
 }
 
 export function AppointmentCard({
   title,
-  color,
   appointments,
 }: AppointmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -64,27 +62,27 @@ export function AppointmentCard({
     if (status === 'scheduled') {
       // Clock color variants based on oklch(87.56% 0.0629 227.95)
       return {
-        border: 'oklch(0.85_0.08_227.95)',
-        text: 'oklch(0.45_0.12_227.95)',
-        bg: 'oklch(0.96_0.04_227.95)',
-        icon: 'oklch(0.8756_0.0629_227.95)',
+        border: 'oklch(0.85 0.08 227.95)',
+        text: 'oklch(0.45 0.12 227.95)',
+        bg: 'oklch(0.96 0.04 227.95)',
+        icon: 'oklch(0.8756 0.0629 227.95)',
       };
     }
     if (status === 'attended') {
       // Green variants
       return {
-        border: 'oklch(0.87_0.1_155)',
-        text: 'oklch(0.32_0.12_155)',
-        bg: 'oklch(0.94_0.04_155)',
-        icon: 'oklch(0.55_0.18_155)',
+        border: 'oklch(0.87 0.05 155)',
+        text: 'oklch(0.32 0.05 155)',
+        bg: 'oklch(0.94 0.04 155)',
+        icon: 'oklch(0.55 0.05 155)',
       };
     }
     // Default/muted
     return {
-      border: 'oklch(0.9_0.01_0)',
-      text: 'oklch(0.5_0.01_0)',
-      bg: 'oklch(0.96_0.01_0)',
-      icon: 'oklch(0.6_0.01_0)',
+      border: 'oklch(0.9 0.01 0)',
+      text: 'oklch(0.5 0.01 0)',
+      bg: 'oklch(0.96 0.01 0)',
+      icon: 'oklch(0.6 0.01 0)',
     };
   };
 
@@ -106,16 +104,16 @@ export function AppointmentCard({
   const getStatusBadgeStyle = (statusStr: string) => {
     if (statusStr === 'scheduled') {
       return {
-        borderColor: 'oklch(0.85_0.08_227.95)',
-        backgroundColor: 'oklch(0.96_0.04_227.95)',
-        color: 'oklch(0.45_0.12_227.95)',
+        borderColor: 'oklch(0.85 0.08 227.95)',
+        backgroundColor: 'oklch(0.96 0.04 227.95)',
+        color: 'oklch(0.45 0.12 227.95)',
       };
     }
     if (statusStr === 'attended') {
       return {
-        borderColor: 'oklch(0.87_0.1_155)',
-        backgroundColor: 'oklch(0.94_0.04_155)',
-        color: 'oklch(0.32_0.12_155)',
+        borderColor: 'oklch(0.87 0.05 155)',
+        backgroundColor: 'oklch(0.94 0.04 155)',
+        color: 'oklch(0.32 0.05 155)',
       };
     }
     return {};
@@ -179,13 +177,13 @@ export function AppointmentCard({
     if (isMeeting) {
       return (
         <div className="flex items-center gap-2 min-w-0">
-          <Video className="h-4 w-4" style={{ color }} />
+          <Video className="h-4 w-4" style={{ color: colorScheme.text }} />
           <a
             href={locationValue}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm hover:underline truncate min-w-0"
-            style={{ color }}
+            style={{ color: colorScheme.text }}
             onClick={(e) => e.stopPropagation()}
           >
             Meeting Link
@@ -225,18 +223,13 @@ export function AppointmentCard({
         !isExpanded && 'min-h-0',
       )}
       style={{ 
-        borderColor: status === 'scheduled' || status === 'attended' 
-          ? colorScheme.border
-          : color,
-        backgroundColor: status === 'scheduled' || status === 'attended' 
-          ? colorScheme.bg
-          : undefined,
+        borderColor: colorScheme.border,
+        backgroundColor: colorScheme.bg,
       }}
     >
       {/* Card Header */}
       <div
-        className={status === 'scheduled' || status === 'attended' ? '' : 'bg-muted/10'}
-        style={status === 'scheduled' || status === 'attended' ? { backgroundColor: colorScheme.bg } : undefined}
+        style={{ backgroundColor: colorScheme.bg }}
         onClick={() => !isDisabled && setIsExpanded(!isExpanded)}
       >
         {/* Title and Badge Section */}
@@ -259,7 +252,7 @@ export function AppointmentCard({
                 ) : (
                   <div
                     className="shrink-0 w-3 h-3 rounded-full"
-                    style={{ backgroundColor: color }}
+                    style={{ backgroundColor: colorScheme.icon }}
                   />
                 )}
                 <div className="w-[2px] h-4 bg-gray-300 mt-1" />
@@ -267,11 +260,7 @@ export function AppointmentCard({
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <h3 
                   className="font-semibold text-foreground text-base truncate"
-                  style={{ 
-                    color: status === 'scheduled' || status === 'attended' 
-                      ? colorScheme.text
-                      : undefined
-                  }}
+                  style={{ color: colorScheme.text }}
                 >
                   {title}
                 </h3>
@@ -288,11 +277,7 @@ export function AppointmentCard({
               <button className="shrink-0">
                 <ChevronUp 
                   className="h-5 w-5" 
-                  style={{ 
-                    color: status === 'scheduled' || status === 'attended' 
-                      ? colorScheme.icon
-                      : color
-                  }} 
+                  style={{ color: colorScheme.icon }} 
                 />
               </button>
             )}
@@ -324,7 +309,7 @@ export function AppointmentCard({
         {isExpanded && !isDisabled && (
           <motion.div
             className="overflow-hidden p-5"
-            style={{ backgroundColor: status === 'scheduled' || status === 'attended' ? colorScheme.bg : undefined }}
+            style={{ backgroundColor: colorScheme.bg }}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -429,8 +414,8 @@ export function AppointmentCard({
                       size="sm"
                       className="flex-1 min-w-0 rounded-[var(--radius-pill)] bg-transparent cursor-pointer hover:bg-muted/40"
                       style={{
-                        color: color,
-                        borderColor: color,
+                        color: colorScheme.text,
+                        borderColor: colorScheme.border,
                       }}
                       onClick={(e) => {
                         e.stopPropagation();

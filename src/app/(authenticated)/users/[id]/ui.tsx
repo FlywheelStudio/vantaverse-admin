@@ -142,22 +142,20 @@ export function UserProfilePageUI({
         {/* Cards Section - Only show for members, hide for physicians */}
         {isMember && (
           <CardContent className="p-8">
-            <div className="grid grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-3 gap-6 items-stretch">
               {/* Left Column: Program Onboarding Progress (2/3 width) */}
-              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6">
+              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
                 <h2 className="text-xl font-semibold text-foreground mb-4">
                   Program Onboarding Progress
                 </h2>
                 <div className="space-y-4">
                   <AppointmentCard
                     title="1. Screening"
-                    color="oklch(0.507 0.211 262.705)"
                     appointments={screeningAppointments}
                   />
                   <McIntakeCard survey={mcIntakeSurvey} />
                   <AppointmentCard
                     title="3. Virtual Consultation"
-                    color="oklch(0.66 0.17 155)"
                     appointments={consultationAppointments}
                   />
                   <GroupAssignmentCard
@@ -166,13 +164,22 @@ export function UserProfilePageUI({
                     userFirstName={user.first_name}
                     userLastName={user.last_name}
                   />
-                  <PhysicianAssignmentCard physiologist={primaryPhysiologist} />
-                  <ProgramAssignmentCard assignment={programAssignment} />
+                  <PhysicianAssignmentCard
+                    physiologist={primaryPhysiologist}
+                    organizations={organizations}
+                  />
+                  <ProgramAssignmentCard
+                    assignment={programAssignment}
+                    organizations={organizations}
+                    userId={user.id}
+                    userFirstName={user.first_name}
+                    userLastName={user.last_name}
+                  />
                 </div>
               </div>
 
               {/* Right Column: VantaThrive Insights (1/3 width) */}
-              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4 py-6">
+              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
                 <h2 className="text-xl font-semibold text-foreground mb-4">
                   VantaThrive Insights
                 </h2>

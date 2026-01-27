@@ -76,18 +76,18 @@ export function GroupAssignmentCard({
     if (hasGroups) {
       // Green variants (assigned)
       return {
-        border: 'oklch(0.87_0.1_155)',
-        text: 'oklch(0.32_0.12_155)',
-        bg: 'oklch(0.94_0.04_155)',
-        icon: 'oklch(0.55_0.18_155)',
+        border: 'oklch(0.87 0.1 155)',
+        text: 'oklch(0.32 0.05 155)',
+        bg: 'oklch(0.94 0.04 155)',
+        icon: 'oklch(0.55 0.05 155)',
       };
     }
     // Default/muted (unassigned)
     return {
-      border: 'oklch(0.9_0.01_0)',
-      text: 'oklch(0.5_0.01_0)',
-      bg: 'oklch(0.96_0.01_0)',
-      icon: 'oklch(0.6_0.01_0)',
+      border: 'oklch(0.9 0.01 0)',
+      text: 'oklch(0.5 0.01 0)',
+      bg: 'oklch(0.96 0.01 0)',
+      icon: 'oklch(0.6 0.01 0)',
     };
   };
 

@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  ChevronDown,
   ChevronUp,
   Calendar,
   CheckCircle2,
   TrendingUp,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,18 +19,60 @@ import {
   calculateOverallCompletion,
   getProgressColor,
 } from '../program-status/card-utils';
+import { AssignProgramModal } from './assign-program-modal';
 
 interface ProgramAssignmentCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
+  organizations?: Array<{ id: string; name: string; description: string | null }>;
+  userId: string;
+  userFirstName?: string | null;
+  userLastName?: string | null;
 }
 
 export function ProgramAssignmentCard({
   assignment,
+  organizations,
+  userId,
+  userFirstName,
+  userLastName,
 }: ProgramAssignmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const router = useRouter();
+  const wasModalOpenRef = useRef(false);
+
+  // Refresh data when modal closes after being open (indicating a successful save)
+  useEffect(() => {
+    if (wasModalOpenRef.current && !modalOpen) {
+      router.refresh();
+    }
+    wasModalOpenRef.current = modalOpen;
+  }, [modalOpen, router]);
 
   const hasAssignment = assignment !== null;
-  const color = 'var(--color-primary)';
+  const hasOrganizations = organizations && organizations.length > 0;
+
+  // Color scheme based on assigned status
+  const getColorScheme = () => {
+    if (hasAssignment) {
+      // Green variants (assigned)
+      return {
+        border: 'oklch(0.87 0.05 155)',
+        text: 'oklch(0.32 0.05 155)',
+        bg: 'oklch(0.94 0.04 155)',
+        icon: 'oklch(0.55 0.05 155)',
+      };
+    }
+    // Default/muted (unassigned)
+    return {
+      border: 'oklch(0.9 0.01 0)',
+      text: 'oklch(0.5 0.01 0)',
+      bg: 'oklch(0.96 0.01 0)',
+      icon: 'oklch(0.6 0.01 0)',
+    };
+  };
+
+  const colorScheme = getColorScheme();
 
   const getStatusLabel = () => {
     if (hasAssignment) return 'Assigned';
@@ -38,9 +81,31 @@ export function ProgramAssignmentCard({
 
   const statusBadgeClass = () => {
     if (hasAssignment) {
-      return 'bg-[oklch(0.94_0.04_155)] text-[oklch(0.32_0.12_155)] border-[oklch(0.87_0.1_155)]';
+      return 'border font-semibold';
     }
     return 'border-border bg-muted/30 text-muted-foreground';
+  };
+
+  const getStatusBadgeStyle = () => {
+    if (hasAssignment) {
+      return {
+        borderColor: colorScheme.border,
+        backgroundColor: colorScheme.bg,
+        color: colorScheme.text,
+      };
+    }
+    return {};
+  };
+
+  const handleCardClick = () => {
+    if (hasOrganizations && !hasAssignment) {
+      // Open modal to assign program
+      setModalOpen(true);
+    } else if (hasOrganizations && hasAssignment) {
+      // Toggle expand/collapse
+      setIsExpanded(!isExpanded);
+    }
+    // If !hasOrganizations, do nothing (disabled)
   };
 
   const template = assignment?.program_template;
@@ -60,192 +125,233 @@ export function ProgramAssignmentCard({
   };
 
   return (
-    <Card
-      className={cn(
-        'gap-0 border transition-all duration-300 overflow-hidden',
-        !hasAssignment
-          ? 'opacity-50 pointer-events-none shadow-none'
-          : 'hover:shadow-[var(--shadow-lg)]',
-      )}
-      style={{ borderColor: color, minHeight: '166px' }}
-    >
-      {/* Card Header */}
-      <div
-        className="bg-muted/10"
-        onClick={() => hasAssignment && setIsExpanded(!isExpanded)}
+    <>
+      <Card
+        className={cn(
+          'gap-0 border transition-all duration-300 overflow-hidden',
+          !hasOrganizations && 'min-h-0',
+          hasAssignment && 'hover:shadow-[var(--shadow-lg)]',
+        )}
+        style={{
+          borderColor: colorScheme.border,
+          backgroundColor: colorScheme.bg,
+        }}
       >
-        {/* Title and Badge Section */}
+        {/* Card Header */}
         <div
-          className={cn('p-4 border-b-2', hasAssignment && 'cursor-pointer')}
-          style={{ borderColor: color }}
+          style={{ backgroundColor: colorScheme.bg }}
+          onClick={handleCardClick}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="shrink-0 w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <h3 className="font-semibold text-foreground text-lg truncate">
-                6. Program Assignment
-              </h3>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                variant="outline"
-                className={cn('font-semibold border', statusBadgeClass())}
-              >
-                {getStatusLabel()}
-              </Badge>
-              {hasAssignment && (
-                <button
-                  className={cn(
-                    'transition-transform duration-200',
-                    isExpanded && 'rotate-180',
-                  )}
-                >
-                  {isExpanded ? (
-                    <ChevronUp className="h-5 w-5" style={{ color }} />
+          {/* Title and Badge Section */}
+          <div
+            className={cn(
+              'p-3',
+              (hasOrganizations && hasAssignment) ||
+                (hasOrganizations && !hasAssignment)
+                ? 'cursor-pointer'
+                : '',
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="flex flex-col items-center shrink-0">
+                  {hasAssignment ? (
+                    <Check
+                      className="h-5 w-5"
+                      style={{ color: colorScheme.icon }}
+                    />
                   ) : (
-                    <ChevronDown className="h-5 w-5" style={{ color }} />
+                    <Calendar
+                      className="h-5 w-5"
+                      style={{ color: colorScheme.icon }}
+                    />
                   )}
+                  <div className="w-[2px] h-4 bg-gray-300 mt-1" />
+                </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h3
+                    className="font-semibold text-foreground text-base truncate"
+                    style={{ color: colorScheme.text }}
+                  >
+                    6. Program Assignment
+                  </h3>
+                  {hasAssignment && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'font-semibold border shrink-0',
+                        statusBadgeClass(),
+                      )}
+                      style={getStatusBadgeStyle()}
+                    >
+                      {getStatusLabel()}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {hasAssignment && isExpanded && (
+                <button className="shrink-0">
+                  <ChevronUp
+                    className="h-5 w-5"
+                    style={{ color: colorScheme.icon }}
+                  />
                 </button>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Collapsed Preview */}
-        {!isExpanded && hasAssignment && (
-          <div className="p-5 pt-4 px-2 space-y-2">
-            {template?.name && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" style={{ color }} />
-                <span className="font-semibold text-foreground">
-                  {template.name}
-                </span>
-              </div>
-            )}
-            {assignment.start_date && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                <span>
-                  Started: {formatDate(assignment.start_date)} •{' '}
-                  {overallCompletion}% Complete
-                </span>
-              </div>
-            )}
-            {overallCompletion > 0 && (
-              <Progress
-                value={overallCompletion}
-                className="h-2 mt-2"
-                indicatorColor={getProgressColor(overallCompletion)}
-              />
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Expanded Content */}
-      <AnimatePresence>
-        {isExpanded && hasAssignment && (
-          <motion.div
-            className="bg-card overflow-hidden p-5"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
-            <motion.div
-              className="flex items-center gap-2 mb-3"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.05 }}
-            >
-              <CheckCircle2 className="h-5 w-5 text-[oklch(0.66_0.17_155)]" />
-              <h4 className="font-semibold text-foreground">Program Details</h4>
-            </motion.div>
-
-            <motion.div
-              className="space-y-3"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
-            >
+          {/* Collapsed Preview */}
+          {!isExpanded && hasAssignment && (
+            <div className="px-3 pb-3 space-y-2">
               {template?.name && (
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Program Name:
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" style={{ color: colorScheme.icon }} />
+                  <span className="font-semibold text-foreground">
                     {template.name}
                   </span>
                 </div>
               )}
-
               {assignment.start_date && (
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Started:
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {formatDate(assignment.start_date)}
-                  </span>
-                </div>
-              )}
-
-              {assignment.end_date && (
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    End Date:
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {formatDate(assignment.end_date)}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <TrendingUp className="h-4 w-4" style={{ color: colorScheme.icon }} />
+                  <span>
+                    Started: {formatDate(assignment.start_date)} •{' '}
+                    {overallCompletion}% Complete
                   </span>
                 </div>
               )}
-
-              {totalWeeks > 0 && (
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Duration:
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {totalWeeks} {totalWeeks === 1 ? 'week' : 'weeks'}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Overall Completion:
-                </span>
-                <span className="text-sm font-semibold text-foreground">
-                  {overallCompletion}%
-                </span>
-              </div>
-
               {overallCompletion > 0 && (
-                <div className="space-y-2 pt-2">
-                  <Progress
-                    value={overallCompletion}
-                    className="h-2"
-                    indicatorColor={getProgressColor(overallCompletion)}
-                  />
-                </div>
+                <Progress
+                  value={overallCompletion}
+                  className="h-2 mt-2"
+                  indicatorColor={getProgressColor(overallCompletion)}
+                />
               )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
 
-      {/* Disabled State Content */}
-      {!hasAssignment && (
-        <div className="p-5 text-center">
-          <p className="text-sm text-muted-foreground">
-            No program assigned yet.
-          </p>
+          {!hasOrganizations && (
+            <div className="px-3 pb-3">
+              <p className="text-sm text-muted-foreground italic">
+                No group assigned
+              </p>
+            </div>
+          )}
+
+          {hasOrganizations && !hasAssignment && (
+            <div className="px-3 pb-3">
+              <p className="text-sm text-muted-foreground italic">
+                No program assigned yet. Click to assign.
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* Expanded Content */}
+        <AnimatePresence>
+          {isExpanded && hasAssignment && (
+            <motion.div
+              className="overflow-hidden p-5"
+              style={{ backgroundColor: colorScheme.bg }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              <motion.div
+                className="flex items-center gap-2 mb-3"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: 0.05 }}
+              >
+                <CheckCircle2 className="h-5 w-5 text-[oklch(0.66 0.05 155)]" />
+                <h4 className="font-semibold text-foreground">Program Details</h4>
+              </motion.div>
+
+              <motion.div
+                className="space-y-3"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
+              >
+                {template?.name && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Program Name:
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {template.name}
+                    </span>
+                  </div>
+                )}
+
+                {assignment.start_date && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Started:
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatDate(assignment.start_date)}
+                    </span>
+                  </div>
+                )}
+
+                {assignment.end_date && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      End Date:
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatDate(assignment.end_date)}
+                    </span>
+                  </div>
+                )}
+
+                {totalWeeks > 0 && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Duration:
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {totalWeeks} {totalWeeks === 1 ? 'week' : 'weeks'}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Overall Completion:
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {overallCompletion}%
+                  </span>
+                </div>
+
+                {overallCompletion > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <Progress
+                      value={overallCompletion}
+                      className="h-2"
+                      indicatorColor={getProgressColor(overallCompletion)}
+                    />
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+
+      {hasOrganizations && organizations.length > 0 && (
+        <AssignProgramModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          userId={userId}
+          userFirstName={userFirstName}
+          userLastName={userLastName}
+          onAssignSuccess={() => router.refresh()}
+        />
       )}
-    </Card>
+    </>
   );
 }
