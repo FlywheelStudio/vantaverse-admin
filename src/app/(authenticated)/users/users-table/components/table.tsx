@@ -20,7 +20,7 @@ export function UsersTable({
     string | undefined
   >();
 
-  const { table, searchValue, setSearchValue } = useUsersTable({
+  const { table, searchValue, setSearchValue, rowSelection } = useUsersTable({
     columns,
     data,
     filters,

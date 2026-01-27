@@ -7,6 +7,7 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -27,6 +28,7 @@ export function useUsersTable({
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   // Update name filter when search value changes
   useEffect(() => {
@@ -47,6 +49,8 @@ export function useUsersTable({
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -54,6 +58,7 @@ export function useUsersTable({
     state: {
       sorting,
       columnFilters,
+      rowSelection,
     },
     initialState: {
       pagination: {
@@ -66,5 +71,6 @@ export function useUsersTable({
     table,
     searchValue,
     setSearchValue,
+    rowSelection,
   };
 }
