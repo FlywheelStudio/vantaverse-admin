@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  Medal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatNumber } from '@/lib/utils';
@@ -26,6 +27,10 @@ interface HpCardProps {
     description: string | null;
   }>;
 }
+
+// okLCH purple color palette
+const startPurple = 'oklch(63.41% 0.2528 306.97)';
+const targetPurple = 'oklch(54.62% 0.2318 261.71)';
 
 export function HpCard({
   currentLevel,
@@ -79,52 +84,56 @@ export function HpCard({
       .join(' ');
   };
 
-  const color = 'var(--color-primary)';
+  const color = startPurple;
 
   return (
     <Card
       className={cn(
-        'border border-border gap-2 overflow-hidden',
+        'border border-border gap-2 overflow-hidden relative',
       )}
-      style={{ minHeight: '166px' }}
+      style={{
+        minHeight: '166px',
+        background: `linear-gradient(135deg, ${startPurple} 0%, ${targetPurple} 100%)`,
+      }}
     >
+      {/* Decorative circles */}
+      <div
+        className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: startPurple,
+          transform: 'translate(50%, -50%)',
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: startPurple,
+          transform: 'translate(-50%, 50%)',
+        }}
+      />
+
       {/* Card Header */}
       <div
-        className="bg-muted/10"
         onClick={() => setIsExpanded(!isExpanded)}
+        className="cursor-pointer relative"
       >
+
         {/* Title and Badge Section */}
-        <div
-          className={cn('p-4 border-b-2 cursor-pointer')}
-          style={{ borderColor: color }}
-        >
+        <div className="pt-4 px-4 relative z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="shrink-0 w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <h3 className="font-semibold text-foreground text-lg truncate">Vanta Points</h3>
+              <Medal className="shrink-0 w-5 h-5 text-white" />
+              <h3 className="font-semibold text-white text-lg truncate uppercase">VantaPoints</h3>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {!isExpanded && (
-                <Badge
-                  variant="outline"
-                  className="font-semibold border border-primary/20 bg-primary/10 text-primary"
-                >
-                  Level {level}
-                </Badge>
-              )}
+            <div className="flex gap-2 shrink-0">
               <button
                 className={cn(
                   'transition-transform duration-200',
                   isExpanded && 'rotate-180',
                 )}
               >
-                {isExpanded ? (
-                  <ChevronUp className="h-5 w-5" style={{ color }} />
-                ) : (
-                  <ChevronDown className="h-5 w-5" style={{ color }} />
+                {isExpanded && (
+                  <ChevronUp className="h-5 w-5 text-white" />
                 )}
               </button>
             </div>
@@ -133,17 +142,24 @@ export function HpCard({
 
         {/* Collapsed Preview */}
         {!isExpanded && (
-          <div className="p-4 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-foreground mb-1">
-                Level {level}
-              </div>
-              {!isMaxLevel && pointsNeeded !== null && (
-                <div className="text-xs text-muted-foreground">
-                  {formatNumber(pointsNeeded)} pts to Level {level + 1}
-                </div>
-              )}
+          <div className="px-4 py-6 flex flex-col items-start justify-center relative z-10">
+            <div className="text-5xl font-bold text-white mb-2">
+              Level {level}
             </div>
+            {!isMaxLevel && pointsNeeded !== null && (
+              <div className="flex items-center justify-between w-full text-xs text-white/90 mt-4">
+                <span>Progress to Level {level + 1}</span>
+                <span>{formatNumber(pointsNeeded)} pts</span>
+              </div>
+            )}
+            {!isMaxLevel && pointsNeeded !== null && (
+              <div className="w-full mt-2 h-2 rounded-full overflow-hidden bg-white/20">
+                <div
+                  className="h-full bg-white rounded-full transition-all"
+                  style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -152,7 +168,7 @@ export function HpCard({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            className="bg-card overflow-hidden"
+            className="overflow-hidden relative"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -168,7 +184,7 @@ export function HpCard({
               {/* Level Icon and Description */}
               {levelImageUrl && (
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="relative w-16 h-16 shrink-0">
+                  <div className="relative w-16 h-16 shrink-0 bg-background/70 backdrop-blur-sm rounded-[var(--radius-lg)] p-3 shadow-[var(--shadow-md)] border border-border/50">
                     <Image
                       src={levelImageUrl}
                       alt={`Level ${level} icon`}
@@ -178,7 +194,7 @@ export function HpCard({
                     />
                   </div>
                   {levelDescription && (
-                    <p className="text-sm text-muted-foreground flex-1">
+                    <p className="text-lg text-white/90 flex-1">
                       {levelDescription}
                     </p>
                   )}
@@ -188,29 +204,29 @@ export function HpCard({
               {/* Current Stats */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="text-sm font-medium text-white/80">
                     Current Level:
                   </span>
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-white">
                     Level {level}
                   </span>
                 </div>
 
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="text-sm font-medium text-white/80">
                     Vanta Points:
                   </span>
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-white">
                     {formatNumber(points)}
                   </span>
                 </div>
 
                 {currentPhase && (
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-sm font-medium text-white/80">
                       Current Phase:
                     </span>
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-white">
                       {currentPhase
                         .split('_')
                         .map(
@@ -225,12 +241,17 @@ export function HpCard({
                 {/* Progress Bar */}
                 {!isMaxLevel && pointsNeeded !== null && (
                   <div className="space-y-2 pt-2">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs text-white/90">
                       <span>Progress to Level {level + 1}</span>
                       <span>{Math.round(progressPercentage)}%</span>
                     </div>
-                    <Progress value={progressPercentage} className="h-2" />
-                    <p className="text-xs text-muted-foreground">
+                    <div className="w-full h-2 rounded-full overflow-hidden bg-white/20">
+                      <div
+                        className="h-full bg-white rounded-full transition-all"
+                        style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-white/80">
                       {formatNumber(pointsNeeded)} points needed
                     </p>
                   </div>
@@ -240,7 +261,7 @@ export function HpCard({
                   <div className="pt-2">
                     <Badge
                       variant="outline"
-                      className="font-semibold border border-primary/20 bg-primary/10 text-primary"
+                      className="font-semibold border-white/20 bg-white/10 text-white"
                     >
                       Maximum Level Achieved
                     </Badge>
@@ -252,16 +273,16 @@ export function HpCard({
             {/* History Section */}
             {transactions.length > 0 && (
               <motion.div
-                className="pt-4 border-t border-border"
+                className="pt-4 border-t border-white/20"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.2 }}
               >
-                <h4 className="font-semibold text-foreground mb-3 px-4 pb-4">
+                <h4 className="font-semibold text-white px-4 pb-2">
                   Transaction History
                 </h4>
                 <motion.div
-                  className="space-y-3 px-4 pb-4 max-h-48 overflow-y-auto scrollbar-thin"
+                  className="space-y-3 px-4 pb-4 max-h-[200px] overflow-y-auto scrollbar-thin"
                   initial="hidden"
                   animate="visible"
                   variants={{
@@ -278,7 +299,7 @@ export function HpCard({
                   {transactions.map((tx, index) => (
                     <motion.div
                       key={index}
-                      className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]"
+                      className="flex items-start justify-between gap-3 p-3 bg-white/10 rounded-[var(--radius-lg)]"
                       variants={{
                         hidden: { opacity: 0, y: -8 },
                         visible: { opacity: 1, y: 0 },
@@ -289,20 +310,20 @@ export function HpCard({
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className="text-xs border border-primary/20 bg-primary/10 text-primary"
+                            className="text-xs border-white/20 bg-white/10 text-white"
                           >
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>
-                          <span className="text-sm font-semibold text-foreground">
-                            +{formatNumber(tx.points_earned)} HP
-                          </span>
                         </div>
+                        <span className="text-sm font-semibold text-white">
+                          +{formatNumber(tx.points_earned)} HP
+                        </span>
                         {tx.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-white/80 mt-1">
                             {tx.description}
                           </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-white/70 mt-1">
                           {formatDate(tx.created_at)}
                         </p>
                       </div>
@@ -314,7 +335,7 @@ export function HpCard({
 
             {transactions.length === 0 && (
               <motion.div
-                className="pt-4 px-4 pb-4 text-sm text-muted-foreground"
+                className="pt-4 px-4 pb-4 text-sm text-white/80"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: 0.05 }}
