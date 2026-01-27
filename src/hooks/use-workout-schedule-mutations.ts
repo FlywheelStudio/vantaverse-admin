@@ -7,7 +7,10 @@ import {
   upsertGroup,
   upsertExerciseTemplate,
 } from '@/app/(authenticated)/builder/actions';
-import { workoutScheduleKeys, type WorkoutScheduleData } from './use-workout-schedule';
+import {
+  workoutScheduleKeys,
+  type WorkoutScheduleData,
+} from './use-workout-schedule';
 import { programAssignmentsKeys } from './use-passignments';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { convertSelectedItemsToDatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
@@ -75,9 +78,8 @@ export function useUpsertWorkoutSchedule(
 
       await queryClient.cancelQueries({ queryKey });
 
-      const previousData = queryClient.getQueryData<WorkoutScheduleData>(
-        queryKey,
-      );
+      const previousData =
+        queryClient.getQueryData<WorkoutScheduleData>(queryKey);
 
       return { previousData };
     },
@@ -136,9 +138,7 @@ export function useUpdateProgramSchedule(
       );
 
       if (!result.success) {
-        throw new Error(
-          result.error || 'Failed to update program assignment',
-        );
+        throw new Error(result.error || 'Failed to update program assignment');
       }
 
       return data;
@@ -153,13 +153,16 @@ export function useUpdateProgramSchedule(
       const previousData = queryClient.getQueryData(queryKey);
 
       // Optimistically update the cache
-      queryClient.setQueryData(queryKey, (old: ProgramAssignmentWithTemplate | null | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          workout_schedule_id: variables.workoutScheduleId,
-        };
-      });
+      queryClient.setQueryData(
+        queryKey,
+        (old: ProgramAssignmentWithTemplate | null | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            workout_schedule_id: variables.workoutScheduleId,
+          };
+        },
+      );
 
       return { previousData };
     },

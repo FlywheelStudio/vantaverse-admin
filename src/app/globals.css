@@ -252,7 +252,8 @@ header::after {
   grid-area: 1/1;
   border: 8px solid;
   border-radius: 50%;
-  border-color: oklch(0.507 0.211 262.705) oklch(0.507 0.211 262.705) #0000 #0000;
+  border-color: oklch(0.507 0.211 262.705) oklch(0.507 0.211 262.705) #0000
+    #0000;
   mix-blend-mode: darken;
   animation: l14 1s infinite linear;
 }
@@ -293,7 +294,7 @@ header::after {
   }
 }
 
-[data-state="open"] .dropdown-item-animate {
+[data-state='open'] .dropdown-item-animate {
   animation: slideDownFadeIn 0.2s ease-out forwards;
   opacity: 0;
 }

@@ -130,6 +130,12 @@ export default async function UserProfilePage({
       query: () => programAssignmentsQuery.getActiveByUserId(id),
       defaultValue: null,
     },
+    patientOrganizations: {
+      condition: user.role === 'patient',
+      query: () =>
+        orgMembersQuery.getOrganizationsByUserId(id),
+      defaultValue: [] as Array<{ id: string; name: string }>,
+    },
   });
 
   const appointments = data.appointments;
@@ -146,6 +152,10 @@ export default async function UserProfilePage({
   const groupsMap =
     data.programAssignmentData?.groupsMap ??
     new Map<string, { exercise_template_ids: string[] | null }>();
+  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
+    id: o.id,
+    name: o.name,
+  }));
 
   // Extract schedule and completion from program assignment
   let schedule: DatabaseSchedule | null = null;
@@ -196,6 +206,7 @@ export default async function UserProfilePage({
   return (
     <UserProfilePageUI
       user={user}
+      organizations={patientOrganizations}
       appointments={appointments}
       hpLevelThreshold={hpLevelThreshold}
       hpTransactions={hpTransactions}

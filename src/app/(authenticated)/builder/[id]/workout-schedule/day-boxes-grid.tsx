@@ -170,17 +170,9 @@ export function DayBoxesGrid() {
       }
 
       // Update context with IDs (from the updated schedule returned by conversion)
-      for (let w = 0; w < conversionResult.updatedSchedule.length; w++) {
-        const week = conversionResult.updatedSchedule[w];
-        if (!week) continue;
-        for (let d = 0; d < week.length; d++) {
-          const day = week[d];
-          if (day && day.length > 0) {
-            setScheduleItem(w, d, day);
-          }
-        }
-      }
-
+      // Always update the edited day, even if empty (rest day)
+      setScheduleItem(week, day, conversionResult.updatedSchedule[week]?.[day] || []);
+      
       // Save to database
       const result = await upsertWorkoutSchedule(conversionResult.data);
 
@@ -214,7 +206,6 @@ export function DayBoxesGrid() {
     const dayIndex = selectedDay - 1;
     const previousItems = getDayItems(currentWeek, dayIndex);
     const hasChanges =
-      selectedItems.length > 0 ||
       JSON.stringify(previousItems) !== JSON.stringify(selectedItems);
 
     if (hasChanges) {

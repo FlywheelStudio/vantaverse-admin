@@ -25,7 +25,13 @@ export async function getProgramAssignmentsPaginated(
   showAssigned: boolean = false,
 ) {
   const query = new ProgramAssignmentsQuery();
-  return query.getTemplatesPaginated(page, pageSize, search, weeks, showAssigned);
+  return query.getTemplatesPaginated(
+    page,
+    pageSize,
+    search,
+    weeks,
+    showAssigned,
+  );
 }
 
 /**
@@ -364,11 +370,11 @@ export async function upsertExerciseTemplate(data: {
 > {
   const query = new ExerciseTemplatesQuery();
   const result = await query.upsertExerciseTemplate(data);
-  
+
   if (!result.success) {
     return result;
   }
-  
+
   const rpcResult = result.data as {
     id: string;
     template_hash: string;
@@ -376,7 +382,7 @@ export async function upsertExerciseTemplate(data: {
     reference_count?: number;
     original_id?: string;
   };
-  
+
   return {
     success: true,
     data: {
@@ -511,8 +517,8 @@ export async function convertScheduleToSelectedItems(
     },
   });
 
-  const templatesMap = data.templates;
-  const groupsMap = data.groups;
+  const templatesMap = data.templates ?? new Map();
+  const groupsMap = data.groups ?? new Map();
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];
@@ -579,4 +585,21 @@ export async function convertScheduleToSelectedItems(
     success: true as const,
     data: convertedSchedule,
   };
+}
+
+/**
+ * Update workout schedule for derived active assignments
+ * @param baseAssignmentId - The base template assignment ID
+ * @param workoutScheduleId - The new workout schedule ID
+ * @returns Success with count of updated assignments or error
+ */
+export async function updateDerivedProgramSchedules(
+  baseAssignmentId: string,
+  workoutScheduleId: string,
+) {
+  const query = new ProgramAssignmentsQuery();
+  return query.updateDerivedAssignmentsSchedule(
+    baseAssignmentId,
+    workoutScheduleId,
+  );
 }

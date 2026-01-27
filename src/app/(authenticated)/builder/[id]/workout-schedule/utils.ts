@@ -173,18 +173,18 @@ export async function convertSelectedItemsToDatabaseSchedule(
         // Handle exercises - upsert as templates with default values
         if (item.type === 'exercise') {
           const exercise = item.data as Exercise;
-          
+
           // Format distance and weight with units
-          const distanceValue = defaultValues.distance 
-            ? `${defaultValues.distance}${defaultValues.distanceUnit || 'm'}` 
+          const distanceValue = defaultValues.distance
+            ? `${defaultValues.distance}${defaultValues.distanceUnit || 'm'}`
             : undefined;
-          const weightValue = defaultValues.weight 
-            ? `${defaultValues.weight}${defaultValues.weightUnit || 'kg'}` 
+          const weightValue = defaultValues.weight
+            ? `${defaultValues.weight}${defaultValues.weightUnit || 'kg'}`
             : undefined;
-          
+
           // Convert tempo to string array
-          const tempoValue = defaultValues.tempo.every((t) => t === null) 
-            ? undefined 
+          const tempoValue = defaultValues.tempo.every((t) => t === null)
+            ? undefined
             : (defaultValues.tempo.map((t) => t ?? '') as string[]);
 
           // Upsert exercise template
@@ -265,35 +265,68 @@ export async function convertSelectedItemsToDatabaseSchedule(
 
           // If group doesn't have an ID or has empty string, upsert it first
           if (!groupId || groupId.trim() === '') {
-            // Extract exercise template IDs from group items
             const exerciseTemplateIds: string[] = [];
-            if (item.data.items && Array.isArray(item.data.items)) {
-              for (const groupItem of item.data.items) {
+            const items = item.data.items ?? [];
+
+            const distanceValue = defaultValues.distance
+              ? `${defaultValues.distance}${defaultValues.distanceUnit || 'm'}`
+              : undefined;
+            const weightValue = defaultValues.weight
+              ? `${defaultValues.weight}${defaultValues.weightUnit || 'kg'}`
+              : undefined;
+            const tempoValue = defaultValues.tempo.every((t) => t === null)
+              ? undefined
+              : (defaultValues.tempo.map((t) => t ?? '') as string[]);
+
+            for (const groupItem of items) {
+              if (
+                typeof groupItem !== 'object' ||
+                groupItem === null ||
+                !('type' in groupItem)
+              )
+                continue;
+
+              if (groupItem.type === 'template') {
+                const d = groupItem.data;
                 if (
-                  typeof groupItem === 'object' &&
-                  groupItem !== null &&
-                  'type' in groupItem &&
-                  groupItem.type === 'template' &&
-                  'data' in groupItem &&
-                  typeof groupItem.data === 'object' &&
-                  groupItem.data !== null &&
-                  'id' in groupItem.data &&
-                  typeof groupItem.data.id === 'string' &&
-                  groupItem.data.id.trim() !== ''
+                  d &&
+                  typeof d === 'object' &&
+                  typeof (d as { id?: unknown }).id === 'string' &&
+                  (d as { id: string }).id.trim() !== ''
                 ) {
-                  exerciseTemplateIds.push(groupItem.data.id);
+                  exerciseTemplateIds.push((d as { id: string }).id);
                 }
+                continue;
+              }
+
+              if (groupItem.type === 'exercise') {
+                const exercise = groupItem.data as Exercise;
+                const res = await upsertExerciseTemplateFn({
+                  p_exercise_id: exercise.id,
+                  p_sets: defaultValues.sets,
+                  p_rep: defaultValues.rep ?? undefined,
+                  p_time: defaultValues.time ?? undefined,
+                  p_distance: distanceValue,
+                  p_weight: weightValue,
+                  p_rest_time: defaultValues.rest_time ?? undefined,
+                  p_tempo: tempoValue,
+                });
+                if (!res.success) {
+                  return {
+                    success: false,
+                    error:
+                      res.error ||
+                      'Failed to upsert exercise template in group',
+                  };
+                }
+                exerciseTemplateIds.push(res.data.id);
               }
             }
 
-            // Upsert the group
             const result = await upsertGroupFn({
               p_title: item.data.name || '',
-              p_exercise_template_ids:
-                exerciseTemplateIds.length > 0
-                  ? exerciseTemplateIds
-                  : undefined,
-              p_is_superset: item.data.isSuperset || false,
+              p_exercise_template_ids: exerciseTemplateIds,
+              p_is_superset: item.data.isSuperset ?? false,
             });
 
             if (!result.success) {

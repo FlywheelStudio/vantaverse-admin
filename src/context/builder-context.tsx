@@ -8,14 +8,7 @@ import React, {
   useCallback,
 } from 'react';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
-import {
-  convertScheduleToSelectedItems,
-} from '@/app/(authenticated)/builder/actions';
-import {
-  mergeScheduleWithOverride,
-  type DatabaseSchedule,
-} from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { useWorkoutSchedule, type WorkoutScheduleData } from '@/hooks/use-workout-schedule';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface BuilderContextValue {
   selectedAssignmentId: string | null;
@@ -47,8 +40,6 @@ const BuilderContext = createContext<BuilderContextValue | null>(null);
 
 const SCHEDULE_STORAGE_KEY = 'builder-schedule';
 const CURRENT_WEEK_STORAGE_KEY = 'builder-current-week';
-const PROGRAM_ASSIGNMENT_STORAGE_KEY = 'builder-program-assignment-id';
-const PROGRAM_START_DATE_STORAGE_KEY = 'builder-program-start-date';
 
 export function useBuilder() {
   const context = useContext(BuilderContext);
@@ -60,28 +51,24 @@ export function useBuilder() {
 
 interface BuilderContextProviderProps {
   children: React.ReactNode;
-  initialWorkoutSchedule?: WorkoutScheduleData | null;
+  initialAssignment?: ProgramAssignmentWithTemplate | null;
+  initialSchedule?: SelectedItem[][][] | null;
 }
 
 export function BuilderContextProvider({
   children,
-  initialWorkoutSchedule,
+  initialAssignment,
+  initialSchedule,
 }: BuilderContextProviderProps) {
   const [selectedAssignmentId, setSelectedAssignmentIdState] = useState<
     string | null
   >(null);
 
   const [schedule, setScheduleState] = useState<SelectedItem[][][]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem(SCHEDULE_STORAGE_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return [];
-        }
-      }
+    if (initialSchedule) {
+      return initialSchedule;
     }
+    
     return [];
   });
 
@@ -96,21 +83,9 @@ export function BuilderContextProvider({
     return 0;
   });
 
-  const [programAssignmentId, setProgramAssignmentIdState] = useState<
-    string | null
-  >(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-    }
-    return null;
-  });
-
   const [programStartDate, setProgramStartDateState] = useState<string | null>(
     () => {
-      if (typeof window !== 'undefined') {
-        return sessionStorage.getItem(PROGRAM_START_DATE_STORAGE_KEY);
-      }
-      return null;
+      return initialAssignment?.start_date || null;
     },
   );
 
@@ -126,120 +101,25 @@ export function BuilderContextProvider({
     null,
   );
 
-  // Initialize as hydrated if on client, false on server
-  const [isHydrated] = useState(() => typeof window !== 'undefined');
-  const hasProcessedScheduleRef = React.useRef<string | null>(null);
+  const programAssignmentId = initialAssignment?.id ?? selectedAssignmentId;
 
-  // Use React Query hook for workout schedule data
-  const { data: workoutScheduleData } = useWorkoutSchedule(
-    programAssignmentId,
-    initialWorkoutSchedule || undefined,
-  );
-
-  // Set program assignment ID directly when selected assignment ID changes
+  // Sync server-provided schedule to sessionStorage (for edits)
   useEffect(() => {
-    if (selectedAssignmentId && typeof window !== 'undefined') {
-      setProgramAssignmentIdState((prev) => {
-        // Only update if different to avoid unnecessary re-renders
-        if (prev === selectedAssignmentId) return prev;
-        sessionStorage.setItem(
-          PROGRAM_ASSIGNMENT_STORAGE_KEY,
-          selectedAssignmentId,
-        );
-        // Reset schedule processing ref when assignment changes
-        hasProcessedScheduleRef.current = null;
-        return selectedAssignmentId;
-      });
-    } else {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-      }
-      setProgramAssignmentIdState((prev) => {
-        if (prev === null) return prev;
-        hasProcessedScheduleRef.current = null;
-        return null;
-      });
+    if (initialSchedule && typeof window !== 'undefined') {
+      sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(initialSchedule));
     }
-  }, [selectedAssignmentId]);
-
-  // Process schedule data when it loads from React Query
-  useEffect(() => {
-    if (
-      !programAssignmentId ||
-      !isHydrated ||
-      typeof window === 'undefined' ||
-      hasProcessedScheduleRef.current === programAssignmentId ||
-      !workoutScheduleData
-    ) {
-      return;
-    }
-
-    hasProcessedScheduleRef.current = programAssignmentId;
-
-    const { schedule: dbSchedule, patientOverride } = workoutScheduleData;
-
-    // Handle null schedule - mark as processed even if empty
-    if (!dbSchedule && !patientOverride) {
-      return;
-    }
-
-    // Merge schedule with patient override
-    const mergedSchedule = mergeScheduleWithOverride(
-      (dbSchedule as DatabaseSchedule) || null,
-      (patientOverride as DatabaseSchedule) || null,
-    );
-
-    // If merged schedule is empty, return early
-    if (!mergedSchedule || mergedSchedule.length === 0) {
-      return;
-    }
-
-    // Convert to SelectedItem format using server action
-    convertScheduleToSelectedItems(mergedSchedule)
-      .then((result) => {
-        // Check again if assignment ID changed during conversion
-        if (hasProcessedScheduleRef.current !== programAssignmentId) {
-          return;
-        }
-
-        if (!result.success) {
-          console.error('Failed to convert schedule:', result.error);
-          return;
-        }
-
-        const convertedSchedule = result.data as SelectedItem[][][];
-        setScheduleState(convertedSchedule);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(
-            SCHEDULE_STORAGE_KEY,
-            JSON.stringify(convertedSchedule),
-          );
-        }
-      })
-      .catch((error) => {
-        console.error('Failed to convert schedule:', error);
-      });
-  }, [programAssignmentId, isHydrated, workoutScheduleData]);
+  }, [initialSchedule]);
 
   const setSelectedAssignmentId = useCallback((id: string | null) => {
     setSelectedAssignmentIdState(id);
-    if (typeof window !== 'undefined') {
-      if (id) {
-        // Reset schedule processing ref when assignment changes
-        hasProcessedScheduleRef.current = null;
-      } else {
-        sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
-        sessionStorage.removeItem(CURRENT_WEEK_STORAGE_KEY);
-        sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-        sessionStorage.removeItem(PROGRAM_START_DATE_STORAGE_KEY);
-        setScheduleState([]);
-        setCurrentWeekState(0);
-        setProgramAssignmentIdState(null);
-        setProgramStartDateState(null);
-        setCopiedWeekIndex(null);
-        setCopiedWeekData(null);
-        hasProcessedScheduleRef.current = null;
-      }
+    if (typeof window !== 'undefined' && !id) {
+      sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
+      sessionStorage.removeItem(CURRENT_WEEK_STORAGE_KEY);
+      setScheduleState([]);
+      setCurrentWeekState(0);
+      setProgramStartDateState(null);
+      setCopiedWeekIndex(null);
+      setCopiedWeekData(null);
     }
   }, []);
 
@@ -316,20 +196,10 @@ export function BuilderContextProvider({
 
   const setProgramStartDate = useCallback((date: string | null) => {
     setProgramStartDateState(date);
-    if (typeof window !== 'undefined') {
-      if (date) {
-        sessionStorage.setItem(PROGRAM_START_DATE_STORAGE_KEY, date);
-      } else {
-        sessionStorage.removeItem(PROGRAM_START_DATE_STORAGE_KEY);
-      }
-    }
   }, []);
 
   const resetProgramAssignmentId = useCallback(() => {
-    setProgramAssignmentIdState(null);
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(PROGRAM_ASSIGNMENT_STORAGE_KEY);
-    }
+    setSelectedAssignmentIdState(null);
   }, []);
 
   const reorderWeeks = useCallback((newOrder: number[]) => {
@@ -469,11 +339,6 @@ export function BuilderContextProvider({
     },
     [copiedDayData, copiedDayIndex],
   );
-
-  // Don't render children until hydrated to avoid hydration mismatch
-  if (!isHydrated) {
-    return null;
-  }
 
   return (
     <BuilderContext.Provider

@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useBuilder } from '@/context/builder-context';
-import { programAssignmentQueryOptions } from '@/hooks/use-passignments';
-import { useHasScheduleData } from '@/hooks/use-workout-schedule';
-import { useQuery } from '@tanstack/react-query';
 import { ProgramDetailsSection } from '../../program/ui';
 import { BuildWorkoutSection } from './ui';
 import { Card } from '@/components/ui/card';
@@ -26,52 +23,40 @@ export function WorkoutBuilder({
   assignmentId, 
   initialAssignment,
 }: WorkoutBuilderProps) {
-  const { initializeSchedule, setSelectedAssignmentId } = useBuilder();
-  
-  const programForm = useForm<ProgramTemplateFormData>({
-    resolver: zodResolver(programTemplateFormSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      weeks: 4,
-      goals: '',
-      notes: '',
-      startDate: undefined as unknown as Date,
-      endDate: undefined as unknown as Date,
-      imageFile: undefined,
-      imagePreview: undefined,
-    },
-  });
-  
+  const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
+
+  const template = initialAssignment.program_template;
+
+  const formDefaultValues = useMemo(() => ({
+    name: template?.name || '',
+    description: template?.description || '',
+    weeks: template?.weeks || 4,
+    goals: template?.goals || '',
+    notes: template?.notes || '',
+    startDate: initialAssignment.start_date ? new Date(initialAssignment.start_date) : undefined,
+    endDate: initialAssignment.end_date ? new Date(initialAssignment.end_date) : undefined,
+    imageFile: undefined,
+    imagePreview: undefined,
+  }), [initialAssignment, template]);
+
+  // Initialize context when assignment data is available
   useEffect(() => {
     if (assignmentId) {
       setSelectedAssignmentId(assignmentId);
     }
-  }, [assignmentId, setSelectedAssignmentId]);
-  
-  const { data: assignment } = useQuery(
-    programAssignmentQueryOptions(assignmentId, initialAssignment)
-  );
-  const { data: hasScheduleData, isSuccess } = useHasScheduleData(assignmentId);
-  
-  const initializedAssignmentRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (
-      assignment?.program_template &&
-      assignmentId &&
-      initializedAssignmentRef.current !== assignmentId &&
-      isSuccess &&
-      hasScheduleData === false
-    ) {
-      initializedAssignmentRef.current = assignmentId;
-      initializeSchedule(assignment.program_template.weeks);
+    // Only initialize schedule if it's empty - don't overwrite server-provided data
+    if (initialAssignment.program_template && assignmentId && schedule.length === 0) {
+      initializeSchedule(template.weeks);
     }
-  }, [assignment?.program_template?.weeks, assignmentId, initializeSchedule, hasScheduleData, isSuccess]);
+  }, [assignmentId, initialAssignment.program_template, template.weeks, setSelectedAssignmentId, initializeSchedule, schedule]);
 
-  const template = assignment?.program_template ?? null;
+  const programForm = useForm<ProgramTemplateFormData>({
+    resolver: zodResolver(programTemplateFormSchema),
+    defaultValues: formDefaultValues,
+  });
 
-  if (!assignment || !template) {
+  if (!initialAssignment || !template) {
     return (
       <div
         suppressHydrationWarning
@@ -95,6 +80,7 @@ export function WorkoutBuilder({
               <FormProvider {...programForm}>
                 <ProgramDetailsSection
                   template={template}
+                  initialAssignment={initialAssignment}
                   status={initialAssignment.status}
                   hideActions
                   formMethods={programForm}
@@ -102,6 +88,7 @@ export function WorkoutBuilder({
                 <BuildWorkoutSection
                   initialWeeks={template.weeks}
                   template={template}
+                  assignmentStatus={(initialAssignment.status === 'active' || initialAssignment.status === 'template') ? initialAssignment.status : 'template'}
                 />
               </FormProvider>
             </div>

@@ -6,6 +6,7 @@ This document provides comprehensive examples, migration patterns, and framework
 
 - [Basic Parallel Queries](#basic-parallel-queries)
 - [Conditional Queries](#conditional-queries)
+- [Dependent Queries (Type-Safe)](#dependent-queries-type-safe)
 - [Required Queries](#required-queries-automatic-error-handling)
 - [Mixed Query Types](#mixed-query-types)
 - [Complete Example](#complete-example)
@@ -83,6 +84,122 @@ const data = await createParallelQueries({
 const profile = data.profile;
 const settings = data.settings;
 ```
+
+## Dependent Queries (Type-Safe)
+
+When a query depends on results from other queries, use `dependsOn` with explicit type annotations for type-safe dependency access.
+
+### Before (Sequential execution with manual chaining)
+
+```typescript
+// Execute queries sequentially
+const templateResult = await templateService.update(templateId, data);
+if (!templateResult.success) {
+  return { success: false, error: 'Failed to update template' };
+}
+
+const scheduleResult = await scheduleService.create(scheduleData);
+if (!scheduleResult.success) {
+  return { success: false, error: 'Failed to create schedule' };
+}
+
+// Now use results from both
+const assignmentResult = await assignmentService.update(
+  assignmentId,
+  templateResult.data.id,
+  scheduleResult.data.id,
+);
+```
+
+### After (Parallel execution with type-safe dependencies)
+
+```typescript
+const result = await createParallelQueries({
+  template: {
+    query: () => templateService.update(templateId, data),
+    required: true,
+  },
+  schedule: {
+    query: () => scheduleService.create(scheduleData),
+    required: true,
+  },
+  assignment: {
+    // Type the deps parameter for full type safety
+    query: (deps: {
+      template: Template;
+      schedule: Schedule;
+    }) => {
+      // ✅ Type-safe access - no casting needed
+      return assignmentService.update(
+        assignmentId,
+        deps.template.id,
+        deps.schedule.id,
+      );
+    },
+    dependsOn: ['template', 'schedule'] as const,
+    required: false,
+  },
+});
+
+// All queries completed successfully
+console.log(result.template, result.schedule, result.assignment);
+```
+
+**Benefits:**
+- Template and schedule queries run **in parallel** (not sequential)
+- Assignment query runs **after** dependencies complete
+- **Type-safe** dependency access (no manual type casting)
+- Automatic dependency validation and circular dependency detection
+- Clean, declarative syntax
+
+### Advanced: Multi-level Dependencies
+
+```typescript
+const result = await createParallelQueries({
+  // Level 1: Independent queries (run in parallel)
+  user: {
+    query: () => userService.getById(userId),
+    required: true,
+  },
+  organization: {
+    query: () => orgService.getById(orgId),
+    required: true,
+  },
+  
+  // Level 2: Depends on Level 1 (runs after user completes)
+  profile: {
+    query: (deps: { user: User }) => {
+      return profileService.getByUserId(deps.user.id);
+    },
+    dependsOn: ['user'] as const,
+    defaultValue: null,
+  },
+  
+  // Level 2: Depends on Level 1 (runs in parallel with profile)
+  permissions: {
+    query: (deps: { user: User; organization: Organization }) => {
+      return permService.getPermissions(deps.user.id, deps.organization.id);
+    },
+    dependsOn: ['user', 'organization'] as const,
+    required: true,
+  },
+  
+  // Level 3: Depends on Level 2 (runs after permissions completes)
+  audit: {
+    query: (deps: { permissions: Permissions }) => {
+      return auditService.log(deps.permissions);
+    },
+    dependsOn: ['permissions'] as const,
+    required: false,
+  },
+});
+```
+
+**Execution flow:**
+1. `user` and `organization` run in **parallel**
+2. After both complete, `profile` and `permissions` run in **parallel**
+3. After `permissions` completes, `audit` runs
+4. Total time: max(user, organization) + max(profile, permissions) + audit
 
 ## Required Queries (Automatic Error Handling)
 

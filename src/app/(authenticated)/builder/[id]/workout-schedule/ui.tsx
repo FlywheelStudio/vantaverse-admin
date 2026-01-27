@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
 import { Button } from '@/components/ui/button';
@@ -17,19 +18,28 @@ import { cn } from '@/lib/utils';
 import { createParallelQueries } from '@/lib/supabase/query';
 import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
+import { UpdateDerivedDialog } from './update-derived-dialog';
+import { updateDerivedProgramSchedules } from '../../actions';
+import { useQueryClient } from '@tanstack/react-query';
+import { programAssignmentsKeys } from '@/hooks/use-passignments';
+import { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
 
 interface BuildWorkoutSectionProps {
   initialWeeks: number;
   template: ProgramTemplate;
+  assignmentStatus?: 'active' | 'template';
 }
 
 export function BuildWorkoutSection({
   initialWeeks,
   template,
+  assignmentStatus = 'template',
 }: BuildWorkoutSectionProps) {
   const { schedule, programAssignmentId } = useBuilder();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
+  const [showDerivedDialog, setShowDerivedDialog] = useState(false);
+  const queryClient = useQueryClient();
 
   const updateProgramTemplateMutation = useUpdateProgramTemplate({
     suppressToast: true,
@@ -65,6 +75,19 @@ export function BuildWorkoutSection({
       return;
     }
 
+    // If editing a template, show confirmation dialog
+    if (assignmentStatus === 'template') {
+      setShowDerivedDialog(true);
+      return;
+    }
+
+    // If editing active assignment, proceed directly
+    await performSave(false);
+  };
+
+  const performSave = async (updateDerived: boolean) => {
+    if (!programAssignmentId) return;
+
     const values = programForm.getValues();
 
     const oldImageUrl =
@@ -77,7 +100,7 @@ export function BuildWorkoutSection({
           : null;
 
     try {
-      await createParallelQueries({
+      const result = await createParallelQueries({
         template: {
           query: async (): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> => {
             try {
@@ -116,10 +139,6 @@ export function BuildWorkoutSection({
                 assignmentId: programAssignmentId,
                 defaultValues,
               });
-              await updateProgramScheduleMutation.mutateAsync({
-                assignmentId: programAssignmentId,
-                workoutScheduleId: scheduleResult.id,
-              });
               return { success: true, data: scheduleResult };
             } catch (error) {
               return {
@@ -131,11 +150,64 @@ export function BuildWorkoutSection({
           },
           required: true,
         },
+        assignment: {
+          query: async (
+            deps: {
+              template: ProgramTemplate;
+              schedule: { id: string; schedule_hash: string };
+            },
+          ): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> => {
+            try {
+              await updateProgramScheduleMutation.mutateAsync({
+                assignmentId: programAssignmentId,
+                workoutScheduleId: deps.schedule.id,
+              });
+              return { success: true, data: { id: programAssignmentId } as ProgramAssignment };
+            } catch (error) {
+              return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to update assignment',
+                status: 500,
+              };
+            }
+          },
+          dependsOn: ['template', 'schedule'] as const,
+          required: false,
+        },
       });
-      toast.success('Saved');
+
+      // If template and user wants to update derived assignments
+      if (assignmentStatus === 'template' && updateDerived && result.schedule) {
+        const derivedResult = await updateDerivedProgramSchedules(
+          programAssignmentId,
+          result.schedule.id,
+        );
+
+        if (derivedResult.success) {
+          const count = derivedResult.data;
+          
+          // Invalidate all program assignment queries to refresh UI
+          await queryClient.invalidateQueries({
+            queryKey: programAssignmentsKeys.all,
+          });
+
+          if (count > 0) {
+            toast.success(`Saved and updated ${count} active program${count !== 1 ? 's' : ''}`);
+          } else {
+            toast.success('Saved (no active programs to update)');
+          }
+        } else {
+          toast.success('Template saved, but failed to update active programs');
+        }
+      } else {
+        toast.success('Saved');
+      }
+
+      setShowDerivedDialog(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Save failed';
       toast.error(message);
+      setShowDerivedDialog(false);
     }
   };
 
@@ -146,29 +218,38 @@ export function BuildWorkoutSection({
   const isDisabled = !programAssignmentId || isSaving;
 
   return (
-    <div className="w-full">
-      <div className="w-full flex items-center justify-between px-5 py-4">
-        <span className="text-base font-semibold text-foreground">Build Workout</span>
-        <Button
-          onClick={handleSave}
-          disabled={isDisabled}
-          size="sm"
-          className="cursor-pointer"
+    <>
+      <div className="w-full">
+        <div className="w-full flex items-center justify-between px-5 py-4">
+          <span className="text-base font-semibold text-foreground">Build Workout</span>
+          <Button
+            onClick={handleSave}
+            disabled={isDisabled}
+            size="sm"
+            className="cursor-pointer"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+        <div
+          className={cn(
+            'px-5 pb-5 pt-4 border-t border-border',
+            isDisabled && 'disabled-div',
+          )}
         >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-      </div>
-      <div
-        className={cn(
-          'px-5 pb-5 pt-4 border-t border-border',
-          isDisabled && 'disabled-div',
-        )}
-      >
-        <div className="space-y-6">
-          <WeekNavigation initialWeeks={initialWeeks} />
-          <DayBoxesGrid />
+          <div className="space-y-6">
+            <WeekNavigation initialWeeks={initialWeeks} />
+            <DayBoxesGrid />
+          </div>
         </div>
       </div>
-    </div>
+
+      <UpdateDerivedDialog
+        open={showDerivedDialog}
+        onOpenChange={setShowDerivedDialog}
+        onConfirm={performSave}
+        loading={isSaving}
+      />
+    </>
   );
 }

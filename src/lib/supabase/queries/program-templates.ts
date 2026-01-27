@@ -161,7 +161,7 @@ export class ProgramTemplatesQuery extends SupabaseQuery {
     id: string,
     data: Partial<ProgramTemplate>,
   ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data: updatedData, error } = await supabase
       .from('program_template')

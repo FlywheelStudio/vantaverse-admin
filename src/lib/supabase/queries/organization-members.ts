@@ -376,7 +376,9 @@ export class OrganizationMembers extends SupabaseQuery {
    * @param userId - The user ID
    * @returns Success with organizations array or error
    */
-  public async getOrganizationsByUserId(userId: string): Promise<
+  public async getOrganizationsByUserId(
+    userId: string,
+  ): Promise<
     | SupabaseSuccess<
         Array<{
           id: string;

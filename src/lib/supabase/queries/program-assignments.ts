@@ -222,17 +222,15 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
 
     // Build main query
     // Always include profiles in select to avoid type issues, but only use it when showAssigned is true
-    let query = supabase
-      .from('program_assignment')
-      .select(
-        `
+    let query = supabase.from('program_assignment').select(
+      `
         *,
         program_template (*),
         workout_schedule:workout_schedules (*),
         profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)
       `,
-        { count: 'exact' },
-      );
+      { count: 'exact' },
+    );
 
     // Filter by status
     if (showAssigned) {
@@ -268,15 +266,39 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     }
 
     // Transform the data to match our schema structure
-    const transformedData = data.map((item: ProgramAssignmentWithTemplate & { profiles?: {id: string, first_name?: string, last_name?: string, email: string} }) => ({
-      ...item,
-      program_template: item.program_template || null,
-      workout_schedule:
-        (item as { workout_schedule?: Database['public']['Tables']['workout_schedules']['Row'] }).workout_schedule || null,
-      profiles: showAssigned
-        ? (item as { profiles?: {id: string, first_name?: string, last_name?: string, email: string}  }).profiles || null
-        : undefined,
-    }));
+    const transformedData = data.map(
+      (
+        item: ProgramAssignmentWithTemplate & {
+          profiles?: {
+            id: string;
+            first_name?: string;
+            last_name?: string;
+            email: string;
+          };
+        },
+      ) => ({
+        ...item,
+        program_template: item.program_template || null,
+        workout_schedule:
+          (
+            item as {
+              workout_schedule?: Database['public']['Tables']['workout_schedules']['Row'];
+            }
+          ).workout_schedule || null,
+        profiles: showAssigned
+          ? (
+              item as {
+                profiles?: {
+                  id: string;
+                  first_name?: string;
+                  last_name?: string;
+                  email: string;
+                };
+              }
+            ).profiles || null
+          : undefined,
+      }),
+    );
 
     const result = programAssignmentWithTemplateSchema
       .array()
@@ -290,7 +312,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     const total = templateIds
       ? result.data.length < pageSize
         ? from + result.data.length
-        : (count || 0)
+        : count || 0
       : count || 0;
     const hasMore = from + result.data.length < total;
 
@@ -497,7 +519,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     startDate: string,
     endDate: string,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     // Get assignments with status='template' for this template
     const { data: assignments, error: fetchError } = await supabase
@@ -554,7 +576,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     assignmentId: string,
     workoutScheduleId: string,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { error } = await supabase
       .from('program_assignment')
@@ -780,17 +802,15 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   > {
     const supabase = await this.getClient('service_role');
 
-    let query = supabase
-      .from('program_assignment')
-      .select(
-        `
+    let query = supabase.from('program_assignment').select(
+      `
         *,
         program_template (*),
         workout_schedule:workout_schedules (*),
         profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)
       `,
-        { count: 'exact' },
-      );
+      { count: 'exact' },
+    );
 
     // Filter by status
     if (showAssigned) {
@@ -849,7 +869,11 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
 
         // Search in profiles fields
         const profiles = item.profiles as
-          | { first_name?: string | null; last_name?: string | null; email?: string | null }
+          | {
+              first_name?: string | null;
+              last_name?: string | null;
+              email?: string | null;
+            }
           | null
           | undefined;
         if (profiles) {
@@ -1038,15 +1062,73 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to delete program',
-      );
+      return this.parseResponsePostgresError(error, 'Failed to delete program');
     }
 
     return {
       success: true,
       data: undefined,
+    };
+  }
+
+  /**
+   * Update workout_schedule_id for all active assignments derived from a template
+   * @param baseAssignmentId - The base template assignment ID
+   * @param workoutScheduleId - The new workout schedule ID
+   * @returns Success with count of updated records or error
+   */
+  public async updateDerivedAssignmentsSchedule(
+    baseAssignmentId: string,
+    workoutScheduleId: string,
+  ): Promise<SupabaseSuccess<number> | SupabaseError> {
+    if (!baseAssignmentId || !workoutScheduleId) {
+      return {
+        success: false,
+        error: 'Base assignment ID and workout schedule ID are required',
+      };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    // First, get the count of matching records
+    const { count: matchCount, error: countError } = await supabase
+      .from('program_assignment')
+      .select('*', { count: 'exact', head: true })
+      .eq('base', baseAssignmentId)
+      .eq('status', 'active');
+
+    if (countError) {
+      return this.parseResponsePostgresError(
+        countError,
+        'Failed to count derived assignments',
+      );
+    }
+
+    // If there are no records to update, return early
+    if (matchCount === 0) {
+      return {
+        success: true,
+        data: 0,
+      };
+    }
+
+    // Perform the update
+    const { error } = await supabase
+      .from('program_assignment')
+      .update({ workout_schedule_id: workoutScheduleId })
+      .eq('base', baseAssignmentId)
+      .eq('status', 'active');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to update derived assignments',
+      );
+    }
+
+    return {
+      success: true,
+      data: matchCount ?? 0,
     };
   }
 }

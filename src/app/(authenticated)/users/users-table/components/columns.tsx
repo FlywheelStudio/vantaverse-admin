@@ -2,11 +2,13 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Trash2, Shield, ShieldOff, ChevronUp, ChevronDown } from 'lucide-react';
+import { Trash2, Shield, ShieldOff, ChevronUp, ChevronDown, Mail, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -32,6 +34,7 @@ import {
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import type { Table } from '@tanstack/react-table';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assign-group-modal';
 import Link from 'next/link';
@@ -388,7 +391,13 @@ function DeleteUserButton({
   );
 }
 
-function ActionsCell({ profile }: { profile: ProfileWithStats }) {
+function ActionsCell({ 
+  profile, 
+  isSelected 
+}: { 
+  profile: ProfileWithStats;
+  isSelected: boolean;
+}) {
   const deleteUserMutation = useDeleteUser();
   const toggleSuperAdminMutation = useToggleSuperAdmin();
 
@@ -405,6 +414,11 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
       console.error('Error toggling role:', error);
     }
   };
+
+  // Hide individual actions when row is selected (bulk actions will show in header)
+  if (isSelected) {
+    return null;
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -436,7 +450,256 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
+function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
+  const queryClient = useQueryClient();
+  const deleteUserMutation = useDeleteUser();
+  const toggleSuperAdminMutation = useToggleSuperAdmin();
+  const [sendingInvites, setSendingInvites] = React.useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+  const [bulkToggleOpen, setBulkToggleOpen] = React.useState(false);
+
+  const selectedRows = table.getSelectedRowModel().rows;
+  const selectedUsers = selectedRows.map((row) => row.original);
+  const pendingUsers = selectedUsers.filter(
+    (user) => user.status?.toLowerCase() === 'pending' && user.email,
+  );
+  const hasSelected = selectedRows.length > 0;
+  const hasPending = pendingUsers.length > 0;
+
+  const handleBulkInvite = async () => {
+    if (!hasPending || sendingInvites) return;
+
+    const emails = pendingUsers.map((user) => user.email!).filter(Boolean);
+    if (emails.length === 0) return;
+
+    setSendingInvites(true);
+    try {
+      const result = await sendBulkInvitations(emails, false);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      const { data } = result;
+      const successful = data.results.filter((r) => r.success);
+      const failed = data.results.filter((r) => !r.success);
+
+      if (successful.length > 0) {
+        toast.success(
+          `Sent ${successful.length} invitation${successful.length > 1 ? 's' : ''}${failed.length > 0 ? `; ${failed.length} failed` : ''}`,
+        );
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        table.resetRowSelection();
+      } else {
+        toast.error(
+          `All ${failed.length} invitation${failed.length > 1 ? 's' : ''} failed`,
+        );
+      }
+    } catch (error) {
+      console.error('Error sending invitations:', error);
+      toast.error('Failed to send invitations');
+    } finally {
+      setSendingInvites(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const userIds = selectedUsers.map((user) => user.id);
+    
+    try {
+      // Delete all users sequentially
+      for (const userId of userIds) {
+        await deleteUserMutation.mutateAsync(userId);
+      }
+      setBulkDeleteOpen(false);
+      table.resetRowSelection();
+    } catch (error) {
+      console.error('Error deleting users:', error);
+    }
+  };
+
+  const handleBulkToggleAdmin = async () => {
+    try {
+      // Determine target state: if all are admins, make them members. Otherwise, make them physicians.
+      const allAreAdmins = selectedUsers.every((user) => user.is_super_admin);
+      const targetIsAdmin = !allAreAdmins;
+      
+      // Toggle all users to the target state
+      for (const user of selectedUsers) {
+        const currentIsAdmin = user.is_super_admin ?? false;
+        // Only toggle if current state differs from target state
+        if (currentIsAdmin !== targetIsAdmin) {
+          await toggleSuperAdminMutation.mutateAsync({
+            userId: user.id,
+            isSuperAdmin: currentIsAdmin,
+          });
+        }
+      }
+      setBulkToggleOpen(false);
+      table.resetRowSelection();
+    } catch (error) {
+      console.error('Error toggling roles:', error);
+    }
+  };
+
+  const selectedCount = selectedUsers.length;
+  const allAreAdmins = selectedUsers.every((user) => user.is_super_admin);
+
+  return (
+    <div className="flex items-center gap-2">
+      {!hasSelected && (
+        <span className="text-xs font-semibold tracking-wide">Actions</span>
+      )}
+      <AnimatePresence>
+        {hasSelected && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBulkInvite}
+                  disabled={!hasPending || sendingInvites}
+                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                >
+                  {sendingInvites ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {hasPending
+                  ? 're-send invitations to pending users'
+                  : 'Select pending users to send invitations'}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBulkToggleOpen(true)}
+                  disabled={toggleSuperAdminMutation.isPending}
+                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                >
+                  {allAreAdmins ? (
+                    <ShieldOff className="h-4 w-4" />
+                  ) : (
+                    <Shield className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {allAreAdmins ? 'Make members' : 'Make physicians'}
+              </TooltipContent>
+            </Tooltip>
+      <AlertDialog open={bulkToggleOpen} onOpenChange={setBulkToggleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {allAreAdmins ? 'Make Members' : 'Make Physicians'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to make {selectedCount} user{selectedCount > 1 ? 's' : ''} {allAreAdmins ? 'members' : 'physicians'}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="cursor-pointer"
+              disabled={toggleSuperAdminMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer"
+              onClick={handleBulkToggleAdmin}
+              disabled={toggleSuperAdminMutation.isPending}
+            >
+              {toggleSuperAdminMutation.isPending ? 'Updating...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Users</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedCount} user{selectedCount > 1 ? 's' : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="cursor-pointer"
+              disabled={deleteUserMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer"
+              onClick={handleBulkDelete}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={deleteUserMutation.isPending}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Delete selected users</p>
+              </TooltipContent>
+            </Tooltip>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export const columns: ColumnDef<ProfileWithStats>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate')
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        onClick={(e) => e.stopPropagation()}
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'name',
     header: ({ column }) => {
@@ -612,10 +875,13 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   },
   {
     id: 'actions',
-    header: () => (
-      <span className="text-xs font-semibold tracking-wide">Actions</span>
+    header: ({ table }) => <BulkActionsHeader table={table} />,
+    cell: ({ row }) => (
+      <ActionsCell 
+        profile={row.original} 
+        isSelected={row.getIsSelected()}
+      />
     ),
-    cell: ({ row }) => <ActionsCell profile={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
   },

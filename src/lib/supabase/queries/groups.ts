@@ -36,7 +36,7 @@ export class GroupsQuery extends SupabaseQuery {
     sortBy: string = 'updated_at',
     sortOrder: 'asc' | 'desc' = 'desc',
   ): Promise<SupabaseSuccess<PaginatedResult<Group>> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     let query = supabase.from('groups').select('*', { count: 'exact' });
 
@@ -110,7 +110,7 @@ export class GroupsQuery extends SupabaseQuery {
   public async getById(
     id: string,
   ): Promise<SupabaseSuccess<Group> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
       .from('groups')
@@ -156,7 +156,7 @@ export class GroupsQuery extends SupabaseQuery {
       };
     }
 
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data, error } = await supabase
       .from('groups')
@@ -212,7 +212,7 @@ export class GroupsQuery extends SupabaseQuery {
       }
     | { success: false; error: string }
   > {
-    const supabase = await this.getClient('authenticated_user');
+    const supabase = await this.getClient('service_role');
 
     const { data: result, error } = await supabase.rpc('upsert_group', data);
 
