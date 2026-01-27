@@ -20,6 +20,7 @@ import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workou
 
 export function UserProfilePageUI({
   user,
+  organizations,
   appointments,
   hpLevelThreshold,
   hpTransactions,
@@ -36,6 +37,7 @@ export function UserProfilePageUI({
   groupsMap,
 }: {
   user: ProfileWithStats;
+  organizations?: Array<{ id: string; name: string }>;
   appointments: Appointment[];
   hpLevelThreshold: {
     description: string;
@@ -112,6 +114,7 @@ export function UserProfilePageUI({
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}
+            organizations={organizations}
           />
         </div>
 

@@ -374,9 +374,13 @@ export class OrganizationMembers extends SupabaseQuery {
   /**
    * Get all organizations for a user (excluding super admin organization)
    * @param userId - The user ID
+   * @param role - The client role to use ('authenticated_user' or 'service_role')
    * @returns Success with organizations array or error
    */
-  public async getOrganizationsByUserId(userId: string): Promise<
+  public async getOrganizationsByUserId(
+    userId: string,
+    role: ClientRole = 'authenticated_user',
+  ): Promise<
     | SupabaseSuccess<
         Array<{
           id: string;
