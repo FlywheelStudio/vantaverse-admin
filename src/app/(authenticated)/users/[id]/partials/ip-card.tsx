@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { ChevronUp, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
