@@ -145,7 +145,7 @@ export function UserProfilePageUI({
           <CardContent className="p-8">
             <div className="grid grid-cols-3 gap-6 items-start">
               {/* Left Column: Program Onboarding Progress (2/3 width) */}
-              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4">
+              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6">
                 <h2 className="text-xl font-semibold text-foreground mb-4">
                   Program Onboarding Progress
                 </h2>
@@ -168,7 +168,7 @@ export function UserProfilePageUI({
               </div>
 
               {/* Right Column: VantaThrive Insights (1/3 width) */}
-              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4">
+              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4 py-6">
                 <h2 className="text-xl font-semibold text-foreground mb-4">
                   VantaThrive Insights
                 </h2>
