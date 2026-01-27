@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
@@ -110,6 +111,27 @@ export function UserProfileCard({
     }
   };
 
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+      case 'super_admin':
+        return 'destructive';
+      default:
+        return 'default';
+    }
+  };
+
+  const getDisplayRole = (role: MemberRole | undefined): string => {
+    if (!role) return 'member';
+    switch (role) {
+      case 'patient':
+        return 'member';
+      case 'admin':
+        return 'physician';
+      default:
+        return role;
+    }
+  };
 
   const fieldValueMap = {
     firstName,
@@ -316,6 +338,12 @@ export function UserProfileCard({
                 {lastName || 'User'}
               </span>
             )}
+            <Badge
+              variant={getRoleBadgeVariant(role)}
+              className="text-xs font-semibold px-3 py-1 capitalize"
+            >
+              {getDisplayRole(role)}
+            </Badge>
           </div>
           <p className="text-muted-foreground mb-3 text-sm cursor-default">
             {email}
