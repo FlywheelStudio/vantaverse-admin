@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  ChevronDown,
   ChevronUp,
   Medal,
 } from 'lucide-react';
@@ -10,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import Image from 'next/image';
 
 interface HpCardProps {
@@ -83,8 +81,6 @@ export function HpCard({
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
-
-  const color = startPurple;
 
   return (
     <Card
