@@ -182,7 +182,7 @@ export function UserProfilePageUI({
                     levelImageUrl={hpLevelThreshold?.image_url ?? null}
                     transactions={hpTransactions}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 items-start">
                     <IpCard
                       empowerment={user.empowerment}
                       empowermentTitle={user.empowerment_title}
