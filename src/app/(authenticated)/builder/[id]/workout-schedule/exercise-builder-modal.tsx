@@ -66,15 +66,6 @@ export function ExerciseBuilderModal({
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
 
-  // Reset selected items when weekday changes (initialItems prop changes)
-  // Use key prop on modal to force remount, but also sync when modal opens
-  useEffect(() => {
-    if (open) {
-      setSelectedItems(initialItems);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, weekIndex, dayIndex]);
-
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
