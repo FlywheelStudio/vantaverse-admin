@@ -876,7 +876,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     id: 'actions',
     header: ({ table }) => <BulkActionsHeader table={table} />,
-    cell: ({ row, table }) => (
+    cell: ({ row }) => (
       <ActionsCell 
         profile={row.original} 
         isSelected={row.getIsSelected()}
