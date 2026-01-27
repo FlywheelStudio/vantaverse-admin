@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -65,7 +65,10 @@ export function ProgramStatusCard({
   const deleteProgram = useDeleteProgram(userId);
 
   const parsedCompletion = parseCompletion(completion);
-  const color = 'var(--color-primary)';
+
+  // okLCH blue color palette
+  const startBlue = 'oklch(65% 0.15 250)';
+  const targetBlue = 'oklch(55% 0.20 250)';
 
   const toggleWeek = (weekIndex: number) => {
     const newExpanded = new Set(expandedWeeks);
@@ -85,8 +88,8 @@ export function ProgramStatusCard({
 
   const handleAssignSuccess = () => {
     // Invalidate and refetch user's program assignment
-    queryClient.invalidateQueries({ 
-      queryKey: ['program-assignment', userId] 
+    queryClient.invalidateQueries({
+      queryKey: ['program-assignment', userId]
     });
     // Reload the page to show updated assignment
     router.refresh();
@@ -109,39 +112,55 @@ export function ProgramStatusCard({
   if (!assignment) {
     return (
       <Card
-        className="w-full col-span-full overflow-hidden border border-border gap-2"
+        className="w-full col-span-full overflow-hidden border border-border gap-2 relative"
+        style={{
+          background: `linear-gradient(135deg, ${startBlue} 0%, ${targetBlue} 100%)`,
+        }}
       >
-        <div className="bg-muted/10">
-          <div className={cn('p-4 border-b')} style={{ borderColor: 'var(--color-border)' }}>
-            <div className="flex items-start justify-between gap-3">
+        {/* Decorative circles */}
+        <div
+          className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+          style={{
+            background: startBlue,
+            transform: 'translate(50%, -50%)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+          style={{
+            background: startBlue,
+            transform: 'translate(-50%, 50%)',
+          }}
+        />
+
+        <div className="relative z-10">
+          <div className={cn('p-4')}>
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div
-                  className="shrink-0 w-3 h-3 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <h3 className="font-semibold text-foreground text-lg truncate">
+                <BookOpen className="shrink-0 w-5 h-5 text-white" />
+                <h3 className="font-semibold text-white text-lg truncate uppercase">
                   Program Status
                 </h3>
               </div>
               <Button
                 onClick={() => setIsModalOpen(true)}
                 size="sm"
-                className="shrink-0 rounded-[var(--radius-pill)]"
+                className="shrink-0 rounded-[var(--radius-pill)] bg-white/20 hover:bg-white/30 text-white border-white/30"
               >
                 Assign Program
               </Button>
             </div>
           </div>
         </div>
-        <CardContent className="p-6">
-          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
+        <CardContent className="p-6 relative z-10">
+          <div className="rounded-xl border border-dashed border-white/30 bg-white/10 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-[var(--radius-lg)] bg-primary/10">
-                <AlertTriangle className="h-5 w-5 text-primary" />
+              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-[var(--radius-lg)] bg-white/20">
+                <AlertTriangle className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-foreground">No program assigned</div>
-                <div className="text-sm text-muted-foreground mt-1">
+                <div className="font-semibold text-white">No program assigned</div>
+                <div className="text-sm text-white/90 mt-1">
                   Assign a program to start tracking weekly completion and schedule progress.
                 </div>
               </div>
@@ -171,18 +190,34 @@ export function ProgramStatusCard({
   return (
     <Card
       className={cn(
-        'w-full col-span-full overflow-hidden border border-border gap-2',
+        'w-full col-span-full overflow-hidden border border-border gap-2 relative',
       )}
+      style={{
+        background: `linear-gradient(135deg, ${startBlue} 0%, ${targetBlue} 100%)`,
+      }}
     >
-      <div className="bg-muted/10">
-        <div className={cn('p-4 border-b')}>
-          <div className="flex items-start justify-between gap-3">
+      {/* Decorative circles */}
+      <div
+        className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: startBlue,
+          transform: 'translate(50%, -50%)',
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: startBlue,
+          transform: 'translate(-50%, 50%)',
+        }}
+      />
+
+      <div className="relative z-10">
+        <div className={cn('p-4')}>
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="shrink-0 w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <h3 className="font-semibold text-foreground text-lg truncate">
+              <BookOpen className="shrink-0 w-5 h-5 text-white" />
+              <h3 className="font-semibold text-white text-lg truncate uppercase">
                 Program Status
               </h3>
             </div>
@@ -191,7 +226,7 @@ export function ProgramStatusCard({
                 onClick={assignment ? handleEditProgram : () => setIsModalOpen(true)}
                 variant="outline"
                 size="sm"
-                className="rounded-[var(--radius-pill)]"
+                className="rounded-[var(--radius-pill)] bg-white/20 hover:bg-white/30 text-white border-white/30"
               >
                 {assignment ? 'Edit Program' : 'Assign Program'}
               </Button>
@@ -203,21 +238,21 @@ export function ProgramStatusCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-[var(--radius-pill)]"
+                          className="text-white hover:text-white hover:bg-white/20 rounded-[var(--radius-pill)]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Delete Program</p>
+                      <p>De-assign Program</p>
                     </TooltipContent>
                   </Tooltip>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Program</AlertDialogTitle>
+                      <AlertDialogTitle>De-assign Program</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete &ldquo;{template?.name || 'this program'}&rdquo;?
+                        Are you sure you want to de-assign &ldquo;{template?.name || 'this program'}&rdquo;?
                         This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -241,29 +276,29 @@ export function ProgramStatusCard({
         </div>
       </div>
 
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-6 space-y-6 relative z-10">
         {/* Program Info */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Program Name:</span>
+            <span className="text-sm font-medium text-white/80">Program Name:</span>
             {template?.id ? (
-              <Link
-                href={`/builder/${assignment.id}?from=/users/${userId}`}
-                className="text-sm font-semibold text-primary hover:underline transition-colors duration-200"
-              >
-                {template.name}
-              </Link>
+
+              <span className="text-sm font-semibold text-white">{template.name}</span>
+
             ) : (
-              <span className="text-sm font-semibold text-foreground">N/A</span>
+              <span className="text-sm font-semibold text-white">N/A</span>
             )}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Overall Completion:</span>
-            <span className="text-sm font-semibold text-foreground">{overallCompletion}%</span>
+            <span className="text-sm font-medium text-white/80">Overall Completion:</span>
+            <span className="text-sm font-semibold text-white">{overallCompletion}%</span>
           </div>
           <Progress
             value={overallCompletion}
             className="h-2 mt-2"
+            style={{
+              backgroundColor: overallCompletion === 0 ? 'white' : undefined,
+            }}
             indicatorColor={getProgressColor(overallCompletion)}
           />
         </div>
@@ -271,27 +306,27 @@ export function ProgramStatusCard({
         {/* Weeks */}
         {schedule && schedule.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Workout Schedule</h3>
-            <div className="max-h-[300px] overflow-y-auto slim-scrollbar space-y-2">
-            {schedule.map((week, weekIndex) => (
-              <ProgramStatusWeekCard
-                key={weekIndex}
-                week={week}
-                weekIndex={weekIndex}
-                startDate={assignment.start_date}
-                isExpanded={expandedWeeks.has(weekIndex)}
-                onToggle={() => toggleWeek(weekIndex)}
-                parsedCompletion={parsedCompletion}
-                exerciseNamesMap={exerciseNamesMap}
-                groupsMap={groupsMap}
-              />
-            ))}
+            <h3 className="text-sm font-semibold text-white mb-3">Workout Schedule</h3>
+            <div className="max-h-[300px] overflow-y-auto slim-scrollbar space-y-2 rounded-[var(--radius-lg)]">
+              {schedule.map((week, weekIndex) => (
+                <ProgramStatusWeekCard
+                  key={weekIndex}
+                  week={week}
+                  weekIndex={weekIndex}
+                  startDate={assignment.start_date}
+                  isExpanded={expandedWeeks.has(weekIndex)}
+                  onToggle={() => toggleWeek(weekIndex)}
+                  parsedCompletion={parsedCompletion}
+                  exerciseNamesMap={exerciseNamesMap}
+                  groupsMap={groupsMap}
+                />
+              ))}
             </div>
           </div>
         )}
 
         {(!schedule || schedule.length === 0) && (
-          <div className="text-sm text-muted-foreground text-center py-4">
+          <div className="text-sm text-white/80 text-center py-4">
             No workout schedule available
           </div>
         )}
