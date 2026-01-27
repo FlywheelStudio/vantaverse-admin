@@ -52,7 +52,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                 className="shrink-0 w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <h3 className="font-semibold text-foreground text-lg truncate">MC Intake</h3>
+              <h3 className="font-semibold text-foreground text-lg truncate">2. Intake Survey</h3>
             </div>
             {survey !== null && (
               <div className="flex items-center gap-2 shrink-0">

@@ -138,6 +138,41 @@ export default async function UserProfilePage({
     },
   });
 
+  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
+    id: o.id,
+    name: o.name,
+  }));
+
+  // Fetch physiologists for each organization
+  const physiologistsByOrgId = new Map<
+    string,
+    | {
+        userId: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        avatarUrl: string | null;
+        description: string | null;
+      }
+    | null
+  >();
+
+  if (patientOrganizations.length > 0) {
+    const physiologistQueries = await Promise.all(
+      patientOrganizations.map(async (org) => {
+        const result = await orgMembersQuery.getCurrentPhysiologist(org.id);
+        return {
+          orgId: org.id,
+          physiologist: result.success ? result.data : null,
+        };
+      }),
+    );
+
+    for (const { orgId, physiologist } of physiologistQueries) {
+      physiologistsByOrgId.set(orgId, physiologist);
+    }
+  }
+
   const appointments = data.appointments;
   const hpLevelThreshold = data.hpLevelThreshold;
   const hpTransactions = data.hpTransactions;
@@ -152,10 +187,6 @@ export default async function UserProfilePage({
   const groupsMap =
     data.programAssignmentData?.groupsMap ??
     new Map<string, { exercise_template_ids: string[] | null }>();
-  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
-    id: o.id,
-    name: o.name,
-  }));
 
   // Extract schedule and completion from program assignment
   let schedule: DatabaseSchedule | null = null;
@@ -207,6 +238,7 @@ export default async function UserProfilePage({
     <UserProfilePageUI
       user={user}
       organizations={patientOrganizations}
+      physiologistsByOrgId={physiologistsByOrgId}
       appointments={appointments}
       hpLevelThreshold={hpLevelThreshold}
       hpTransactions={hpTransactions}

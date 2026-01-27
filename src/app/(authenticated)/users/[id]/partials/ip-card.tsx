@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Zap, TrendingUp, Award } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -139,27 +139,15 @@ export function IpCard({
 
         {/* Collapsed Preview */}
         {!isExpanded && (
-          <div className="p-5 pt-4 px-2 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Zap className="h-4 w-4" style={{ color }} />
-              <span className="font-semibold text-foreground">
-                {empowermentValue}% {gateTitle ? `-> ${gateTitle}` : ''}
-              </span>
+          <div className="p-4 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-foreground mb-1">
+                {empowermentValue}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {empowermentTitle || 'Empowerment'}
+              </div>
             </div>
-            {!isMaxLevel && pointsMissing !== null && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                <span>
-                  {formatNumber(pointsMissing)} points needed for next level
-                </span>
-              </div>
-            )}
-            {isMaxLevel && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Award className="h-4 w-4" />
-                <span>Maximum level reached</span>
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -182,8 +182,7 @@ export function AppointmentCard({
       >
         {/* Title and Badge Section */}
         <div
-          className={cn('p-4 border-b-2', !isDisabled && 'cursor-pointer')}
-          style={{ borderColor: color }}
+          className={cn('p-4', !isDisabled && 'cursor-pointer')}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -230,9 +229,10 @@ export function AppointmentCard({
                     latestAppointment.end_time,
                   )}
                 </span>
+                {' '}
+                {getLocationDisplay(latestAppointment)}
               </div>
             )}
-            {getLocationDisplay(latestAppointment)}
           </div>
         )}
       </div>

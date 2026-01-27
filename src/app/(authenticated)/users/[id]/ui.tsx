@@ -11,6 +11,9 @@ import { HpCard } from './partials/hp-card';
 import { IpCard } from './partials/ip-card';
 import { McIntakeCard } from './partials/mc-intake-card';
 import { HabitPledgeCard } from './partials/habit-pledge-card';
+import { GroupAssignmentCard } from './partials/group-assignment-card';
+import { PhysicianAssignmentCard } from './partials/physician-assignment-card';
+import { ProgramAssignmentCard } from './partials/program-assignment-card';
 import { ProgramStatusCard } from './program-status/card';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
@@ -21,6 +24,7 @@ import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workou
 export function UserProfilePageUI({
   user,
   organizations,
+  physiologistsByOrgId,
   appointments,
   hpLevelThreshold,
   hpTransactions,
@@ -38,6 +42,18 @@ export function UserProfilePageUI({
 }: {
   user: ProfileWithStats;
   organizations?: Array<{ id: string; name: string }>;
+  physiologistsByOrgId: Map<
+    string,
+    | {
+      userId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      avatarUrl: string | null;
+      description: string | null;
+    }
+    | null
+  >;
   appointments: Appointment[];
   hpLevelThreshold: {
     description: string;
@@ -92,6 +108,12 @@ export function UserProfilePageUI({
   // Determine if user is a member (patient) - physicians (admin) only see profile card
   const isMember = user.role === 'patient' || !user.role;
 
+  // Get physiologist for first organization (primary)
+  const primaryPhysiologist =
+    organizations && organizations.length > 0
+      ? physiologistsByOrgId.get(organizations[0].id) ?? null
+      : null;
+
   return (
     <PageWrapper
       subheader={
@@ -121,53 +143,74 @@ export function UserProfilePageUI({
         {/* Cards Section - Only show for members, hide for physicians */}
         {isMember && (
           <CardContent className="p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-              <AppointmentCard
-                title="Screening"
-                color="oklch(0.507 0.211 262.705)"
-                appointments={screeningAppointments}
-              />
-              <AppointmentCard
-                title="Consultation"
-                color="oklch(0.66 0.17 155)"
-                appointments={consultationAppointments}
-              />
-              <HpCard
-                currentLevel={user.current_level}
-                hpPoints={user.hp_points}
-                pointsRequiredForNextLevel={user.points_required_for_next_level}
-                currentPhase={user.current_phase}
-                levelDescription={hpLevelThreshold?.description ?? null}
-                levelImageUrl={hpLevelThreshold?.image_url ?? null}
-                transactions={hpTransactions}
-              />
-              <IpCard
-                empowerment={user.empowerment}
-                empowermentTitle={user.empowerment_title}
-                currentEffect={empowermentThreshold?.effects ?? null}
-                gateTitle={gateInfo?.title ?? null}
-                gateDescription={gateInfo?.description ?? null}
-                pointsMissingForNextLevel={pointsMissingForNextLevel}
-                basePower={empowermentThreshold?.base_power ?? null}
-                topPower={empowermentThreshold?.top_power ?? null}
-                transactions={ipTransactions}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6">
-              <McIntakeCard survey={mcIntakeSurvey} />
-              <HabitPledgeCard pledge={habitPledge} />
-            </div>
-            <div className="col-span-full w-full mt-6">
-              <ProgramStatusCard
-                assignment={programAssignment}
-                schedule={schedule}
-                completion={completion}
-                exerciseNamesMap={exerciseNamesMap}
-                groupsMap={groupsMap}
-                userId={user.id}
-                userFirstName={user.first_name}
-                userLastName={user.last_name}
-              />
+            <div className="grid grid-cols-3 gap-6 items-start">
+              {/* Left Column: Program Onboarding Progress (2/3 width) */}
+              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4">
+                <h2 className="text-xl font-semibold text-foreground mb-4">
+                  Program Onboarding Progress
+                </h2>
+                <div className="space-y-4">
+                  <AppointmentCard
+                    title="1. Screening"
+                    color="oklch(0.507 0.211 262.705)"
+                    appointments={screeningAppointments}
+                  />
+                  <McIntakeCard survey={mcIntakeSurvey} />
+                  <AppointmentCard
+                    title="3. Virtual Consultation"
+                    color="oklch(0.66 0.17 155)"
+                    appointments={consultationAppointments}
+                  />
+                  <GroupAssignmentCard organizations={organizations ?? []} />
+                  <PhysicianAssignmentCard physiologist={primaryPhysiologist} />
+                  <ProgramAssignmentCard assignment={programAssignment} />
+                </div>
+              </div>
+
+              {/* Right Column: VantaThrive Insights (1/3 width) */}
+              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4">
+                <h2 className="text-xl font-semibold text-foreground mb-4">
+                  VantaThrive Insights
+                </h2>
+                <div className="space-y-4">
+                  <HpCard
+                    currentLevel={user.current_level}
+                    hpPoints={user.hp_points}
+                    pointsRequiredForNextLevel={user.points_required_for_next_level}
+                    currentPhase={user.current_phase}
+                    levelDescription={hpLevelThreshold?.description ?? null}
+                    levelImageUrl={hpLevelThreshold?.image_url ?? null}
+                    transactions={hpTransactions}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <IpCard
+                      empowerment={user.empowerment}
+                      empowermentTitle={user.empowerment_title}
+                      currentEffect={empowermentThreshold?.effects ?? null}
+                      gateTitle={gateInfo?.title ?? null}
+                      gateDescription={gateInfo?.description ?? null}
+                      pointsMissingForNextLevel={pointsMissingForNextLevel}
+                      basePower={empowermentThreshold?.base_power ?? null}
+                      topPower={empowermentThreshold?.top_power ?? null}
+                      transactions={ipTransactions}
+                    />
+                    <HabitPledgeCard pledge={habitPledge} />
+                  </div>
+                </div>
+                {/* Program Status Card - Full width at bottom */}
+                <div className="col-span-full w-full mt-6">
+                  <ProgramStatusCard
+                    assignment={programAssignment}
+                    schedule={schedule}
+                    completion={completion}
+                    exerciseNamesMap={exerciseNamesMap}
+                    groupsMap={groupsMap}
+                    userId={user.id}
+                    userFirstName={user.first_name}
+                    userLastName={user.last_name}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         )}
