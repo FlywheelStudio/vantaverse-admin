@@ -41,7 +41,7 @@ export function UserProfilePageUI({
   groupsMap,
 }: {
   user: ProfileWithStats;
-  organizations?: Array<{ id: string; name: string }>;
+  organizations?: Array<{ id: string; name: string; description: string | null }>;
   physiologistsByOrgId: Map<
     string,
     | {
@@ -160,7 +160,12 @@ export function UserProfilePageUI({
                     color="oklch(0.66 0.17 155)"
                     appointments={consultationAppointments}
                   />
-                  <GroupAssignmentCard organizations={organizations ?? []} />
+                  <GroupAssignmentCard
+                    organizations={organizations ?? []}
+                    userId={user.id}
+                    userFirstName={user.first_name}
+                    userLastName={user.last_name}
+                  />
                   <PhysicianAssignmentCard physiologist={primaryPhysiologist} />
                   <ProgramAssignmentCard assignment={programAssignment} />
                 </div>

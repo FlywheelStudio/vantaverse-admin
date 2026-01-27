@@ -134,13 +134,14 @@ export default async function UserProfilePage({
       condition: user.role === 'patient',
       query: () =>
         orgMembersQuery.getOrganizationsByUserId(id),
-      defaultValue: [] as Array<{ id: string; name: string }>,
+      defaultValue: [] as Array<{ id: string; name: string; description: string | null }>,
     },
   });
 
-  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
+  const patientOrganizations = (data.patientOrganizations ?? []).map((o: { id: string; name: string; description: string | null }) => ({
     id: o.id,
     name: o.name,
+    description: o.description,
   }));
 
   // Fetch physiologists for each organization
