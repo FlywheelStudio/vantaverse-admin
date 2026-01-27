@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.10.3](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.2...0.10.3) (2026-01-27)
+
 ## [0.10.2](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.1...0.10.2) (2026-01-27)
 
 

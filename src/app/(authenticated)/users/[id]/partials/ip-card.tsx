@@ -1,12 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Zap, TrendingUp, Award } from 'lucide-react';
+import { ChevronUp, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatNumber } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+
+// okLCH greenish color palette
+const primaryGreen = 'oklch(0.55 0.2 150)';
+const lightGreen = 'oklch(0.95 0.05 150)';
+const progressUnfilledGreen = 'oklch(0.85 0.08 150)';
+const darkGray = 'oklch(0.25 0 0)';
 
 interface IpCardProps {
   empowerment: number | null;
@@ -83,83 +89,63 @@ export function IpCard({
       .join(' ');
   };
 
-  const color = 'var(--color-primary)';
+  const color = primaryGreen;
 
   return (
     <Card
       className={cn(
-        'border border-border gap-2 overflow-hidden',
+        'border gap-2 overflow-hidden cursor-pointer'
       )}
-      style={{ minHeight: '166px' }}
+      style={{
+        minHeight: '166px',
+        borderColor: primaryGreen,
+        background: `linear-gradient(135deg, ${lightGreen} 0%, white 100%)`
+      }}
+      onClick={() => setIsExpanded(!isExpanded)}
     >
       {/* Card Header */}
-      <div
-        className="bg-muted/10"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div>
         {/* Title and Badge Section */}
-        <div
-          className={cn('p-4 border-b-2 cursor-pointer')}
-          style={{ borderColor: color }}
-        >
+        <div className="pt-4 px-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="shrink-0 w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <h3 className="font-semibold text-foreground text-lg truncate">
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <Shield className="shrink-0 w-5 h-5" style={{ color: primaryGreen }} />
+              <h3 className="text-xs truncate" style={{ color: darkGray }}>
                 Empowerment
               </h3>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {empowermentTitle && !isExpanded && (
-                <Badge
-                  variant="outline"
-                  className="font-semibold border border-primary/20 bg-primary/10 text-primary"
-                >
-                  {empowermentTitle}
-                </Badge>
-              )}
-              <button
-                className={cn(
-                  'transition-transform duration-200',
-                  isExpanded && 'rotate-180',
-                )}
-              >
-                {isExpanded ? (
-                  <ChevronUp className="h-5 w-5" style={{ color }} />
-                ) : (
-                  <ChevronDown className="h-5 w-5" style={{ color }} />
-                )}
-              </button>
-            </div>
+            {isExpanded && (
+              <div className="flex items-center gap-2 shrink-0">
+                <ChevronUp className="h-5 w-5" style={{ color }} />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Collapsed Preview */}
         {!isExpanded && (
-          <div className="p-5 pt-4 px-2 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Zap className="h-4 w-4" style={{ color }} />
-              <span className="font-semibold text-foreground">
-                {empowermentValue}% {gateTitle ? `-> ${gateTitle}` : ''}
-              </span>
+          <div
+            className="px-4 py-2 flex flex-col justify-center relative"
+          >
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-start" style={{ color: primaryGreen }}>
+                {empowermentValue}%
+              </div>
+              <div className="w-full">
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: progressUnfilledGreen }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${empowermentValue}%`,
+                      backgroundColor: primaryGreen
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-start pt-1" style={{ color: primaryGreen }}>
+                {empowermentTitle || 'Empowered'}
+              </div>
             </div>
-            {!isMaxLevel && pointsMissing !== null && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                <span>
-                  {formatNumber(pointsMissing)} points needed for next level
-                </span>
-              </div>
-            )}
-            {isMaxLevel && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Award className="h-4 w-4" />
-                <span>Maximum level reached</span>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -168,7 +154,10 @@ export function IpCard({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            className="bg-card overflow-hidden"
+            className="overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, ${lightGreen} 0%, white 100%)`
+            }}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -201,15 +190,12 @@ export function IpCard({
                   <span className="text-sm font-medium text-muted-foreground">
                     Empowerment:
                   </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {empowermentValue}%
-                  </span>
                 </div>
 
                 {empowermentTitle && (
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Empowerment Title:
+                    <span className="text-sm font-semibold text-foreground">
+                      {empowermentValue}%
                     </span>
                     <span className="text-sm font-semibold text-foreground">
                       {empowermentTitle}
@@ -263,7 +249,7 @@ export function IpCard({
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.2 }}
               >
-                <h4 className="font-semibold text-foreground mb-3 px-4 pb-4">
+                <h4 className="font-semibold text-foreground px-4 pb-2">
                   Transaction History
                 </h4>
                 <motion.div
@@ -299,11 +285,11 @@ export function IpCard({
                           >
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>
-                          <span className="text-sm font-semibold text-foreground">
+                        </div>
+                        <span className="text-sm font-semibold text-foreground">
                             {tx.amount > 0 ? '+' : ''}
                             {formatNumber(tx.amount)} IP
                           </span>
-                        </div>
                         {tx.description && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {tx.description}

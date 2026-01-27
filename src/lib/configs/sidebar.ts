@@ -9,10 +9,8 @@ import {
 
 // Vantabuddy trigger position and dimensions
 export const VANTABUDDY_CONFIG = {
-  // Position: top-16 (64px) left-0 (0px)
-  top: 10, // top-16 = 64px
-  left: 0, // left-0 = 0px
-  // Size: w-16 h-16 (64px)
+  top: 10,
+  left: 0,
   width: 64,
   height: 64,
 } as const;
@@ -28,7 +26,7 @@ export const SIDEBAR_CONFIG = {
 } as const;
 
 // Header height
-export const HEADER_HEIGHT = 0; // h-16 = 64px
+export const HEADER_HEIGHT = 0;
 
 // Navigation links
 export const NAV_LINKS = [

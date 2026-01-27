@@ -5,13 +5,14 @@ import { useState } from 'react';
 import {
   Phone,
   MapPin,
-  ChevronDown,
   ChevronUp,
   Video,
   Clock,
   CheckCircle2,
   Edit2,
   XCircle,
+  Calendar,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -21,13 +22,11 @@ import { Button } from '@/components/ui/button';
 
 interface AppointmentCardProps {
   title: string;
-  color: string;
   appointments: Appointment[];
 }
 
 export function AppointmentCard({
   title,
-  color,
   appointments,
 }: AppointmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -57,18 +56,67 @@ export function AppointmentCard({
   };
 
   const isDisabled = status === 'not_programmed';
+  
+  // Color scheme based on status
+  const getColorScheme = () => {
+    if (status === 'scheduled') {
+      // Clock color variants based on oklch(87.56% 0.0629 227.95)
+      return {
+        border: 'oklch(0.85 0.08 227.95)',
+        text: 'oklch(0.45 0.12 227.95)',
+        bg: 'oklch(0.96 0.04 227.95)',
+        icon: 'oklch(0.8756 0.0629 227.95)',
+      };
+    }
+    if (status === 'attended') {
+      // Green variants
+      return {
+        border: 'oklch(0.87 0.05 155)',
+        text: 'oklch(0.32 0.05 155)',
+        bg: 'oklch(0.94 0.04 155)',
+        icon: 'oklch(0.55 0.05 155)',
+      };
+    }
+    // Default/muted
+    return {
+      border: 'oklch(0.9 0.01 0)',
+      text: 'oklch(0.5 0.01 0)',
+      bg: 'oklch(0.96 0.01 0)',
+      icon: 'oklch(0.6 0.01 0)',
+    };
+  };
+
+  const colorScheme = getColorScheme();
+  
   const statusBadgeClass = (statusStr: string) => {
     switch (statusStr) {
       case 'scheduled':
-        return 'border-primary/20 bg-primary/10 text-primary';
       case 'attended':
-        return 'bg-[oklch(0.94_0.04_155)] text-[oklch(0.32_0.12_155)] border-[oklch(0.87_0.1_155)]';
+        return 'border font-semibold';
       case 'canceled':
         return 'border-destructive/20 bg-destructive/10 text-destructive';
       case 'not_programmed':
       default:
         return 'border-border bg-muted/30 text-muted-foreground';
     }
+  };
+  
+  const getStatusBadgeStyle = (statusStr: string) => {
+    if (statusStr === 'scheduled') {
+      return {
+        borderColor: 'oklch(0.85 0.08 227.95)',
+        backgroundColor: 'oklch(0.96 0.04 227.95)',
+        color: 'oklch(0.45 0.12 227.95)',
+      };
+    }
+    if (statusStr === 'attended') {
+      return {
+        borderColor: 'oklch(0.87 0.05 155)',
+        backgroundColor: 'oklch(0.94 0.04 155)',
+        color: 'oklch(0.32 0.05 155)',
+      };
+    }
+    return {};
   };
 
   // Format date and time
@@ -129,13 +177,13 @@ export function AppointmentCard({
     if (isMeeting) {
       return (
         <div className="flex items-center gap-2 min-w-0">
-          <Video className="h-4 w-4" style={{ color }} />
+          <Video className="h-4 w-4" style={{ color: colorScheme.text }} />
           <a
             href={locationValue}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm hover:underline truncate min-w-0"
-            style={{ color }}
+            style={{ color: colorScheme.text }}
             onClick={(e) => e.stopPropagation()}
           >
             Meeting Link
@@ -172,55 +220,73 @@ export function AppointmentCard({
         isDisabled
           ? 'opacity-50 pointer-events-none shadow-none'
           : 'hover:shadow-[var(--shadow-lg)]',
+        !isExpanded && 'min-h-0',
       )}
-      style={{ borderColor: color, minHeight: '166px' }}
+      style={{ 
+        borderColor: colorScheme.border,
+        backgroundColor: colorScheme.bg,
+      }}
     >
       {/* Card Header */}
       <div
-        className="bg-muted/10"
+        style={{ backgroundColor: colorScheme.bg }}
         onClick={() => !isDisabled && setIsExpanded(!isExpanded)}
       >
         {/* Title and Badge Section */}
         <div
-          className={cn('p-4 border-b-2', !isDisabled && 'cursor-pointer')}
-          style={{ borderColor: color }}
+          className={cn('p-3', !isDisabled && 'cursor-pointer')}
         >
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="shrink-0 w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <h3 className="font-semibold text-foreground text-lg truncate">{title}</h3>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                variant="outline"
-                className={cn('font-semibold border', statusBadgeClass(status))}
-              >
-                {getStatusLabel(status)}
-              </Badge>
-              {!isDisabled && (
-                <button
-                  className={cn(
-                    'transition-transform duration-200',
-                    isExpanded && 'rotate-180',
-                  )}
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex flex-col items-center shrink-0">
+                {status === 'scheduled' ? (
+                  <Calendar 
+                    className="h-5 w-5" 
+                    style={{ color: colorScheme.icon }}
+                  />
+                ) : status === 'attended' ? (
+                  <Check 
+                    className="h-5 w-5" 
+                    style={{ color: colorScheme.icon }}
+                  />
+                ) : (
+                  <div
+                    className="shrink-0 w-3 h-3 rounded-full"
+                    style={{ backgroundColor: colorScheme.icon }}
+                  />
+                )}
+                <div className="w-[2px] h-4 bg-gray-300 mt-1" />
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h3 
+                  className="font-semibold text-foreground text-base truncate"
+                  style={{ color: colorScheme.text }}
                 >
-                  {isExpanded ? (
-                    <ChevronUp className="h-5 w-5" style={{ color }} />
-                  ) : (
-                    <ChevronDown className="h-5 w-5" style={{ color }} />
-                  )}
-                </button>
-              )}
+                  {title}
+                </h3>
+                <Badge
+                  variant="outline"
+                  className={cn('font-semibold border shrink-0', statusBadgeClass(status))}
+                  style={getStatusBadgeStyle(status)}
+                >
+                  {getStatusLabel(status)}
+                </Badge>
+              </div>
             </div>
+            {!isDisabled && isExpanded && (
+              <button className="shrink-0">
+                <ChevronUp 
+                  className="h-5 w-5" 
+                  style={{ color: colorScheme.icon }} 
+                />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Collapsed Preview */}
         {!isExpanded && latestAppointment && !isDisabled && (
-          <div className="p-5 pt-4 px-2 space-y-2">
+          <div className="px-3 pb-3 space-y-2">
             {latestAppointment.start_time && latestAppointment.end_time && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
@@ -230,9 +296,10 @@ export function AppointmentCard({
                     latestAppointment.end_time,
                   )}
                 </span>
+                {' '}
+                {getLocationDisplay(latestAppointment)}
               </div>
             )}
-            {getLocationDisplay(latestAppointment)}
           </div>
         )}
       </div>
@@ -241,7 +308,8 @@ export function AppointmentCard({
       <AnimatePresence>
         {isExpanded && !isDisabled && (
           <motion.div
-            className="bg-card overflow-hidden p-5"
+            className="overflow-hidden p-5"
+            style={{ backgroundColor: colorScheme.bg }}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -346,8 +414,8 @@ export function AppointmentCard({
                       size="sm"
                       className="flex-1 min-w-0 rounded-[var(--radius-pill)] bg-transparent cursor-pointer hover:bg-muted/40"
                       style={{
-                        color: color,
-                        borderColor: color,
+                        color: colorScheme.text,
+                        borderColor: colorScheme.border,
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -444,6 +512,7 @@ export function AppointmentCard({
                         <Badge
                           variant="outline"
                           className={cn('cursor-default', statusBadgeClass(histAppt.status))}
+                          style={getStatusBadgeStyle(histAppt.status)}
                         >
                           {getStatusLabel(histAppt.status)}
                         </Badge>

@@ -6,6 +6,10 @@ import { ProgramStatusDayCard } from './day-card';
 import type { CompletionDay } from './card-utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
+// okLCH blueish color palette (matching habit-pledge-card)
+const primaryBlue = 'oklch(0.55 0.2 250)';
+const lightBlue = 'oklch(0.95 0.05 250)';
+
 interface ProgramStatusWeekCardProps {
   week: DatabaseSchedule[number];
   weekIndex: number;
@@ -32,7 +36,13 @@ export function ProgramStatusWeekCard({
   );
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-card">
+    <div 
+      className="border rounded-lg overflow-hidden"
+      style={{ 
+        borderColor: primaryBlue,
+        background: `linear-gradient(135deg, ${lightBlue} 0%, white 80%)`
+      }}
+    >
       <button
         onClick={hasExercises ? onToggle : undefined}
         disabled={!hasExercises}
@@ -68,24 +78,47 @@ export function ProgramStatusWeekCard({
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
               className="overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${lightBlue} 0%, white 100%)`
+              }}
             >
-              <div className="p-4 space-y-3 border-t border-border">
-                {week.map((day, dayIndex) => {
-                  const completionDay =
-                    parsedCompletion[weekIndex]?.[dayIndex] || null;
-                  return (
-                    <ProgramStatusDayCard
-                      key={dayIndex}
-                      day={day}
-                      dayIndex={dayIndex}
-                      weekIndex={weekIndex}
-                      startDate={startDate}
-                      completionDay={completionDay}
-                      exerciseNamesMap={exerciseNamesMap}
-                      groupsMap={groupsMap}
-                    />
-                  );
-                })}
+              <div className="relative p-4 pl-10 border-t" style={{ borderColor: primaryBlue }}>
+                {/* Timeline line */}
+                <div 
+                  className="absolute left-5 top-0 bottom-0 w-0.5"
+                  style={{ backgroundColor: primaryBlue }}
+                />
+                
+                {/* Timeline items */}
+                <div className="space-y-3">
+                  {week.map((day, dayIndex) => {
+                    const completionDay =
+                      parsedCompletion[weekIndex]?.[dayIndex] || null;
+                    return (
+                      <div key={dayIndex} className="relative">
+                        {/* Timeline dot - centered on the main timeline line */}
+                        <div 
+                          className="absolute w-3 h-3 rounded-full border-2 z-10"
+                          style={{ 
+                            left: '-25px',
+                            top: '20px',
+                            backgroundColor: 'white',
+                            borderColor: primaryBlue
+                          }}
+                        />
+                        <ProgramStatusDayCard
+                          day={day}
+                          dayIndex={dayIndex}
+                          weekIndex={weekIndex}
+                          startDate={startDate}
+                          completionDay={completionDay}
+                          exerciseNamesMap={exerciseNamesMap}
+                          groupsMap={groupsMap}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </motion.div>
           )}
