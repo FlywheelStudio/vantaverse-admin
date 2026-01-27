@@ -90,6 +90,7 @@ export function ProgramStatusDayCard({
               const exerciseNames = exerciseTemplateIds
                 .map((id) => exerciseNamesMap.get(id))
                 .filter((name): name is string => Boolean(name));
+
               if (exerciseNames.length > 0) {
                 return <li key={exerciseIndex}>{exerciseNames.join(', ')}</li>;
               }

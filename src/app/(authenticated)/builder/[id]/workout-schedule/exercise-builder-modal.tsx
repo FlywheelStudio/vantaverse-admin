@@ -213,7 +213,15 @@ export function ExerciseBuilderModal({
   };
 
   const handleDone = () => {
-    onDone?.(selectedItems);
+    // Filter out empty groups before saving
+    const filteredItems = selectedItems.filter((item) => {
+      if (item.type === 'group') {
+        return item.data.items.length > 0;
+      }
+      return true;
+    });
+    
+    onDone?.(filteredItems);
     onOpenChange(false);
     setSearch('');
     setShowGroupInput(false);
