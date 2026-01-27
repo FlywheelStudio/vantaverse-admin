@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.1...0.10.2) (2026-01-27)
+
+
+### Bug Fixes
+
+* we can now save an empty day in the exercise builder modal ([96f9a84](https://github.com/FlywheelStudio/vantaverse-admin/commit/96f9a8450518aa894f0969232bb3a875f81a0857))
+
 ## [0.10.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.0...0.10.1) (2026-01-25)
 
 # [0.10.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.9.0...0.10.0) (2026-01-25)
