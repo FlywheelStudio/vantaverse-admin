@@ -281,17 +281,17 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
   public async upsertExerciseTemplate(data: {
     p_exercise_id: number;
     p_sets?: number;
-    p_rep?: number;
-    p_time?: number;
-    p_distance?: string;
-    p_weight?: string;
-    p_rest_time?: number;
-    p_tempo?: string[];
-    p_rep_override?: number[];
-    p_time_override?: number[];
-    p_distance_override?: string[];
-    p_weight_override?: string[];
-    p_rest_time_override?: number[];
+    p_rep?: number | null;
+    p_time?: number | null;
+    p_distance?: string | null;
+    p_weight?: string | null;
+    p_rest_time?: number | null;
+    p_tempo?: string[] | null;
+    p_rep_override?: number[] | null;
+    p_time_override?: number[] | null;
+    p_distance_override?: string[] | null;
+    p_weight_override?: string[] | null;
+    p_rest_time_override?: number[] | null;
     p_equipment_ids?: number[];
     p_notes?: string;
   }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
