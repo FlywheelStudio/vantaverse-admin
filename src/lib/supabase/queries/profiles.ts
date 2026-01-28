@@ -341,26 +341,22 @@ export class ProfilesQuery extends SupabaseQuery {
    */
   private async getUnassignedUserIds(): Promise<string[]> {
     const supabase = await this.getClient('service_role');
-    
+
     // Fallback: query directly (RPC might not exist)
-    const { data: allProfiles } = await supabase
-      .from('profiles')
-      .select('id');
-    
+    const { data: allProfiles } = await supabase.from('profiles').select('id');
+
     const { data: allOrgMembers } = await supabase
       .from('organization_members')
       .select('user_id')
       .eq('is_active', true);
-    
+
     if (!allProfiles) return [];
-    
+
     const orgMemberIds = new Set(
       allOrgMembers ? allOrgMembers.map((m) => m.user_id) : [],
     );
-    
-    return allProfiles
-      .map((p) => p.id)
-      .filter((id) => !orgMemberIds.has(id));
+
+    return allProfiles.map((p) => p.id).filter((id) => !orgMemberIds.has(id));
   }
 
   /**
@@ -632,7 +628,7 @@ export class ProfilesQuery extends SupabaseQuery {
   }): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
     // 1. Build user ID filters
     const userIds = await this.buildUserIdFilters(filters);
-    
+
     // Early return if filters result in empty set
     if (userIds === null) {
       return {
@@ -642,7 +638,10 @@ export class ProfilesQuery extends SupabaseQuery {
     }
 
     // 2. Query profiles with filters
-    const profilesResult = await this.queryProfilesWithFilters(userIds, filters);
+    const profilesResult = await this.queryProfilesWithFilters(
+      userIds,
+      filters,
+    );
     if (!profilesResult.success) {
       return profilesResult;
     }
@@ -798,6 +797,32 @@ export class ProfilesQuery extends SupabaseQuery {
 
     if (error) {
       return this.parseResponsePostgresError(error, 'Failed to delete profile');
+    }
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
+  /**
+   * Delete an auth user
+   * @param id - The auth user id
+   * @returns Success or error
+   */
+  public async deleteAuthUser(
+    id: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { error } = await supabase.auth.admin.deleteUser(id);
+
+    if (error) {
+      console.error('Failed to delete auth user:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
 
     return {

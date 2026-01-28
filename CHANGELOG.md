@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.5](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.4...0.10.5) (2026-01-28)
+
+
+### Bug Fixes
+
+* fixed an assortment of bugs ([0ca22aa](https://github.com/FlywheelStudio/vantaverse-admin/commit/0ca22aae986ff18d8a5f5c811cb6d2b36e587368))
+
 ## [0.10.4](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.3...0.10.4) (2026-01-28)
 
 

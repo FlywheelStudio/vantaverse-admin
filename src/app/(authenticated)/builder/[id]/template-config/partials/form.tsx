@@ -91,7 +91,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Input
               {...field}
-              className="flex-3 min-w-0 h-10 text-xs"
+              className="flex-2 min-w-0 h-10 text-xs"
               min="0"
               step="0.1"
               placeholder={
@@ -133,7 +133,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Select
               {...field}
-              className="flex-[1] min-w-0 h-10 text-xs"
+              className="flex-1 min-w-0 h-10 text-xs text-center"
               value={
                 activeTab === 'all'
                   ? currentDistanceUnit
@@ -168,7 +168,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Input
               {...field}
-              className="flex-[3] min-w-0 h-10 text-xs"
+              className="flex-2 min-w-0 h-10 text-xs"
               min="0"
               step="0.1"
               placeholder={
@@ -202,7 +202,7 @@ export function TemplateConfigForm({
           render={({ field }) => (
             <Select
               {...field}
-              className="flex-[1] min-w-0 h-10 text-xs"
+              className="flex-1 min-w-0 h-10 text-xs text-center"
               value={activeTab === 'all' ? currentWeightUnit : currentWeightUnit}
               onChange={(e) => {
                 if (activeTab === 'all') {

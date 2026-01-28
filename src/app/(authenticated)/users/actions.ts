@@ -183,11 +183,11 @@ export async function uploadUserAvatar(
 }
 
 /**
- * Delete a user
+ * Delete an auth user
  */
-export async function deleteUser(userId: string) {
+export async function deleteAuthUser(userId: string) {
   const query = new ProfilesQuery();
-  return query.delete(userId);
+  return query.deleteAuthUser(userId);
 }
 
 /**
@@ -242,7 +242,7 @@ async function uploadUsersCSV(
     // Parse CSV file - use a more direct approach to get all rows
     // Split by newlines first to get raw CSV rows
     const rawLines = csvText.split(/\r?\n/);
-    
+
     // Parse each line as CSV (handle quoted values)
     const data: (string | number | undefined)[][] = [];
     for (const line of rawLines) {
@@ -251,13 +251,13 @@ async function uploadUsersCSV(
         data.push(['', '', '']);
         continue;
       }
-      
+
       // Simple CSV parsing (handles basic cases)
       // Split by comma, but respect quoted strings
       const row: string[] = [];
       let current = '';
       let inQuotes = false;
-      
+
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
@@ -270,12 +270,12 @@ async function uploadUsersCSV(
         }
       }
       row.push(current.trim()); // Add last field
-      
+
       // Ensure at least 3 columns
       while (row.length < 3) {
         row.push('');
       }
-      
+
       data.push(row.slice(0, 3)); // Take first 3 columns
     }
 
@@ -301,7 +301,8 @@ async function uploadUsersCSV(
     if (startIndex >= data.length) {
       return {
         success: false,
-        error: 'No user data found in CSV file. Please add user rows after the header row (First Name, Last Name, Email*). The template file should be filled in with actual user data before uploading.',
+        error:
+          'No user data found in CSV file. Please add user rows after the header row (First Name, Last Name, Email*). The template file should be filled in with actual user data before uploading.',
       };
     }
 
@@ -496,7 +497,24 @@ async function uploadUsersExcel(
     }
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/025afd74-7b67-4f45-afd3-6a6b59d4393b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'actions.ts:uploadUsersExcel',message:'Excel parse complete',data:{usersToAddCount:usersToAdd.length,existingUsersCount:existingUsers.length,failedUsersCount:failedUsers.length,errorsCount:errors.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/025afd74-7b67-4f45-afd3-6a6b59d4393b', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'actions.ts:uploadUsersExcel',
+        message: 'Excel parse complete',
+        data: {
+          usersToAddCount: usersToAdd.length,
+          existingUsersCount: existingUsers.length,
+          failedUsersCount: failedUsers.length,
+          errorsCount: errors.length,
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'B',
+      }),
+    }).catch(() => {});
     // #endregion
 
     return {

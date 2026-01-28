@@ -193,7 +193,7 @@ export function AddMembersModal({
         className={
           'w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden ' +
           'border border-border bg-card text-card-foreground p-5 ' +
-          'rounded-[var(--radius-xl)] shadow-[var(--shadow-md)]'
+          'rounded-xl shadow-md'
         }
       >
         <motion.div
@@ -222,7 +222,7 @@ export function AddMembersModal({
                 type="button"
                 onClick={() => setSelectedRole('patient')}
                 className={
-                  'cursor-pointer p-4 text-left transition-all rounded-[var(--radius-lg)] ' +
+                  'cursor-pointer p-4 text-left transition-all rounded-lg ' +
                   (selectedRole === 'patient'
                     ? 'border-2 border-primary bg-primary/10'
                     : 'border border-border bg-card hover:border-muted-foreground/40')
@@ -245,7 +245,7 @@ export function AddMembersModal({
                     }
                     disabled={isPhysiologistDisabled}
                     className={
-                      'cursor-pointer p-4 text-left transition-all rounded-[var(--radius-lg)] ' +
+                      'cursor-pointer p-4 text-left transition-all rounded-lg ' +
                       (isPhysiologistDisabled
                         ? 'border border-border bg-muted cursor-not-allowed opacity-60'
                         : selectedRole === 'admin'
@@ -279,10 +279,10 @@ export function AddMembersModal({
               placeholder="Search by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-[2.75rem] rounded-[var(--radius-md)] px-4 text-[0.875rem] bg-card border border-border"
+              className="h-11 rounded-md px-4 text-[0.875rem] bg-card border border-border"
             />
             {selectedRole === 'patient' && (
-              <div className="flex items-center justify-between rounded-[var(--radius-lg)] p-2 bg-muted border border-border">
+              <div className="flex items-center justify-between rounded-lg p-2 bg-muted border border-border">
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
@@ -299,7 +299,7 @@ export function AddMembersModal({
                     onCheckedChange={(checked) =>
                       setViewUnassigned(checked === true)
                     }
-                    className="rounded-[var(--radius-xs)]"
+                    className="rounded-xs"
                   />
                   <label
                     htmlFor="view-unassigned"
@@ -389,14 +389,14 @@ export function AddMembersModal({
               variant="outline"
               onClick={handleCancel}
               disabled={isPending}
-              className="h-11 px-5 rounded-[var(--radius-pill)]"
+              className="h-11 px-5 rounded-pill"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={!canSave || isPending}
-              className="h-11 px-5 rounded-[var(--radius-pill)] shadow-[var(--shadow-md)]"
+              className="h-11 px-5 rounded-pill shadow-md"
             >
               {(isPending || membersLoading) && (
                 <Loader className="h-4 w-4 animate-spin shrink-0" />
