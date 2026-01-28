@@ -5,7 +5,7 @@ import {
   createUserQuickAdd,
   importUsersCSV,
   importUsersExcel,
-  deleteUser,
+  deleteAuthUser,
   makeSuperAdmin,
   revokeSuperAdmin,
 } from '../../actions';
@@ -23,7 +23,9 @@ interface CreateUserQuickAddData {
 /**
  * Creates an optimistic user object for optimistic updates
  */
-function createOptimisticUser(variables: CreateUserQuickAddData): ProfileWithStats {
+function createOptimisticUser(
+  variables: CreateUserQuickAddData,
+): ProfileWithStats {
   return {
     id: `temp-${Date.now()}`,
     email: variables.email.trim().toLowerCase(),
@@ -206,7 +208,7 @@ export function useDeleteUser() {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      const result = await deleteUser(userId);
+      const result = await deleteAuthUser(userId);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to delete user');
@@ -220,12 +222,14 @@ export function useDeleteUser() {
       await queryClient.cancelQueries({ queryKey: ['user-profile', userId] });
 
       // Snapshot previous values
-      const previousUserQueries = queryClient.getQueriesData<ProfileWithStats[]>(
-        { queryKey: ['users'] },
-      );
-      const previousProfileData = queryClient.getQueryData<ProfileWithStats | null>(
-        ['user-profile', userId],
-      );
+      const previousUserQueries = queryClient.getQueriesData<
+        ProfileWithStats[]
+      >({ queryKey: ['users'] });
+      const previousProfileData =
+        queryClient.getQueryData<ProfileWithStats | null>([
+          'user-profile',
+          userId,
+        ]);
 
       // Optimistically remove user from all user queries
       queryClient.setQueriesData<ProfileWithStats[]>(
@@ -252,7 +256,10 @@ export function useDeleteUser() {
         });
       }
       if (context?.previousProfileData !== undefined) {
-        queryClient.setQueryData(['user-profile', userId], context.previousProfileData);
+        queryClient.setQueryData(
+          ['user-profile', userId],
+          context.previousProfileData,
+        );
       }
       toast.error(error.message || 'Failed to delete user');
     },
@@ -291,12 +298,14 @@ export function useToggleSuperAdmin() {
       });
 
       // Snapshot previous values
-      const previousUserQueries = queryClient.getQueriesData<ProfileWithStats[]>(
-        { queryKey: ['users'] },
-      );
-      const previousProfileData = queryClient.getQueryData<ProfileWithStats | null>(
-        ['user-profile', variables.userId],
-      );
+      const previousUserQueries = queryClient.getQueriesData<
+        ProfileWithStats[]
+      >({ queryKey: ['users'] });
+      const previousProfileData =
+        queryClient.getQueryData<ProfileWithStats | null>([
+          'user-profile',
+          variables.userId,
+        ]);
 
       // Optimistically update is_super_admin in all user queries
       queryClient.setQueriesData<ProfileWithStats[]>(

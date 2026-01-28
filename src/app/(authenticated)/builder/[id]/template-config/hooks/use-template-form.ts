@@ -65,11 +65,6 @@ export function useTemplateForm(
       // Transform form data for optimistic update
       if (!isValidTemplateItem(item) || !onUpdate) return;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('data', data);
-        console.log('formData', formData);
-      }
-
       const exerciseId =
         item.type === 'exercise' ? item.data.id : item.data.exercise_id;
 

@@ -118,6 +118,7 @@ export function DayBoxesGrid() {
     previousWeekDayRef.current = { week: currentWeek, day: dayIndex };
     // Load existing items for this day
     const initialItems = getDayItems(currentWeek, dayIndex);
+
     // Store initial items (deep copy to prevent mutation)
     initialItemsRef.current = JSON.parse(JSON.stringify(initialItems));
     setPendingItems(initialItems);

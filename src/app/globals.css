@@ -298,3 +298,24 @@ header::after {
   animation: slideDownFadeIn 0.2s ease-out forwards;
   opacity: 0;
 }
+
+/* Select options styling - matches design system */
+select option {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  font-family: var(--font-sans);
+}
+
+/* Selected option styling */
+select option:checked {
+  background-color: oklch(0.95 0.03 262.705);
+  color: oklch(0.42 0.2 262.705);
+}
+
+/* Hover state (limited browser support) */
+select option:hover {
+  background-color: oklch(0.97 0.03 262.705);
+}

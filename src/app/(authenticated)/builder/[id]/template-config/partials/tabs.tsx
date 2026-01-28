@@ -29,7 +29,7 @@ const NavigationButtons = ({
         <button
           onClick={() => onSetIndexChange(Math.max(0, currentSetIndex - 1))}
           disabled={currentSetIndex === 0}
-          className="p-1 hover:bg-muted/60 rounded-[var(--radius-sm)] disabled:opacity-50"
+          className="p-1 hover:bg-muted/60 rounded-sm disabled:opacity-50"
         >
           <ChevronLeft className="h-3 w-3" />
         </button>
@@ -41,7 +41,7 @@ const NavigationButtons = ({
             onSetIndexChange(Math.min(sets - 1, currentSetIndex + 1))
           }
           disabled={currentSetIndex >= sets - 1}
-          className="p-1 hover:bg-muted/60 rounded-[var(--radius-sm)] disabled:opacity-50"
+          className="p-1 hover:bg-muted/60 rounded-sm disabled:opacity-50"
         >
           <ChevronRight className="h-3 w-3" />
         </button>

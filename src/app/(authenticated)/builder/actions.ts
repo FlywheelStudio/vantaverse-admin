@@ -10,6 +10,7 @@ import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
+import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
@@ -488,20 +489,28 @@ export async function convertScheduleToSelectedItems(
   const groupsQuery = new GroupsQuery();
 
   const data = await createParallelQueries({
-    templates: {
-      condition: exerciseTemplateIds.size > 0,
-      query: () => templatesQuery.getByIds(Array.from(exerciseTemplateIds)),
-      defaultValue: new Map(),
-    },
     groups: {
-      condition: groupIds.size > 0,
+      // keep this query always present so dependent queries can rely on it
       query: () => groupsQuery.getByIds(Array.from(groupIds)),
-      defaultValue: new Map(),
+      defaultValue: new Map<string, DbGroup>(),
+    },
+    templates: {
+      query: (deps: { groups: Map<string, DbGroup> }) => {
+        const allTemplateIds = new Set<string>(exerciseTemplateIds);
+        for (const group of deps.groups.values()) {
+          for (const id of group.exercise_template_ids ?? []) {
+            allTemplateIds.add(id);
+          }
+        }
+        return templatesQuery.getByIds(Array.from(allTemplateIds));
+      },
+      dependsOn: ['groups'] as const,
+      defaultValue: new Map<string, ExerciseTemplate>(),
     },
   });
 
-  const templatesMap = data.templates ?? new Map();
   const groupsMap = data.groups ?? new Map();
+  const templatesMap = data.templates ?? new Map();
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];
