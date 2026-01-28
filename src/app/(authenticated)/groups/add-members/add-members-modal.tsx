@@ -95,7 +95,6 @@ export function AddMembersModal({
     newMemberCount,
     countChange,
     resetSelection,
-    clearAll,
   } = useMemberSelection({
     initialMemberIds,
     initialPhysiologistId,
@@ -156,10 +155,6 @@ export function AddMembersModal({
     if (selectedRole === 'patient') {
       handleToggleGroup(allUserIds, 'patient');
     }
-  };
-
-  const handleClear = () => {
-    clearAll(selectedRole);
   };
 
   const handleCancel = () => {
@@ -295,13 +290,6 @@ export function AddMembersModal({
                     className="text-[0.875rem] text-primary hover:underline font-medium"
                   >
                     Select All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    className="text-[0.875rem] text-primary hover:underline font-medium"
-                  >
-                    Clear
                   </button>
                 </div>
                 <div className="flex items-center gap-2">

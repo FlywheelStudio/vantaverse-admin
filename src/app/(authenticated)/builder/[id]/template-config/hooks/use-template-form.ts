@@ -65,6 +65,11 @@ export function useTemplateForm(
       // Transform form data for optimistic update
       if (!isValidTemplateItem(item) || !onUpdate) return;
 
+      if (process.env.NODE_ENV === 'development') {
+        console.log('data', data);
+        console.log('formData', formData);
+      }
+
       const exerciseId =
         item.type === 'exercise' ? item.data.id : item.data.exercise_id;
 
@@ -77,33 +82,42 @@ export function useTemplateForm(
         data.weightUnit ?? formData.weightUnit ?? 'kg',
       );
 
-      const distanceOverrides = (data.distance_override ??
+      const distanceOverrides = (
+        data.distance_override ??
         formData.distance_override ??
-        []).map((val, idx) =>
+        []
+      ).map((val, idx) =>
         formatValueWithUnit(
           val,
-          (data.distance_override_units ?? formData.distance_override_units ?? [])[
-            idx
-          ] || 'm',
+          (data.distance_override_units ??
+            formData.distance_override_units ??
+            [])[idx] || 'm',
         ),
       );
 
-      const weightOverrides = (data.weight_override ?? formData.weight_override ?? []).map(
-        (val, idx) =>
-          formatValueWithUnit(
-            val,
-            (data.weight_override_units ?? formData.weight_override_units ?? [])[
-              idx
-            ] || 'kg',
-          ),
+      const weightOverrides = (
+        data.weight_override ??
+        formData.weight_override ??
+        []
+      ).map((val, idx) =>
+        formatValueWithUnit(
+          val,
+          (data.weight_override_units ?? formData.weight_override_units ?? [])[
+            idx
+          ] || 'kg',
+        ),
       );
 
-      const repOverrides: number[] = (data.rep_override ?? formData.rep_override ?? []).map(
-        (v) => (v !== null && v !== undefined ? v : -1),
-      );
-      const timeOverrides: number[] = (data.time_override ?? formData.time_override ?? []).map(
-        (v) => (v !== null && v !== undefined ? v : -1),
-      );
+      const repOverrides: number[] = (
+        data.rep_override ??
+        formData.rep_override ??
+        []
+      ).map((v) => (v !== null && v !== undefined ? v : -1));
+      const timeOverrides: number[] = (
+        data.time_override ??
+        formData.time_override ??
+        []
+      ).map((v) => (v !== null && v !== undefined ? v : -1));
       const distanceOverridesFormatted: string[] = distanceOverrides.map(
         (v) => v ?? '-1',
       );
@@ -111,7 +125,9 @@ export function useTemplateForm(
         (v) => v ?? '-1',
       );
       const restTimeOverrides: number[] = (
-        data.rest_time_override ?? formData.rest_time_override ?? []
+        data.rest_time_override ??
+        formData.rest_time_override ??
+        []
       ).map((v) => (v !== null && v !== undefined ? v : -1));
 
       const hasRepOverrides = repOverrides.some((v) => v !== -1);
@@ -131,22 +147,20 @@ export function useTemplateForm(
 
       onUpdate({
         exercise_id: exerciseId,
-        sets: (data.sets ?? formData.sets) ?? undefined,
-        rep: (data.rep ?? formData.rep) ?? undefined,
-        time: (data.time ?? formData.time) ?? undefined,
-        distance: distanceValue ?? undefined,
-        weight: weightValue ?? undefined,
-        rest_time: (data.rest_time ?? formData.rest_time) ?? undefined,
-        tempo: hasTempo ? tempoFormatted : undefined,
-        rep_override: hasRepOverrides ? repOverrides : undefined,
-        time_override: hasTimeOverrides ? timeOverrides : undefined,
+        sets: data.sets ?? formData.sets ?? undefined,
+        rep: data.rep ?? formData.rep ?? undefined,
+        time: data.time ?? formData.time ?? undefined,
+        distance: distanceValue,
+        weight: weightValue,
+        rest_time: data.rest_time ?? formData.rest_time ?? undefined,
+        tempo: hasTempo ? tempoFormatted : null,
+        rep_override: hasRepOverrides ? repOverrides : null,
+        time_override: hasTimeOverrides ? timeOverrides : null,
         distance_override: hasDistanceOverrides
           ? distanceOverridesFormatted
-          : undefined,
-        weight_override: hasWeightOverrides
-          ? weightOverridesFormatted
-          : undefined,
-        rest_time_override: hasRestTimeOverrides ? restTimeOverrides : undefined,
+          : null,
+        weight_override: hasWeightOverrides ? weightOverridesFormatted : null,
+        rest_time_override: hasRestTimeOverrides ? restTimeOverrides : null,
       });
     },
     onSuccessWithTemplate,
@@ -189,18 +203,30 @@ export function useTemplateForm(
     } else {
       setValue('sets', newSets);
       setValue('rep_override', (formData.rep_override ?? []).slice(0, newSets));
-      setValue('time_override', (formData.time_override ?? []).slice(0, newSets));
-      setValue('distance_override', (formData.distance_override ?? []).slice(0, newSets));
+      setValue(
+        'time_override',
+        (formData.time_override ?? []).slice(0, newSets),
+      );
+      setValue(
+        'distance_override',
+        (formData.distance_override ?? []).slice(0, newSets),
+      );
       setValue(
         'distance_override_units',
         (formData.distance_override_units ?? []).slice(0, newSets),
       );
-      setValue('weight_override', (formData.weight_override ?? []).slice(0, newSets));
+      setValue(
+        'weight_override',
+        (formData.weight_override ?? []).slice(0, newSets),
+      );
       setValue(
         'weight_override_units',
         (formData.weight_override_units ?? []).slice(0, newSets),
       );
-      setValue('rest_time_override', (formData.rest_time_override ?? []).slice(0, newSets));
+      setValue(
+        'rest_time_override',
+        (formData.rest_time_override ?? []).slice(0, newSets),
+      );
     }
 
     if (currentSetIndex >= newSets) {
@@ -249,12 +275,18 @@ export function useTemplateForm(
     );
     const distanceOverrides = (formData.distance_override ?? [])
       .map((val, idx) =>
-        formatValueWithUnit(val, (formData.distance_override_units ?? [])[idx] || 'm'),
+        formatValueWithUnit(
+          val,
+          (formData.distance_override_units ?? [])[idx] || 'm',
+        ),
       )
       .filter((v): v is string => v !== null);
     const weightOverrides = (formData.weight_override ?? [])
       .map((val, idx) =>
-        formatValueWithUnit(val, (formData.weight_override_units ?? [])[idx] || 'kg'),
+        formatValueWithUnit(
+          val,
+          (formData.weight_override_units ?? [])[idx] || 'kg',
+        ),
       )
       .filter((v): v is string => v !== null);
 
@@ -310,9 +342,7 @@ export function useTemplateForm(
     const currentSets = formData.sets ?? TemplateConfigDefaultValues.sets;
 
     if (copiedData.rep_override && copiedData.rep_override.length > 0) {
-      const repOverride = [
-        ...copiedData.rep_override.map((v) => v ?? null),
-      ];
+      const repOverride = [...copiedData.rep_override.map((v) => v ?? null)];
       if (repOverride.length < currentSets) {
         setValue('rep_override', [
           ...repOverride,
@@ -326,9 +356,7 @@ export function useTemplateForm(
     }
 
     if (copiedData.time_override && copiedData.time_override.length > 0) {
-      const timeOverride = [
-        ...copiedData.time_override.map((v) => v ?? null),
-      ];
+      const timeOverride = [...copiedData.time_override.map((v) => v ?? null)];
       if (timeOverride.length < currentSets) {
         setValue('time_override', [
           ...timeOverride,
@@ -420,7 +448,12 @@ export function useTemplateForm(
     if (copiedData.tempo && copiedData.tempo.length === 4) {
       setValue(
         'tempo',
-        copiedData.tempo.map((v) => v ?? null) as [string | null, string | null, string | null, string | null],
+        copiedData.tempo.map((v) => v ?? null) as [
+          string | null,
+          string | null,
+          string | null,
+          string | null,
+        ],
       );
     }
   };

@@ -35,8 +35,14 @@ const getDefaultFormData = (sessionDefaults?: {
   distanceUnit: sessionDefaults?.distanceUnit ?? 'm',
   weight: sessionDefaults?.weight ?? null,
   weightUnit: sessionDefaults?.weightUnit ?? 'kg',
-  rest_time: sessionDefaults?.rest_time ?? TemplateConfigDefaultValues.rest_time,
-  tempo: sessionDefaults?.tempo as [string | null, string | null, string | null, string | null] ?? [null, null, null, null],
+  rest_time:
+    sessionDefaults?.rest_time ?? TemplateConfigDefaultValues.rest_time,
+  tempo: (sessionDefaults?.tempo as [
+    string | null,
+    string | null,
+    string | null,
+    string | null,
+  ]) ?? [null, null, null, null],
   rep_override: [],
   time_override: [],
   distance_override: [],
@@ -46,7 +52,10 @@ const getDefaultFormData = (sessionDefaults?: {
   rest_time_override: [],
 });
 
-function initializeFormData(item: ValidTemplateItem | null, sessionDefaults?: ReturnType<typeof useDefaultValues>['values']): TemplateFormData {
+function initializeFormData(
+  item: ValidTemplateItem | null,
+  sessionDefaults?: ReturnType<typeof useDefaultValues>['values'],
+): TemplateFormData {
   if (!item || item.type === 'exercise') {
     return getDefaultFormData(sessionDefaults);
   }
@@ -109,12 +118,9 @@ interface UseTemplateFormInitProps {
   reset: UseFormReset<TemplateFormData>;
 }
 
-export function useTemplateFormInit({
-  item,
-  reset,
-}: UseTemplateFormInitProps) {
+export function useTemplateFormInit({ item, reset }: UseTemplateFormInitProps) {
   const { values: sessionDefaults } = useDefaultValues();
-  
+
   useEffect(() => {
     const newFormData = initializeFormData(
       isValidTemplateItem(item) ? item : null,

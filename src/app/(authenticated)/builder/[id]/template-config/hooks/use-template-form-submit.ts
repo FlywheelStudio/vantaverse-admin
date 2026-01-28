@@ -23,17 +23,17 @@ function buildMergedTemplate(
   variables: {
     exerciseId: number;
     sets?: number;
-    rep?: number;
-    time?: number;
-    distance?: string;
-    weight?: string;
-    rest_time?: number;
-    tempo?: string[];
-    rep_override?: number[];
-    time_override?: number[];
-    distance_override?: string[];
-    weight_override?: string[];
-    rest_time_override?: number[];
+    rep?: number | null;
+    time?: number | null;
+    distance?: string | null;
+    weight?: string | null;
+    rest_time?: number | null;
+    tempo?: string[] | null;
+    rep_override?: number[] | null;
+    time_override?: number[] | null;
+    distance_override?: string[] | null;
+    weight_override?: string[] | null;
+    rest_time_override?: number[] | null;
   },
   data: { id: string; template_hash: string },
 ): ExerciseTemplate {
@@ -46,6 +46,8 @@ function buildMergedTemplate(
           video_type: item.data.video_type,
           video_url: item.data.video_url ?? null,
         };
+  const v = variables;
+  const b = base;
   return {
     id: data.id,
     template_hash: data.template_hash,
@@ -54,21 +56,32 @@ function buildMergedTemplate(
     video_type: base.video_type,
     video_url: base.video_url ?? null,
     notes: base.notes ?? null,
-    sets: variables.sets ?? base.sets ?? null,
-    rep: variables.rep ?? base.rep ?? null,
-    time: variables.time ?? base.time ?? null,
-    distance: variables.distance ?? base.distance ?? null,
-    weight: variables.weight ?? base.weight ?? null,
-    rest_time: variables.rest_time ?? base.rest_time ?? null,
-    tempo: variables.tempo ?? base.tempo ?? null,
+    sets: v.sets ?? b.sets ?? null,
+    rep: v.rep !== undefined ? v.rep : (b.rep ?? null),
+    time: v.time !== undefined ? v.time : (b.time ?? null),
+    distance: v.distance !== undefined ? v.distance : (b.distance ?? null),
+    weight: v.weight !== undefined ? v.weight : (b.weight ?? null),
+    rest_time: v.rest_time !== undefined ? v.rest_time : (b.rest_time ?? null),
+    tempo: v.tempo !== undefined ? v.tempo : (b.tempo ?? null),
     equipment_ids: base.equipment_ids ?? null,
-    rep_override: variables.rep_override ?? base.rep_override ?? null,
-    time_override: variables.time_override ?? base.time_override ?? null,
+    rep_override:
+      v.rep_override !== undefined ? v.rep_override : (b.rep_override ?? null),
+    time_override:
+      v.time_override !== undefined
+        ? v.time_override
+        : (b.time_override ?? null),
     distance_override:
-      variables.distance_override ?? base.distance_override ?? null,
-    weight_override: variables.weight_override ?? base.weight_override ?? null,
+      v.distance_override !== undefined
+        ? v.distance_override
+        : (b.distance_override ?? null),
+    weight_override:
+      v.weight_override !== undefined
+        ? v.weight_override
+        : (b.weight_override ?? null),
     rest_time_override:
-      variables.rest_time_override ?? base.rest_time_override ?? null,
+      v.rest_time_override !== undefined
+        ? v.rest_time_override
+        : (b.rest_time_override ?? null),
     created_at: base.created_at ?? null,
     updated_at: base.updated_at ?? null,
   } as ExerciseTemplate;
@@ -111,10 +124,7 @@ export function useTemplateFormSubmit({
 
     const exerciseId = getExerciseId(item);
 
-    const distanceValue = formatValueWithUnit(
-      data.distance,
-      data.distanceUnit,
-    );
+    const distanceValue = formatValueWithUnit(data.distance, data.distanceUnit);
     const weightValue = formatValueWithUnit(data.weight, data.weightUnit);
 
     const distanceOverrides = data.distance_override.map((val, idx) =>
@@ -137,8 +147,8 @@ export function useTemplateFormSubmit({
     const weightOverridesFormatted: string[] = weightOverrides.map(
       (v) => v ?? '-1',
     );
-    const restTimeOverrides: number[] = data.rest_time_override.map(
-      (v) => (v !== null && v !== undefined ? v : -1),
+    const restTimeOverrides: number[] = data.rest_time_override.map((v) =>
+      v !== null && v !== undefined ? v : -1,
     );
 
     const hasRepOverrides = repOverrides.some((v) => v !== -1);
@@ -146,9 +156,7 @@ export function useTemplateFormSubmit({
     const hasDistanceOverrides = distanceOverridesFormatted.some(
       (v) => v !== '-1',
     );
-    const hasWeightOverrides = weightOverridesFormatted.some(
-      (v) => v !== '-1',
-    );
+    const hasWeightOverrides = weightOverridesFormatted.some((v) => v !== '-1');
     const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
 
     // Format tempo: convert to string[] of length 4, filter out nulls but maintain array length
@@ -161,21 +169,19 @@ export function useTemplateFormSubmit({
     updateMutation.mutate({
       exerciseId,
       sets: data.sets ?? undefined,
-      rep: data.rep ?? undefined,
-      time: data.time ?? undefined,
-      distance: distanceValue ?? undefined,
-      weight: weightValue ?? undefined,
-      rest_time: data.rest_time ?? undefined,
-      tempo: hasTempo ? tempoFormatted : undefined,
-      rep_override: hasRepOverrides ? repOverrides : undefined,
-      time_override: hasTimeOverrides ? timeOverrides : undefined,
+      rep: data.rep,
+      time: data.time,
+      distance: distanceValue,
+      weight: weightValue,
+      rest_time: data.rest_time,
+      tempo: hasTempo ? tempoFormatted : null,
+      rep_override: hasRepOverrides ? repOverrides : null,
+      time_override: hasTimeOverrides ? timeOverrides : null,
       distance_override: hasDistanceOverrides
         ? distanceOverridesFormatted
-        : undefined,
-      weight_override: hasWeightOverrides
-        ? weightOverridesFormatted
-        : undefined,
-      rest_time_override: hasRestTimeOverrides ? restTimeOverrides : undefined,
+        : null,
+      weight_override: hasWeightOverrides ? weightOverridesFormatted : null,
+      rest_time_override: hasRestTimeOverrides ? restTimeOverrides : null,
     });
   };
 

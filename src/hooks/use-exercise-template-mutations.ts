@@ -13,17 +13,17 @@ import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates
 interface UpdateExerciseTemplateData {
   exerciseId: number;
   sets?: number;
-  rep?: number;
-  time?: number;
-  distance?: string;
-  weight?: string;
-  rest_time?: number;
-  tempo?: string[];
-  rep_override?: number[];
-  time_override?: number[];
-  distance_override?: string[];
-  weight_override?: string[];
-  rest_time_override?: number[];
+  rep?: number | null;
+  time?: number | null;
+  distance?: string | null;
+  weight?: string | null;
+  rest_time?: number | null;
+  tempo?: string[] | null;
+  rep_override?: number[] | null;
+  time_override?: number[] | null;
+  distance_override?: string[] | null;
+  weight_override?: string[] | null;
+  rest_time_override?: number[] | null;
 }
 
 /** RPC upsert_exercise_template success payload */
@@ -116,23 +116,39 @@ export function useUpdateExerciseTemplate(
 
                 return page.map((template) => {
                   if (template.exercise_id === variables.exerciseId) {
+                    const v = variables;
+                    const t = template;
                     return {
                       ...template,
-                      sets: variables.sets ?? template.sets,
-                      rep: variables.rep ?? template.rep,
-                      time: variables.time ?? template.time,
-                      distance: variables.distance ?? template.distance,
-                      weight: variables.weight ?? template.weight,
-                      rest_time: variables.rest_time ?? template.rest_time,
-                      tempo: variables.tempo ?? template.tempo,
-                      rep_override: variables.rep_override ?? template.rep_override,
-                      time_override: variables.time_override ?? template.time_override,
+                      sets: v.sets ?? t.sets,
+                      rep: v.rep !== undefined ? v.rep : t.rep,
+                      time: v.time !== undefined ? v.time : t.time,
+                      distance:
+                        v.distance !== undefined ? v.distance : t.distance,
+                      weight: v.weight !== undefined ? v.weight : t.weight,
+                      rest_time:
+                        v.rest_time !== undefined ? v.rest_time : t.rest_time,
+                      tempo: v.tempo !== undefined ? v.tempo : t.tempo,
+                      rep_override:
+                        v.rep_override !== undefined
+                          ? v.rep_override
+                          : t.rep_override,
+                      time_override:
+                        v.time_override !== undefined
+                          ? v.time_override
+                          : t.time_override,
                       distance_override:
-                        variables.distance_override ?? template.distance_override,
+                        v.distance_override !== undefined
+                          ? v.distance_override
+                          : t.distance_override,
                       weight_override:
-                        variables.weight_override ?? template.weight_override,
+                        v.weight_override !== undefined
+                          ? v.weight_override
+                          : t.weight_override,
                       rest_time_override:
-                        variables.rest_time_override ?? template.rest_time_override,
+                        v.rest_time_override !== undefined
+                          ? v.rest_time_override
+                          : t.rest_time_override,
                     } as ExerciseTemplate;
                   }
                   return template;
