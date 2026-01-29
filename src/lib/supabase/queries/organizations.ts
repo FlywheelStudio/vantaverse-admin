@@ -23,6 +23,7 @@ export class OrganizationsQuery extends SupabaseQuery {
       .select(
         '*, organization_members(id, user_id, is_active, role, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
       )
+      .or('is_super_admin.is.null,is_super_admin.eq.false')
       .order('created_at', { ascending: false });
 
     if (error) {

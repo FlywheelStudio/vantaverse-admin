@@ -84,10 +84,9 @@ export function AssignGroupModal({
 
   const filteredOrganizations = useMemo(() => {
     const orgs = organizations ?? [];
-    const allowed = orgs.filter((o) => o.is_super_admin !== true);
     const query = (debouncedSearch ?? '').trim().toLowerCase();
-    if (!query) return allowed;
-    return allowed.filter((o) => o.name.toLowerCase().includes(query));
+    if (!query) return orgs;
+    return orgs.filter((o) => o.name.toLowerCase().includes(query));
   }, [organizations, debouncedSearch]);
 
   const userName = [userFirstName, userLastName].filter(Boolean).join(' ');
