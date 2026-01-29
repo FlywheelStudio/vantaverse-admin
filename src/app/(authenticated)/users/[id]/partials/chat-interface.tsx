@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, startTransition } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,13 +51,12 @@ export function ChatInterface({
     enabled: !!chatId,
   });
 
-  // Setup realtime subscription
+  // Setup realtime subscription (defer setState to avoid synchronous setState-in-effect)
   useEffect(() => {
     if (!chatId || isLoading) return;
 
     let isMounted = true;
 
-    // Set connecting state asynchronously
     const setupConnection = () => {
       if (!isMounted) return;
 
@@ -65,18 +64,14 @@ export function ChatInterface({
 
       realtime.subscribeToChat(chatId, (newMessage) => {
         if (isMounted) {
-          // Update React Query cache with new message
           queryClient.setQueryData<Message[]>(messagesKey, (old) => {
             if (!old) return [newMessage];
-            // Avoid duplicates by ID
             if (old.some((msg) => msg.id === newMessage.id)) {
               return old;
             }
-            // Remove optimistic temp message if it matches the real message content
             const filtered = old.filter((msg) => {
               const isTemp = msg.id.startsWith('temp-');
               if (!isTemp) return true;
-              // Remove temp message if content matches (optimistic update being replaced)
               const contentMatches = msg.content.trim() === newMessage.content.trim();
               const typeMatches = msg.message_type === newMessage.message_type;
               if (contentMatches && typeMatches) {
@@ -91,16 +86,12 @@ export function ChatInterface({
 
       realtimeRef.current = realtime;
 
-      // Mark as connected after subscription is set up
-      startTransition(() => {
-        if (isMounted) {
-          setIsConnecting(false);
-        }
-      });
+      if (isMounted) {
+        setIsConnecting(false);
+      }
     };
 
-    // Set connecting state in next tick to avoid synchronous setState
-    startTransition(() => {
+    queueMicrotask(() => {
       if (isMounted) {
         setIsConnecting(true);
         setupConnection();

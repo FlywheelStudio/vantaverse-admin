@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { UseFormReset } from 'react-hook-form';
-import { startTransition } from 'react';
 import type { SelectedItem } from '../types';
 import type { TemplateFormData } from '../schemas';
 import { parseValueWithUnit } from '../utils';
@@ -126,8 +125,6 @@ export function useTemplateFormInit({ item, reset }: UseTemplateFormInitProps) {
       isValidTemplateItem(item) ? item : null,
       sessionDefaults,
     );
-    startTransition(() => {
-      reset(newFormData);
-    });
+    reset(newFormData);
   }, [item, reset, sessionDefaults]);
 }

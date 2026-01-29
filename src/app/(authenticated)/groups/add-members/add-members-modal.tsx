@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, startTransition } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Loader } from 'lucide-react';
 import {
@@ -68,13 +68,6 @@ export function AddMembersModal({
     initialRole ?? 'patient',
   );
   const [viewUnassigned, setViewUnassigned] = useState(true);
-
-  useEffect(() => {
-    if (!open) return;
-    startTransition(() => {
-      setSelectedRole(initialRole ?? 'patient');
-    });
-  }, [open, initialRole]);
 
   const {
     profilesData,

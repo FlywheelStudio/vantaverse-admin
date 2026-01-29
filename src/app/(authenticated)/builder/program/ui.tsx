@@ -11,6 +11,7 @@ interface ProgramDetailsSectionProps {
   status: string | null;
   hideActions?: boolean;
   formMethods?: UseFormReturn<ProgramTemplateFormData>;
+  defaultOpen?: boolean;
 }
 
 export function ProgramDetailsSection({
@@ -19,9 +20,10 @@ export function ProgramDetailsSection({
   status,
   hideActions = false,
   formMethods,
+  defaultOpen = true,
 }: ProgramDetailsSectionProps) {
   return (
-    <CollapsibleSection title="Program Details" defaultOpen={true}>
+    <CollapsibleSection title="Program Details" defaultOpen={defaultOpen}>
       <CreateTemplateForm
         initialData={template}
         initialAssignment={initialAssignment}

@@ -3,6 +3,7 @@
 import { VantaBuddyTrigger } from '@/components/sidebar/vantabuddy-trigger';
 import { Sidebar } from '@/components/sidebar/sidebar';
 import { SIDEBAR_CONFIG } from '@/lib/configs/sidebar';
+import { ViewTransition } from 'react';
 
 export default function AuthenticatedLayout({
   children,
@@ -19,6 +20,7 @@ export default function AuthenticatedLayout({
     >
       <VantaBuddyTrigger />
       <Sidebar />
+      <ViewTransition name="main">
       <main
         className="flex flex-col min-h-0 h-screen overflow-hidden"
         style={{
@@ -28,6 +30,7 @@ export default function AuthenticatedLayout({
       >
         {children}
       </main>
+      </ViewTransition>
     </div>
   );
 }

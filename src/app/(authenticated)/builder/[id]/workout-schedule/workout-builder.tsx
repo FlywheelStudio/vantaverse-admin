@@ -17,11 +17,13 @@ import {
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
   initialAssignment: ProgramAssignmentWithTemplate;
+  programDetailsCollapsed?: boolean;
 }
 
-export function WorkoutBuilder({ 
-  assignmentId, 
+export function WorkoutBuilder({
+  assignmentId,
   initialAssignment,
+  programDetailsCollapsed = false,
 }: WorkoutBuilderProps) {
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
 
@@ -88,6 +90,7 @@ export function WorkoutBuilder({
                   status={initialAssignment.status}
                   hideActions
                   formMethods={programForm}
+                  defaultOpen={!programDetailsCollapsed}
                 />
                 <BuildWorkoutSection
                   initialWeeks={template.weeks}

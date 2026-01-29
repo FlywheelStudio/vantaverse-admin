@@ -15,6 +15,7 @@ import { GroupAssignmentCard } from './partials/group-assignment-card';
 import { PhysicianAssignmentCard } from './partials/physician-assignment-card';
 import { ProgramAssignmentCard } from './partials/program-assignment-card';
 import { ProgramStatusCard } from './program-status/card';
+import { ComplianceChartCard } from './partials/compliance-chart-card';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useMemo } from 'react';
@@ -138,8 +139,6 @@ export function UserProfilePageUI({
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}
-            compliance={compliance}
-            hasProgram={programAssignment !== null}
           />
         </div>
 
@@ -188,6 +187,10 @@ export function UserProfilePageUI({
                   VantaThrive Insights
                 </h2>
                 <div className="space-y-4">
+                  <ComplianceChartCard
+                    compliance={compliance}
+                    programAssignment={programAssignment}
+                  />
                   <HpCard
                     currentLevel={user.current_level}
                     hpPoints={user.hp_points}
@@ -211,10 +214,11 @@ export function UserProfilePageUI({
                     />
                     <HabitPledgeCard pledge={habitPledge} />
                   </div>
+
                 </div>
               </div>
             </div>
-            
+
             {/* Program Status Card - Full width at bottom */}
             <div className="col-span-full w-full mt-6">
               <ProgramStatusCard

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, startTransition } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader, Clock, CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
@@ -68,6 +69,8 @@ interface AssignProgramModalProps {
   onAssignSuccess?: () => void;
   userFirstName?: string | null;
   userLastName?: string | null;
+  /** Override for redirect "from" query (default: /users/[userId]) */
+  fromPath?: string;
 }
 
 export function AssignProgramModal({
@@ -77,7 +80,9 @@ export function AssignProgramModal({
   onAssignSuccess,
   userFirstName,
   userLastName,
+  fromPath,
 }: AssignProgramModalProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssigned, setShowAssigned] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
@@ -134,7 +139,7 @@ export function AssignProgramModal({
   const handleCardSelect = (assignmentId: string | null) => {
     setSelectedAssignmentId(assignmentId);
     if (assignmentId) {
-      startTransition(() => setIsDatePickerOpen(true));
+      setIsDatePickerOpen(true);
     }
   };
 
@@ -144,18 +149,17 @@ export function AssignProgramModal({
     }
 
     const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-    await assignProgram.mutateAsync(
-      {
-        templateAssignmentId: selectedAssignmentId,
-        startDate: formattedStartDate,
-      },
-      {
-        onSuccess: () => {
-          onAssignSuccess?.();
-          handleCancel();
-        },
-      },
-    );
+    const created = await assignProgram.mutateAsync({
+      templateAssignmentId: selectedAssignmentId,
+      startDate: formattedStartDate,
+    });
+    if (created?.id) {
+      onAssignSuccess?.();
+      handleCancel();
+      const from = fromPath ?? `/users/${userId}`;
+      const url = `/builder/${created.id}?from=${encodeURIComponent(from)}&collapsed=1`;
+      router.push(url);
+    }
   };
 
   const handleCancel = () => {
@@ -243,19 +247,19 @@ export function AssignProgramModal({
                       : null;
                   const profiles = assignment.profiles as
                     | {
-                        first_name?: string | null;
-                        last_name?: string | null;
-                        email?: string | null;
-                      }
+                      first_name?: string | null;
+                      last_name?: string | null;
+                      email?: string | null;
+                    }
                     | null
                     | undefined;
                   const userName = profiles
                     ? [
-                        profiles.first_name,
-                        profiles.last_name,
-                      ]
-                        .filter(Boolean)
-                        .join(' ') || profiles.email || 'Unknown User'
+                      profiles.first_name,
+                      profiles.last_name,
+                    ]
+                      .filter(Boolean)
+                      .join(' ') || profiles.email || 'Unknown User'
                     : null;
 
                   return (
@@ -300,15 +304,15 @@ export function AssignProgramModal({
                               {template.description}
                             </div>
                           )}
-                          {userName && assignment.status === 'active' && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              Assigned to: {userName}
-                            </div>
-                          )}
                           <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               <span>{template?.weeks || 0} weeks</span>
+                              {userName && assignment.status === 'active' && (
+                                <div className="text-sm text-muted-foreground">
+                                  | Assigned to: {userName}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
