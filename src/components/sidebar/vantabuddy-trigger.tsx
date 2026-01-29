@@ -1,6 +1,11 @@
+'use client';
+
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
 import { useEffect } from 'react';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
+
+export const VANTABUDDY_LOOK_RIGHT_EVENT = 'vantabuddy-look-right';
+export const VANTABUDDY_LOOK_DOWN_EVENT = 'vantabuddy-look-down';
 
 export function VantaBuddyTrigger() {
   const { rive, RiveComponent } = useRive({
@@ -10,12 +15,30 @@ export function VantaBuddyTrigger() {
   });
 
   const idleInput = useStateMachineInput(rive, 'vantabuddy', 'idle');
+  const turnrightInput = useStateMachineInput(rive, 'vantabuddy', 'turnright');
+  const turndownInput = useStateMachineInput(rive, 'vantabuddy', 'turndown');
 
   useEffect(() => {
     if (idleInput) {
       idleInput.fire();
     }
   }, [idleInput]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (turnrightInput) turnrightInput.fire();
+    };
+    window.addEventListener(VANTABUDDY_LOOK_RIGHT_EVENT, handler);
+    return () => window.removeEventListener(VANTABUDDY_LOOK_RIGHT_EVENT, handler);
+  }, [turnrightInput]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (turndownInput) turndownInput.fire();
+    };
+    window.addEventListener(VANTABUDDY_LOOK_DOWN_EVENT, handler);
+    return () => window.removeEventListener(VANTABUDDY_LOOK_DOWN_EVENT, handler);
+  }, [turndownInput]);
 
   return (
     <div

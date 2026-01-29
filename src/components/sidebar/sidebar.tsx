@@ -1,17 +1,39 @@
+'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRef } from 'react';
 import {
   VANTABUDDY_CONFIG,
   SIDEBAR_CONFIG,
   HEADER_HEIGHT,
   NAV_LINKS,
 } from '@/lib/configs/sidebar';
+import {
+  VANTABUDDY_LOOK_RIGHT_EVENT,
+  VANTABUDDY_LOOK_DOWN_EVENT,
+} from './vantabuddy-trigger';
 import { UserAvatar } from '../header/user-avatar';
+
+const LOOK_DOWN_COOLDOWN_MS = 5000;
 
 export function Sidebar() {
   const pathname = usePathname();
   const vantabuddyX = VANTABUDDY_CONFIG.left;
   const vantabuddyY = VANTABUDDY_CONFIG.top;
+  const lastLookDownAt = useRef<number>(0);
+
+  const triggerLookRight = () => {
+    window.dispatchEvent(new CustomEvent(VANTABUDDY_LOOK_RIGHT_EVENT));
+  };
+
+  const triggerLookDown = () => {
+    const now = Date.now();
+    if (now - lastLookDownAt.current >= LOOK_DOWN_COOLDOWN_MS) {
+      lastLookDownAt.current = now;
+      window.dispatchEvent(new CustomEvent(VANTABUDDY_LOOK_DOWN_EVENT));
+    }
+  };
 
   return (
     <aside
@@ -38,6 +60,8 @@ export function Sidebar() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={triggerLookRight}
+                onMouseEnter={triggerLookDown}
                 className={`content-link flex items-center gap-3 px-4 rounded-r-lg py-3 transition-colors text-white ${
                   isActive ? 'bg-[#2454FF]/70' : 'hover:bg-[#2454FF]/40'
                 }`}
