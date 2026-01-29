@@ -35,6 +35,7 @@ export function UserProfilePageUI({
   mcIntakeSurvey,
   habitPledge,
   programAssignment,
+  compliance,
   schedule,
   completion,
   exerciseNamesMap,
@@ -85,6 +86,7 @@ export function UserProfilePageUI({
   mcIntakeSurvey: McIntakeSurvey | null;
   habitPledge: HabitPledge | null;
   programAssignment: ProgramAssignmentWithTemplate | null;
+  compliance: number | null;
   schedule: DatabaseSchedule | null;
   completion: Array<Array<unknown>> | null | undefined;
   exerciseNamesMap: Map<string, string>;
@@ -136,6 +138,8 @@ export function UserProfilePageUI({
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}
+            compliance={compliance}
+            hasProgram={programAssignment !== null}
           />
         </div>
 
@@ -208,20 +212,21 @@ export function UserProfilePageUI({
                     <HabitPledgeCard pledge={habitPledge} />
                   </div>
                 </div>
-                {/* Program Status Card - Full width at bottom */}
-                <div className="col-span-full w-full mt-6">
-                  <ProgramStatusCard
-                    assignment={programAssignment}
-                    schedule={schedule}
-                    completion={completion}
-                    exerciseNamesMap={exerciseNamesMap}
-                    groupsMap={groupsMap}
-                    userId={user.id}
-                    userFirstName={user.first_name}
-                    userLastName={user.last_name}
-                  />
-                </div>
               </div>
+            </div>
+            
+            {/* Program Status Card - Full width at bottom */}
+            <div className="col-span-full w-full mt-6">
+              <ProgramStatusCard
+                assignment={programAssignment}
+                schedule={schedule}
+                completion={completion}
+                exerciseNamesMap={exerciseNamesMap}
+                groupsMap={groupsMap}
+                userId={user.id}
+                userFirstName={user.first_name}
+                userLastName={user.last_name}
+              />
             </div>
           </CardContent>
         )}

@@ -3,6 +3,7 @@ import {
   type SupabaseSuccess,
   type SupabaseError,
 } from '../query';
+import type { Database } from '../database.types';
 import {
   exerciseTemplateSchema,
   type ExerciseTemplate,
@@ -297,9 +298,10 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
   }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
+    type RpcArgs = Database['public']['Functions']['upsert_exercise_template']['Args'];
     const { data: result, error } = await supabase.rpc(
       'upsert_exercise_template',
-      data,
+      data as RpcArgs,
     );
 
     if (error) {

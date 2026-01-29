@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useSidebar } from '@/context/sidebar';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 import BreadcrumbNavigator from './header/breadcrumb-navigator';
 
@@ -11,11 +10,9 @@ interface PageWrapperProps {
   children: ReactNode;
 }
 
-export function PageWrapper({ subheader, topContent, children }: PageWrapperProps) {
-  const { isOpen, isExpanded } = useSidebar();
+const HEADER_PADDING_LEFT = 10;
 
-  const paddingLeft =
-    isExpanded && isOpen ? 10 : isOpen ? 10 : VANTABUDDY_CONFIG.width + 10;
+export function PageWrapper({ subheader, topContent, children }: PageWrapperProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef<number>(0);
@@ -56,7 +53,7 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
         suppressHydrationWarning
         className="text-white flex items-center justify-between shrink-0 content-title"
         style={{
-          paddingLeft: `${paddingLeft}px`,
+          paddingLeft: `${HEADER_PADDING_LEFT}px`,
           height: `${VANTABUDDY_CONFIG.height}px`,
         }}
         aria-label="Page Header"

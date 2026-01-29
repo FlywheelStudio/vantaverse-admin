@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { CompliancePieChart } from './compliance-pie-chart';
 
 interface UserProfileCardProps {
   userId: string;
@@ -19,6 +20,8 @@ interface UserProfileCardProps {
   email: string;
   avatarUrl?: string | null;
   role?: MemberRole;
+  compliance?: number | null;
+  hasProgram?: boolean;
 }
 
 export function UserProfileCard({
@@ -29,6 +32,8 @@ export function UserProfileCard({
   email,
   avatarUrl: initialAvatarUrl,
   role = 'patient',
+  compliance,
+  hasProgram = false,
 }: UserProfileCardProps) {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
@@ -202,6 +207,7 @@ export function UserProfileCard({
     setEditingValue(currentValue);
     setEditingField(null);
   };
+
 
   return (
     <>
@@ -378,6 +384,13 @@ export function UserProfileCard({
             )}
           </div>
         </div>
+        {/* Compliance Chart */}
+        
+        {hasProgram && (compliance ?? null) !== null && (
+          <div className="shrink-0 w-32 h-32 min-w-32 min-h-32">
+            <CompliancePieChart compliance={compliance ?? 0} />
+          </div>
+        )}
       </div>
     </>
   );

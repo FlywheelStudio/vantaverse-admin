@@ -32,10 +32,11 @@ export function useProgramFormDates({
   const startDate = watch('startDate');
   const endDate = watch('endDate');
 
-  // Load dates from initialAssignment if provided
+  // Load dates from initialAssignment if provided (never for template assignments)
   useEffect(() => {
     if (
       !initialAssignment ||
+      initialAssignment.status === 'template' ||
       loadedDatesForTemplateIdRef.current === initialAssignment.id
     ) {
       return;

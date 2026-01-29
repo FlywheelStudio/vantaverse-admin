@@ -21,7 +21,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, role, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
       )
       .order('created_at', { ascending: false });
 
@@ -44,6 +44,7 @@ export class OrganizationsQuery extends SupabaseQuery {
       id: string;
       user_id: string;
       is_active: boolean | null;
+      role: 'admin' | 'member' | 'patient';
       profiles: {
         id: string;
         avatar_url: string | null;
@@ -71,6 +72,7 @@ export class OrganizationsQuery extends SupabaseQuery {
               .map((m) => ({
                 id: m.id,
                 user_id: m.user_id,
+                role: m.role,
                 profile: m.profiles
                   ? {
                       id: m.profiles.id,
@@ -118,7 +120,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, role, profiles!inner(id, avatar_url, first_name, last_name, email)), teams(id)',
       )
       .eq('id', id)
       .maybeSingle();
@@ -141,6 +143,7 @@ export class OrganizationsQuery extends SupabaseQuery {
       id: string;
       user_id: string;
       is_active: boolean | null;
+      role: 'admin' | 'member' | 'patient';
       profiles: {
         id: string;
         avatar_url: string | null;
@@ -168,6 +171,7 @@ export class OrganizationsQuery extends SupabaseQuery {
             .map((m) => ({
               id: m.id,
               user_id: m.user_id,
+              role: m.role,
               profile: m.profiles
                 ? {
                     id: m.profiles.id,

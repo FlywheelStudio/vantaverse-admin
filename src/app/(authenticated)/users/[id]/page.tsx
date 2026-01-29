@@ -130,6 +130,11 @@ export default async function UserProfilePage({
       query: () => programAssignmentsQuery.getActiveByUserId(id),
       defaultValue: null,
     },
+    compliance: {
+      condition: user.role === 'patient',
+      query: () => programAssignmentsQuery.getComplianceByUserId(id),
+      defaultValue: null,
+    },
     patientOrganizations: {
       condition: user.role === 'patient',
       query: () =>
@@ -138,7 +143,7 @@ export default async function UserProfilePage({
     },
   });
 
-  const patientOrganizations = (data.patientOrganizations ?? []).map((o: { id: string; name: string; description: string | null }) => ({
+  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
     id: o.id,
     name: o.name,
     description: o.description,
@@ -183,6 +188,7 @@ export default async function UserProfilePage({
   const mcIntakeSurvey = data.mcIntakeSurvey;
   const habitPledge = data.habitPledge;
   const programAssignment = data.programAssignmentData?.assignment ?? null;
+  const compliance = data.compliance ?? null;
   const exerciseNamesMap =
     data.programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
   const groupsMap =
@@ -250,6 +256,7 @@ export default async function UserProfilePage({
       mcIntakeSurvey={mcIntakeSurvey}
       habitPledge={habitPledge}
       programAssignment={programAssignment}
+      compliance={compliance}
       schedule={schedule}
       completion={completion}
       exerciseNamesMap={exerciseNamesMap}

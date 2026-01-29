@@ -22,6 +22,7 @@ function buildMemberObjects(
       return {
         id: `temp-${userId}`,
         user_id: userId,
+        role: 'patient' as const,
         profile: {
           id: profile.id,
           avatar_url: profile.avatar_url,
@@ -108,12 +109,18 @@ export function useAddOrganizationMembers(organizationId: string) {
                   variables.userIds,
                   variables.profilesMap,
                 );
+                const existingAdmins = (org.members || []).filter(
+                  (m) => m.role === 'admin',
+                );
+                const mergedMembers = [...existingAdmins, ...newMembers];
 
                 return {
                   ...org,
-                  members: newMembers.length > 0 ? newMembers : undefined,
-                  members_count: newMembers.length,
-                  member_ids: variables.userIds.length > 0 ? variables.userIds : undefined,
+                  members:
+                    mergedMembers.length > 0 ? mergedMembers : undefined,
+                  members_count: mergedMembers.length,
+                  member_ids:
+                    variables.userIds.length > 0 ? variables.userIds : undefined,
                 };
               }
               return org;
