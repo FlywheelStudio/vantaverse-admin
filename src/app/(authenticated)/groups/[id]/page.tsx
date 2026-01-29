@@ -1,7 +1,6 @@
 import { getOrganizationById, getCurrentPhysiologist } from '../actions';
 import {
   getOrganizationMembersWithPrograms,
-  type GroupMemberWithProgram,
 } from './actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { GroupDetailsPageUI } from './ui';
