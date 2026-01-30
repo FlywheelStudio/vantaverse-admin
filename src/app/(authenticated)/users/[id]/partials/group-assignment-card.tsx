@@ -134,7 +134,7 @@ export function GroupAssignmentCard({
         className={cn(
           'gap-0 border transition-all duration-300 overflow-hidden',
           !hasGroups && 'min-h-0',
-          hasGroups && 'hover:shadow-[var(--shadow-lg)]',
+          hasGroups && 'hover:shadow-(--shadow-lg)',
         )}
         style={{
           borderColor: colorScheme.border,
@@ -208,7 +208,7 @@ export function GroupAssignmentCard({
           )}
 
           {!hasGroups && (
-            <div className="px-3 pb-3">
+            <div className="px-5 pb-5">
               <p className="text-sm text-muted-foreground italic">
                 No group assigned yet. Click to assign.
               </p>
@@ -255,7 +255,7 @@ export function GroupAssignmentCard({
                 {organizations.map((org) => (
                   <motion.div
                     key={org.id}
-                    className="flex items-start gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]"
+                    className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg"
                     variants={{
                       hidden: { opacity: 0, y: -8 },
                       visible: { opacity: 1, y: 0 },

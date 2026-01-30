@@ -129,8 +129,8 @@ export function ProgramAssignmentCard({
       <Card
         className={cn(
           'gap-0 border transition-all duration-300 overflow-hidden',
-          !hasOrganizations && 'min-h-0',
-          hasAssignment && 'hover:shadow-[var(--shadow-lg)]',
+          !hasOrganizations && 'min-h-0 opacity-50 pointer-events-none shadow-none',
+          hasAssignment && 'hover:shadow-(--shadow-lg)',
         )}
         style={{
           borderColor: colorScheme.border,
@@ -231,7 +231,7 @@ export function ProgramAssignmentCard({
           )}
 
           {!hasOrganizations && (
-            <div className="px-3 pb-3">
+            <div className="px-5 pb-5">
               <p className="text-sm text-muted-foreground italic">
                 No group assigned
               </p>
@@ -239,7 +239,7 @@ export function ProgramAssignmentCard({
           )}
 
           {hasOrganizations && !hasAssignment && (
-            <div className="px-3 pb-3">
+            <div className="px-5 pb-5">
               <p className="text-sm text-muted-foreground italic">
                 No program assigned yet. Click to assign.
               </p>

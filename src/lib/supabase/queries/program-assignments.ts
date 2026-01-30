@@ -686,9 +686,9 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
    * @param userId - The user ID
    * @returns Success with compliance percentage (number | null) or error
    */
-  public async getComplianceByUserId(userId: string): Promise<
-    SupabaseSuccess<number | null> | SupabaseError
-  > {
+  public async getComplianceByUserId(
+    userId: string,
+  ): Promise<SupabaseSuccess<number | null> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
     const { data, error } = await supabase
@@ -697,7 +697,6 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .eq('user_id', userId)
       .maybeSingle();
 
-    console.log(data, userId);
     if (error) {
       return this.parseResponsePostgresError(
         error,
@@ -713,8 +712,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       compliance?: number | null;
       program_completion_percentage?: number | null;
     };
-    const value =
-      row.compliance ?? row.program_completion_percentage ?? null;
+    const value = row.compliance ?? row.program_completion_percentage ?? null;
     return { success: true, data: value };
   }
 

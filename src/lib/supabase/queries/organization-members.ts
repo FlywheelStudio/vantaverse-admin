@@ -376,9 +376,7 @@ export class OrganizationMembers extends SupabaseQuery {
    * @param userId - The user ID
    * @returns Success with organizations array or error
    */
-  public async getOrganizationsByUserId(
-    userId: string,
-  ): Promise<
+  public async getOrganizationsByUserId(userId: string): Promise<
     | SupabaseSuccess<
         Array<{
           id: string;
@@ -447,6 +445,66 @@ export class OrganizationMembers extends SupabaseQuery {
         name: org!.name,
         description: org!.description,
         picture_url: org!.picture_url,
+      }));
+
+    return {
+      success: true,
+      data: organizations,
+    };
+  }
+
+  /**
+   * Get organizations where the user is an admin (excluding super admin organization)
+   * @param userId - The user ID
+   * @returns Success with array of { id, name } or error
+   */
+  public async getOrganizationsWhereUserIsAdmin(
+    userId: string,
+  ): Promise<
+    SupabaseSuccess<Array<{ id: string; name: string }>> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('organization_id, organizations!inner(id, name, is_super_admin)')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .eq('is_active', true);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get admin organizations',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    type RawOrgMember = {
+      organization_id: string;
+      organizations:
+        | { id: string; name: string; is_super_admin: boolean | null }
+        | { id: string; name: string; is_super_admin: boolean | null }[]
+        | null;
+    };
+
+    const organizations = (data as unknown as RawOrgMember[])
+      .map((item) => {
+        const org = Array.isArray(item.organizations)
+          ? item.organizations[0]
+          : item.organizations;
+        return { orgId: item.organization_id, org };
+      })
+      .filter(({ org }) => org?.is_super_admin !== true)
+      .map(({ orgId, org }) => ({
+        id: orgId,
+        name: org!.name,
       }));
 
     return {
