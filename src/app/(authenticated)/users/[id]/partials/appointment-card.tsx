@@ -219,7 +219,7 @@ export function AppointmentCard({
         'gap-0 border transition-all duration-300 overflow-hidden',
         isDisabled
           ? 'opacity-50 pointer-events-none shadow-none'
-          : 'hover:shadow-[var(--shadow-lg)]',
+          : 'hover:shadow-(--shadow-lg)',
         !isExpanded && 'min-h-0',
       )}
       style={{ 
@@ -412,7 +412,7 @@ export function AppointmentCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-w-0 rounded-[var(--radius-pill)] bg-transparent cursor-pointer hover:bg-muted/40"
+                      className="flex-1 min-w-0 rounded-pill bg-transparent cursor-pointer hover:bg-muted/40"
                       style={{
                         color: colorScheme.text,
                         borderColor: colorScheme.border,
@@ -435,7 +435,7 @@ export function AppointmentCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-w-0 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-[var(--radius-pill)] bg-transparent cursor-pointer"
+                      className="flex-1 min-w-0 text-destructive border-destructive/30 hover:bg-destructive/10 rounded-pill bg-transparent cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (latestAppointment.cancel_url) {
@@ -477,7 +477,7 @@ export function AppointmentCard({
                   {history.map((histAppt) => (
                     <motion.div
                       key={histAppt.id}
-                      className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]"
+                      className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-lg"
                       variants={{
                         hidden: { opacity: 0, y: -8 },
                         visible: { opacity: 1, y: 0 },
@@ -531,9 +531,9 @@ export function AppointmentCard({
 
       {/* Disabled State Content */}
       {isDisabled && (
-        <div className="p-5 text-center">
-          <p className="text-sm text-muted-foreground">
-            {title} appointment not scheduled yet.
+        <div className="px-5 pb-5 text-start">
+          <p className="text-sm text-muted-foreground italic">
+            {title.split(' ')[1]} appointment not scheduled yet.
           </p>
         </div>
       )}

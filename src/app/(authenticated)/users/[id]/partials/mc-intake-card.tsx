@@ -57,7 +57,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
       className={cn(
         'gap-0 border transition-all duration-300 overflow-hidden',
         !isExpanded && 'min-h-0',
-        isSigned && 'hover:shadow-[var(--shadow-lg)]',
+        isSigned ? 'hover:shadow-(--shadow-lg)' : 'opacity-50 pointer-events-none shadow-none',
       )}
       style={{
         borderColor: colorScheme.border,
@@ -81,7 +81,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                   />
                 ) : (
                   <ClipboardList
-                    className="h-5 w-5"
+                    className="h-5 w-5 "
                     style={{ color: colorScheme.icon }}
                   />
                 )}
@@ -155,7 +155,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
         )}
 
         {!isSigned && (
-          <div className="px-3 pb-3">
+          <div className="px-5 pb-5">
             <p className="text-sm text-muted-foreground italic">
               Survey not completed yet
             </p>
