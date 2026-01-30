@@ -71,6 +71,8 @@ interface AvatarProps {
   userId: string;
   size?: number;
   className?: string;
+  /** When true, clicking the avatar does not navigate to user profile */
+  disableNavigation?: boolean;
 }
 
 export function Avatar({
@@ -80,6 +82,7 @@ export function Avatar({
   userId,
   size = 36,
   className = '',
+  disableNavigation = false,
 }: AvatarProps) {
   const colorSeed = userId || 'default';
   const avatarColor = generateColorFromSeed(colorSeed);
@@ -89,9 +92,12 @@ export function Avatar({
 
   return src ? (
     <div
-      onClick={() => router.push(`/users/${userId}`)}
+      onClick={
+        disableNavigation ? undefined : () => router.push(`/users/${userId}`)
+      }
       className={cn(
-        'relative w-full h-full cursor-pointer overflow-hidden rounded-full',
+        'relative w-full h-full overflow-hidden rounded-full',
+        !disableNavigation && 'cursor-pointer',
         'bg-muted ring-1 ring-border/40',
         className,
       )}
@@ -106,7 +112,8 @@ export function Avatar({
   ) : (
     <div
       className={cn(
-        'w-full h-full flex items-center justify-center cursor-pointer rounded-full',
+        'w-full h-full flex items-center justify-center rounded-full',
+        !disableNavigation && 'cursor-pointer',
         'text-white text-xs font-medium ring-1 ring-border/40',
         className,
       )}
