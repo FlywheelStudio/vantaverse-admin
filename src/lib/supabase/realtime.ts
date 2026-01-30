@@ -1,114 +1,87 @@
-import {
-  RealtimeChannel,
-  RealtimeChannelOptions,
-  RealtimePostgresChangesPayload,
-} from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimeChannelOptions } from '@supabase/supabase-js';
 import { supabase } from './core/client';
 
-export interface PostgresChangesConfig {
-  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-  schema?: string;
-  table: string;
-  filter?: string;
-}
-
-interface RealtimeSubscriptionOptions {
+/**
+ * Options when creating a realtime channel.
+ * Use `config: { private: true }` for production (authorization via Realtime/RLS).
+ */
+export interface RealtimeSubscriptionOptions {
+  /** Unique channel name. Prefer topic pattern: `scope:id:entity` (e.g. `chat:123:messages`) */
   channelName: string;
+  /** Channel config; set `{ private: true }` for private channels */
   config?: RealtimeChannelOptions;
 }
 
 /**
- * Abstract base class for Supabase Realtime subscriptions
- * Provides common functionality for managing realtime channels and subscriptions
+ * Broadcast payload shape: Supabase sends `{ payload: T }` to the callback.
+ */
+export type BroadcastPayload<T = unknown> = { payload: T };
+
+/**
+ * Base class for Supabase Realtime using **broadcast** (recommended over postgres_changes).
+ * Manages channel lifecycle and broadcast subscriptions with cleanup.
+ *
+ * @example
+ * Subscribe to a private channel and listen for an event
+ * const channel = this.createChannel({
+ *   channelName: 'chat:abc-123:messages',
+ *   config: { private: true },
+ * });
+ * this.onBroadcast<Message>(channel, 'message_created', (data) => {
+ *   console.log('New message', data);
+ * });
+ * this.subscribe(channel);
  */
 export abstract class SupabaseRealtime {
-  /**
-   * The Supabase client (browser client for realtime)
-   */
   protected supabase = supabase;
-
-  /**
-   * Active channel subscriptions
-   */
   protected channels: Map<string, RealtimeChannel> = new Map();
 
-  constructor() {}
-
   /**
-   * Get the table name to subscribe to
-   * Must be implemented by subclasses
-   * @returns The table name
-   */
-  protected abstract getTableName(): string;
-
-  /**
-   * Get the channel name prefix
-   * Must be implemented by subclasses
-   * @returns The channel name prefix
-   */
-  protected abstract getChannelNamePrefix(): string;
-
-  /**
-   * Transform a realtime payload to the expected type
-   * Must be implemented by subclasses
-   * @param payload - The realtime payload from Supabase
-   * @returns The transformed data
-   */
-  protected abstract transformPayload(
-    payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
-  ): unknown;
-
-  /**
-   * Create and subscribe to a realtime channel
-   * @param options - Channel configuration options
-   * @returns The created channel
+   * Create a channel (does not subscribe yet). Use with onBroadcast + subscribe.
+   * @param options.channelName - Topic-style name, e.g. `chat:{chatId}:messages`
+   * @param options.config - e.g. `{ private: true }` for private channels
    */
   protected createChannel(
     options: RealtimeSubscriptionOptions,
   ): RealtimeChannel {
     const { channelName, config } = options;
 
-    // Remove existing channel if it exists
     if (this.channels.has(channelName)) {
       this.removeChannel(channelName);
     }
 
     const channel = this.supabase.channel(channelName, config);
     this.channels.set(channelName, channel);
-
     return channel;
   }
 
   /**
-   * Subscribe to postgres changes
-   * @param channel - The channel to subscribe to
-   * @param config - Postgres changes configuration
-   * @param callback - Callback function for handling changes
-   * @returns The channel for chaining
+   * Listen for a broadcast event on a channel. Call after createChannel, before subscribe.
+   * @param channel - Channel from createChannel
+   * @param event - Event name (snake_case), e.g. `message_created`
+   * @param callback - Receives the broadcast payload (the object sent by the server)
    */
-  protected onPostgresChanges<
-    T extends Record<string, unknown> = Record<string, unknown>,
-  >(
+  protected onBroadcast<T>(
     channel: RealtimeChannel,
-    config: PostgresChangesConfig,
-    callback: (payload: RealtimePostgresChangesPayload<T>) => void,
+    event: string,
+    callback: (data: T) => void,
   ): RealtimeChannel {
-    return channel.on('postgres_changes', config as never, callback);
+    return (
+      channel.on as (
+        type: string,
+        filter: { event: string },
+        cb: (p: BroadcastPayload<T>) => void,
+      ) => RealtimeChannel
+    )('broadcast', { event }, (payload) => callback(payload.payload));
   }
 
   /**
-   * Subscribe to a channel
-   * @param channel - The channel to subscribe to
-   * @returns The channel for chaining
+   * Subscribe the channel. Call after createChannel and onBroadcast.
    */
   protected subscribe(channel: RealtimeChannel): RealtimeChannel {
     return channel.subscribe();
   }
 
-  /**
-   * Remove and unsubscribe from a channel
-   * @param channelName - The name of the channel to remove
-   */
   protected removeChannel(channelName: string): void {
     const channel = this.channels.get(channelName);
     if (channel) {
@@ -117,29 +90,18 @@ export abstract class SupabaseRealtime {
     }
   }
 
-  /**
-   * Remove all channels and unsubscribe
-   */
   protected removeAllChannels(): void {
-    this.channels.forEach((channel) => {
-      channel.unsubscribe();
-    });
+    this.channels.forEach((ch) => ch.unsubscribe());
     this.channels.clear();
   }
 
   /**
-   * Cleanup method to be called when the component unmounts
-   * Override this method in subclasses if additional cleanup is needed
+   * Unsubscribe all channels. Call on component unmount.
    */
   public cleanup(): void {
     this.removeAllChannels();
   }
 
-  /**
-   * Get a channel by name
-   * @param channelName - The name of the channel
-   * @returns The channel or undefined if not found
-   */
   protected getChannel(channelName: string): RealtimeChannel | undefined {
     return this.channels.get(channelName);
   }
