@@ -567,6 +567,48 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Clear start_date and end_date for template assignments with this program_template_id.
+   */
+  public async clearDatesByTemplateId(
+    templateId: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data: assignments, error: fetchError } = await supabase
+      .from('program_assignment')
+      .select('id')
+      .eq('program_template_id', templateId)
+      .eq('status', 'template');
+
+    if (fetchError) {
+      return this.parseResponsePostgresError(
+        fetchError,
+        'Failed to fetch program assignments',
+      );
+    }
+
+    if (!assignments || assignments.length === 0) {
+      return { success: true, data: undefined };
+    }
+
+    for (const assignment of assignments) {
+      const { error } = await supabase
+        .from('program_assignment')
+        .update({ start_date: null, end_date: null })
+        .eq('id', assignment.id);
+
+      if (error) {
+        return this.parseResponsePostgresError(
+          error,
+          'Failed to clear program assignment dates',
+        );
+      }
+    }
+
+    return { success: true, data: undefined };
+  }
+
+  /**
    * Update workout schedule ID
    * @param assignmentId - The assignment ID
    * @param workoutScheduleId - The workout schedule ID
@@ -637,6 +679,43 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         patient_override: assignment.patient_override as unknown,
       },
     };
+  }
+
+  /**
+   * Get compliance (or program_completion_percentage) from program_with_stats for a user.
+   * @param userId - The user ID
+   * @returns Success with compliance percentage (number | null) or error
+   */
+  public async getComplianceByUserId(userId: string): Promise<
+    SupabaseSuccess<number | null> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('program_with_stats')
+      .select('compliance, program_completion_percentage')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    console.log(data, userId);
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to fetch compliance',
+      );
+    }
+
+    if (!data) {
+      return { success: true, data: null };
+    }
+
+    const row = data as {
+      compliance?: number | null;
+      program_completion_percentage?: number | null;
+    };
+    const value =
+      row.compliance ?? row.program_completion_percentage ?? null;
+    return { success: true, data: value };
   }
 
   /**

@@ -1,166 +1,81 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar } from '@/context/sidebar';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useEffect, useRef } from 'react';
+'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRef } from 'react';
 import {
   VANTABUDDY_CONFIG,
   SIDEBAR_CONFIG,
   HEADER_HEIGHT,
   NAV_LINKS,
 } from '@/lib/configs/sidebar';
+import {
+  VANTABUDDY_LOOK_RIGHT_EVENT,
+  VANTABUDDY_LOOK_DOWN_EVENT,
+} from './vantabuddy-trigger';
 import { UserAvatar } from '../header/user-avatar';
 
+const LOOK_DOWN_COOLDOWN_MS = 5000;
+
 export function Sidebar() {
-  const { isOpen, isExpanded, collapse, expand } = useSidebar();
-  const isMobile = useIsMobile();
   const pathname = usePathname();
-  const prevIsOpenRef = useRef(false);
-
-  useEffect(() => {
-    if (isMobile) {
-      collapse();
-    }
-  }, [isMobile, collapse]);
-
-  useEffect(() => {
-    if (isOpen && !prevIsOpenRef.current && !isMobile) {
-      expand();
-    }
-    prevIsOpenRef.current = isOpen;
-  }, [isOpen, isMobile, expand]);
-
-  // Sidebar starts at vantabuddy top-left corner position
   const vantabuddyX = VANTABUDDY_CONFIG.left;
   const vantabuddyY = VANTABUDDY_CONFIG.top;
+  const lastLookDownAt = useRef<number>(0);
 
-  // On mobile, always use collapsed width
-  const sidebarWidth = isMobile
-    ? VANTABUDDY_CONFIG.width
-    : isExpanded
-      ? SIDEBAR_CONFIG.width
-      : VANTABUDDY_CONFIG.width;
+  const triggerLookRight = () => {
+    window.dispatchEvent(new CustomEvent(VANTABUDDY_LOOK_RIGHT_EVENT));
+  };
+
+  const triggerLookDown = () => {
+    const now = Date.now();
+    if (now - lastLookDownAt.current >= LOOK_DOWN_COOLDOWN_MS) {
+      lastLookDownAt.current = now;
+      window.dispatchEvent(new CustomEvent(VANTABUDDY_LOOK_DOWN_EVENT));
+    }
+  };
 
   return (
-    <>
-      {/* Sidebar */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.aside
-            initial={{
-              width: 0,
-              height: 0,
-              opacity: 0,
-              scale: SIDEBAR_CONFIG.animation.initialScale,
-            }}
-            animate={{
-              width: sidebarWidth,
-              height: isMobile
-                ? `calc(100vh - ${HEADER_HEIGHT}px)`
-                : `calc(100vh - ${HEADER_HEIGHT}px)`,
-              opacity: 1,
-              scale: 1,
-            }}
-            exit={{
-              width: 0,
-              height: 0,
-              opacity: 0,
-              scale: SIDEBAR_CONFIG.animation.initialScale,
-            }}
-            transition={{
-              duration: SIDEBAR_CONFIG.animation.duration,
-              ease: SIDEBAR_CONFIG.animation.ease,
-            }}
-            className={`${isMobile ? 'relative' : 'fixed'} shadow-xl z-10 rounded-lg overflow-hidden`}
-            style={{
-              top: isMobile ? 'auto' : vantabuddyY,
-              left: isMobile ? 'auto' : vantabuddyX,
-              transformOrigin: 'top left',
-            }}
-            onMouseEnter={() => {
-              if (!isMobile && !isExpanded) {
-                expand();
-              }
-            }}
-            onMouseLeave={() => {
-              if (!isMobile && isExpanded) {
-                collapse();
-              }
-            }}
-          >
-            <div
-              className={`${isMobile || !isExpanded ? '' : 'pr-6'} pb-6 h-full flex flex-col overflow-y-auto slim-scrollbar`}
-              style={{
-                paddingTop: `${VANTABUDDY_CONFIG.height}px`,
-              }}
-            >
-              <motion.nav
-                className="space-y-2"
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                variants={{
-                  visible: {
-                    transition: {
-                      staggerChildren: 0.05,
-                    },
-                  },
-                }}
-              >
-                {NAV_LINKS.map((link, index) => {
-                  const isActive = pathname === link.href;
-                  const isCollapsed = isMobile || !isExpanded;
-                  const Icon = link.icon;
+    <aside
+      className="fixed shadow-xl z-10 rounded-lg overflow-hidden"
+      style={{
+        top: vantabuddyY,
+        left: vantabuddyX,
+        width: SIDEBAR_CONFIG.width,
+        height: `calc(100vh - ${HEADER_HEIGHT}px)`,
+      }}
+    >
+      <div
+        className="pr-6 pb-6 h-full flex flex-col overflow-y-auto slim-scrollbar"
+        style={{
+          paddingTop: `${VANTABUDDY_CONFIG.height}px`,
+        }}
+      >
+        <nav className="space-y-2">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            const Icon = link.icon;
 
-                  return (
-                    <motion.div
-                      id={index.toString()}
-                      key={link.href}
-                      variants={{
-                        hidden: {
-                          opacity: 0,
-                          x: -20,
-                        },
-                        visible: {
-                          opacity: 1,
-                          x: 0,
-                          transition: {
-                            duration: 0.3,
-                            ease: [0.4, 0, 0.2, 1],
-                          },
-                        },
-                      }}
-                    >
-                      <Link
-                        href={link.href}
-                        className={`content-link flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} rounded-r-lg py-3 transition-colors text-white ${
-                          isCollapsed
-                            ? isActive
-                              ? 'bg-[#2454FF]/70'
-                              : 'hover:bg-[#2454FF]/40'
-                            : isActive
-                              ? 'bg-[#2454FF]/70'
-                              : 'hover:bg-[#2454FF]/40'
-                        }`}
-                        title={isCollapsed ? link.label : undefined}
-                      >
-                        <Icon className="w-5 h-5" />
-                        {!isMobile && isExpanded && (
-                          <span className="font-medium">{link.label}</span>
-                        )}
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </motion.nav>
-              <div className="flex items-center gap-2 glass-background rounded-r-lg p-2 mt-auto">
-                <UserAvatar showName={isExpanded} />
-              </div>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-    </>
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={triggerLookRight}
+                onMouseEnter={triggerLookDown}
+                className={`content-link flex items-center gap-3 px-4 rounded-r-lg py-3 transition-colors text-white ${
+                  isActive ? 'bg-[#2454FF]/70' : 'hover:bg-[#2454FF]/40'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{link.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="flex items-center gap-2 glass-background rounded-r-lg p-2 mt-auto">
+          <UserAvatar showName={true} />
+        </div>
+      </div>
+    </aside>
   );
 }

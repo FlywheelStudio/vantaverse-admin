@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, startTransition } from 'react';
+import { useState } from 'react';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 interface UseMemberSelectionParams {
@@ -17,30 +17,6 @@ export function useMemberSelection({
   const [selectedPhysiologistId, setSelectedPhysiologistId] = useState<
     string | null
   >(initialPhysiologistId || null);
-
-  // Sync selectedMemberIds when initialMemberIds changes
-  const initialIdsKey = useMemo(
-    () => Array.from(initialMemberIds).sort().join(','),
-    [initialMemberIds],
-  );
-
-  const prevKeyRef = useRef(initialIdsKey);
-
-  useEffect(() => {
-    if (prevKeyRef.current !== initialIdsKey) {
-      prevKeyRef.current = initialIdsKey;
-      startTransition(() => {
-        setSelectedMemberIds(new Set(initialMemberIds));
-      });
-    }
-  }, [initialMemberIds, initialIdsKey]);
-
-  // Sync physiologist when it changes
-  useEffect(() => {
-    startTransition(() => {
-      setSelectedPhysiologistId(initialPhysiologistId || null);
-    });
-  }, [initialPhysiologistId]);
 
   const handleToggleUser = (userId: string, role: MemberRole) => {
     if (role === 'patient') {

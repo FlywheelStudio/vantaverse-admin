@@ -85,7 +85,9 @@ export function BuilderContextProvider({
 
   const [programStartDate, setProgramStartDateState] = useState<string | null>(
     () => {
-      return initialAssignment?.start_date || null;
+      return initialAssignment?.status === 'template'
+        ? null
+        : (initialAssignment?.start_date ?? null);
     },
   );
 

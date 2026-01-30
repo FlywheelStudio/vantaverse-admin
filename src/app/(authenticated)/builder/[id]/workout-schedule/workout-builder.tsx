@@ -17,11 +17,13 @@ import {
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
   initialAssignment: ProgramAssignmentWithTemplate;
+  programDetailsCollapsed?: boolean;
 }
 
-export function WorkoutBuilder({ 
-  assignmentId, 
+export function WorkoutBuilder({
+  assignmentId,
   initialAssignment,
+  programDetailsCollapsed = false,
 }: WorkoutBuilderProps) {
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
 
@@ -33,8 +35,12 @@ export function WorkoutBuilder({
     weeks: template?.weeks || 4,
     goals: template?.goals || '',
     notes: template?.notes || '',
-    startDate: initialAssignment.start_date ? new Date(initialAssignment.start_date) : undefined,
-    endDate: initialAssignment.end_date ? new Date(initialAssignment.end_date) : undefined,
+    startDate: initialAssignment.status === 'template'
+      ? undefined
+      : (initialAssignment.start_date ? new Date(initialAssignment.start_date) : undefined),
+    endDate: initialAssignment.status === 'template'
+      ? undefined
+      : (initialAssignment.end_date ? new Date(initialAssignment.end_date) : undefined),
     imageFile: undefined,
     imagePreview: undefined,
   }), [initialAssignment, template]);
@@ -84,6 +90,7 @@ export function WorkoutBuilder({
                   status={initialAssignment.status}
                   hideActions
                   formMethods={programForm}
+                  defaultOpen={!programDetailsCollapsed}
                 />
                 <BuildWorkoutSection
                   initialWeeks={template.weeks}

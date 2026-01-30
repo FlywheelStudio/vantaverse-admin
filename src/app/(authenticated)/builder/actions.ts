@@ -74,21 +74,11 @@ export async function createProgramTemplate(
 
   const templateId = templateResult.data.id;
 
-  const endDateString = startDate
-    ? (() => {
-        // Calculate end date from start date + weeks
-        const start = new Date(startDate);
-        const endDate = new Date(start);
-        endDate.setDate(endDate.getDate() + weeks * 7);
-        return endDate.toISOString().split('T')[0];
-      })()
-    : null;
-
-  // Always create program_assignment with status='template'
+  // Template assignments never have dates
   const assignmentResult = await assignmentQuery.create(
     templateId,
-    startDate ?? null,
-    endDateString,
+    null,
+    null,
     organizationId,
   );
 
@@ -232,9 +222,8 @@ export async function updateProgramTemplate(
     return updateResult;
   }
 
-  // Update assignment dates if provided
+  const assignmentQuery = new ProgramAssignmentsQuery();
   if (startDate && endDate) {
-    const assignmentQuery = new ProgramAssignmentsQuery();
     const updateDatesResult = await assignmentQuery.updateDatesByTemplateId(
       templateId,
       startDate,
@@ -243,6 +232,12 @@ export async function updateProgramTemplate(
 
     if (!updateDatesResult.success) {
       return updateDatesResult;
+    }
+  } else {
+    // Clear dates on template assignment when saving a template (no dates)
+    const clearResult = await assignmentQuery.clearDatesByTemplateId(templateId);
+    if (!clearResult.success) {
+      return clearResult;
     }
   }
 

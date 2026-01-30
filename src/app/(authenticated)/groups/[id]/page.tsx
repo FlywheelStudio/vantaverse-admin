@@ -1,10 +1,6 @@
 import { getOrganizationById, getCurrentPhysiologist } from '../actions';
 import {
   getOrganizationMembersWithPrograms,
-  getOrganizationAdmins,
-  getUnassignedUsers,
-  type GroupMemberWithProgram,
-  type SuperAdminGroupUser,
 } from './actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { GroupDetailsPageUI } from './ui';
@@ -24,38 +20,23 @@ export default async function GroupDetailsPage({
   }
 
   const isSuperAdminOrg = organization.data.is_super_admin === true;
-
-  let physician = null;
-  let members: Array<GroupMemberWithProgram | SuperAdminGroupUser> = [];
-
   if (isSuperAdminOrg) {
-    const {admins, unassigned} = await createParallelQueries({
-      admins: {
-        query: () => getOrganizationAdmins(id),
-        defaultValue: [],
-      },
-      unassigned: {
-        query: () => getUnassignedUsers(),
-        defaultValue: [],
-      },
-    });
-
-    members = [...(admins ?? []), ...(unassigned ?? [])]; 
-  } else {
-    const result = await createParallelQueries({
-      physician: {
-        query: () => getCurrentPhysiologist(id),
-        defaultValue: null,
-      },
-      members: {
-        query: () => getOrganizationMembersWithPrograms(id),
-        defaultValue: [],
-      },
-    });
-
-    physician = result.physician ?? null;
-    members = result.members ?? [];
+    notFound();
   }
+
+  const result = await createParallelQueries({
+    physician: {
+      query: () => getCurrentPhysiologist(id),
+      defaultValue: null,
+    },
+    members: {
+      query: () => getOrganizationMembersWithPrograms(id),
+      defaultValue: [],
+    },
+  });
+
+  const physician = result.physician ?? null;
+  const members = result.members ?? [];
 
   return (
     <GroupDetailsPageUI

@@ -8,6 +8,36 @@
   @view-transition {
     navigation: auto;
   }
+
+  /* Slide down + fade: exit (old) and entrance (new) */
+  ::view-transition-old(main) {
+    animation: view-transition-slide-out 0.25s ease-out both;
+  }
+  ::view-transition-new(main) {
+    animation: view-transition-slide-in 0.25s ease-out both;
+  }
+}
+
+@keyframes view-transition-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes view-transition-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @theme inline {

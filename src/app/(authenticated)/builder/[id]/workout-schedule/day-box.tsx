@@ -49,20 +49,20 @@ export function DayBox({
   const totalExerciseCount = templateCount + exerciseCount;
   const groupCount = items.filter((item) => item.type === 'group').length;
 
-  const copyPasteButtons = !isBeforeStart ? (
+  const copyPasteButtons = (
     <CopyPasteButtons
       size="sm"
       onCopy={onCopyDay}
       onPaste={onPasteDay}
       isCopied={isDayCopied}
-      isPasteDisabled={isDayPasteDisabled || isBeforeStart}
+      isPasteDisabled={isDayPasteDisabled}
       copyTooltip="Copy Day"
       pasteTooltip="Paste Day"
       copiedTooltip="Day already copied"
       showCopy={hasItems}
       showPaste={true}
     />
-  ) : null;
+  );
 
   return (
     <div className="flex flex-col flex-1 min-w-[160px]">
@@ -161,7 +161,6 @@ export function DayBox({
         <Button
           variant="outline"
           size="sm"
-          disabled={isBeforeStart}
           className={cn(
             'border-dashed',
             isBeforeStart

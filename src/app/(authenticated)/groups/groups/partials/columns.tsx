@@ -158,7 +158,7 @@ function PictureCell({ org }: { org: Organization }) {
 
 function MembersCell({ org }: { org: Organization }) {
   const { handleOpenAddMembers } = useOrganizationsTable();
-  const members = org.members || [];
+  const members = (org.members || []).filter((m) => m.role !== 'admin');
   const avatars = members.map((member) => {
     const profile = member.profile;
     return {
@@ -174,6 +174,22 @@ function MembersCell({ org }: { org: Organization }) {
       maxVisible={5}
       onAddClick={() => handleOpenAddMembers('organization', org.id)}
     />
+  );
+}
+
+function PhysiologistCell({ org }: { org: Organization }) {
+  const physiologists = (org.members || []).filter((m) => m.role === 'admin');
+  const avatars = physiologists.map((member) => {
+    const profile = member.profile;
+    return {
+      src: profile?.avatar_url || undefined,
+      firstName: profile?.first_name || '',
+      lastName: profile?.last_name || '',
+      userId: profile?.id || '',
+    };
+  });
+  return (
+    <AvatarGroup avatars={avatars} maxVisible={1} />
   );
 }
 
@@ -257,6 +273,17 @@ export const columns: ColumnDef<Organization>[] = [
       );
     },
     cell: ({ row }) => <MembersCell org={row.original} />,
+  },
+  {
+    accessorKey: 'physiologist',
+    header: () => (
+      <span className="text-xs font-semibold text-muted-foreground">
+        Physiologist
+      </span>
+    ),
+    cell: ({ row }) => <PhysiologistCell org={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
   },
   ...(isTeamsEnabled
     ? [

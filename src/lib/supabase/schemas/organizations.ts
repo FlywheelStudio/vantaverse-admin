@@ -4,6 +4,7 @@ import { teamSchema } from './teams';
 const organizationMemberSchema = z.object({
   id: z.string(),
   user_id: z.string(),
+  role: z.enum(['admin', 'member', 'patient']),
   profile: z
     .object({
       id: z.string(),

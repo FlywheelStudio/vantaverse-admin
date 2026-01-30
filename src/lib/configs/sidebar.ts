@@ -18,11 +18,6 @@ export const VANTABUDDY_CONFIG = {
 // Sidebar dimensions
 export const SIDEBAR_CONFIG = {
   width: 240, // w-60 = 240px
-  animation: {
-    duration: 0.3,
-    ease: [0.4, 0, 0.2, 1] as const,
-    initialScale: 0.3,
-  },
 } as const;
 
 // Header height

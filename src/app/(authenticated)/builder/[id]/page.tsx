@@ -5,8 +5,17 @@ import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignme
 import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 
-export default async function BuilderIdPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BuilderIdPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const collapsed =
+    resolvedSearchParams?.collapsed === '1' || resolvedSearchParams?.collapsed === 'true';
 
   const programAssignmentsQuery = new ProgramAssignmentsQuery();
   const result = await programAssignmentsQuery.getById(id);
@@ -40,9 +49,10 @@ export default async function BuilderIdPage({ params }: { params: Promise<{ id: 
         initialAssignment={programAssignment}
         initialSchedule={convertedSchedule}
       >
-        <WorkoutBuilder 
-          assignmentId={id} 
+        <WorkoutBuilder
+          assignmentId={id}
           initialAssignment={programAssignment}
+          programDetailsCollapsed={collapsed}
         />
       </BuilderContextProvider>
     </PageWrapper>

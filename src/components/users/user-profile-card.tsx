@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
-
 interface UserProfileCardProps {
   userId: string;
   firstName: string;
@@ -202,6 +201,7 @@ export function UserProfileCard({
     setEditingValue(currentValue);
     setEditingField(null);
   };
+
 
   return (
     <>

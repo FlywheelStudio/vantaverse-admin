@@ -1,11 +1,13 @@
+'use client';
+
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
-import { useSidebar } from '@/context/sidebar';
 import { useEffect } from 'react';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
 
-export function VantaBuddyTrigger() {
-  const { isOpen, isExpanded, toggle } = useSidebar();
+export const VANTABUDDY_LOOK_RIGHT_EVENT = 'vantabuddy-look-right';
+export const VANTABUDDY_LOOK_DOWN_EVENT = 'vantabuddy-look-down';
 
+export function VantaBuddyTrigger() {
   const { rive, RiveComponent } = useRive({
     src: '/vantabuddy.riv',
     stateMachines: 'vantabuddy',
@@ -14,7 +16,6 @@ export function VantaBuddyTrigger() {
 
   const idleInput = useStateMachineInput(rive, 'vantabuddy', 'idle');
   const turnrightInput = useStateMachineInput(rive, 'vantabuddy', 'turnright');
-  const turnleftInput = useStateMachineInput(rive, 'vantabuddy', 'turnleft');
   const turndownInput = useStateMachineInput(rive, 'vantabuddy', 'turndown');
 
   useEffect(() => {
@@ -24,32 +25,26 @@ export function VantaBuddyTrigger() {
   }, [idleInput]);
 
   useEffect(() => {
-    if (!isExpanded && turnrightInput) {
-      turnrightInput.fire();
-    }
-  }, [isExpanded, turnrightInput]);
+    const handler = () => {
+      if (turnrightInput) turnrightInput.fire();
+    };
+    window.addEventListener(VANTABUDDY_LOOK_RIGHT_EVENT, handler);
+    return () => window.removeEventListener(VANTABUDDY_LOOK_RIGHT_EVENT, handler);
+  }, [turnrightInput]);
 
-  const handleClick = () => {
-    const newIsOpen = !isOpen;
-
-    if (newIsOpen) {
-      turndownInput?.fire();
-    } else {
-      turnleftInput?.fire();
-    }
-
-    toggle();
-  };
+  useEffect(() => {
+    const handler = () => {
+      if (turndownInput) turndownInput.fire();
+    };
+    window.addEventListener(VANTABUDDY_LOOK_DOWN_EVENT, handler);
+    return () => window.removeEventListener(VANTABUDDY_LOOK_DOWN_EVENT, handler);
+  }, [turndownInput]);
 
   return (
-    <button
-      onClick={handleClick}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-        handleClick();
-      }}
-      className="fixed cursor-pointer hover:opacity-80 transition-opacity touch-manipulation"
-      aria-label="Toggle sidebar"
+    <div
+      className="fixed touch-manipulation"
+      role="img"
+      aria-label="VantaBuddy"
       style={{
         zIndex: 50,
         touchAction: 'manipulation',
@@ -68,6 +63,6 @@ export function VantaBuddyTrigger() {
       >
         <RiveComponent />
       </div>
-    </button>
+    </div>
   );
 }
