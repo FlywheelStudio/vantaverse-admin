@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.14.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.13.0...0.14.0) (2026-01-30)
+
+
+### Features
+
+* **realtime:** added supabase skills, refactored realtime and added support for message page ([4c50a64](https://github.com/FlywheelStudio/vantaverse-admin/commit/4c50a642014f3fbabd38ec4927380566d548021a))
+* **realtime:** added supabase skills, refactored realtime and added support for message page ([173b0ef](https://github.com/FlywheelStudio/vantaverse-admin/commit/173b0efdd1dc3ec6fedd70f6cc4083563eefa9d5))
+
 # [0.13.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.12.0...0.13.0) (2026-01-30)
 
 
