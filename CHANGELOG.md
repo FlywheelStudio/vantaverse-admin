@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.13.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.12.0...0.13.0) (2026-01-30)
+
+
+### Features
+
+* **messages:** added messages page ([8d28cc8](https://github.com/FlywheelStudio/vantaverse-admin/commit/8d28cc82921e75924d6e14d3ef90e4620821c7d5))
+* **messages:** added messages page ([5c9a54a](https://github.com/FlywheelStudio/vantaverse-admin/commit/5c9a54af98026633ed610237c0a6e301b7176389))
+
 # [0.12.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.5...0.12.0) (2026-01-30)
 
 
