@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.11.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.5...0.11.0) (2026-01-30)
+
+
+### Features
+
+* add recharts for data visualization and update sidebar layout ([43f62e4](https://github.com/FlywheelStudio/vantaverse-admin/commit/43f62e4610add7f07dc18226172d6152e9f21d41))
+* added animations to vanta buddy ([e52cf2c](https://github.com/FlywheelStudio/vantaverse-admin/commit/e52cf2c67fc6a4cffa10faa0a031f60248c1d770))
+
 ## [0.10.5](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.10.4...0.10.5) (2026-01-28)
 
 

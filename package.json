@@ -2,7 +2,7 @@
   "name": "flywheel-starter-nextjs-supabase",
   "description": "Flywheel Starter for Next.js and Supabase",
   "author": "Flywheel Studio, Ender Puentes <endpuent@gmail.com>",
-  "version": "0.10.5",
+  "version": "0.11.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
