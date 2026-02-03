@@ -1165,7 +1165,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       };
     }
 
-    const supabase = await this.getClient('authenticated_user');
+    // Use service_role so we can update derived (active) assignments belonging to other users
+    const supabase = await this.getClient('service_role');
 
     // First, get the count of matching records
     const { count: matchCount, error: countError } = await supabase

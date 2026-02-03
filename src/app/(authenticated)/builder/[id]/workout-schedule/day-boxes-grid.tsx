@@ -20,6 +20,11 @@ export function DayBoxesGrid() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [animatingDay, setAnimatingDay] = useState<{
+    weekIndex: number;
+    dayIndex: number;
+  } | null>(null);
+  const dayAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     currentWeek,
@@ -257,6 +262,32 @@ export function DayBoxesGrid() {
     [currentWeek, getDayItems],
   );
 
+  useEffect(() => () => {
+    if (dayAnimationTimeoutRef.current) clearTimeout(dayAnimationTimeoutRef.current);
+  }, []);
+
+  const triggerDayPasteAnimation = useCallback(
+    (weekIndex: number, dayIndex: number) => {
+      if (dayAnimationTimeoutRef.current) {
+        clearTimeout(dayAnimationTimeoutRef.current);
+      }
+      setAnimatingDay({ weekIndex, dayIndex });
+      dayAnimationTimeoutRef.current = setTimeout(() => {
+        setAnimatingDay(null);
+        dayAnimationTimeoutRef.current = null;
+      }, 1000);
+    },
+    [],
+  );
+
+  const handlePasteDay = useCallback(
+    (dayIndex: number) => {
+      pasteDay(currentWeek, dayIndex);
+      triggerDayPasteAnimation(currentWeek, dayIndex);
+    },
+    [currentWeek, pasteDay, triggerDayPasteAnimation],
+  );
+
   // Keyboard listener for copy/paste shortcuts
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -290,12 +321,12 @@ export function DayBoxesGrid() {
 
           if (!isPasteDisabled) {
             event.preventDefault();
-            pasteDay(currentWeek, dayIndex);
+            handlePasteDay(dayIndex);
           }
         }
       }
     },
-    [hoveredDay, currentWeek, copyDay, pasteDay, copiedDayData, copiedDayIndex],
+    [hoveredDay, currentWeek, copyDay, handlePasteDay, copiedDayData, copiedDayIndex],
   );
 
   useEffect(() => {
@@ -340,10 +371,15 @@ export function DayBoxesGrid() {
                 isBeforeStart={isBeforeStart}
                 isDayCopied={isDayCopied}
                 isDayPasteDisabled={isDayPasteDisabled}
+                isPasteAnimating={
+                  animatingDay !== null &&
+                  animatingDay.weekIndex === currentWeek &&
+                  animatingDay.dayIndex === dayIndex
+                }
                 index={index}
                 onAddExercise={handleAddExercise}
                 onCopyDay={() => copyDay(currentWeek, dayIndex)}
-                onPasteDay={() => pasteDay(currentWeek, dayIndex)}
+                onPasteDay={() => handlePasteDay(dayIndex)}
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
               />

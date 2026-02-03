@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface CopyPasteButtonsProps {
   size?: 'sm' | 'md' | 'lg';
@@ -14,6 +15,7 @@ interface CopyPasteButtonsProps {
   onPaste: () => void;
   isCopied: boolean;
   isPasteDisabled: boolean;
+  pasteJustTriggered?: boolean;
   copyTooltip: string;
   pasteTooltip: string;
   copiedTooltip?: string;
@@ -45,6 +47,7 @@ export function CopyPasteButtons({
   onPaste,
   isCopied,
   isPasteDisabled,
+  pasteJustTriggered = false,
   copyTooltip,
   pasteTooltip,
   copiedTooltip = 'Already copied',
@@ -61,7 +64,7 @@ export function CopyPasteButtons({
             <button
               onClick={onCopy}
               className={cn(
-                'flex items-center justify-center rounded-[var(--radius-pill)] transition-colors shadow-[var(--shadow-sm)]',
+                'flex items-center justify-center rounded-pill transition-colors shadow-sm',
                 sizeClass.button,
                 isCopied
                   ? 'bg-[oklch(0.66_0.17_155)] cursor-not-allowed'
@@ -80,19 +83,47 @@ export function CopyPasteButtons({
       {showPaste && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
+            <motion.button
               onClick={onPaste}
               disabled={isPasteDisabled}
+              key={pasteJustTriggered ? 'flash' : 'idle'}
+              initial={
+                pasteJustTriggered
+                  && { backgroundColor: 'oklch(0.66 0.17 155)' }
+              }
+              animate={
+                pasteJustTriggered
+                  ? {
+                      backgroundColor: [
+                        'oklch(0.66 0.17 155)',
+                        'oklch(0.58 0.2 220)',
+                        'oklch(0.507 0.211 262.705)',
+                      ],
+                      transition: { duration: 0.5, delay: 0.5 },
+                    }
+                  : { backgroundColor: 'var(--primary)' }
+              }
               className={cn(
-                'flex items-center justify-center rounded-[var(--radius-pill)] transition-colors shadow-[var(--shadow-sm)]',
+                'flex items-center justify-center rounded-pill shadow-sm',
                 sizeClass.button,
                 isPasteDisabled
-                  ? 'opacity-50 cursor-not-allowed bg-primary'
-                  : 'bg-primary hover:bg-primary/90 cursor-pointer',
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'cursor-pointer hover:opacity-90',
               )}
             >
-              <ClipboardIcon className={cn(sizeClass.icon, 'text-white')} />
-            </button>
+              <motion.span
+                key={pasteJustTriggered ? 'react' : 'idle'}
+                initial={pasteJustTriggered ? { scale: 1 } : false}
+                animate={
+                  pasteJustTriggered
+                    ? { scale: [1, 1.35, 1], transition: { duration: 0.4 } }
+                    : { scale: 1 }
+                }
+                className="flex items-center justify-center"
+              >
+                <ClipboardIcon className={cn(sizeClass.icon, 'text-white')} />
+              </motion.span>
+            </motion.button>
           </TooltipTrigger>
           <TooltipContent>
             <p>{isCopied ? copiedTooltip : pasteTooltip}</p>
