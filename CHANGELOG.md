@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.15.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.14.0...0.15.0) (2026-02-04)
+
+
+### Features
+
+* added clone for programs and locked assignment to monday ([073b562](https://github.com/FlywheelStudio/vantaverse-admin/commit/073b56214192c260aa35935398617efa39f139ef))
+* **workout-schedule:** add paste animation and improve copy-paste button interactions ([6feb26c](https://github.com/FlywheelStudio/vantaverse-admin/commit/6feb26c883d6f2a6ef5565dade8e09cbadde7d8f))
+
 # [0.14.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.13.0...0.14.0) (2026-01-30)
 
 
