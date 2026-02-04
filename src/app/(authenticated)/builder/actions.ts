@@ -195,6 +195,25 @@ export async function deleteProgramAssignment(assignmentId: string) {
 }
 
 /**
+ * Clone a program assignment into a new template (new program_template + program_assignment).
+ * Returns the new assignment id for redirect.
+ */
+export async function cloneProgramAssignment(assignmentId: string) {
+  const assignmentQuery = new ProgramAssignmentsQuery();
+
+  const result = await assignmentQuery.cloneToTemplate(assignmentId);
+
+  if (!result.success) {
+    return result;
+  }
+
+  return {
+    success: true as const,
+    data: { assignmentId: result.data.assignment.id },
+  };
+}
+
+/**
  * Update a program template
  */
 export async function updateProgramTemplate(
@@ -235,7 +254,8 @@ export async function updateProgramTemplate(
     }
   } else {
     // Clear dates on template assignment when saving a template (no dates)
-    const clearResult = await assignmentQuery.clearDatesByTemplateId(templateId);
+    const clearResult =
+      await assignmentQuery.clearDatesByTemplateId(templateId);
     if (!clearResult.success) {
       return clearResult;
     }

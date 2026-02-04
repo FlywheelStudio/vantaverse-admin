@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { format, startOfDay, isBefore } from 'date-fns';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, isProgramStartDateDisabled, getNextProgramStartMonday } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 
 interface DateRangePickerProps {
@@ -62,13 +62,9 @@ export function DateRangePicker({
                 mode="range"
                 selected={dateRange}
                 onSelect={onDateSelect}
-                defaultMonth={startDate || new Date()}
+                defaultMonth={startDate || getNextProgramStartMonday()}
                 numberOfMonths={1}
-                disabled={(date) => {
-                  const today = startOfDay(new Date());
-                  const dateToCheck = startOfDay(date);
-                  return isBefore(dateToCheck, today);
-                }}
+                disabled={isProgramStartDateDisabled}
                 className="w-full [--cell-size:2rem]"
               />
             ) : (
@@ -82,18 +78,17 @@ export function DateRangePicker({
                     onDateSelect(undefined);
                   }
                 }}
-                defaultMonth={startDate || new Date()}
+                defaultMonth={startDate || getNextProgramStartMonday()}
                 numberOfMonths={1}
-                disabled={(date) => {
-                  const today = startOfDay(new Date());
-                  const dateToCheck = startOfDay(date);
-                  return isBefore(dateToCheck, today);
-                }}
+                disabled={isProgramStartDateDisabled}
                 className="w-full [--cell-size:2rem]"
               />
             )}
           </PopoverContent>
         </Popover>
+        <p className="text-xs text-muted-foreground mt-1">
+          Must be a Monday (today or later).
+        </p>
         {errors.startDate && (
           <p className="text-sm text-red-500 mt-1">
             {errors.startDate.message}

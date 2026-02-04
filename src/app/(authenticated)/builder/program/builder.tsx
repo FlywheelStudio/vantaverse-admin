@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   useProgramAssignments,
   useDeleteProgramAssignment,
+  useCloneProgramAssignment,
   programAssignmentsInfiniteQueryOptions,
 } from '@/hooks/use-passignments';
 import { ProgramTemplateCard } from './card';
@@ -129,6 +130,13 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
     showAssigned,
   );
 
+  const cloneMutation = useCloneProgramAssignment(
+    debouncedSearch,
+    weeksFilterNumber,
+    pageSize,
+    showAssigned,
+  );
+
   const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
     if (assignment.id) {
       router.push(`/builder/${assignment.id}`);
@@ -149,6 +157,13 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
       deleteMutation.mutate(assignmentId);
     },
     [deleteMutation],
+  );
+
+  const handleClone = useCallback(
+    (assignmentId: string) => {
+      cloneMutation.mutate(assignmentId);
+    },
+    [cloneMutation],
   );
 
   // Reset prefetch trigger when filters change
@@ -297,6 +312,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                                 assignment={assignment}
                                 onClick={() => handleCardClick(assignment)}
                                 onDelete={() => handleDelete(assignment.id)}
+                                onClone={() => handleClone(assignment.id)}
                               />
                             </motion.div>
                           ))}

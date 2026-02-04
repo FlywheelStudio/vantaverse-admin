@@ -13,6 +13,7 @@ import {
   programTemplateFormSchema,
   type ProgramTemplateFormData,
 } from '../../program/schemas';
+import { getNextProgramStartMonday } from '@/lib/utils';
 
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
@@ -37,7 +38,7 @@ export function WorkoutBuilder({
     notes: template?.notes || '',
     startDate: initialAssignment.status === 'template'
       ? undefined
-      : (initialAssignment.start_date ? new Date(initialAssignment.start_date) : undefined),
+      : (initialAssignment.start_date ? new Date(initialAssignment.start_date) : getNextProgramStartMonday()),
     endDate: initialAssignment.status === 'template'
       ? undefined
       : (initialAssignment.end_date ? new Date(initialAssignment.end_date) : undefined),

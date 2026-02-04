@@ -6,19 +6,26 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Copy, Trash2 } from 'lucide-react';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface ProgramTemplateCardProps {
   assignment: ProgramAssignmentWithTemplate;
   onClick: () => void;
   onDelete?: () => void;
+  onClone?: () => void;
 }
 
 export function ProgramTemplateCard({
   assignment,
   onClick,
   onDelete,
+  onClone,
 }: ProgramTemplateCardProps) {
   const template = assignment.program_template;
 
@@ -78,28 +85,50 @@ export function ProgramTemplateCard({
   return (
     <Card
       onClick={onClick}
-      className="h-full flex flex-col gap-0 group overflow-hidden border border-border/60 hover:border-primary/40 hover:shadow-[var(--shadow-lg)] transition-all duration-300 cursor-pointer relative"
+      className="h-full flex flex-col gap-0 group overflow-hidden border border-border/60 hover:border-primary/40 hover:shadow-(--shadow-lg) transition-all duration-300 cursor-pointer relative"
     >
-      {/* Delete Button */}
-      {onDelete && (
+      {/* Delete / Clone Buttons */}
+      {(onDelete || onClone) && (
         <div
-          className="absolute top-2 right-2 z-10"
+          className="absolute top-2 right-2 z-10 flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
         >
-          <DeleteConfirmationDialog
-            title="Delete Program"
-            description={`Are you sure you want to delete "${template.name}"? This action cannot be undone.`}
-            onConfirm={handleDelete}
-            trigger={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer bg-background/80 backdrop-blur-sm shadow-[var(--shadow-sm)]"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            }
-          />
+          {onClone && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="font-semibold cursor-pointer bg-background/80 backdrop-blur-sm shadow-(--shadow-sm) text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClone();
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Clone</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onDelete && (
+            <DeleteConfirmationDialog
+              title="Delete Program"
+              description={`Are you sure you want to delete "${template.name}"? This action cannot be undone.`}
+              onConfirm={handleDelete}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer bg-background/80 backdrop-blur-sm shadow-[var(--shadow-sm)]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              }
+            />
+          )}
         </div>
       )}
 
