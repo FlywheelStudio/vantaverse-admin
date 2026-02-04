@@ -7,7 +7,12 @@ import type { DateRange } from 'react-day-picker';
 import { useBuilder } from '@/context/builder-context';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import { formatDateForDB, calculateEndDate } from '@/lib/utils';
+import {
+  formatDateForDB,
+  calculateEndDate,
+  isProgramStartDateDisabled,
+  getNextProgramStartMonday,
+} from '@/lib/utils';
 import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/program/schemas';
 
 interface UseProgramFormDatesProps {
@@ -44,19 +49,22 @@ export function useProgramFormDates({
 
     if (initialAssignment.start_date) {
       const start = new Date(initialAssignment.start_date);
-      const end = initialAssignment.end_date
-        ? new Date(initialAssignment.end_date)
-        : calculateEndDate(
-            start,
-            initialAssignment.program_template?.weeks || 4,
-          );
+      const normalizedStart = startOfDay(start);
+      const validStart = isProgramStartDateDisabled(normalizedStart)
+        ? getNextProgramStartMonday()
+        : normalizedStart;
+      const weeks = initialAssignment.program_template?.weeks || 4;
+      const end =
+        initialAssignment.end_date &&
+        !isProgramStartDateDisabled(normalizedStart)
+          ? new Date(initialAssignment.end_date)
+          : calculateEndDate(validStart, weeks);
 
       if (end) {
-        const normalizedStart = startOfDay(start);
         const normalizedEnd = startOfDay(end);
-        setValue('startDate', normalizedStart);
+        setValue('startDate', validStart);
         setValue('endDate', normalizedEnd);
-        setProgramStartDate(formatDateForDB(normalizedStart));
+        setProgramStartDate(formatDateForDB(validStart));
         loadedDatesForTemplateIdRef.current = initialAssignment.id;
       }
     }

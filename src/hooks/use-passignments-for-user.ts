@@ -14,7 +14,8 @@ export const programAssignmentsForUserKeys = {
     search?: string;
     showAssigned: boolean;
     pageSize: number;
-  }) => [...programAssignmentsForUserKeys.lists(), 'infinite', filters] as const,
+  }) =>
+    [...programAssignmentsForUserKeys.lists(), 'infinite', filters] as const,
 };
 
 export function useProgramAssignmentsInfinite(
@@ -51,7 +52,5 @@ export function useProgramAssignmentsInfinite(
       // Otherwise, fetch next page
       return (lastPageParam as number) + 1;
     },
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }

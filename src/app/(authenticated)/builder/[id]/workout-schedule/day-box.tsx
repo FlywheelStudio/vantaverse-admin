@@ -16,6 +16,7 @@ interface DayBoxProps {
   isBeforeStart: boolean;
   isDayCopied: boolean;
   isDayPasteDisabled: boolean;
+  isPasteAnimating?: boolean;
   index: number;
   onAddExercise: (day: number) => void;
   onCopyDay: () => void;
@@ -32,6 +33,7 @@ export function DayBox({
   isBeforeStart,
   isDayCopied,
   isDayPasteDisabled,
+  isPasteAnimating = false,
   index,
   onAddExercise,
   onCopyDay,
@@ -56,6 +58,7 @@ export function DayBox({
       onPaste={onPasteDay}
       isCopied={isDayCopied}
       isPasteDisabled={isDayPasteDisabled}
+      pasteJustTriggered={isPasteAnimating}
       copyTooltip="Copy Day"
       pasteTooltip="Paste Day"
       copiedTooltip="Day already copied"

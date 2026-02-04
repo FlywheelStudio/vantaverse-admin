@@ -17,7 +17,7 @@ export const profileSchema = z.object({
   description: z.string().nullable(),
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
-  email: z.email().nullable(),
+  email: z.email(),
   status: z.enum(['pending', 'invited', 'active', 'assigned']).nullish(),
   phone: z.string().nullable(),
   journey_phase: journeyPhaseSchema.nullable(),

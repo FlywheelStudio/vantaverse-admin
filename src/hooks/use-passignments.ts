@@ -1,8 +1,18 @@
 'use client';
 
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { getProgramAssignmentsPaginated, getProgramAssignmentById, deleteProgramAssignment } from '@/app/(authenticated)/builder/actions';
+import {
+  getProgramAssignmentsPaginated,
+  getProgramAssignmentById,
+  deleteProgramAssignment,
+  cloneProgramAssignment,
+} from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
@@ -12,11 +22,19 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 export const programAssignmentsKeys = {
   all: ['program-assignments'] as const,
   lists: () => [...programAssignmentsKeys.all, 'list'] as const,
-  list: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
-    [...programAssignmentsKeys.lists(), filters] as const,
-  infinite: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
-    [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
-  detail: (id: string | null | undefined) => 
+  list: (filters: {
+    search?: string;
+    weeks?: number;
+    pageSize: number;
+    showAssigned?: boolean;
+  }) => [...programAssignmentsKeys.lists(), filters] as const,
+  infinite: (filters: {
+    search?: string;
+    weeks?: number;
+    pageSize: number;
+    showAssigned?: boolean;
+  }) => [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
+  detail: (id: string | null | undefined) =>
     [...programAssignmentsKeys.all, 'detail', id] as const,
 };
 
@@ -41,7 +59,12 @@ export function programAssignmentsInfiniteQueryOptions(
   },
 ) {
   return infiniteQueryOptions({
-    queryKey: programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned }),
+    queryKey: programAssignmentsKeys.infinite({
+      search,
+      weeks,
+      pageSize,
+      showAssigned,
+    }),
     queryFn: async ({ pageParam }) => {
       const result = await getProgramAssignmentsPaginated(
         pageParam as number,
@@ -64,8 +87,6 @@ export function programAssignmentsInfiniteQueryOptions(
       return undefined;
     },
     initialPageParam: 1,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData && { initialData }),
   });
 }
@@ -91,8 +112,6 @@ export function programAssignmentQueryOptions(
       return result.data;
     },
     enabled: !!id,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && initialData !== null && { initialData }),
   });
 }
@@ -147,7 +166,12 @@ export function useDeleteProgramAssignment(
   showAssigned: boolean = false,
 ) {
   const queryClient = useQueryClient();
-  const queryKey = programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned });
+  const queryKey = programAssignmentsKeys.infinite({
+    search,
+    weeks,
+    pageSize,
+    showAssigned,
+  });
 
   return useMutation({
     mutationFn: async (assignmentId: string) => {
@@ -201,6 +225,102 @@ export function useDeleteProgramAssignment(
     },
     onSuccess: () => {
       // Invalidate queries to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: programAssignmentsKeys.lists(),
+      });
+    },
+  });
+}
+
+type ProgramAssignmentsInfiniteData = {
+  pages: Array<{
+    data: ProgramAssignmentWithTemplate[];
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  }>;
+  pageParams: number[];
+};
+
+export function useCloneProgramAssignment(
+  search?: string,
+  weeks?: number,
+  pageSize: number = 16,
+  showAssigned: boolean = false,
+) {
+  const queryClient = useQueryClient();
+  const queryKey = programAssignmentsKeys.infinite({
+    search,
+    weeks,
+    pageSize,
+    showAssigned,
+  });
+
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const result = await cloneProgramAssignment(assignmentId);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data.assignmentId;
+    },
+    onMutate: async (assignmentId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousData =
+        queryClient.getQueryData<ProgramAssignmentsInfiniteData>(queryKey);
+      if (!previousData?.pages.length) return { previousData };
+
+      let source: ProgramAssignmentWithTemplate | undefined;
+      for (const page of previousData.pages) {
+        source = page.data.find((item) => item.id === assignmentId);
+        if (source) break;
+      }
+      if (!source) return { previousData };
+
+      const tempId = `temp-clone-${Date.now()}`;
+      const placeholder: ProgramAssignmentWithTemplate = {
+        ...source,
+        id: tempId,
+        status: 'template',
+        user_id: null,
+        profiles: null,
+        start_date: null,
+        end_date: null,
+        program_template: {
+          ...source.program_template,
+          name: `${source.program_template.name} (clone)`,
+        },
+      };
+
+      queryClient.setQueryData<ProgramAssignmentsInfiniteData>(
+        queryKey,
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page, i) =>
+              i === 0
+                ? {
+                    ...page,
+                    data: [placeholder, ...page.data],
+                    total: page.total + 1,
+                  }
+                : page,
+            ),
+          };
+        },
+      );
+      toast.success('Program cloned successfully');
+      return { previousData, tempId };
+    },
+    onError: (error, _assignmentId, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+      toast.error(error.message || 'Failed to clone program');
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: programAssignmentsKeys.lists(),
       });

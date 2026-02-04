@@ -9,8 +9,10 @@ import {
   type ProgramAssignment,
   type ProgramAssignmentWithTemplate,
 } from '../schemas/program-assignments';
+import type { ProgramTemplate } from '../schemas/program-templates';
 import { GroupsQuery } from './groups';
 import { ExerciseTemplatesQuery } from './exercise-templates';
+import { ProgramTemplatesQuery } from './program-templates';
 import { Database } from '../database.types';
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
@@ -385,6 +387,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
    * @param startDate - Start date (ISO string)
    * @param endDate - End date (ISO string)
    * @param organizationId - Optional organization ID
+   * @param workoutScheduleId - Optional workout schedule ID to link
    * @returns Success with created assignment or error
    */
   public async create(
@@ -392,6 +395,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     startDate: string | null,
     endDate: string | null,
     organizationId?: string | null,
+    workoutScheduleId?: string | null,
   ): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
@@ -404,7 +408,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         status: 'template',
         user_id: null,
         organization_id: organizationId || null,
-        workout_schedule_id: null,
+        workout_schedule_id: workoutScheduleId ?? null,
       })
       .select()
       .single();
@@ -432,6 +436,64 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     return {
       success: true,
       data: result.data,
+    };
+  }
+
+  /**
+   * Clone a program assignment into a new template (new program_template + new program_assignment).
+   * Copies all template fields with name + " (clone)", same workout_schedule_id; no user/completion.
+   * @param assignmentId - The source program assignment ID
+   * @returns Success with { template, assignment } or error
+   */
+  public async cloneToTemplate(assignmentId: string): Promise<
+    | SupabaseSuccess<{
+        template: ProgramTemplate;
+        assignment: ProgramAssignment;
+      }>
+    | SupabaseError
+  > {
+    const sourceResult = await this.getById(assignmentId);
+    if (!sourceResult.success) return sourceResult;
+
+    const source = sourceResult.data;
+    if (!source.program_template) {
+      return {
+        success: false,
+        error: 'Program template not found',
+      };
+    }
+
+    const template = source.program_template;
+    const templateQuery = new ProgramTemplatesQuery();
+
+    const templateResult = await templateQuery.create(
+      `${template.name} (clone)`,
+      template.weeks,
+      template.description ?? null,
+      template.goals ?? null,
+      template.notes ?? null,
+      source.organization_id ?? template.organization_id ?? null,
+      template.image_url != null ? String(template.image_url) : null,
+    );
+
+    if (!templateResult.success) return templateResult;
+
+    const assignmentResult = await this.create(
+      templateResult.data.id,
+      null,
+      null,
+      source.organization_id ?? null,
+      source.workout_schedule_id ?? null,
+    );
+
+    if (!assignmentResult.success) return assignmentResult;
+
+    return {
+      success: true,
+      data: {
+        template: templateResult.data,
+        assignment: assignmentResult.data,
+      },
     };
   }
 
@@ -1165,7 +1227,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       };
     }
 
-    const supabase = await this.getClient('authenticated_user');
+    // Use service_role so we can update derived (active) assignments belonging to other users
+    const supabase = await this.getClient('service_role');
 
     // First, get the count of matching records
     const { count: matchCount, error: countError } = await supabase

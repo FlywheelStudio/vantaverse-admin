@@ -108,6 +108,7 @@ export class ProgramTemplatesQuery extends SupabaseQuery {
     goals?: string | null,
     notes?: string | null,
     organizationId?: string | null,
+    imageUrl?: string | null,
   ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
@@ -121,6 +122,7 @@ export class ProgramTemplatesQuery extends SupabaseQuery {
         notes: notes?.trim() || null,
         organization_id: organizationId || null,
         active: true,
+        image_url: imageUrl ? { image_url: imageUrl } : null,
       })
       .select()
       .single();

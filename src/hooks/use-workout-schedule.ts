@@ -42,8 +42,6 @@ export function workoutScheduleQueryOptions(
       return result.data;
     },
     enabled: !!assignmentId,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && initialData !== null && { initialData }),
   });
 }

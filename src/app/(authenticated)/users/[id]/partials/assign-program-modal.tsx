@@ -21,9 +21,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { useProgramAssignmentsInfinite } from '@/hooks/use-passignments-for-user';
 import { useAssignProgramToUser } from '../hooks/use-user-mutations';
 import { useDebounce } from '@/hooks/use-debounce';
-import { format, startOfDay, isBefore } from 'date-fns';
+import { format } from 'date-fns';
 import { generateColorFromSeed } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, isProgramStartDateDisabled, getNextProgramStartMonday } from '@/lib/utils';
 
 function ProgramPreview({
   seed,
@@ -139,6 +139,7 @@ export function AssignProgramModal({
   const handleCardSelect = (assignmentId: string | null) => {
     setSelectedAssignmentId(assignmentId);
     if (assignmentId) {
+      setStartDate(getNextProgramStartMonday());
       setIsDatePickerOpen(true);
     }
   };
@@ -346,7 +347,9 @@ export function AssignProgramModal({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, 'MM/dd/yyyy') : 'Select start date'}
+                  {startDate
+                    ? format(startDate, 'EEE, MMM d, yyyy')
+                    : 'Select start date'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -357,15 +360,15 @@ export function AssignProgramModal({
                     setStartDate(date);
                     setIsDatePickerOpen(false);
                   }}
-                  disabled={(date) => {
-                    const today = startOfDay(new Date());
-                    const dateToCheck = startOfDay(date);
-                    return isBefore(dateToCheck, today);
-                  }}
+                  disabled={isProgramStartDateDisabled}
+                  defaultMonth={startDate ?? getNextProgramStartMonday()}
                   autoFocus
                 />
               </PopoverContent>
             </Popover>
+            <p className="text-xs text-muted-foreground">
+              Start date must be a Monday (today or later).
+            </p>
           </div>
 
           {/* Action Buttons */}
