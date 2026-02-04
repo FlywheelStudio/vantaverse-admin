@@ -1,8 +1,17 @@
 'use client';
 
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { getProgramAssignmentsPaginated, getProgramAssignmentById, deleteProgramAssignment } from '@/app/(authenticated)/builder/actions';
+import {
+  getProgramAssignmentsPaginated,
+  getProgramAssignmentById,
+  deleteProgramAssignment,
+} from '@/app/(authenticated)/builder/actions';
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
@@ -12,11 +21,19 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 export const programAssignmentsKeys = {
   all: ['program-assignments'] as const,
   lists: () => [...programAssignmentsKeys.all, 'list'] as const,
-  list: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
-    [...programAssignmentsKeys.lists(), filters] as const,
-  infinite: (filters: { search?: string; weeks?: number; pageSize: number; showAssigned?: boolean }) =>
-    [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
-  detail: (id: string | null | undefined) => 
+  list: (filters: {
+    search?: string;
+    weeks?: number;
+    pageSize: number;
+    showAssigned?: boolean;
+  }) => [...programAssignmentsKeys.lists(), filters] as const,
+  infinite: (filters: {
+    search?: string;
+    weeks?: number;
+    pageSize: number;
+    showAssigned?: boolean;
+  }) => [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
+  detail: (id: string | null | undefined) =>
     [...programAssignmentsKeys.all, 'detail', id] as const,
 };
 
@@ -41,7 +58,12 @@ export function programAssignmentsInfiniteQueryOptions(
   },
 ) {
   return infiniteQueryOptions({
-    queryKey: programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned }),
+    queryKey: programAssignmentsKeys.infinite({
+      search,
+      weeks,
+      pageSize,
+      showAssigned,
+    }),
     queryFn: async ({ pageParam }) => {
       const result = await getProgramAssignmentsPaginated(
         pageParam as number,
@@ -64,8 +86,6 @@ export function programAssignmentsInfiniteQueryOptions(
       return undefined;
     },
     initialPageParam: 1,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData && { initialData }),
   });
 }
@@ -91,8 +111,6 @@ export function programAssignmentQueryOptions(
       return result.data;
     },
     enabled: !!id,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && initialData !== null && { initialData }),
   });
 }
@@ -147,7 +165,12 @@ export function useDeleteProgramAssignment(
   showAssigned: boolean = false,
 ) {
   const queryClient = useQueryClient();
-  const queryKey = programAssignmentsKeys.infinite({ search, weeks, pageSize, showAssigned });
+  const queryKey = programAssignmentsKeys.infinite({
+    search,
+    weeks,
+    pageSize,
+    showAssigned,
+  });
 
   return useMutation({
     mutationFn: async (assignmentId: string) => {

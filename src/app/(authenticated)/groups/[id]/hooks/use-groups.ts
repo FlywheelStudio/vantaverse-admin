@@ -40,8 +40,6 @@ function groupMembersQueryOptions(
       return result.data;
     },
     enabled: !!organizationId,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && { initialData }),
   });
 }
@@ -86,8 +84,6 @@ function superAdminGroupUsersQueryOptions(
       return Array.from(byId.values());
     },
     enabled: !!organizationId,
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
     ...(initialData !== undefined && { initialData }),
   });
 }
@@ -96,7 +92,9 @@ export function useSuperAdminGroupUsers(
   organizationId: string | null | undefined,
   initialData?: SuperAdminGroupUser[],
 ) {
-  return useQuery(superAdminGroupUsersQueryOptions(organizationId, initialData));
+  return useQuery(
+    superAdminGroupUsersQueryOptions(organizationId, initialData),
+  );
 }
 
 /**
@@ -119,8 +117,6 @@ function groupPhysiologistQueryOptions(
       return result.data;
     },
     enabled: !!organizationId,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && { initialData }),
   });
 }

@@ -43,8 +43,6 @@ export function organizationQueryOptions(
       return result.data;
     },
     enabled: !!id,
-    staleTime: 60 * 1000, // 60 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
     ...(initialData !== undefined && initialData !== null && { initialData }),
   });
 }

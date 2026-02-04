@@ -68,8 +68,6 @@ export function OrgTeamFilter({
               return result.data;
             },
             enabled: effectiveEnabledOrgs.has(org.id),
-            staleTime: 60 * 1000, // 1 minute
-            gcTime: 5 * 60 * 1000, // 5 minutes
           }))
         : [],
   });

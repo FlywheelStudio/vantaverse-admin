@@ -19,14 +19,26 @@ export const exercisesKeys = {
   all: ['exercises'] as const,
   lists: () => [...exercisesKeys.all, 'list'] as const,
   detail: (id: string) => [...exercisesKeys.all, 'detail', id] as const,
-  infinite: (filters: { search?: string; sortBy: string; sortOrder: 'asc' | 'desc'; pageSize: number }) =>
-    [...exercisesKeys.lists(), 'infinite', filters] as const,
-  templatesInfinite: (filters: { search?: string; sortBy: string; sortOrder: 'asc' | 'desc'; pageSize: number }) =>
-    [...exercisesKeys.lists(), 'templates-infinite', filters] as const,
+  infinite: (filters: {
+    search?: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    pageSize: number;
+  }) => [...exercisesKeys.lists(), 'infinite', filters] as const,
+  templatesInfinite: (filters: {
+    search?: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    pageSize: number;
+  }) => [...exercisesKeys.lists(), 'templates-infinite', filters] as const,
   templatesByIds: (ids: string[]) =>
     [...exercisesKeys.lists(), 'templates-by-ids', ids] as const,
-  groupsInfinite: (filters: { search?: string; sortBy: string; sortOrder: 'asc' | 'desc'; pageSize: number }) =>
-    [...exercisesKeys.lists(), 'groups-infinite', filters] as const,
+  groupsInfinite: (filters: {
+    search?: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    pageSize: number;
+  }) => [...exercisesKeys.lists(), 'groups-infinite', filters] as const,
 };
 
 export function useExercises(initialData?: Exercise[]) {
@@ -42,8 +54,6 @@ export function useExercises(initialData?: Exercise[]) {
       return result.data;
     },
     initialData,
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -79,8 +89,6 @@ export function useExercisesInfinite(
       // Otherwise, fetch next page
       return (lastPageParam as number) + 1;
     },
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -91,7 +99,12 @@ export function useExerciseTemplatesInfinite(
   pageSize: number = 20,
 ) {
   return useInfiniteQuery<ExerciseTemplate[], Error>({
-    queryKey: exercisesKeys.templatesInfinite({ search, sortBy, sortOrder, pageSize }),
+    queryKey: exercisesKeys.templatesInfinite({
+      search,
+      sortBy,
+      sortOrder,
+      pageSize,
+    }),
     queryFn: async ({ pageParam = 1 }) => {
       const result = await getExerciseTemplatesPaginated(
         pageParam as number,
@@ -116,8 +129,6 @@ export function useExerciseTemplatesInfinite(
       // Otherwise, fetch next page
       return (lastPageParam as number) + 1;
     },
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -136,8 +147,6 @@ export function useExerciseTemplatesByIds(ids: string[]) {
 
       return result.data;
     },
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
   });
 }
 
@@ -148,7 +157,12 @@ export function useGroupsInfinite(
   pageSize: number = 20,
 ) {
   return useInfiniteQuery<DbGroup[], Error>({
-    queryKey: exercisesKeys.groupsInfinite({ search, sortBy, sortOrder, pageSize }),
+    queryKey: exercisesKeys.groupsInfinite({
+      search,
+      sortBy,
+      sortOrder,
+      pageSize,
+    }),
     queryFn: async ({ pageParam = 1 }) => {
       const result = await getGroupsPaginated(
         pageParam as number,
@@ -171,7 +185,5 @@ export function useGroupsInfinite(
       }
       return (lastPageParam as number) + 1;
     },
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
   });
 }
