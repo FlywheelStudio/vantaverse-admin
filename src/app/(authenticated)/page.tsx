@@ -1,32 +1,31 @@
-import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
-import { getUnassignedUsers } from '@/app/(authenticated)/groups/[id]/actions';
 import { PageWrapper } from '@/components/page-wrapper';
-import { QuickTakeActionCard } from '@/app/(authenticated)/dashboard/no-group';
-import { UsersWithoutProgramCard } from '@/app/(authenticated)/dashboard/no-program';
-import { UsersWithProgramAndGroupCard } from '@/app/(authenticated)/dashboard/quick-chat';
-import {
-  getUsersWithoutProgram,
-  getUsersWithProgramAndGroup,
-} from '@/app/(authenticated)/dashboard/actions';
+import { StatusCountsCard } from '@/app/(authenticated)/dashboard/status-counts-card';
+import { ComplianceCard } from '@/app/(authenticated)/dashboard/compliance-card';
+import { NeedingAttentionCard } from '@/app/(authenticated)/dashboard/needing-attention-card';
 import { createParallelQueries } from '@/lib/supabase/query';
+import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
 
 export default async function HomePage() {
+  const profilesQuery = new ProfilesQuery();
+  const dashboardQuery = new DashboardQuery();
+
   const data = await createParallelQueries({
     profile: {
-      query: () => getAuthProfile(),
+      query: () => profilesQuery.getAuthProfile(),
       defaultValue: null,
     },
-    unassigned: {
-      query: () => getUnassignedUsers(),
-      defaultValue: [],
+    statusCounts: {
+      query: () => dashboardQuery.getStatusCounts(),
+      defaultValue: { pending: 0, invited: 0, active: 0 },
     },
-    withoutProgram: {
-      query: () => getUsersWithoutProgram(),
-      defaultValue: [],
+    compliance: {
+      query: () => dashboardQuery.getAggregateCompliance(),
+      defaultValue: null,
     },
-    withProgramAndGroup: {
-      query: () => getUsersWithProgramAndGroup(),
-      defaultValue: [],
+    needingAttention: {
+      query: () => dashboardQuery.getUsersNeedingAttention(),
+      defaultValue: { users: [], total: 0 },
     },
   });
 
@@ -50,9 +49,9 @@ export default async function HomePage() {
       }
     >
       <div className="flex flex-col gap-6 md:flex-row md:items-stretch flex-1 min-h-0 overflow-hidden">
-        <QuickTakeActionCard users={data.unassigned ?? []} />
-        <UsersWithoutProgramCard users={data.withoutProgram ?? []} />
-        <UsersWithProgramAndGroupCard users={data.withProgramAndGroup ?? []} />
+        <StatusCountsCard counts={data.statusCounts ?? { pending: 0, invited: 0, active: 0 }} />
+        <ComplianceCard compliance={data.compliance} />
+        <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
       </div>
     </PageWrapper>
   );

@@ -17,11 +17,11 @@ interface CompliancePieChartProps {
 
 const chartConfig = {
   completed: {
-    label: "Completed",
+    label: "Completed ",
     color: "var(--chart-2)",
   },
   nonCompleted: {
-    label: "Non-completed",
+    label: "Non-completed ",
     color: "var(--chart-3)",
   },
 } satisfies ChartConfig
