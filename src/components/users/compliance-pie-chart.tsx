@@ -63,6 +63,8 @@ export function CompliancePieChart({ compliance, size = DEFAULT_SIZE }: Complian
           innerRadius={innerRadius}
           outerRadius={outerRadius}
           strokeWidth={0}
+          startAngle={90}
+          endAngle={-270}
         >
           <Label
             content={({ viewBox }) => {
