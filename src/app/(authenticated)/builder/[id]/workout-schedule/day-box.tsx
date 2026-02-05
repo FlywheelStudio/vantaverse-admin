@@ -186,7 +186,7 @@ export function DayBox({
         {hasItems ? (
           <>
              <motion.div
-              className="w-full flex-1 flex flex-col gap-1 overflow-y-auto max-h-[200px] min-h-[200px] slim-scrollbar"
+              className="w-full flex-1 flex flex-col gap-1 overflow-y-auto max-h-[240px] min-h-[240px] slim-scrollbar"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.1 * index }}
@@ -199,7 +199,7 @@ export function DayBox({
             <motion.p
               key={`week-${weekIndex}-day-${day}-rest`}
               className={cn(
-                'h-full max-h-[200px] min-h-[200px] flex flex-col items-center justify-center text-sm cursor-default',
+                'h-full max-h-[240px] min-h-[240px] flex flex-col items-center justify-center text-sm cursor-default',
                 isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
               )}
               initial={{ opacity: 0, y: 10 }}
