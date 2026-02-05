@@ -65,6 +65,7 @@ export function DateRangePicker({
                 defaultMonth={startDate || getNextProgramStartMonday()}
                 numberOfMonths={1}
                 disabled={isProgramStartDateDisabled}
+                weekStartsOn={1}
                 className="w-full [--cell-size:2rem]"
               />
             ) : (
@@ -81,6 +82,7 @@ export function DateRangePicker({
                 defaultMonth={startDate || getNextProgramStartMonday()}
                 numberOfMonths={1}
                 disabled={isProgramStartDateDisabled}
+                weekStartsOn={1}
                 className="w-full [--cell-size:2rem]"
               />
             )}

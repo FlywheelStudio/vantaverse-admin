@@ -43,6 +43,7 @@ import {
   useToggleSuperAdmin,
 } from '../hooks/use-users-table-mutations';
 import { sendBulkInvitations } from '../../actions';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
 import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
@@ -194,6 +195,8 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
   const hasProgram =
     profile.program_assignment_id && profile.program_assignment_name;
   const hasOrganization = (profile.orgMemberships?.length ?? 0) > 0;
+  const canAssignProgram =
+    (profile.max_gate_unlocked ?? 0) >= MIN_GATES_FOR_PROGRAM_ASSIGNMENT;
 
   const handleAssignSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -208,6 +211,22 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
       >
         {profile.program_assignment_name}
       </Link>
+    );
+  }
+
+  if (!canAssignProgram) {
+    const gateN = profile.max_gate_unlocked ?? 0;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-sm text-muted-foreground cursor-default">
+            Gate {gateN}/5
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>User must complete all 5 gates</p>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -234,14 +253,16 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
           </p>
         </TooltipContent>
       </Tooltip>
-      <AssignProgramModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        userId={profile.id}
-        onAssignSuccess={handleAssignSuccess}
-        userFirstName={profile.first_name}
-        userLastName={profile.last_name}
-      />
+      {hasOrganization && (
+        <AssignProgramModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          userId={profile.id}
+          onAssignSuccess={handleAssignSuccess}
+          userFirstName={profile.first_name}
+          userLastName={profile.last_name}
+        />
+      )}
     </>
   );
 }

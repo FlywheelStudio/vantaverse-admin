@@ -14,6 +14,9 @@ import { GroupsQuery } from './groups';
 import { ExerciseTemplatesQuery } from './exercise-templates';
 import { ProgramTemplatesQuery } from './program-templates';
 import { Database } from '../database.types';
+import { calculateEndDate, formatDateForDB } from '@/lib/utils';
+
+export const MIN_GATES_FOR_PROGRAM_ASSIGNMENT = 5;
 
 export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**
@@ -1113,6 +1116,28 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
 
     const userOrganizationId = orgMember.organization_id;
 
+    const { data: profileStats, error: statsError } = await supabase
+      .from('profiles_with_stats')
+      .select('max_gate_unlocked')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (statsError) {
+      return this.parseResponsePostgresError(
+        statsError,
+        'Failed to get user gate progress',
+      );
+    }
+
+    const maxGate = profileStats?.max_gate_unlocked ?? null;
+    if (maxGate === null || maxGate < MIN_GATES_FOR_PROGRAM_ASSIGNMENT) {
+      return {
+        success: false,
+        error:
+          'User must complete all 5 gates before a program can be assigned.',
+      };
+    }
+
     // Check if user already has an active assignment for this template
     const { data: existingAssignment } = await supabase
       .from('program_assignment')
@@ -1129,12 +1154,14 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       };
     }
 
-    // Calculate end date by adding weeks from template to start date
-    const startDateObj = new Date(startDate);
+    // Calculate end date (inclusive): N weeks = Mon–Sun, end = start + (weeks * 7) - 1
     const templateWeeks = templateAssignment.program_template?.weeks || 0;
-    const endDateObj = new Date(startDateObj);
-    endDateObj.setDate(endDateObj.getDate() + templateWeeks * 7);
-    const endDate = endDateObj.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    const startDateObj = new Date(startDate);
+    const calculatedEnd =
+      templateWeeks >= 1
+        ? calculateEndDate(startDateObj, templateWeeks)
+        : undefined;
+    const endDate = formatDateForDB(calculatedEnd ?? startDateObj);
 
     // Create new assignment from template
     const { data, error } = await supabase

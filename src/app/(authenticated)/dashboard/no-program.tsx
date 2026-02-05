@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { UserCard } from '@/components/ui/user-card';
 import { Input } from '@/components/ui/input';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
 import type { UserWithoutProgram } from './actions';
 
 export function UsersWithoutProgramCard({ users }: { users: UserWithoutProgram[] }) {
@@ -76,40 +77,60 @@ export function UsersWithoutProgramCard({ users }: { users: UserWithoutProgram[]
           ) : (
             <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
               <div className="space-y-3 min-w-0 w-full overflow-hidden">
-                {filtered.map((u, i) => (
-                  <div key={u.user_id}>
-                    <UserCard
-                      user={u}
-                      index={i}
-                      action={
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => setModalUserId(u.user_id)}
-                              className="cursor-pointer rounded-[var(--radius-md)] p-2 text-muted-foreground hover:text-primary hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <BookPlus className="h-5 w-5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Assign program</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      }
-                    />
-                    <AssignProgramModal
-                      open={modalUserId === u.user_id}
-                      onOpenChange={(open) =>
-                        setModalUserId(open ? u.user_id : null)
-                      }
-                      userId={u.user_id}
-                      onAssignSuccess={handleAssignSuccess}
-                      userFirstName={u.first_name}
-                      userLastName={u.last_name}
-                    />
-                  </div>
-                ))}
+                {filtered.map((u, i) => {
+                  const canAssign =
+                    (u.max_gate_unlocked ?? 0) >= MIN_GATES_FOR_PROGRAM_ASSIGNMENT;
+                  const gateN = u.max_gate_unlocked ?? 0;
+                  return (
+                    <div key={u.user_id}>
+                      <UserCard
+                        user={u}
+                        index={i}
+                        action={
+                          canAssign ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => setModalUserId(u.user_id)}
+                                  className="cursor-pointer rounded-[var(--radius-md)] p-2 text-muted-foreground hover:text-primary hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  <BookPlus className="h-5 w-5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Assign program</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block rounded-[var(--radius-md)] p-2 text-muted-foreground cursor-default">
+                                  Gate {gateN}/5
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>User must complete all 5 gates</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        }
+                      />
+                      {canAssign && (
+                        <AssignProgramModal
+                          open={modalUserId === u.user_id}
+                          onOpenChange={(open) =>
+                            setModalUserId(open ? u.user_id : null)
+                          }
+                          userId={u.user_id}
+                          onAssignSuccess={handleAssignSuccess}
+                          userFirstName={u.first_name}
+                          userLastName={u.last_name}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
           )}

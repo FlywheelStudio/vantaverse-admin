@@ -8,6 +8,7 @@ export type UserWithoutProgram = {
   last_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  max_gate_unlocked: number | null;
 };
 
 export type UserWithProgramAndGroup = UserWithoutProgram & {
@@ -52,8 +53,8 @@ export async function getUsersWithoutProgram() {
   }
 
   const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name, email, avatar_url')
+    .from('profiles_with_stats')
+    .select('id, first_name, last_name, email, avatar_url, max_gate_unlocked')
     .in('id', withoutProgramIds);
 
   if (profilesError) {
@@ -66,6 +67,7 @@ export async function getUsersWithoutProgram() {
     last_name: p.last_name ?? null,
     email: p.email ?? null,
     avatar_url: p.avatar_url ?? null,
+    max_gate_unlocked: p.max_gate_unlocked ?? null,
   }));
 
   return { success: true as const, data };
@@ -125,8 +127,8 @@ export async function getUsersWithProgramAndGroup() {
     return { success: false as const, error: profilesError.message };
   }
 
-  const data: UserWithProgramAndGroup[] = (profiles ?? [])
-    .map((p) => {
+  const data = (profiles ?? [])
+    .map((p): UserWithProgramAndGroup | null => {
       const organization_id = latestOrgByUserId.get(p.id);
       if (!organization_id) return null;
       return {
@@ -135,8 +137,9 @@ export async function getUsersWithProgramAndGroup() {
         last_name: p.last_name ?? null,
         email: p.email ?? null,
         avatar_url: p.avatar_url ?? null,
+        max_gate_unlocked: null,
         organization_id,
-      } satisfies UserWithProgramAndGroup;
+      };
     })
     .filter((x): x is UserWithProgramAndGroup => x !== null);
 

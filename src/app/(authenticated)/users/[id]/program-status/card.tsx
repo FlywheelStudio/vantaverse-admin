@@ -34,6 +34,7 @@ import { ProgramStatusWeekCard } from './week-card';
 import { AssignProgramModal } from '../partials/assign-program-modal';
 import { useDeleteProgram } from '../hooks/use-user-mutations';
 import { useQueryClient } from '@tanstack/react-query';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
 
 interface ProgramStatusCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
@@ -44,6 +45,7 @@ interface ProgramStatusCardProps {
   userId: string;
   userFirstName?: string | null;
   userLastName?: string | null;
+  maxGateUnlocked?: number | null;
 }
 
 export function ProgramStatusCard({
@@ -55,6 +57,7 @@ export function ProgramStatusCard({
   userId,
   userFirstName,
   userLastName,
+  maxGateUnlocked,
 }: ProgramStatusCardProps) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,6 +112,10 @@ export function ProgramStatusCard({
   };
 
   if (!assignment) {
+    const canAssign =
+      (maxGateUnlocked ?? 0) >= MIN_GATES_FOR_PROGRAM_ASSIGNMENT;
+    const gateN = maxGateUnlocked ?? 0;
+
     return (
       <Card
         className="w-full col-span-full overflow-hidden border border-border gap-2 relative"
@@ -141,39 +148,56 @@ export function ProgramStatusCard({
                   Program Status
                 </h3>
               </div>
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                size="sm"
-                className="shrink-0 rounded-[var(--radius-pill)] bg-white/20 hover:bg-white/30 text-white border-white/30"
-              >
-                Assign Program
-              </Button>
+              {canAssign ? (
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  size="sm"
+                  className="shrink-0 rounded-pill bg-white/20 hover:bg-white/30 text-white border-white/30"
+                >
+                  Assign Program
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0 rounded-pill px-3 py-1.5 text-sm text-white/90 border border-white/30 cursor-default">
+                      Gate {gateN}/5
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>User must complete all 5 gates</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>
         <CardContent className="p-6 relative z-10">
           <div className="rounded-xl border border-dashed border-white/30 bg-white/10 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-[var(--radius-lg)] bg-white/20">
+              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-lg bg-white/20">
                 <AlertTriangle className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
                 <div className="font-semibold text-white">No program assigned</div>
                 <div className="text-sm text-white/90 mt-1">
-                  Assign a program to start tracking weekly completion and schedule progress.
+                  {canAssign
+                    ? 'Assign a program to start tracking weekly completion and schedule progress.'
+                    : 'User must complete all 5 gates before a program can be assigned.'}
                 </div>
               </div>
             </div>
           </div>
         </CardContent>
-        <AssignProgramModal
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          userId={userId}
-          onAssignSuccess={handleAssignSuccess}
-          userFirstName={userFirstName}
-          userLastName={userLastName}
-        />
+        {canAssign && (
+          <AssignProgramModal
+            open={isModalOpen}
+            onOpenChange={setIsModalOpen}
+            userId={userId}
+            onAssignSuccess={handleAssignSuccess}
+            userFirstName={userFirstName}
+            userLastName={userLastName}
+          />
+        )}
       </Card>
     );
   }
@@ -225,7 +249,7 @@ export function ProgramStatusCard({
                 onClick={assignment ? handleEditProgram : () => setIsModalOpen(true)}
                 variant="outline"
                 size="sm"
-                className="rounded-[var(--radius-pill)] bg-white/20 hover:bg-white/30 text-white border-white/30"
+                className="rounded-pill bg-white/20 hover:bg-white/30 text-white border-white/30"
               >
                 {assignment ? 'Edit Program' : 'Assign Program'}
               </Button>
@@ -237,7 +261,7 @@ export function ProgramStatusCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-white hover:text-white hover:bg-white/20 rounded-[var(--radius-pill)]"
+                          className="text-white hover:text-white hover:bg-white/20 rounded-pill"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -306,7 +330,7 @@ export function ProgramStatusCard({
         {schedule && schedule.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-white mb-3">Workout Schedule</h3>
-            <div className="max-h-[300px] overflow-y-auto slim-scrollbar space-y-2 rounded-[var(--radius-lg)]">
+            <div className="max-h-[300px] overflow-y-auto slim-scrollbar space-y-2 rounded-lg">
               {schedule.map((week, weekIndex) => (
                 <ProgramStatusWeekCard
                   key={weekIndex}
