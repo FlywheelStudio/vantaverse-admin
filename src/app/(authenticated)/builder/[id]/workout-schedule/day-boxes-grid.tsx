@@ -25,6 +25,7 @@ export function DayBoxesGrid() {
     dayIndex: number;
   } | null>(null);
   const dayAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     currentWeek,
@@ -336,9 +337,35 @@ export function DayBoxesGrid() {
     };
   }, [handleKeyDown]);
 
+  const handleWheel = useCallback((e: WheelEvent) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // Always consume wheel over grid so main page scroll (breadcrumb hide) doesn't run
+    e.preventDefault();
+    const canScrollLeft = el.scrollLeft > 0;
+    const canScrollRight =
+      el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
+    const delta = e.deltaY;
+    if (delta > 0 && canScrollRight) el.scrollLeft += delta;
+    else if (delta < 0 && canScrollLeft) el.scrollLeft += delta;
+  }, []);
+
+  const scrollContainerRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      const prev = scrollContainerRef.current;
+      scrollContainerRef.current = node;
+      if (prev) prev.removeEventListener('wheel', handleWheel);
+      if (node) node.addEventListener('wheel', handleWheel, { passive: false });
+    },
+    [handleWheel],
+  );
+
   return (
     <>
-      <div className="mt-6 overflow-x-auto slim-scrollbar">
+      <div
+        ref={scrollContainerRefCallback}
+        className="mt-6 overflow-x-auto slim-scrollbar"
+      >
         <div className="flex gap-4">
           {days.map((day, index) => {
             // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
@@ -382,6 +409,7 @@ export function DayBoxesGrid() {
                 onPasteDay={() => handlePasteDay(dayIndex)}
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
+                defaultValues={defaultValues}
               />
             );
           })}
