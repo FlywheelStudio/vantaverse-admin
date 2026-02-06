@@ -20,7 +20,6 @@ type StatusCountsListPanelProps = {
   filtered: (DashboardStatusUser | UserNeedingAttention)[];
   isPending: boolean;
   isNoProgram: boolean;
-  isProgramCompleted: boolean;
   sendingBulkInvites: boolean;
   onSendInvitations: (users: DashboardStatusUser[]) => void;
   onUserClick: (userId: string) => void;
@@ -39,7 +38,6 @@ export function StatusCountsListPanel({
   filtered,
   isPending,
   isNoProgram,
-  isProgramCompleted,
   sendingBulkInvites,
   onSendInvitations,
   onUserClick,

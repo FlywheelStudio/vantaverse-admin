@@ -113,7 +113,6 @@ export function StatusCountsCard({
       ? rawUsers.filter((u) => !optimisticallyInvitedIds.has(u.user_id))
       : rawUsers;
 
-  const isProgramCompleted = selectedFilter === 'programCompleted';
   const isPending = selectedFilter === 'pending';
   const isNoProgram = selectedFilter === 'noProgram';
   const q = search.trim().toLowerCase();
@@ -286,7 +285,6 @@ export function StatusCountsCard({
                 filtered={filtered}
                 isPending={isPending}
                 isNoProgram={isNoProgram}
-                isProgramCompleted={isProgramCompleted}
                 sendingBulkInvites={sendingBulkInvites}
                 onSendInvitations={handleSendInvitations}
                 onUserClick={handleUserClick}
