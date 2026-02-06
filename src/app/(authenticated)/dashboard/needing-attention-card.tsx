@@ -71,7 +71,7 @@ export function NeedingAttentionCard({
                     {data.total}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    Users require attention
+                    Users with low compliance
                   </span>
                 </div>
                 <div className="absolute bottom-4 right-5 text-xs text-muted-foreground flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

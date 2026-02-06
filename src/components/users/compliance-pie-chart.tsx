@@ -12,37 +12,69 @@ import {
 
 interface CompliancePieChartProps {
   compliance: number
+  programCompletion?: number
   size?: number
 }
 
 const chartConfig = {
   completed: {
-    label: "Completed ",
+    label: "Average compliance:",
     color: "var(--chart-2)",
   },
   nonCompleted: {
-    label: "Non-completed ",
+    label: "Non-compliance:",
     color: "var(--chart-3)",
+  },
+  programCompleted: {
+    label: "Average program completion:",
+    color: "gray",
+  },
+  programNonCompleted: {
+    label: "Still missing:",
+    color: "lightgray",
   },
 } satisfies ChartConfig
 
 const DEFAULT_SIZE = 128
 
-export function CompliancePieChart({ compliance, size = DEFAULT_SIZE }: CompliancePieChartProps) {
-  const chartData = React.useMemo(() => {
+export function CompliancePieChart({
+  compliance,
+  programCompletion,
+  size = DEFAULT_SIZE,
+}: CompliancePieChartProps) {
+  const complianceData = React.useMemo(() => {
     const completed = Math.max(0, Math.min(100, compliance))
     const nonCompleted = Math.max(0, 100 - completed)
-    
     return [
       { name: "completed", value: completed, fill: chartConfig.completed.color },
       { name: "nonCompleted", value: nonCompleted, fill: chartConfig.nonCompleted.color },
     ]
   }, [compliance])
 
+  const programCompletionData = React.useMemo(() => {
+    if (programCompletion === undefined) return null
+    const completed = Math.max(0, Math.min(100, programCompletion))
+    const nonCompleted = Math.max(0, 100 - completed)
+    return [
+      {
+        name: "programCompleted",
+        value: completed,
+        fill: chartConfig.programCompleted.color,
+      },
+      {
+        name: "programNonCompleted",
+        value: nonCompleted,
+        fill: chartConfig.programNonCompleted.color,
+      },
+    ]
+  }, [programCompletion])
+
   const displayPercentage = Math.round(compliance)
   const scale = size / DEFAULT_SIZE
-  const innerRadius = Math.round(45 * scale)
-  const outerRadius = Math.round(55 * scale)
+  const innerRadius = Math.round(48 * scale)
+  const outerRadius = Math.round(64 * scale)
+  const programInnerRadius = Math.round(43 * scale)
+  const programOuterRadius = Math.round(50 * scale)
   const labelOffset = Math.round(18 * scale)
 
   return (
@@ -57,12 +89,12 @@ export function CompliancePieChart({ compliance, size = DEFAULT_SIZE }: Complian
           content={<ChartTooltipContent hideLabel />}
         />
         <Pie
-          data={chartData}
+          data={complianceData}
           dataKey="value"
           nameKey="name"
           innerRadius={innerRadius}
           outerRadius={outerRadius}
-          strokeWidth={0}
+          strokeWidth={1}
           startAngle={90}
           endAngle={-270}
         >
@@ -99,6 +131,18 @@ export function CompliancePieChart({ compliance, size = DEFAULT_SIZE }: Complian
             }}
           />
         </Pie>
+        {programCompletionData && (
+          
+            <Pie
+              data={programCompletionData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={programInnerRadius}
+              outerRadius={programOuterRadius}
+              startAngle={90}
+              endAngle={-270}
+            />
+        )}
       </PieChart>
     </ChartContainer>
   )

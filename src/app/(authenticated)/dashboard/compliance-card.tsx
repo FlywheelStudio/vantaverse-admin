@@ -1,14 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CompliancePieChart } from '@/components/users/compliance-pie-chart';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { InfoIcon } from 'lucide-react';
 
-export function ComplianceCard({ compliance }: { compliance: number | null }) {
+export function ComplianceCard({
+  compliance,
+  programCompletion = null,
+}: {
+  compliance: number | null;
+  programCompletion?: number | null;
+}) {
   const value = compliance ?? 0;
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -23,25 +29,28 @@ export function ComplianceCard({ compliance }: { compliance: number | null }) {
               <span className="text-2xl font-semibold text-foreground">
                 Compliance
               </span>
-            </CardTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="text-muted-foreground hover:text-foreground transition-colors">
-                  <Info className="h-5 w-5" />
-                </button>
+              <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="w-4 h-4 justify-baseline cursor-pointer" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>
-                  Aggregate compliance is the average of the compliance value from the program_with_stats view across all program assignments. The view’s compliance (or program_completion_percentage) reflects completion progress per assignment.
-                </p>
+              <TooltipContent>
+                <p>Aggregate for the average of compliance for all assigned programs.</p>
               </TooltipContent>
             </Tooltip>
+            </CardTitle>
+            
           </div>
         </CardHeader>
-        <CardContent className="p-5 pt-4 flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden">
-          <div className="flex items-center justify-center h-48 w-48">
-            <CompliancePieChart compliance={value} size={180} />
+        <CardContent className="px-5 py-4 flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden gap-4">
+          <div className="flex items-center justify-center h-48 w-48 shrink-0">
+            <CompliancePieChart
+              compliance={value}
+              programCompletion={programCompletion ?? 0}
+              size={180}
+            />
           </div>
+          <p className="text-xs text-muted-foreground text-center max-w-xs">
+            Compliance is based on how many sets and exercises have been completed out of the total number of exercises assigned. Program completion is based on the number of days that have passed since the program was assigned.</p>
         </CardContent>
       </Card>
     </motion.div>
