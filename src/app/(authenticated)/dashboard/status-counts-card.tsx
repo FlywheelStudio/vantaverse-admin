@@ -14,7 +14,7 @@ import type {
   UserNeedingAttention,
 } from '@/lib/supabase/queries/dashboard';
 
-export type StatusFilter =
+type StatusFilter =
   | 'pending'
   | 'invited'
   | 'active'

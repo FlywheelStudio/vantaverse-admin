@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DashboardStatusUser, UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
 
-export type StatusCountsListPanelProps = {
+type StatusCountsListPanelProps = {
   title: string;
   onBack: () => void;
   search: string;
