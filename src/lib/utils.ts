@@ -63,7 +63,7 @@ export function calculateEndDate(
 ): Date | undefined {
   if (!startDate || weeks < 1) return undefined;
   const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + weeks * 7);
+  endDate.setDate(endDate.getDate() + weeks * 7 - 1);
   return endDate;
 }
 

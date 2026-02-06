@@ -177,6 +177,7 @@ export function UserProfilePageUI({
                     userId={user.id}
                     userFirstName={user.first_name}
                     userLastName={user.last_name}
+                    maxGateUnlocked={user.max_gate_unlocked}
                   />
                 </div>
               </div>
@@ -230,6 +231,7 @@ export function UserProfilePageUI({
                 userId={user.id}
                 userFirstName={user.first_name}
                 userLastName={user.last_name}
+                maxGateUnlocked={user.max_gate_unlocked}
               />
             </div>
           </CardContent>

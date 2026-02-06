@@ -20,6 +20,12 @@ import {
   getProgressColor,
 } from '../program-status/card-utils';
 import { AssignProgramModal } from './assign-program-modal';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ProgramAssignmentCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
@@ -27,6 +33,7 @@ interface ProgramAssignmentCardProps {
   userId: string;
   userFirstName?: string | null;
   userLastName?: string | null;
+  maxGateUnlocked?: number | null;
 }
 
 export function ProgramAssignmentCard({
@@ -35,6 +42,7 @@ export function ProgramAssignmentCard({
   userId,
   userFirstName,
   userLastName,
+  maxGateUnlocked,
 }: ProgramAssignmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -51,6 +59,8 @@ export function ProgramAssignmentCard({
 
   const hasAssignment = assignment !== null;
   const hasOrganizations = organizations && organizations.length > 0;
+  const canAssignProgram =
+    (maxGateUnlocked ?? 0) >= MIN_GATES_FOR_PROGRAM_ASSIGNMENT;
 
   // Color scheme based on assigned status
   const getColorScheme = () => {
@@ -98,14 +108,11 @@ export function ProgramAssignmentCard({
   };
 
   const handleCardClick = () => {
-    if (hasOrganizations && !hasAssignment) {
-      // Open modal to assign program
+    if (hasOrganizations && !hasAssignment && canAssignProgram) {
       setModalOpen(true);
     } else if (hasOrganizations && hasAssignment) {
-      // Toggle expand/collapse
       setIsExpanded(!isExpanded);
     }
-    // If !hasOrganizations, do nothing (disabled)
   };
 
   const template = assignment?.program_template;
@@ -147,7 +154,7 @@ export function ProgramAssignmentCard({
             className={cn(
               'p-3',
               (hasOrganizations && hasAssignment) ||
-                (hasOrganizations && !hasAssignment)
+                (hasOrganizations && !hasAssignment && canAssignProgram)
                 ? 'cursor-pointer'
                 : '',
             )}
@@ -238,11 +245,26 @@ export function ProgramAssignmentCard({
             </div>
           )}
 
-          {hasOrganizations && !hasAssignment && (
+          {hasOrganizations && !hasAssignment && canAssignProgram && (
             <div className="px-5 pb-5">
               <p className="text-sm text-muted-foreground italic">
                 No program assigned yet. Click to assign.
               </p>
+            </div>
+          )}
+
+          {hasOrganizations && !hasAssignment && !canAssignProgram && (
+            <div className="px-5 pb-5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-sm text-muted-foreground italic cursor-default">
+                    Gate {maxGateUnlocked ?? 0}/5
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>User must complete all 5 gates</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -342,7 +364,7 @@ export function ProgramAssignmentCard({
         </AnimatePresence>
       </Card>
 
-      {hasOrganizations && organizations.length > 0 && (
+      {hasOrganizations && organizations.length > 0 && canAssignProgram && (
         <AssignProgramModal
           open={modalOpen}
           onOpenChange={setModalOpen}

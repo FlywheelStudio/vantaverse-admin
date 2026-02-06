@@ -122,7 +122,7 @@ export function ProgramTemplateCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer bg-background/80 backdrop-blur-sm shadow-[var(--shadow-sm)]"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer bg-background/80 backdrop-blur-sm shadow-(--shadow-sm)"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -133,24 +133,24 @@ export function ProgramTemplateCard({
       )}
 
       {/* Template Image */}
-      <div className="relative aspect-4/3 overflow-hidden bg-gradient-to-br from-muted to-background">
+      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-muted to-background">
         {imageUrl ? (
           <Image
             src={imageUrl}
             fill
             alt={template.name}
-            className="object-contain group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-115 transition-transform duration-300"
             unoptimized
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-background">
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-background">
             <span className="text-muted-foreground">No image</span>
           </div>
         )}
       </div>
 
       {/* Template Info */}
-      <CardContent className="flex-1 flex flex-col p-5 bg-gradient-to-b from-muted/40 to-background">
+      <CardContent className="flex-1 flex flex-col p-5 bg-linear-to-b from-muted/40 to-background">
         <h3 className="font-semibold text-foreground text-base mb-3 line-clamp-2 leading-tight">
           {template.name}
         </h3>

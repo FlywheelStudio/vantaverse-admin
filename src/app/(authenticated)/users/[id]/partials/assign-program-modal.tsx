@@ -42,7 +42,7 @@ function ProgramPreview({
     <div
       className={cn(
         'relative shrink-0 overflow-hidden bg-muted ring-1 ring-border/40',
-        'rounded-[var(--radius-md)]',
+        'rounded-md',
         className,
       )}
       aria-hidden
@@ -271,18 +271,18 @@ export function AssignProgramModal({
                       disabled={isAssigning}
                       className={cn(
                         'w-full text-left p-4 transition-colors',
-                        'rounded-[var(--radius-lg)] border border-border/60 bg-card shadow-[var(--shadow-sm)]',
+                        'rounded-lg border border-border/60 bg-card shadow-(--shadow-sm)',
                         'hover:bg-muted/40',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
                         isSelected && 'border-primary/40 bg-muted/50 ring-2 ring-ring'
                       )}
                     >
-                      <div className="flex items-stretch gap-4 min-w-0 min-h-[4.5rem]">
+                      <div className="flex items-stretch gap-4 min-w-0 min-h-18">
                         <ProgramPreview
                           seed={template?.id || assignment.id}
                           imageUrl={programImageUrl}
-                          className="w-[4.5rem]"
+                          className="w-18"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -291,7 +291,7 @@ export function AssignProgramModal({
                             </div>
                             <span
                               className={cn(
-                                'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium flex-shrink-0',
+                                'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium shrink-0',
                                 assignment.status === 'active'
                                   ? 'bg-primary/10 text-primary'
                                   : 'bg-secondary text-secondary-foreground/80'
@@ -362,6 +362,7 @@ export function AssignProgramModal({
                   }}
                   disabled={isProgramStartDateDisabled}
                   defaultMonth={startDate ?? getNextProgramStartMonday()}
+                  weekStartsOn={1}
                   autoFocus
                 />
               </PopoverContent>

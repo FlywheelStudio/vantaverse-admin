@@ -1,5 +1,18 @@
 # Changelog
 
+# [0.16.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.15.0...0.16.0) (2026-02-06)
+
+
+### Features
+
+* added composition skill ([b949562](https://github.com/FlywheelStudio/vantaverse-admin/commit/b949562f47ce8e0ce8f9dde922b206b214cfb482))
+* added exercise details into the days page ([7e95cea](https://github.com/FlywheelStudio/vantaverse-admin/commit/7e95ceaf7750f1c18fba2b30cc4a951b6630c42f))
+* added next skill and refactored date picker to include the initial day as part of the week calculation ([3ce4cd2](https://github.com/FlywheelStudio/vantaverse-admin/commit/3ce4cd28c17f08d6c073a0d44d59c92072faee8e))
+* added nextjs skill ([444790e](https://github.com/FlywheelStudio/vantaverse-admin/commit/444790e03dccb9ee3381ba661657a40a71c7ff4f))
+* added web design skills ([52a11bd](https://github.com/FlywheelStudio/vantaverse-admin/commit/52a11bd28fc9c66e337736681b38cfecef5e585b))
+* **dashboard:** enhance user status tracking and compliance metrics ([e8e68c4](https://github.com/FlywheelStudio/vantaverse-admin/commit/e8e68c4821e323f09469640ae495fffa91ae882c))
+* **dashboard:** refactored cards in dashboard ([865be02](https://github.com/FlywheelStudio/vantaverse-admin/commit/865be02bdfeeb7f4f952b62a9ab067227bb51ada))
+
 # [0.15.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.14.0...0.15.0) (2026-02-04)
 
 
