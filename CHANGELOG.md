@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.17.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.16.0...0.17.0) (2026-02-06)
+
+
+### Features
+
+* **users-admin:** update terminology from 'physician' to 'admin' and refactored the users page for admins ([270e1d1](https://github.com/FlywheelStudio/vantaverse-admin/commit/270e1d13c897061c9dabf218cb34f544baf2fd80))
+
 # [0.16.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.15.0...0.16.0) (2026-02-06)
 
 
