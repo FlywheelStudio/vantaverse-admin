@@ -30,6 +30,7 @@ export type UserNeedingAttention = {
   avatar_url: string | null;
   compliance: number;
   program_name: string | null;
+  organization_id: string | null;
 };
 
 /** Row shape from program_with_stats with profile join. */
@@ -54,6 +55,7 @@ export function profileStatToUser(
   profile: Profile,
   compliance: number,
   program_name: string | null,
+  organization_id: string | null = null,
 ): UserNeedingAttention {
   return {
     user_id: profile.id,
@@ -63,6 +65,7 @@ export function profileStatToUser(
     avatar_url: profile.avatar_url ?? null,
     compliance,
     program_name,
+    organization_id,
   };
 }
 
@@ -399,6 +402,175 @@ export class DashboardQuery extends SupabaseQuery {
     const users: UserNeedingAttention[] = [...byUser.values()].map(
       ({ compliance, program_name, profile }) =>
         profileStatToUser(profile, compliance, program_name),
+    );
+
+    return {
+      success: true,
+      data: { users, total: users.length },
+    };
+  }
+
+  /**
+   * Get per-organization aggregate compliance and program completion from program_with_stats.
+   * Returns one row per org with avg compliance and avg program_completion_percentage.
+   */
+  public async getComplianceAndCompletionByOrganizationIds(
+    organizationIds: string[],
+  ): Promise<
+    | SupabaseSuccess<
+        Array<{
+          organizationId: string;
+          compliance: number;
+          programCompletion: number;
+        }>
+      >
+    | SupabaseError
+  > {
+    if (organizationIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const supabase = await this.getClient('service_role');
+
+    const { data: rows, error } = await supabase
+      .from('program_with_stats')
+      .select('organization_id, compliance, program_completion_percentage')
+      .in('organization_id', organizationIds);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get compliance by organization',
+      );
+    }
+
+    type Row = {
+      organization_id: string | null;
+      compliance?: number | null;
+      program_completion_percentage?: number | null;
+    };
+
+    const byOrg = new Map<
+      string,
+      {
+        complianceSum: number;
+        complianceN: number;
+        completionSum: number;
+        completionN: number;
+      }
+    >();
+
+    for (const r of rows ?? []) {
+      const row = r as Row;
+      const orgId = row.organization_id;
+      if (!orgId) continue;
+
+      const comp = row.compliance ?? row.program_completion_percentage ?? 0;
+      const compPct =
+        typeof row.program_completion_percentage === 'number'
+          ? row.program_completion_percentage
+          : comp;
+
+      const cur = byOrg.get(orgId) ?? {
+        complianceSum: 0,
+        complianceN: 0,
+        completionSum: 0,
+        completionN: 0,
+      };
+      if (typeof comp === 'number') {
+        cur.complianceSum += comp;
+        cur.complianceN += 1;
+      }
+      if (typeof compPct === 'number') {
+        cur.completionSum += compPct;
+        cur.completionN += 1;
+      }
+      byOrg.set(orgId, cur);
+    }
+
+    const data = organizationIds.map((organizationId) => {
+      const cur = byOrg.get(organizationId) ?? {
+        complianceSum: 0,
+        complianceN: 0,
+        completionSum: 0,
+        completionN: 0,
+      };
+      return {
+        organizationId,
+        compliance:
+          cur.complianceN > 0 ? cur.complianceSum / cur.complianceN : 0,
+        programCompletion:
+          cur.completionN > 0 ? cur.completionSum / cur.completionN : 0,
+      };
+    });
+
+    return { success: true, data };
+  }
+
+  /**
+   * Get users with low compliance in the given organizations.
+   */
+  public async getUsersWithLowComplianceByOrganizationIds(
+    organizationIds: string[],
+    threshold = 70,
+  ): Promise<
+    | SupabaseSuccess<{ users: UserNeedingAttention[]; total: number }>
+    | SupabaseError
+  > {
+    if (organizationIds.length === 0) {
+      return { success: true, data: { users: [], total: 0 } };
+    }
+
+    const supabase = await this.getClient('service_role');
+
+    const { data: rows, error } = await supabase
+      .from('program_with_stats')
+      .select(
+        'user_id, organization_id, compliance, program_completion_percentage, program_name, profile:profiles!program_assignment_user_id_fkey!inner(id, first_name, last_name, email, avatar_url, last_sign_in, created_at)',
+      )
+      .in('organization_id', organizationIds)
+      .order('compliance', { ascending: true });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get users with low compliance by organization',
+      );
+    }
+
+    const orgSet = new Set(organizationIds);
+    const byUser = new Map<
+      string,
+      {
+        compliance: number;
+        program_name: string | null;
+        profile: Profile;
+        organization_id: string | null;
+      }
+    >();
+
+    for (const r of rows ?? []) {
+      const row = r as ProgramWithStatsProfileRow & {
+        organization_id?: string | null;
+      };
+      if (row.organization_id && !orgSet.has(row.organization_id)) continue;
+      const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+      const val = row.compliance ?? row.program_completion_percentage ?? 0;
+      if (val >= threshold || !row.user_id || !profile) continue;
+      const existing = byUser.get(row.user_id);
+      if (!existing || val < existing.compliance) {
+        byUser.set(row.user_id, {
+          compliance: val,
+          program_name: row.program_name ?? null,
+          profile,
+          organization_id: row.organization_id ?? null,
+        });
+      }
+    }
+
+    const users: UserNeedingAttention[] = [...byUser.values()].map(
+      ({ compliance, program_name, profile, organization_id }) =>
+        profileStatToUser(profile, compliance, program_name, organization_id),
     );
 
     return {

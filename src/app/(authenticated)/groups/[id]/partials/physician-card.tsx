@@ -27,17 +27,17 @@ export function PhysicianCard({
         <div className="flex items-start justify-between gap-4 flex-1">
           <div className="min-w-0">
             <div className="font-semibold text-yellow-800">
-              No physician assigned
+              No admin assigned
             </div>
             <div className="text-sm text-yellow-700">
-              Assign a physician to co-manage this group.
+              Assign an admin to co-manage this group.
             </div>
           </div>
           <Button
             onClick={onAssignClick}
             className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white cursor-pointer"
           >
-            Assign physician
+            Assign admin to co-manage
           </Button>
         </div>
       </Card>
@@ -60,7 +60,7 @@ export function PhysicianCard({
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold text-[#1E3A5F] truncate">
-                {fullName || 'Physician'}
+                {fullName || 'Admin'}
               </div>
               <div className="text-sm text-[#64748B] truncate">
                 {physician.email || '—'}

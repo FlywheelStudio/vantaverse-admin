@@ -12,7 +12,7 @@ import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workou
 import { createParallelQueries } from '@/lib/supabase/query';
 import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { UserProfilePageUI } from './ui';
-import { AdminProfileView } from './admin-profile-view';
+import { AdminProfileView } from './partials/admin/profile-view';
 
 export default async function UserProfilePage({
   params,
@@ -38,8 +38,8 @@ export default async function UserProfilePage({
 
   const user = userResult.data;
 
-  // If target user is physician (admin role), show org tabs with viewing admin's organizations
-  const isTargetUserPhysician = user.role === 'admin';
+  // If target user is admin, show org tabs with viewing admin's organizations
+  const isTargetUserAdmin = user.role === 'admin';
 
   // Parallelize admin-related queries
   const orgMembersQuery = new OrganizationMembers();
@@ -49,7 +49,7 @@ export default async function UserProfilePage({
       defaultValue: null,
     },
     organizations: {
-      condition: isTargetUserPhysician,
+      condition: isTargetUserAdmin,
       query: () => orgMembersQuery.getOrganizationsByUserId(id),
       defaultValue: [],
     },
@@ -66,7 +66,7 @@ export default async function UserProfilePage({
       }))
     : [];
 
-  if (isTargetUserPhysician) {
+  if (isTargetUserAdmin) {
     return (
       <AdminProfileView
         user={user}

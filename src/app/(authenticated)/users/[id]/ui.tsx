@@ -128,7 +128,7 @@ export function UserProfilePageUI({
         </h1>
       }
     >
-      <Card className="border border-border shadow-[var(--shadow-lg)]">
+      <Card className="border border-border shadow-(--shadow-lg)">
         {/* User Profile Header */}
         <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
           <UserProfileCard
@@ -142,7 +142,7 @@ export function UserProfilePageUI({
           />
         </div>
 
-        {/* Cards Section - Only show for members, hide for physicians */}
+        {/* Cards Section - Only show for members, hide for admins */}
         {isMember && (
           <CardContent className="p-8">
             <div className="grid grid-cols-3 gap-6 items-stretch">

@@ -351,8 +351,8 @@ export function useToggleSuperAdmin() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(
         data.isSuperAdmin
-          ? 'Member made physician successfully'
-          : 'Physician made member successfully',
+          ? 'Member made admin successfully'
+          : 'Admin made member successfully',
       );
     },
   });

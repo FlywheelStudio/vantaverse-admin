@@ -161,7 +161,7 @@ function ActionsCell({
           disabled={isPending}
           onClick={() => addAdminMutation.mutate(member.user_id)}
         >
-          {isPending ? 'Assigning...' : 'Make physician'}
+          {isPending ? 'Assigning...' : 'Make admin'}
         </Button>
       </div>
     );
@@ -174,7 +174,7 @@ function ActionsCell({
         removeMemberMutation={removeMemberMutation}
         confirmText={
           isSuperAdminOrg
-            ? 'Remove this physician from the organization? They will no longer be an administrator.'
+            ? 'Remove this admin from the organization? They will no longer be an administrator.'
             : 'Remove this user from the group? They will lose access to this program.'
         }
       />

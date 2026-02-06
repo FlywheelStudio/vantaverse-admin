@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+
 interface UserProfileCardProps {
   userId: string;
   firstName: string;
@@ -126,7 +127,7 @@ export function UserProfileCard({
       case 'patient':
         return 'member';
       case 'admin':
-        return 'physician';
+        return 'admin';
       default:
         return role;
     }
