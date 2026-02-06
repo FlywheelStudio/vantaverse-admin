@@ -172,7 +172,7 @@ export function AddMembersModal({
       ? selectedMemberIds.size > 0
       : selectedPhysiologistId !== null);
 
-  const inviteTitle = selectedRole === 'admin' ? 'Invite physicians' : 'Invite members';
+  const inviteTitle = selectedRole === 'admin' ? 'Invite admins' : 'Invite members';
   const targetLabel =
     type === 'team' && organizationName ? `${organizationName}/${name}` : name;
   const targetKind = type === 'organization' ? 'Group' : 'Team';

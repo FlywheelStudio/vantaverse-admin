@@ -379,7 +379,7 @@ function DeleteUserButton({
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer rounded-[var(--radius-pill)]"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer rounded-pill"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -450,7 +450,7 @@ function ActionsCell({
             size="sm"
             onClick={handleToggleAdmin}
             disabled={toggleSuperAdminMutation.isPending}
-            className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+            className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
           >
             {isSuperAdmin ? (
               <ShieldOff className="h-4 w-4" />
@@ -460,7 +460,7 @@ function ActionsCell({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {isSuperAdmin ? 'Make member' : 'Make physician'}
+          {isSuperAdmin ? 'Make member' : 'Make admin'}
         </TooltipContent>
       </Tooltip>
       <DeleteUserButton
@@ -541,7 +541,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
 
   const handleBulkToggleAdmin = async () => {
     try {
-      // Determine target state: if all are admins, make them members. Otherwise, make them physicians.
+      // Determine target state: if all are admins, make them members. Otherwise, make them admins.
       const allAreAdmins = selectedUsers.every((user) => user.is_super_admin);
       const targetIsAdmin = !allAreAdmins;
       
@@ -587,7 +587,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   size="sm"
                   onClick={handleBulkInvite}
                   disabled={!hasPending || sendingInvites}
-                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   {sendingInvites ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -609,7 +609,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   size="sm"
                   onClick={() => setBulkToggleOpen(true)}
                   disabled={toggleSuperAdminMutation.isPending}
-                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   {allAreAdmins ? (
                     <ShieldOff className="h-4 w-4" />
@@ -619,17 +619,17 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {allAreAdmins ? 'Make members' : 'Make physicians'}
+                {allAreAdmins ? 'Make members' : 'Make admins'}
               </TooltipContent>
             </Tooltip>
       <AlertDialog open={bulkToggleOpen} onOpenChange={setBulkToggleOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {allAreAdmins ? 'Make Members' : 'Make Physicians'}
+              {allAreAdmins ? 'Make Members' : 'Make Admins'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to make {selectedCount} user{selectedCount > 1 ? 's' : ''} {allAreAdmins ? 'members' : 'physicians'}?
+              Are you sure you want to make {selectedCount} user{selectedCount > 1 ? 's' : ''} {allAreAdmins ? 'members' : 'admins'}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -681,7 +681,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   size="sm"
                   onClick={() => setBulkDeleteOpen(true)}
                   disabled={deleteUserMutation.isPending}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer disabled:opacity-50 rounded-[var(--radius-pill)]"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

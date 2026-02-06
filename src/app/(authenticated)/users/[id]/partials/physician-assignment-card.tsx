@@ -158,7 +158,7 @@ export function PhysicianAssignmentCard({
         className={cn(
           'gap-0 border transition-all duration-300 overflow-hidden',
           !hasOrganizations && 'min-h-0 opacity-50 pointer-events-none shadow-none',
-          hasPhysician && 'hover:shadow-[var(--shadow-lg)]',
+          hasPhysician && 'hover:shadow-(--shadow-lg)',
         )}
         style={{
           borderColor: colorScheme.border,
@@ -201,7 +201,7 @@ export function PhysicianAssignmentCard({
                     className="font-semibold text-foreground text-base truncate"
                     style={{ color: colorScheme.text }}
                   >
-                    5. Physiologist Assignment
+                    5. Admin Assignment
                   </h3>
                   {hasPhysician && (
                     <Badge
@@ -251,7 +251,7 @@ export function PhysicianAssignmentCard({
           {hasOrganizations && !hasPhysician && (
             <div className="px-5 pb-5">
               <p className="text-sm text-muted-foreground italic">
-                No physiologist assigned yet. Click to assign.
+                No admin assigned yet. Click to assign.
               </p>
             </div>
           )}
@@ -276,7 +276,7 @@ export function PhysicianAssignmentCard({
               >
                 <CheckCircle2 className="h-5 w-5 text-[oklch(0.66 0.17 155)]" />
                 <h4 className="font-semibold text-foreground">
-                  Assigned Physiologist
+                  Assigned Admin
                 </h4>
               </motion.div>
 
@@ -286,7 +286,7 @@ export function PhysicianAssignmentCard({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: 0.1 }}
               >
-                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-[var(--radius-lg)]">
+                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
                   <PhysicianAvatar
                     userId={physiologist.userId}
                     firstName={physiologist.firstName}

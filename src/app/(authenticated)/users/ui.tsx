@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useUsers } from '@/hooks/use-users';
@@ -54,6 +54,14 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps) {
 
   const displayUsers = users || [];
 
+  const tableColumns = useMemo(
+    () =>
+      filters.role === 'admin'
+        ? columns.filter((col) => col.id !== 'program')
+        : columns,
+    [filters.role],
+  );
+
   return (
     <Card className="gap-6">
       <CardContent className="py-6">
@@ -74,7 +82,7 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps) {
               exit="exit"
             >
               <UsersTable
-                columns={columns}
+                columns={tableColumns}
                 data={displayUsers}
                 filters={filters}
                 onFiltersChange={setFilters}

@@ -171,7 +171,7 @@ export function CreateTemplateForm({
               errors={form.formState.errors}
               name="notes"
               label="Notes"
-              placeholder="Notes for physician or administrators"
+              placeholder="Notes for administrators and staff"
               rows={3}
             />
 

@@ -43,7 +43,9 @@ export function useUpdateOrganization(organizationId: string) {
   const detailKey = groupsKeys.detail(organizationId);
 
   return useMutation({
-    mutationFn: async (data: Partial<Pick<Organization, 'name' | 'description'>>) => {
+    mutationFn: async (
+      data: Partial<Pick<Organization, 'name' | 'description'>>,
+    ) => {
       const result = await updateOrganization(organizationId, data);
 
       if (!result.success) {
@@ -58,8 +60,10 @@ export function useUpdateOrganization(organizationId: string) {
       await queryClient.cancelQueries({ queryKey: detailKey });
 
       // Snapshot previous values
-      const previousOrgData = queryClient.getQueryData<Organization>(organizationKey);
-      const previousDetailData = queryClient.getQueryData<Organization>(detailKey);
+      const previousOrgData =
+        queryClient.getQueryData<Organization>(organizationKey);
+      const previousDetailData =
+        queryClient.getQueryData<Organization>(detailKey);
 
       // Optimistically update both caches
       queryClient.setQueryData<Organization>(organizationKey, (old) => {
@@ -159,8 +163,10 @@ export function useUpdateOrganizationPicture(organizationId: string) {
       await queryClient.cancelQueries({ queryKey: detailKey });
 
       // Snapshot previous values
-      const previousOrgData = queryClient.getQueryData<Organization>(organizationKey);
-      const previousDetailData = queryClient.getQueryData<Organization>(detailKey);
+      const previousOrgData =
+        queryClient.getQueryData<Organization>(organizationKey);
+      const previousDetailData =
+        queryClient.getQueryData<Organization>(detailKey);
 
       return { previousOrgData, previousDetailData };
     },
@@ -225,9 +231,8 @@ export function useRemoveGroupMember(organizationId: string) {
         queryClient.getQueryData<GroupMemberWithProgram[]>(membersKey);
 
       // Optimistically remove the member from cache (never write undefined)
-      queryClient.setQueryData<GroupMemberWithProgram[]>(
-        membersKey,
-        (old) => (old ?? []).filter((member) => member.user_id !== userId),
+      queryClient.setQueryData<GroupMemberWithProgram[]>(membersKey, (old) =>
+        (old ?? []).filter((member) => member.user_id !== userId),
       );
 
       // Show toast immediately
@@ -259,16 +264,16 @@ export function useAddGroupAdmin(organizationId: string) {
     mutationFn: async (userId: string) => {
       const result = await addAdminToOrganization(organizationId, userId);
       if (!result.success) {
-        throw new Error(result.error || 'Failed to add physician');
+        throw new Error(result.error || 'Failed to add admin');
       }
       return userId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: membersKey });
-      toast.success('Physician assigned');
+      toast.success('Admin assigned');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to assign physician');
+      toast.error(error.message || 'Failed to assign admin');
     },
   });
 }
@@ -281,7 +286,7 @@ export function useRemoveGroupAdmin(organizationId: string) {
     mutationFn: async (userId: string) => {
       const result = await removeAdminFromOrganization(organizationId, userId);
       if (!result.success) {
-        throw new Error(result.error || 'Failed to remove physician');
+        throw new Error(result.error || 'Failed to remove admin');
       }
       return userId;
     },
@@ -291,13 +296,12 @@ export function useRemoveGroupAdmin(organizationId: string) {
       const previous =
         queryClient.getQueryData<SuperAdminGroupUser[]>(membersKey);
 
-      // Optimistically remove physician; full list will be refetched (never write undefined).
-      queryClient.setQueryData<SuperAdminGroupUser[]>(
-        membersKey,
-        (old) => (old ?? []).filter((u) => u.user_id !== userId),
+      // Optimistically remove admin; full list will be refetched (never write undefined).
+      queryClient.setQueryData<SuperAdminGroupUser[]>(membersKey, (old) =>
+        (old ?? []).filter((u) => u.user_id !== userId),
       );
 
-      toast.success('Physician removed');
+      toast.success('Admin removed');
 
       return { previous };
     },
@@ -305,7 +309,7 @@ export function useRemoveGroupAdmin(organizationId: string) {
       if (context?.previous) {
         queryClient.setQueryData(membersKey, context.previous);
       }
-      toast.error(error.message || 'Failed to remove physician');
+      toast.error(error.message || 'Failed to remove admin');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: membersKey });

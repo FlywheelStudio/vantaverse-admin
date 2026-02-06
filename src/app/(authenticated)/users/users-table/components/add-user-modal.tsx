@@ -192,7 +192,7 @@ function AddUserModalInner({
               <DialogHeader>
                 <DialogTitle className="text-foreground">
                   {title ??
-                    (role === 'admin' ? 'Invite physicians' : 'Invite members')}
+                    (role === 'admin' ? 'Invite admins' : 'Invite members')}
                 </DialogTitle>
                 <DialogDescription>
                   Add users to your platform. Invitations will be sent
@@ -272,7 +272,7 @@ function AddUserModalInner({
 
                               <div
                                 className={cn(
-                                  'flex items-start gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-sm leading-relaxed',
+                                  'flex items-start gap-3 rounded-md border px-4 py-3 text-sm leading-relaxed',
                                   'bg-primary/10 border-primary/20 text-foreground',
                                 )}
                               >
@@ -298,7 +298,7 @@ function AddUserModalInner({
                                 disabled={
                                   !canSubmitIndividual || createUserMutation.isPending
                                 }
-                                className="rounded-[var(--radius-pill)]"
+                                className="rounded-pill"
                               >
                                 {createUserMutation.isPending
                                   ? 'Adding...'

@@ -454,6 +454,75 @@ export class OrganizationMembers extends SupabaseQuery {
   }
 
   /**
+   * Get total distinct member count (patients) across the given organizations.
+   */
+  public async getTotalMemberCountForOrganizations(
+    organizationIds: string[],
+  ): Promise<SupabaseSuccess<number> | SupabaseError> {
+    if (organizationIds.length === 0) {
+      return { success: true, data: 0 };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('user_id')
+      .in('organization_id', organizationIds)
+      .eq('is_active', true)
+      .eq('role', 'patient');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get total member count for organizations',
+      );
+    }
+
+    const distinctIds = new Set((data ?? []).map((r) => r.user_id));
+    return { success: true, data: distinctIds.size };
+  }
+
+  /**
+   * Get member count per organization for the given org IDs.
+   */
+  public async getMemberCountsByOrganizationIds(
+    organizationIds: string[],
+  ): Promise<
+    | SupabaseSuccess<Record<string, number>>
+    | SupabaseError
+  > {
+    if (organizationIds.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .in('organization_id', organizationIds)
+      .eq('is_active', true)
+      .eq('role', 'patient');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get member counts by organization',
+      );
+    }
+
+    const counts: Record<string, number> = {};
+    for (const id of organizationIds) {
+      counts[id] = 0;
+    }
+    for (const r of data ?? []) {
+      counts[r.organization_id] = (counts[r.organization_id] ?? 0) + 1;
+    }
+    return { success: true, data: counts };
+  }
+
+  /**
    * Get organizations where the user is an admin (excluding super admin organization)
    * @param userId - The user ID
    * @returns Success with array of { id, name } or error

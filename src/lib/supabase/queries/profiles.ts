@@ -1039,7 +1039,7 @@ export class ProfilesQuery extends SupabaseQuery {
         }
       }
 
-      // Add to super admin organization if role is physician
+      // Add to super admin organization if role is admin
       if (data.role === 'admin') {
         const { OrganizationMembers } = await import('./organization-members');
         const orgMembersQuery = new OrganizationMembers();
