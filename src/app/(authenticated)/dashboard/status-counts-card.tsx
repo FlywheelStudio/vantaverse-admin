@@ -1,14 +1,13 @@
 'use client';
 
-import * as React from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { UserCard } from '@/components/ui/user-card';
-import { Button } from '@/components/ui/button';
+import { sendBulkInvitations } from '@/app/(authenticated)/users/actions';
+import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
+import { StatusCountsListPanel } from '@/app/(authenticated)/dashboard/status-counts-list-panel';
 import type {
   DashboardStatusCounts,
   DashboardStatusUser,
@@ -50,7 +49,38 @@ function complianceBadgeClass(compliance: number): string {
   if (pct >= 100) return 'bg-emerald-600 text-white';
   if (pct >= 90) return 'bg-emerald-400 text-emerald-900';
   if (pct >= 80) return 'bg-emerald-200 text-emerald-800';
-  return 'bg-emerald-100 text-emerald-800';
+  if (pct >= 50) return 'bg-yellow-200 text-yellow-800';
+  if (pct >= 25) return 'bg-orange-200 text-orange-800';
+  return 'bg-red-200 text-red-800';
+}
+
+type InvitationResult = { success: boolean; email: string; error?: string };
+
+function getSuccessfulInvitationUserIds(
+  results: InvitationResult[],
+  usersWithEmail: DashboardStatusUser[],
+): string[] {
+  const successfulEmails = new Set(
+    results.filter((r) => r.success).map((r) => r.email),
+  );
+  return usersWithEmail
+    .filter((u) => u.email && successfulEmails.has(u.email))
+    .map((u) => u.user_id);
+}
+
+function showInvitationResultToasts(results: InvitationResult[]): void {
+  const failed = results.filter((r) => !r.success).length;
+  const successCount = results.filter((r) => r.success).length;
+  if (successCount > 0) {
+    toast.success(
+      successCount === 1
+        ? 'Invitation sent'
+        : `Sent ${successCount} invitation${successCount > 1 ? 's' : ''}${failed > 0 ? `; ${failed} failed` : ''}`,
+    );
+  } else {
+    const err = results.find((r) => !r.success);
+    toast.error(err?.error ?? `All ${failed} invitation${failed > 1 ? 's' : ''} failed`);
+  }
 }
 
 export function StatusCountsCard({
@@ -68,12 +98,24 @@ export function StatusCountsCard({
   };
 }) {
   const router = useRouter();
-  const [showList, setShowList] = React.useState(false);
-  const [selectedFilter, setSelectedFilter] = React.useState<StatusFilter | null>(null);
-  const [search, setSearch] = React.useState('');
+  const [showList, setShowList] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<StatusFilter | null>(null);
+  const [search, setSearch] = useState('');
+  const [optimisticallyInvitedIds, setOptimisticallyInvitedIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [sendingBulkInvites, setSendingBulkInvites] = useState(false);
+  const [assignProgramUser, setAssignProgramUser] = useState<DashboardStatusUser | null>(null);
 
-  const users = selectedFilter ? usersByFilter[selectedFilter] : [];
+  const rawUsers = selectedFilter ? usersByFilter[selectedFilter] : [];
+  const users =
+    selectedFilter === 'pending'
+      ? rawUsers.filter((u) => !optimisticallyInvitedIds.has(u.user_id))
+      : rawUsers;
+
   const isProgramCompleted = selectedFilter === 'programCompleted';
+  const isPending = selectedFilter === 'pending';
+  const isNoProgram = selectedFilter === 'noProgram';
   const q = search.trim().toLowerCase();
   const filtered =
     !q
@@ -95,6 +137,41 @@ export function StatusCountsCard({
     setShowList(true);
     setSearch('');
   };
+
+  const handleSendInvitations = useCallback(
+    async (usersToInvite: DashboardStatusUser[]) => {
+      const withEmail = usersToInvite.filter((u) => u.email?.trim());
+      const emails = withEmail.map((u) => u.email!);
+      if (emails.length === 0) return;
+
+      setSendingBulkInvites(true);
+      try {
+        const result = await sendBulkInvitations(emails, false);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        const idsToAdd = getSuccessfulInvitationUserIds(
+          result.data.results,
+          withEmail,
+        );
+        if (idsToAdd.length > 0) {
+          setOptimisticallyInvitedIds((prev) => {
+            const next = new Set(prev);
+            idsToAdd.forEach((id) => next.add(id));
+            return next;
+          });
+        }
+        showInvitationResultToasts(result.data.results);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to send invitation' + (withEmail.length > 1 ? 's' : ''));
+      } finally {
+        setSendingBulkInvites(false);
+      }
+    },
+    [],
+  );
 
   return (
     <motion.div
@@ -195,78 +272,48 @@ export function StatusCountsCard({
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
-                  {selectedFilter ? FILTER_LABELS[selectedFilter] : ''}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowList(false);
-                    setSelectedFilter(null);
-                  }}
-                  className="h-8 text-xs text-muted-foreground"
-                >
-                  Back
-                </Button>
-              </CardHeader>
-              <CardContent className="p-5 pt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="relative w-full min-w-0 mt-0.5 mb-4 shrink-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Name, email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 pl-10 bg-card/90 shadow-sm border-border/60 rounded-md text-sm"
-                  />
-                </div>
-                {users.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-sm text-dimmed">
-                    No users in this category.
-                  </div>
-                ) : filtered.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-sm text-dimmed">
-                    No matches for &quot;{search.trim()}&quot;.
-                  </div>
-                ) : (
-                  <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-                    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-                      {filtered.map((u, i) => (
-                        <div
-                          key={u.user_id}
-                          className="cursor-pointer"
-                          onClick={() => handleUserClick(u.user_id)}
-                        >
-                          <UserCard
-                            user={u}
-                            index={i}
-                            action={
-                              isProgramCompleted && 'compliance' in u ? (
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`text-xs font-semibold px-2 py-1 rounded-full ${complianceBadgeClass((u as UserNeedingAttention).compliance)}`}
-                                  >
-                                    {Math.round((u as UserNeedingAttention).compliance)}%
-                                  </span>
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
+              <StatusCountsListPanel
+                title={selectedFilter ? FILTER_LABELS[selectedFilter] : ''}
+                onBack={() => {
+                  setShowList(false);
+                  setSelectedFilter(null);
+                }}
+                search={search}
+                onSearchChange={setSearch}
+                usersLength={users.length}
+                filteredLength={filtered.length}
+                searchTrim={search.trim()}
+                filtered={filtered}
+                isPending={isPending}
+                isNoProgram={isNoProgram}
+                isProgramCompleted={isProgramCompleted}
+                sendingBulkInvites={sendingBulkInvites}
+                onSendInvitations={handleSendInvitations}
+                onUserClick={handleUserClick}
+                onAssignProgram={setAssignProgramUser}
+                complianceBadgeClass={complianceBadgeClass}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </Card>
+
+      {assignProgramUser && (
+        <AssignProgramModal
+          open={assignProgramUser !== null}
+          onOpenChange={(open) => {
+            if (!open) setAssignProgramUser(null);
+          }}
+          userId={assignProgramUser.user_id}
+          userFirstName={assignProgramUser.first_name ?? undefined}
+          userLastName={assignProgramUser.last_name ?? undefined}
+          fromPath="/"
+          onAssignSuccess={() => {
+            router.refresh();
+            setAssignProgramUser(null);
+          }}
+        />
+      )}
     </motion.div>
   );
 }
