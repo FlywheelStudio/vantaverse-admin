@@ -7,7 +7,7 @@ import { AlertCircle, ChevronRight, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { UserCard } from '@/components/ui/user-card';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
 
@@ -19,6 +19,11 @@ export function NeedingAttentionCard({
   const router = useRouter();
   const [showList, setShowList] = React.useState(false);
   const [search, setSearch] = React.useState('');
+
+  const top3 = React.useMemo(
+    () => [...data.users].sort((a, b) => a.compliance - b.compliance).slice(0, 3),
+    [data.users]
+  );
 
   const q = search.trim().toLowerCase();
   const filtered =
@@ -54,7 +59,7 @@ export function NeedingAttentionCard({
               className="flex-1 flex flex-col cursor-pointer"
               onClick={() => setShowList(true)}
             >
-              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60">
+              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 gap-0">
                 <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
                   <span className="text-2xl">Needs</span>{' '}
                   <span className="text-2xl font-semibold text-foreground">
@@ -63,9 +68,12 @@ export function NeedingAttentionCard({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-4 flex-1 flex flex-col items-center justify-center min-h-0 overflow-hidden relative">
-                <div className="flex flex-col items-center gap-2 transition-transform group-hover:scale-105 duration-300">
-                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 text-destructive mb-2">
-                    <AlertCircle className="w-8 h-8" />
+                <div className="flex flex-col items-center gap-2 w-full min-w-0">
+                  <div className="relative flex items-center justify-center mb-2">
+                    <span className="absolute inset-0 w-16 h-16 rounded-full bg-destructive/20 opacity-75 animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite]" aria-hidden />
+                    <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 text-destructive ring-2 ring-destructive/30">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
                   </div>
                   <span className="text-5xl font-bold text-foreground">
                     {data.total}
@@ -73,9 +81,29 @@ export function NeedingAttentionCard({
                   <span className="text-sm text-muted-foreground">
                     Users with low compliance
                   </span>
+                  {top3.length > 0 ? (
+                    <div className="w-full mt-3 space-y-2">
+                      {top3.map((u) => {
+                        const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unknown';
+                        return (
+                          <div
+                            key={u.user_id}
+                            className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 cursor-pointer hover:bg-accent transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleUserClick(u.user_id); }}
+                          >
+                            <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-muted">
+                              <Avatar src={u.avatar_url} firstName={u.first_name ?? ''} lastName={u.last_name ?? ''} userId={u.user_id} size={36} className="size-full" />
+                            </div>
+                            <span className="text-sm font-medium truncate flex-1 min-w-0" title={name}>{name}</span>
+                            <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">{Math.round(u.compliance)}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="absolute bottom-4 right-5 text-xs text-muted-foreground flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to view details <ChevronRight className="w-3 h-3" />
+                  View all {data.total} users <ChevronRight className="w-3 h-3" />
                 </div>
               </CardContent>
             </motion.div>
@@ -108,7 +136,7 @@ export function NeedingAttentionCard({
                     placeholder="Name, email..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 pl-10 bg-card/90 shadow-[var(--shadow-sm)] border-border/60 rounded-[var(--radius-md)] text-sm"
+                    className="h-10 pl-10 bg-card/90 shadow-sm border-border/60 rounded-[var(--radius-md)] text-sm"
                   />
                 </div>
                 {data.users.length === 0 ? (
@@ -121,23 +149,23 @@ export function NeedingAttentionCard({
                   </div>
                 ) : (
                   <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-                    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-                      {filtered.map((u, i) => (
-                        <div key={u.user_id} className="cursor-pointer" onClick={() => handleUserClick(u.user_id)}>
-                          <UserCard
-                            user={u}
-                            index={i}
-                            action={
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-1 rounded-full">
-                                  {Math.round(u.compliance)}%
-                                </span>
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            }
-                          />
-                        </div>
-                      ))}
+                    <div className="space-y-2 min-w-0 w-full overflow-hidden">
+                      {filtered.map((u) => {
+                        const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unknown';
+                        return (
+                          <div
+                            key={u.user_id}
+                            className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 cursor-pointer hover:bg-muted/80 transition-colors"
+                            onClick={() => handleUserClick(u.user_id)}
+                          >
+                            <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-muted">
+                              <Avatar src={u.avatar_url} firstName={u.first_name ?? ''} lastName={u.last_name ?? ''} userId={u.user_id} size={36} className="size-full" />
+                            </div>
+                            <span className="text-sm font-medium truncate flex-1 min-w-0" title={name}>{name}</span>
+                            <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">{Math.round(u.compliance)}%</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 )}

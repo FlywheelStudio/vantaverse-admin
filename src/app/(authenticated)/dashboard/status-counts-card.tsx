@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { sendBulkInvitations } from '@/app/(authenticated)/users/actions';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
@@ -35,10 +36,10 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
   programCompleted: 'Program completed',
 };
 
-const BADGES: { key: StatusFilter; countKey: keyof StatusCountsWithProgramCompleted; label: string }[] = [
-  { key: 'pending', countKey: 'pending', label: 'Pending' },
-  { key: 'invited', countKey: 'invited', label: 'Invited' },
-  { key: 'active', countKey: 'active', label: 'Active' },
+const BADGES: { key: StatusFilter; countKey: keyof StatusCountsWithProgramCompleted; label: string; colorClass?: string }[] = [
+  { key: 'pending', countKey: 'pending', label: 'Pending', colorClass: 'text-orange-500' },
+  { key: 'invited', countKey: 'invited', label: 'Invited', colorClass: 'text-violet-500' },
+  { key: 'active', countKey: 'active', label: 'Active', colorClass: 'text-emerald-500' },
   { key: 'noProgram', countKey: 'noProgram', label: 'No program' },
   { key: 'inProgram', countKey: 'inProgram', label: 'In program' },
   { key: 'programCompleted', countKey: 'programCompleted', label: 'Program completed' },
@@ -106,6 +107,10 @@ export function StatusCountsCard({
   );
   const [sendingBulkInvites, setSendingBulkInvites] = useState(false);
   const [assignProgramUser, setAssignProgramUser] = useState<DashboardStatusUser | null>(null);
+
+  const totalCount = new Set(
+    Object.values(usersByFilter).flat().map((u) => u.user_id)
+  ).size;
 
   const rawUsers = selectedFilter ? usersByFilter[selectedFilter] : [];
   const users =
@@ -189,28 +194,39 @@ export function StatusCountsCard({
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60">
+              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
                   <span className="text-2xl">Member</span>{' '}
                   <span className="text-2xl font-semibold text-foreground">
                     Status
                   </span>
                 </CardTitle>
+                <Badge variant="secondary" className="text-sm font-semibold bg-[oklch(0.95_0.03_262.705)] text-[oklch(0.42_0.2_262.705)] border-0">
+                  {totalCount} total
+                </Badge>
               </CardHeader>
-              <CardContent className="p-5 pt-4 flex-1 flex flex-col justify-center align-middle min-h-0 overflow-hidden">
+              <CardContent className="p-5 pt-6 flex-1 flex flex-col min-h-0 overflow-y-auto">
+                <div className="flex flex-col items-center justify-center pb-6 pt-5 mb-4">
+                  <span className="text-6xl font-bold tracking-tight text-foreground tabular-nums">
+                    {counts.active}
+                  </span>
+                  <span className="text-sm text-muted-foreground mt-1 font-medium">
+                    Active Members
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {BADGES.slice(0, 3).map(({ key, countKey, label }, i) => (
+                  {BADGES.slice(0, 3).map(({ key, countKey, label, colorClass }, i) => (
                     <motion.div
                       key={key}
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.25, delay: i * 0.05 }}
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.98 }}  
-                      className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/90 border border-border/60 shadow-(--shadow-sm) cursor-pointer transition-colors hover:bg-primary/10 hover:border-primary/20"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-card border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
                       onClick={() => handleBadgeClick(key)}
                     >
-                      <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
+                      <span className={`text-3xl font-bold tracking-tight ${colorClass || 'text-foreground'} tabular-nums`}>
                         {counts[countKey]}
                       </span>
                       <span className="text-sm text-muted-foreground mt-1 font-medium">
@@ -226,37 +242,37 @@ export function StatusCountsCard({
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.25, delay: (3 + i) * 0.05 }}
-                      whileHover={{ scale: 1.08 }}
+                      whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted/90 border border-border/60 shadow-(--shadow-sm) cursor-pointer transition-colors hover:bg-primary/10 hover:border-primary/20"
+                      className="flex flex-row items-center justify-between p-4 px-6 rounded-xl bg-muted/30 border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
                       onClick={() => handleBadgeClick(key)}
                     >
-                      <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
-                        {counts[countKey]}
-                      </span>
-                      <span className="text-sm text-muted-foreground mt-1 font-medium">
+                      <span className="text-sm text-muted-foreground font-medium">
                         {label}
+                      </span>
+                      <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+                        {counts[countKey]}
                       </span>
                     </motion.div>
                   ))}
                 </div>
-                <div className="grid grid-cols-1 gap-4 mt-4 justify-center align-middle">
+                <div className="grid grid-cols-1 gap-4 mt-4">
                   {BADGES.slice(5, 6).map(({ key, countKey, label }, i) => (
                     <motion.div
                       key={key}
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.25, delay: (5 + i) * 0.05 }}
-                      whileHover={{ scale: 1.08 }}
+                      whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-[50%] justify-self-center flex flex-col items-center justify-center p-4 rounded-lg bg-muted/90 border border-border/60 shadow-(--shadow-sm) cursor-pointer transition-colors hover:bg-primary/10 hover:border-primary/20"
+                      className="flex flex-row items-center justify-between p-4 px-6 rounded-xl bg-muted/30 border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
                       onClick={() => handleBadgeClick(key)}
                     >
-                      <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
-                        {counts[countKey] ?? 0}
-                      </span>
-                      <span className="text-sm text-muted-foreground mt-1 font-medium">
+                      <span className="text-sm text-muted-foreground font-medium">
                         {label}
+                      </span>
+                      <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+                        {counts[countKey] ?? 0}
                       </span>
                     </motion.div>
                   ))}

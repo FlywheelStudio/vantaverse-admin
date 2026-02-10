@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.18.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.17.0...0.18.0) (2026-02-10)
+
+
+### Features
+
+* **dashboard:** enhance compliance and attention cards with improved layout and user metrics ([ed88ad4](https://github.com/FlywheelStudio/vantaverse-admin/commit/ed88ad4ea08093855dae5973dce7fffc1e32ac22))
+
 # [0.17.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.16.0...0.17.0) (2026-02-06)
 
 
