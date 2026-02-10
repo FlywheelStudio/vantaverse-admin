@@ -23,7 +23,7 @@ export function ComplianceCard({
       className="flex-1 min-w-0"
     >
       <Card className="h-full min-h-0 flex flex-col gap-0 overflow-hidden">
-        <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60">
+        <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 gap-0">
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
               <span className="text-2xl font-semibold text-foreground">
@@ -49,7 +49,7 @@ export function ComplianceCard({
               size={180}
             />
           </div>
-          <p className="text-xs text-muted-foreground text-center max-w-xs">
+          <p className="text-xs text-muted-foreground text-center max-w-xs rounded-md bg-muted px-3 py-2 shadow-sm">
             Compliance is based on how many sets and exercises have been completed out of the total number of exercises assigned. Program completion is based on the number of days that have passed since the program was assigned.</p>
         </CardContent>
       </Card>
