@@ -68,18 +68,9 @@ export default async function HomePage() {
           Welcome back{firstName ? `, ${firstName}` : ''}!
         </h1>
       }
-      topContent={
-        <div
-          className="select-none mb-4 px-5 py-3 sm:py-0 sm:h-12 flex items-center bg-card/90 rounded-pill ring-1 ring-border/50 shadow-(--shadow-sm) overflow-hidden backdrop-blur-md sticky top-0 z-10 shrink-0"
-        >
-          <p className="text-sm text-dimmed leading-snug">
-            This is a list of quick actions to help you get started.
-          </p>
-        </div>
-      }
     >
-      <div className="flex flex-col gap-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-1">
-        <div className="flex flex-col md:flex-row gap-6 shrink-0 h-[450px]">
+      <div className="flex flex-col gap-6 flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-6 shrink-0 h-[340px]">
           <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
           <ComplianceCard compliance={data.compliance?.compliance ?? 0} />
         </div>

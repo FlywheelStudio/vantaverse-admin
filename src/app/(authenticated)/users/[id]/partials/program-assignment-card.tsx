@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import {
-  calculateOverallCompletion,
   getProgressColor,
 } from '../program-status/card-utils';
 import { AssignProgramModal } from './assign-program-modal';
@@ -29,6 +28,7 @@ import {
 
 interface ProgramAssignmentCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
+  compliance?: number | null;
   organizations?: Array<{ id: string; name: string; description: string | null }>;
   userId: string;
   userFirstName?: string | null;
@@ -38,6 +38,7 @@ interface ProgramAssignmentCardProps {
 
 export function ProgramAssignmentCard({
   assignment,
+  compliance,
   organizations,
   userId,
   userFirstName,
@@ -117,9 +118,7 @@ export function ProgramAssignmentCard({
 
   const template = assignment?.program_template;
   const totalWeeks = template?.weeks || 0;
-  const overallCompletion = hasAssignment
-    ? calculateOverallCompletion(assignment.start_date, totalWeeks)
-    : 0;
+  const overallCompletion = hasAssignment ? (compliance ?? 0) : 0;
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -226,13 +225,6 @@ export function ProgramAssignmentCard({
                     {overallCompletion}% Complete
                   </span>
                 </div>
-              )}
-              {overallCompletion > 0 && (
-                <Progress
-                  value={overallCompletion}
-                  className="h-2 mt-2"
-                  indicatorColor={getProgressColor(overallCompletion)}
-                />
               )}
             </div>
           )}

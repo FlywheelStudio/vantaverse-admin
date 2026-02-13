@@ -170,7 +170,7 @@ function AddUserModalInner({
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}
     >
-      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="bg-card w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={
@@ -205,7 +205,7 @@ function AddUserModalInner({
                 onValueChange={(v) => setTab(v as typeof tab)}
                 className="flex flex-col flex-1 min-h-0 pt-3"
               >
-                <TabsList className="bg-muted">
+                <TabsList>
                   <TabsTrigger value="individual">Individual</TabsTrigger>
                   <TabsTrigger value="csv">Bulk CSV</TabsTrigger>
                   <TabsTrigger value="excel">Bulk Excel</TabsTrigger>

@@ -69,7 +69,6 @@ interface AssignProgramModalProps {
   onAssignSuccess?: () => void;
   userFirstName?: string | null;
   userLastName?: string | null;
-  /** Override for redirect "from" query (default: /users/[userId]) */
   fromPath?: string;
 }
 
@@ -178,7 +177,7 @@ export function AssignProgramModal({
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
     >
-      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden bg-card">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={
@@ -190,7 +189,7 @@ export function AssignProgramModal({
           className="flex flex-col flex-1 min-h-0"
         >
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold tracking-tight text-highlighted">
+            <DialogTitle className="text-(--text-highlighted) tracking-tight">
               Assign Program
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -224,7 +223,7 @@ export function AssignProgramModal({
           </div>
 
           {/* Program List */}
-          <ScrollArea className="flex-1 min-h-0 mt-2">
+          <ScrollArea className="flex-1 min-h-0 mt-2 pr-2">
             {isLoading ? (
               <div className="py-8 text-center text-muted-foreground">
                 Loading...
@@ -238,7 +237,7 @@ export function AssignProgramModal({
                 No programs found
               </div>
             ) : (
-              <div className="space-y-3 pr-1">
+              <div className="space-y-3 p-2">
                 {assignments.map((assignment) => {
                   const template = assignment.program_template;
                   const isSelected = selectedAssignmentId === assignment.id;
@@ -270,9 +269,9 @@ export function AssignProgramModal({
                       onClick={() => handleCardSelect(assignment.id || null)}
                       disabled={isAssigning}
                       className={cn(
-                        'w-full text-left p-4 transition-colors',
+                        'cursor-pointer w-full text-left p-4 transition-colors',
                         'rounded-lg border border-border/60 bg-card shadow-(--shadow-sm)',
-                        'hover:bg-muted/40',
+                        'hover:bg-primary/20 hover:shadow-(--shadow-md)',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
                         isSelected && 'border-primary/40 bg-muted/50 ring-2 ring-ring'
@@ -373,7 +372,7 @@ export function AssignProgramModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-4 mt-auto">
+          <div className="flex justify-end gap-2 mt-auto">
             <Button variant="outline" onClick={handleCancel} disabled={isAssigning}>
               Cancel
             </Button>

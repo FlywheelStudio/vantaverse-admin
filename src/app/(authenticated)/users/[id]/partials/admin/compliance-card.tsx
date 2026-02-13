@@ -21,7 +21,7 @@ export function ComplianceCard({
   organizations,
 }: ComplianceCardProps) {
   return (
-    <Card className="overflow-hidden border border-border bg-background shadow-(--shadow-lg) p-4 py-6 space-y-4">
+    <Card className="overflow-hidden border border-border shadow-(--shadow-lg) p-4 py-6 space-y-4">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

@@ -184,8 +184,8 @@ export function AddMembersModal({
     >
       <DialogContent
         className={
-          'w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden ' +
-          'border border-border bg-card text-card-foreground p-5 ' +
+          'bg-card w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden ' +
+          'border border-border text-card-foreground p-5 ' +
           'rounded-xl shadow-md'
         }
       >

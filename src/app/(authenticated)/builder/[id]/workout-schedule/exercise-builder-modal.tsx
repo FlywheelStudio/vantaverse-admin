@@ -298,7 +298,7 @@ export function ExerciseBuilderModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] h-[90vh] max-w-[90vw] flex flex-col p-0">
         <div className="flex flex-col flex-1 min-h-0">
-        <DialogHeader className="p-6 border-b">
+        <DialogHeader className="p-6">
           <DialogTitle>{getHeaderTitle()}</DialogTitle>
         </DialogHeader>
 
@@ -443,7 +443,7 @@ export function ExerciseBuilderModal({
             {!showGroupInput ? (
               <button
                 onClick={() => setShowGroupInput(true)}
-                className="cursor-pointer mb-4 w-full px-4 py-3 border-2 border-dashed border-border rounded-[var(--radius-md)] text-sm font-medium text-muted-foreground hover:border-primary/50 hover:bg-muted/60 hover:text-foreground transition-colors"
+                className="cursor-pointer mb-4 w-full px-4 py-3 border-2 border-dashed border-border rounded-md text-sm font-medium text-muted-foreground hover:border-primary/50 hover:bg-muted/60 hover:text-foreground transition-colors"
               >
                 + Add Group
               </button>
@@ -467,7 +467,7 @@ export function ExerciseBuilderModal({
                 <Button
                   onClick={handleAddGroup}
                   size="icon-sm"
-                  className="cursor-pointer shadow-[var(--shadow-sm)]"
+                  className="cursor-pointer shadow-(--shadow-sm)"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -492,7 +492,7 @@ export function ExerciseBuilderModal({
           </div>
         </div>
 
-        <DialogFooter className="p-6 border-t">
+        <DialogFooter className="p-4">
           <Button onClick={handleCancel} variant="outline">
             Cancel
           </Button>
