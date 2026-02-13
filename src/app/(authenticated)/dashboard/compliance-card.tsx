@@ -28,8 +28,8 @@ export function ComplianceCard({
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="cursor-default px-5 py-4 flex-1 flex flex-row items-start justify-center min-h-0 overflow-hidden gap-4">
-          <p className="text-xs text-muted-foreground text-left max-w-xs rounded-md bg-muted py-2 flex-1">
+        <CardContent className="cursor-default py-3 flex-1 flex flex-row items-start justify-center min-h-0 overflow-hidden gap-4">
+          <p className="text-sm text-muted-foreground text-left max-w-xs rounded-md bg-muted py-2 flex-1">
             <b className="font-semibold text-foreground">Aggregate for the average of completion for all assigned programs. </b>
             Completion is based on how many sets and exercises have been completed out of the total number of exercises assigned.
           </p>

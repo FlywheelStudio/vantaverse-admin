@@ -157,7 +157,7 @@ export function NeedingAttentionCard({
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowList(false)}
-                    className="h-8 text-xs text-muted-foreground shrink-0"
+                    className="h-8 text-xs bg-primary/10 hover:bg-primary/20 text-primary shrink-0"
                   >
                     Back
                   </Button>
