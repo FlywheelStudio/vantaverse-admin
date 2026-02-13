@@ -149,17 +149,13 @@ export default function BreadcrumbNavigator({
   const controls = useAnimation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isHome = pathname === '/';
 
   useEffect(() => {
-    if (isHome) return;
     isHiddenRef.current = false;
     controls.set('slideDown');
-  }, [controls, isHome, pathname]);
+  }, [controls, pathname]);
 
   useEffect(() => {
-    if (isHome) return;
-
     // Scroll container behavior:
     // - scrolling DOWN (away from top): hide
     // - returning to scrollTop === 0: show again
@@ -173,7 +169,7 @@ export default function BreadcrumbNavigator({
       isHiddenRef.current = false;
       controls.start('slideDown');
     }
-  }, [isHome, scrollDirection, scrollTop, isAtTop, controls]);
+  }, [scrollDirection, scrollTop, isAtTop, controls]);
 
   const fromParam = searchParams.get('from');
   const fromSegments = useMemo(

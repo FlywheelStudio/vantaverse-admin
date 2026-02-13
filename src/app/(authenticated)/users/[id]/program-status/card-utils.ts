@@ -100,26 +100,6 @@ export function calculateDayCompletion(completionDay: CompletionDay): number {
   );
 }
 
-export function calculateOverallCompletion(
-  startDate: string | null,
-  weeks: number,
-): number {
-  if (!startDate) {
-    return 0;
-  }
-  const start = new Date(startDate);
-  const now = new Date();
-  const totalDays = weeks * 7;
-  const daysElapsed = Math.floor(
-    (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const completion = Math.min(
-    Math.max((daysElapsed / totalDays) * 100, 0),
-    100,
-  );
-  return Math.round(completion);
-}
-
 export function getProgressColor(percentage: number): string {
   const red = { r: 239, g: 68, b: 68 };
   const green = { r: 34, g: 197, b: 94 };

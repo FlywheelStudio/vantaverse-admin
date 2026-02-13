@@ -27,7 +27,6 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import {
   parseCompletion,
-  calculateOverallCompletion,
   getProgressColor,
 } from './card-utils';
 import { ProgramStatusWeekCard } from './week-card';
@@ -38,6 +37,7 @@ import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program
 
 interface ProgramStatusCardProps {
   assignment: ProgramAssignmentWithTemplate | null;
+  compliance?: number | null;
   schedule: DatabaseSchedule | null;
   completion: Array<Array<unknown>> | null | undefined;
   exerciseNamesMap: Map<string, string>;
@@ -50,6 +50,7 @@ interface ProgramStatusCardProps {
 
 export function ProgramStatusCard({
   assignment,
+  compliance,
   schedule,
   completion,
   exerciseNamesMap,
@@ -171,7 +172,7 @@ export function ProgramStatusCard({
             </div>
           </div>
         </div>
-        <CardContent className="p-6 relative z-10">
+        <CardContent className="p-6 relative z-10 gap-0">
           <div className="rounded-xl border border-dashed border-white/30 bg-card/10 p-4">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-lg bg-card/20">
@@ -203,17 +204,13 @@ export function ProgramStatusCard({
   }
 
   const template = assignment.program_template;
-  const totalWeeks = template?.weeks || 0;
-  const overallCompletion = calculateOverallCompletion(
-    assignment.start_date,
-    totalWeeks,
-  );
+  const overallCompletion = compliance ?? 0;
   const isDeleting = deleteProgram.isPending;
 
   return (
     <Card
       className={cn(
-        'w-full col-span-full overflow-hidden border border-border gap-2 relative',
+        'w-full col-span-full overflow-hidden border border-border gap-0 relative',
       )}
       style={{
         background: `linear-gradient(135deg, ${startBlue} 0%, ${targetBlue} 100%)`,

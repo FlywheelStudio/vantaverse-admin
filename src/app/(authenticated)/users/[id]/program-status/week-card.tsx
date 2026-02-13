@@ -46,7 +46,7 @@ export function ProgramStatusWeekCard({
       <button
         onClick={hasExercises ? onToggle : undefined}
         disabled={!hasExercises}
-        className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
+        className="cursor-pointer w-full flex items-center justify-between p-4 hover:bg-primary/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
       >
         <span className="text-sm font-semibold text-foreground">
           Week {weekIndex + 1}

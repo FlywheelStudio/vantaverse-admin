@@ -34,7 +34,7 @@ function OrgAvatar({
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-[var(--radius-md)] ring-1 ring-border/40 bg-muted"
+      className="relative shrink-0 overflow-hidden rounded-md ring-1 ring-border/40 bg-muted"
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -117,9 +117,9 @@ export function AssignGroupModal({
     >
       <DialogContent
         className={cn(
-          'w-[min(36rem,calc(100%-2rem))] h-[35rem] max-h-[85vh] flex flex-col overflow-hidden',
+          'w-[min(36rem,calc(100%-2rem))] h-140 max-h-[85vh] flex flex-col overflow-hidden',
           'border-0 bg-card text-card-foreground p-5',
-          'rounded-[var(--radius-xl)] shadow-[var(--shadow-md)]',
+          'rounded-xl shadow-(--shadow-md)',
         )}
       >
         <motion.div
@@ -133,7 +133,7 @@ export function AssignGroupModal({
           className="flex flex-col flex-1 min-h-0"
         >
           <DialogHeader>
-            <DialogTitle className="text-[var(--text-highlighted)] tracking-tight">
+            <DialogTitle className="text-(--text-highlighted) tracking-tight">
               Assign to group
             </DialogTitle>
             <DialogDescription>
@@ -148,13 +148,13 @@ export function AssignGroupModal({
               onChange={(e) => setSearchQuery(e.target.value)}
               disabled={isAssigning}
               className={cn(
-                'h-11 rounded-[var(--radius-md)] bg-card px-4 text-sm',
+                'h-11 rounded-md bg-card px-4 text-sm',
                 'focus-visible:ring-ring/60 focus-visible:ring-[3px]',
               )}
             />
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 mt-4">
+          <ScrollArea className="flex-1 min-h-0 mt-4 pr-2">
             {isLoading ? (
               <div className="py-8 text-center text-muted-foreground">
                 Loading...
@@ -168,7 +168,7 @@ export function AssignGroupModal({
                 No groups found
               </div>
             ) : (
-              <div className="space-y-3 pr-1">
+              <div className="space-y-3 p-2">
                 {filteredOrganizations.map((org) => {
                   const isSelected = selectedOrganizationId === org.id;
                   return (
@@ -178,13 +178,13 @@ export function AssignGroupModal({
                       onClick={() => setSelectedOrganizationId(org.id)}
                       disabled={isAssigning}
                       className={cn(
-                        'group w-full text-left p-4 transition-all',
-                        'rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-sm)]',
-                        'hover:bg-muted/40 hover:shadow-[var(--shadow-md)]',
+                        'cursor-pointer group w-full text-left p-4 transition-all',
+                        'rounded-lg bg-card shadow-(--shadow-sm)',
+                        'hover:bg-primary/20 hover:shadow-(--shadow-md)',
                         'focus-visible:outline-none focus-visible:ring-ring/60 focus-visible:ring-[3px]',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
                         isSelected &&
-                          'bg-primary/5 ring-2 ring-primary/30 shadow-[var(--shadow-md)]',
+                          'bg-primary/5 ring-2 ring-primary/30 shadow-(--shadow-md)',
                       )}
                     >
                       <div className="flex items-start gap-3 min-w-0">
@@ -216,14 +216,14 @@ export function AssignGroupModal({
               variant="outline"
               onClick={handleCancel}
               disabled={isAssigning}
-              className="h-11 px-5 rounded-[var(--radius-pill)]"
+              className="h-11 px-5 rounded-pill"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAssign}
               disabled={!selectedOrganizationId || isAssigning}
-              className="h-11 px-5 rounded-[var(--radius-pill)] shadow-[var(--shadow-md)]"
+              className="h-11 px-5 rounded-pill shadow-(--shadow-md)"
             >
               {isAssigning ? (
                 <>

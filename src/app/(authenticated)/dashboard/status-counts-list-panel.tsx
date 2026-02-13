@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { UserCard } from '@/components/ui/user-card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import type { DashboardStatusUser, UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
 
 type StatusCountsListPanelProps = {
   title: string;
+  hideListHeader?: boolean;
   onBack?: () => void;
   search: string;
   onSearchChange: (value: string) => void;
@@ -29,6 +31,7 @@ type StatusCountsListPanelProps = {
 
 export function StatusCountsListPanel({
   title,
+  hideListHeader,
   onBack,
   search,
   onSearchChange,
@@ -46,22 +49,24 @@ export function StatusCountsListPanel({
 }: StatusCountsListPanelProps) {
   return (
     <>
-      <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
-          {title}
-        </CardTitle>
-        {onBack && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="h-8 text-xs text-muted-foreground"
-          >
-            Back
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="p-5 pt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+      {!hideListHeader && (
+        <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
+            {title}
+          </CardTitle>
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="h-8 text-xs text-muted-foreground"
+            >
+              Back
+            </Button>
+          )}
+        </CardHeader>
+      )}
+      <CardContent className={cn("p-5 flex-1 flex flex-col min-h-0 overflow-hidden", hideListHeader && "pt-4")}>
         <div className="flex items-center gap-2 w-full min-w-0 mt-0.5 mb-4 shrink-0">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -110,7 +115,7 @@ export function StatusCountsListPanel({
           </div>
         ) : (
           <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-            <div className="space-y-3 min-w-0 w-full overflow-hidden">
+            <div className="space-y-3 min-w-0 w-full overflow-hidden p-2">
               {filtered.map((u, i) => (
                 <div
                   key={u.user_id}

@@ -32,7 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function StatBox({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex-1 rounded-[var(--radius-xl)] border border-border bg-card px-4 py-3 text-center">
+    <div className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-center">
       <div className="text-2xl font-semibold text-foreground">{value}</div>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
@@ -108,7 +108,7 @@ export function PendingUsersView({
         <StatBox label="Active" value={counts.activeExisting} />
       </div>
 
-      <div className="mt-4 flex flex-col flex-1 min-h-0 rounded-[var(--radius-xl)] border border-border bg-card overflow-hidden">
+      <div className="mt-4 flex flex-col flex-1 min-h-0 rounded-xl border border-border bg-card overflow-hidden">
         <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground bg-muted/40 border-b border-border">
           <div>Name</div>
           <div>Email</div>
@@ -157,7 +157,7 @@ export function PendingUsersView({
 
       <div
         className={cn(
-          'mt-4 rounded-[var(--radius-md)] border px-4 py-3 text-sm',
+          'mt-4 rounded-md border px-4 py-3 text-sm',
           'border-primary/20 bg-primary/10 text-foreground',
         )}
       >
@@ -175,7 +175,7 @@ export function PendingUsersView({
           </Button>
           <Button
             onClick={handleSendInvitations}
-            className="rounded-[var(--radius-pill)]"
+            className="rounded-pill"
             disabled={counts.pending === 0 || sending}
           >
             {sending ? (

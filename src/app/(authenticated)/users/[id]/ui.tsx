@@ -173,6 +173,7 @@ export function UserProfilePageUI({
                   />
                   <ProgramAssignmentCard
                     assignment={programAssignment}
+                    compliance={compliance}
                     organizations={organizations}
                     userId={user.id}
                     userFirstName={user.first_name}
@@ -224,6 +225,7 @@ export function UserProfilePageUI({
             <div className="col-span-full w-full mt-6">
               <ProgramStatusCard
                 assignment={programAssignment}
+                compliance={compliance}
                 schedule={schedule}
                 completion={completion}
                 exerciseNamesMap={exerciseNamesMap}

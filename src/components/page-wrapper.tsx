@@ -6,13 +6,12 @@ import BreadcrumbNavigator from './header/breadcrumb-navigator';
 
 interface PageWrapperProps {
   subheader: ReactNode;
-  topContent?: ReactNode | null;
   children: ReactNode;
 }
 
 const HEADER_PADDING_LEFT = 10;
 
-export function PageWrapper({ subheader, topContent, children }: PageWrapperProps) {
+export function PageWrapper({ subheader, children }: PageWrapperProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef<number>(0);
@@ -68,13 +67,9 @@ export function PageWrapper({ subheader, topContent, children }: PageWrapperProp
           scrollBehavior: 'smooth',
         }}
       >
-        {topContent === undefined || topContent === null ? (
-          <Suspense fallback={<div className="h-12 mb-4" />}>
-            <BreadcrumbNavigator scrollPosition={scrollPosition} />
-          </Suspense>
-        ) : (
-          topContent
-        )}
+        <Suspense fallback={<div className="h-12 mb-4" />}>
+          <BreadcrumbNavigator scrollPosition={scrollPosition} />
+        </Suspense>
         {children}
       </div>
     </div>

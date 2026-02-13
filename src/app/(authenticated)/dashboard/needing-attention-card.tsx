@@ -26,7 +26,7 @@ function UserAttentionRow({
 
   return (
     <div
-      className="flex items-center gap-3 py-2.5 -mx-1 px-1 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+      className="flex items-center gap-3 py-2.5 -mx-1 px-1 rounded-lg cursor-pointer hover:bg-primary/40 transition-colors"
       onClick={onClick}
     >
       <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-primary/10">
@@ -94,7 +94,7 @@ export function NeedingAttentionCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.3 }}
+      transition={{ duration: 0.4, delay: 0 }}
       className="flex-1 min-w-0"
     >
       <Card className="h-full min-h-0 flex flex-col overflow-hidden relative group">
@@ -109,14 +109,14 @@ export function NeedingAttentionCard({
               onClick={() => setShowList(true)}
             >
               <CardHeader className="px-5 py-4 shrink-0 gap-0">
-                <CardTitle className="text-2xl font-bold text-foreground tracking-tight">
+                <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
                   Needs Attention
                 </CardTitle>
               </CardHeader>
               {alertRow}
               <CardContent className="p-5 pt-0 flex-1 flex flex-col min-h-0 overflow-hidden">
                 {top3.length > 0 ? (
-                  <div className="space-y-0 min-w-0 w-full">
+                  <div className="space-y-0 min-w-0 w-full p-2">
                     {top3.map((u) => (
                       <div key={u.user_id} onClick={(e) => e.stopPropagation()}>
                         <UserAttentionRow user={u} onClick={() => handleUserClick(u.user_id)} />
@@ -128,7 +128,7 @@ export function NeedingAttentionCard({
                     No users need attention.
                   </div>
                 )}
-                <div className="absolute bottom-4 right-5 text-xs text-muted-foreground flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="hover:underline hover:text-primary absolute bottom-4 right-5 text-xs text-muted-foreground flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   View all {data.total} users <ChevronRight className="w-3 h-3" />
                 </div>
               </CardContent>
@@ -141,30 +141,26 @@ export function NeedingAttentionCard({
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
-                  Needs Attention
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowList(false)}
-                  className="h-8 text-xs text-muted-foreground"
-                >
-                  Back
-                </Button>
-              </CardHeader>
-              {alertRow}
               <CardContent className="p-5 pt-0 flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="relative w-full min-w-0 mb-3 shrink-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Name, email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 pl-10 bg-card border rounded-md text-sm"
-                  />
+                <div className="flex items-center gap-2 my-3 shrink-0">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Name, email..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="h-10 pl-10 bg-card border rounded-md text-sm"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowList(false)}
+                    className="h-8 text-xs bg-primary/10 hover:bg-primary/20 text-primary shrink-0"
+                  >
+                    Back
+                  </Button>
                 </div>
                 {data.users.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
@@ -175,8 +171,8 @@ export function NeedingAttentionCard({
                     No matches for &quot;{search.trim()}&quot;.
                   </div>
                 ) : (
-                  <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-                    <div className="space-y-0 min-w-0 w-full">
+                  <ScrollArea className="flex-1 min-h-0 slim-scrollbar pr-2">
+                    <div className="space-y-0 min-w-0 w-full p-2">
                       {filtered.map((u) => (
                         <UserAttentionRow key={u.user_id} user={u} onClick={() => handleUserClick(u.user_id)} />
                       ))}

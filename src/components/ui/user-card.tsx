@@ -42,7 +42,7 @@ export function UserCard({ user, action, index = 0 }: UserCardProps) {
       }}
       className="min-w-0 overflow-hidden"
     >
-      <div className="flex items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 min-w-0 shadow-(--shadow-sm) ring-1 ring-border/50">
+      <div className="flex items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 min-w-0 shadow-(--shadow-sm) ring-1 ring-border/50 hover:bg-primary/40 transition-colors">
         <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
           <div className="size-10 shrink-0 flex items-center justify-center">
             <Avatar
