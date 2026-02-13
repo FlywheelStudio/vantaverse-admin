@@ -177,7 +177,7 @@ export function GroupDetailsPageUI({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <Card className="text-card-foreground flex flex-col gap-6 bg-white/95 rounded-3xl border-2 border-white/50 shadow-2xl overflow-hidden backdrop-blur-sm">
+          <Card className="text-card-foreground flex flex-col gap-6 bg-card/95 rounded-3xl border-2 border-border shadow-2xl overflow-hidden backdrop-blur-sm">
             <div className="p-6 sm:p-8">
               <MembersTable
                 data={memberRows}

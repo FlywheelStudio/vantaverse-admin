@@ -20,7 +20,7 @@ export function AuthGoogleSignInButton() {
       type="button"
       disabled={isPending}
       variant="outline"
-      className="flex items-center gap-2 cursor-pointer bg-white dark:bg-background"
+      className="flex items-center gap-2 cursor-pointer bg-card"
     >
       {isPending ? (
         <>

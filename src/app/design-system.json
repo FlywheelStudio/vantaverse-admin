@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "Medvanta Mobile → Admin (extracted)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "notes": {
     "source": "Mobile screenshots provided in Cursor session",
     "units": {
@@ -11,7 +11,7 @@
       "color": "oklch()"
     },
     "baseColors": {
-      "primaryBlue": "oklch(0.507 0.211 262.705)"
+      "primaryBlue": "oklch(0.4988 0.1894 267.36)"
     }
   },
   "principles": {
@@ -54,30 +54,30 @@
       "palette": {
         "neutral": {
           "0": "oklch(1 0 0)",
-          "50": "oklch(0.985 0.006 255)",
-          "100": "oklch(0.97 0.008 255)",
-          "200": "oklch(0.94 0.01 255)",
-          "300": "oklch(0.89 0.012 255)",
-          "400": "oklch(0.78 0.012 255)",
-          "500": "oklch(0.66 0.012 255)",
-          "600": "oklch(0.53 0.012 255)",
-          "700": "oklch(0.41 0.012 255)",
-          "800": "oklch(0.28 0.012 255)",
-          "900": "oklch(0.18 0.012 255)",
-          "950": "oklch(0.13 0.012 255)"
+          "50": "oklch(0.985 0.006 267)",
+          "100": "oklch(0.97 0.008 267)",
+          "200": "oklch(0.94 0.01 267)",
+          "300": "oklch(0.89 0.012 267)",
+          "400": "oklch(0.78 0.012 267)",
+          "500": "oklch(0.66 0.012 267)",
+          "600": "oklch(0.53 0.012 267)",
+          "700": "oklch(0.41 0.012 267)",
+          "800": "oklch(0.28 0.012 267)",
+          "900": "oklch(0.18 0.012 267)",
+          "950": "oklch(0.13 0.012 267)"
         },
         "primaryBlue": {
-          "50": "oklch(0.97 0.03 262.705)",
-          "100": "oklch(0.93 0.05 262.705)",
-          "200": "oklch(0.86 0.085 262.705)",
-          "300": "oklch(0.77 0.12 262.705)",
-          "400": "oklch(0.64 0.165 262.705)",
-          "500": "oklch(0.507 0.211 262.705)",
-          "600": "oklch(0.45 0.21 262.705)",
-          "700": "oklch(0.39 0.19 262.705)",
-          "800": "oklch(0.33 0.16 262.705)",
-          "900": "oklch(0.27 0.13 262.705)",
-          "950": "oklch(0.22 0.11 262.705)"
+          "50": "oklch(0.97 0.03 267.36)",
+          "100": "oklch(0.93 0.05 267.36)",
+          "200": "oklch(0.86 0.085 267.36)",
+          "300": "oklch(0.77 0.12 267.36)",
+          "400": "oklch(0.64 0.165 267.36)",
+          "500": "oklch(0.4988 0.1894 267.36)",
+          "600": "oklch(0.45 0.21 267.36)",
+          "700": "oklch(0.39 0.19 267.36)",
+          "800": "oklch(0.33 0.16 267.36)",
+          "900": "oklch(0.27 0.13 267.36)",
+          "950": "oklch(0.22 0.11 267.36)"
         },
         "aqua": {
           "50": "oklch(0.98 0.03 200)",
@@ -126,36 +126,44 @@
           "700": "oklch(0.52 0.18 25)",
           "800": "oklch(0.44 0.16 25)",
           "900": "oklch(0.36 0.14 25)"
+        },
+        "appBackground": {
+          "main": "oklch(0.3268 0.1202 266.97)",
+          "waveDark": "oklch(0.3486 0.1349 266.59)",
+          "waveLight": "oklch(0.4988 0.1894 267.36)"
         }
       },
       "semantic": {
         "bg": {
-          "canvas": "oklch(0.99 0.004 255)",
-          "surface": "oklch(1 0 0)",
-          "surfaceSubtle": "oklch(0.985 0.006 255)",
+          "canvas": "oklch(0.965 0.022 267)",
+          "surface": "oklch(0.97 0.028 267)",
+          "surfaceSubtle": "oklch(0.91 0.045 267)",
           "heroGradientStart": "oklch(0.93 0.06 200)",
-          "heroGradientEnd": "oklch(0.9 0.06 262.705)"
+          "heroGradientEnd": "oklch(0.9 0.06 267.36)",
+          "appBackground": "oklch(0.3268 0.1202 266.97)",
+          "appBackgroundWaveDark": "oklch(0.3486 0.1349 266.59)",
+          "appBackgroundWaveLight": "oklch(0.4988 0.1894 267.36)"
         },
         "text": {
-          "primary": "oklch(0.2 0.02 255)",
-          "secondary": "oklch(0.5 0.02 255)",
-          "muted": "oklch(0.6 0.015 255)",
+          "primary": "oklch(0.2 0.02 267)",
+          "secondary": "oklch(0.5 0.02 267)",
+          "muted": "oklch(0.6 0.015 267)",
           "inverse": "oklch(0.985 0 0)",
-          "link": "oklch(0.45 0.21 262.705)"
+          "link": "oklch(0.45 0.21 267.36)"
         },
         "border": {
-          "subtle": "oklch(0.92 0.01 255)",
-          "default": "oklch(0.88 0.012 255)",
-          "strong": "oklch(0.78 0.012 255)"
+          "subtle": "oklch(0.88 0.04 267)",
+          "default": "oklch(0.82 0.045 267)",
+          "strong": "oklch(0.72 0.05 267)"
         },
         "focus": {
-          "ring": "oklch(0.507 0.211 262.705 / 0.35)",
-          "ringStrong": "oklch(0.507 0.211 262.705 / 0.55)"
+          "ring": "oklch(0.4988 0.1894 267.36 / 0.35)",
+          "ringStrong": "oklch(0.4988 0.1894 267.36 / 0.55)"
         },
         "brand": {
-          "primary": "oklch(0.507 0.211 262.705)",
-          "primaryHover": "oklch(0.45 0.21 262.705)",
-          "primaryActive": "oklch(0.39 0.19 262.705)",
+          "primary": "oklch(0.4988 0.1894 267.36)",
+          "primaryHover": "oklch(0.45 0.21 267.36)",
+          "primaryActive": "oklch(0.39 0.19 267.36)",
           "onPrimary": "oklch(0.99 0 0)"
         },
         "status": {
@@ -252,9 +260,9 @@
           }
         },
         "variations": {
-          "highlighted": "oklch(0.15 0.02 255) in light mode, oklch(1 0 0) in dark mode",
-          "base": "oklch(0.2 0.02 255) in light mode, oklch(0.985 0 0) in dark mode",
-          "dimmed": "oklch(0.5 0.015 255) in light mode, oklch(0.65 0 0) in dark mode"
+          "highlighted": "oklch(0.15 0.02 267) in light mode, oklch(1 0 0) in dark mode",
+          "base": "oklch(0.2 0.02 267) in light mode, oklch(0.985 0 0) in dark mode",
+          "dimmed": "oklch(0.5 0.015 267) in light mode, oklch(0.65 0 0) in dark mode"
         }
       },
       "lineHeight": {
@@ -311,9 +319,21 @@
     },
     "button": {
       "sizes": {
-        "sm": { "height": "2.5rem", "px": "1rem", "fontSize": "{tokens.typography.fontSize.sm}" },
-        "md": { "height": "3rem", "px": "1.25rem", "fontSize": "{tokens.typography.fontSize.base}" },
-        "lg": { "height": "3.25rem", "px": "1.5rem", "fontSize": "{tokens.typography.fontSize.lg}" }
+        "sm": {
+          "height": "2.5rem",
+          "px": "1rem",
+          "fontSize": "{tokens.typography.fontSize.sm}"
+        },
+        "md": {
+          "height": "3rem",
+          "px": "1.25rem",
+          "fontSize": "{tokens.typography.fontSize.base}"
+        },
+        "lg": {
+          "height": "3.25rem",
+          "px": "1.5rem",
+          "fontSize": "{tokens.typography.fontSize.lg}"
+        }
       },
       "radius": "{tokens.radius.pill}",
       "variants": {
@@ -325,7 +345,7 @@
           "shadow": "{tokens.shadow.md}"
         },
         "secondary": {
-          "bg": "oklch(0.97 0.01 255)",
+          "bg": "oklch(0.97 0.01 267)",
           "text": "{tokens.color.semantic.text.primary}",
           "border": "1px solid {tokens.color.semantic.border.default}"
         },
@@ -344,8 +364,8 @@
       "fontSize": "{tokens.typography.fontSize.sm}",
       "variants": {
         "info": {
-          "bg": "oklch(0.95 0.03 262.705)",
-          "text": "oklch(0.42 0.2 262.705)",
+          "bg": "oklch(0.95 0.03 267.36)",
+          "text": "oklch(0.42 0.2 267.36)",
           "icon": "{tokens.color.semantic.brand.primary}"
         },
         "success": {
@@ -371,7 +391,7 @@
       }
     },
     "progress": {
-      "ringTrack": "oklch(0.92 0.01 255)",
+      "ringTrack": "oklch(0.92 0.01 267)",
       "ringPrimary": "{tokens.color.semantic.brand.primary}",
       "ringAccent": "oklch(0.75 0.18 55)",
       "labelText": "{tokens.color.semantic.text.primary}",

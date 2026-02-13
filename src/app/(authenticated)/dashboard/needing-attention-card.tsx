@@ -11,6 +11,31 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
 
+function UserAttentionRow({
+  user,
+  onClick,
+}: {
+  user: UserNeedingAttention;
+  onClick: () => void;
+}) {
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Unknown';
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 cursor-pointer hover:bg-primary/40 transition-colors"
+      onClick={onClick}
+    >
+      <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-muted">
+        <Avatar src={user.avatar_url} firstName={user.first_name ?? ''} lastName={user.last_name ?? ''} userId={user.user_id} size={36} className="size-full" />
+      </div>
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="text-sm font-medium truncate" title={name}>{name}</span>
+        <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
+      </div>
+      <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">{Math.round(user.compliance)}%</span>
+    </div>
+  );
+}
+
 export function NeedingAttentionCard({ 
   data 
 }: { 
@@ -83,22 +108,11 @@ export function NeedingAttentionCard({
                   </span>
                   {top3.length > 0 ? (
                     <div className="w-full mt-3 space-y-2">
-                      {top3.map((u) => {
-                        const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unknown';
-                        return (
-                          <div
-                            key={u.user_id}
-                            className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 cursor-pointer hover:bg-accent transition-colors"
-                            onClick={(e) => { e.stopPropagation(); handleUserClick(u.user_id); }}
-                          >
-                            <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-muted">
-                              <Avatar src={u.avatar_url} firstName={u.first_name ?? ''} lastName={u.last_name ?? ''} userId={u.user_id} size={36} className="size-full" />
-                            </div>
-                            <span className="text-sm font-medium truncate flex-1 min-w-0" title={name}>{name}</span>
-                            <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">{Math.round(u.compliance)}%</span>
-                          </div>
-                        );
-                      })}
+                      {top3.map((u) => (
+                        <div key={u.user_id} onClick={(e) => e.stopPropagation()}>
+                          <UserAttentionRow user={u} onClick={() => handleUserClick(u.user_id)} />
+                        </div>
+                      ))}
                     </div>
                   ) : null}
                 </div>
@@ -136,7 +150,7 @@ export function NeedingAttentionCard({
                     placeholder="Name, email..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 pl-10 bg-card/90 shadow-sm border-border/60 rounded-[var(--radius-md)] text-sm"
+                    className="h-10 pl-10 bg-card/90 shadow-sm border-border/60 rounded-md text-sm"
                   />
                 </div>
                 {data.users.length === 0 ? (
@@ -150,22 +164,9 @@ export function NeedingAttentionCard({
                 ) : (
                   <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
                     <div className="space-y-2 min-w-0 w-full overflow-hidden">
-                      {filtered.map((u) => {
-                        const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unknown';
-                        return (
-                          <div
-                            key={u.user_id}
-                            className="flex items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 cursor-pointer hover:bg-muted/80 transition-colors"
-                            onClick={() => handleUserClick(u.user_id)}
-                          >
-                            <div className="size-9 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-muted">
-                              <Avatar src={u.avatar_url} firstName={u.first_name ?? ''} lastName={u.last_name ?? ''} userId={u.user_id} size={36} className="size-full" />
-                            </div>
-                            <span className="text-sm font-medium truncate flex-1 min-w-0" title={name}>{name}</span>
-                            <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">{Math.round(u.compliance)}%</span>
-                          </div>
-                        );
-                      })}
+                      {filtered.map((u) => (
+                          <UserAttentionRow key={u.user_id} user={u} onClick={() => handleUserClick(u.user_id)} />
+                        ))}
                     </div>
                   </ScrollArea>
                 )}

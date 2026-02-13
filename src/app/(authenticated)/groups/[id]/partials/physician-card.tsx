@@ -45,7 +45,7 @@ export function PhysicianCard({
   }
 
   return (
-    <Card className="p-6 border border-white/50 bg-white/95 h-full flex flex-col">
+    <Card className="p-6 border border-border bg-card/95 h-full flex flex-col">
       <div className="flex items-start justify-between gap-4 flex-1">
         <div className="cursor-pointer flex-1 min-w-0" onClick={() => router.push(`/users/${physician.userId}?from=/groups/${organizationId}`)}>
           <div className="flex items-center gap-3 min-w-0">

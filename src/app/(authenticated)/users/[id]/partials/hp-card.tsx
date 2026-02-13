@@ -149,9 +149,9 @@ export function HpCard({
               </div>
             )}
             {!isMaxLevel && pointsNeeded !== null && (
-              <div className="w-full mt-2 h-2 rounded-full overflow-hidden bg-white/20">
+              <div className="w-full mt-2 h-2 rounded-full overflow-hidden bg-card/20">
                 <div
-                  className="h-full bg-white rounded-full transition-all"
+                  className="h-full bg-primary-foreground rounded-full transition-all"
                   style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                 />
               </div>
@@ -241,9 +241,9 @@ export function HpCard({
                       <span>Progress to Level {level + 1}</span>
                       <span>{Math.round(progressPercentage)}%</span>
                     </div>
-                    <div className="w-full h-2 rounded-full overflow-hidden bg-white/20">
+                    <div className="w-full h-2 rounded-full overflow-hidden bg-card/20">
                       <div
-                        className="h-full bg-white rounded-full transition-all"
+                        className="h-full bg-primary-foreground rounded-full transition-all"
                         style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                       />
                     </div>
@@ -257,7 +257,7 @@ export function HpCard({
                   <div className="pt-2">
                     <Badge
                       variant="outline"
-                      className="font-semibold border-white/20 bg-white/10 text-white"
+                      className="font-semibold border-white/20 bg-card/10 text-white"
                     >
                       Maximum Level Achieved
                     </Badge>
@@ -295,7 +295,7 @@ export function HpCard({
                   {transactions.map((tx, index) => (
                     <motion.div
                       key={index}
-                      className="flex items-start justify-between gap-3 p-3 bg-white/10 rounded-[var(--radius-lg)]"
+                      className="flex items-start justify-between gap-3 p-3 bg-card/10 rounded-[var(--radius-lg)]"
                       variants={{
                         hidden: { opacity: 0, y: -8 },
                         visible: { opacity: 1, y: 0 },
@@ -306,7 +306,7 @@ export function HpCard({
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className="text-xs border-white/20 bg-white/10 text-white"
+                            className="text-xs border-white/20 bg-card/10 text-white"
                           >
                             {formatTransactionType(tx.transaction_type)}
                           </Badge>

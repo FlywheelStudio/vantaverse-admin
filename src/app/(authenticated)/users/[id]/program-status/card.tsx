@@ -152,7 +152,7 @@ export function ProgramStatusCard({
                 <Button
                   onClick={() => setIsModalOpen(true)}
                   size="sm"
-                  className="shrink-0 rounded-pill bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  className="shrink-0 rounded-pill bg-card/20 hover:bg-card/30 text-white border-white/30"
                 >
                   Assign Program
                 </Button>
@@ -172,9 +172,9 @@ export function ProgramStatusCard({
           </div>
         </div>
         <CardContent className="p-6 relative z-10">
-          <div className="rounded-xl border border-dashed border-white/30 bg-white/10 p-4">
+          <div className="rounded-xl border border-dashed border-white/30 bg-card/10 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-lg bg-white/20">
+              <div className="mt-0.5 inline-flex size-9 items-center justify-center rounded-lg bg-card/20">
                 <AlertTriangle className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
@@ -249,7 +249,7 @@ export function ProgramStatusCard({
                 onClick={assignment ? handleEditProgram : () => setIsModalOpen(true)}
                 variant="outline"
                 size="sm"
-                className="rounded-pill bg-white/20 hover:bg-white/30 text-white border-white/30"
+                className="rounded-pill bg-card/20 hover:bg-card/30 text-white border-white/30"
               >
                 {assignment ? 'Edit Program' : 'Assign Program'}
               </Button>
@@ -261,7 +261,7 @@ export function ProgramStatusCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-white hover:text-white hover:bg-white/20 rounded-pill"
+                          className="text-white hover:text-white hover:bg-card/20 rounded-pill"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

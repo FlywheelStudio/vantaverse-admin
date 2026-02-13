@@ -28,7 +28,7 @@ export function OrganizationInfoCard({
   };
 
   return (
-    <Card className="p-6 border border-white/50 bg-white/95 h-full flex flex-col">
+    <Card className="p-6 border border-border bg-card/95 h-full flex flex-col">
       <div className="flex items-start justify-between gap-4 flex-1">
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <EditableDescription
