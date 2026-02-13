@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.19.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.18.0...0.19.0) (2026-02-13)
+
+
+### Features
+
+* **dashboard:** improve layout and functionality of dashboard components with enhanced date handling and user metrics ([9326549](https://github.com/FlywheelStudio/vantaverse-admin/commit/9326549a3d41f6ac9d2069d50d481b92f4d2140f))
+
 # [0.18.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.17.0...0.18.0) (2026-02-10)
 
 
