@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.20.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.19.0...0.20.0) (2026-02-13)
+
+
+### Features
+
+* **dashboard:** update layout and styling of dashboard components ([7f18701](https://github.com/FlywheelStudio/vantaverse-admin/commit/7f187015ba7d525ab0897c8cae9db3e67a66434e))
+
 # [0.19.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.18.0...0.19.0) (2026-02-13)
 
 
