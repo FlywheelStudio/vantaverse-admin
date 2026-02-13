@@ -11,7 +11,7 @@ import type { DashboardStatusUser, UserNeedingAttention } from '@/lib/supabase/q
 
 type StatusCountsListPanelProps = {
   title: string;
-  onBack: () => void;
+  onBack?: () => void;
   search: string;
   onSearchChange: (value: string) => void;
   usersLength: number;
@@ -50,14 +50,16 @@ export function StatusCountsListPanel({
         <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
           {title}
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="h-8 text-xs text-muted-foreground"
-        >
-          Back
-        </Button>
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="h-8 text-xs text-muted-foreground"
+          >
+            Back
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="p-5 pt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex items-center gap-2 w-full min-w-0 mt-0.5 mb-4 shrink-0">
@@ -131,7 +133,7 @@ export function StatusCountsListPanel({
                               <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             </div>
                           </TooltipTrigger>
-                          <TooltipContent>Compliance</TooltipContent>
+                          <TooltipContent>Completion</TooltipContent>
                         </Tooltip>
                       ) : isPending ? (
                         <div className="flex items-center gap-2">

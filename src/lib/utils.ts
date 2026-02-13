@@ -32,6 +32,14 @@ export function formatNumber(value: number): string {
 }
 
 /**
+ * Parse a YYYY-MM-DD date string as local date
+ */
+export function parseLocalDateString(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+/**
  * Format date to YYYY-MM-DD in UTC to match Supabase timezone
  * Creates a UTC date from local date components to ensure the date string matches what the user sees
  * @param date - The date to format

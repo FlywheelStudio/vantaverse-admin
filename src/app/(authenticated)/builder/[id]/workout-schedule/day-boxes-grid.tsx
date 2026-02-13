@@ -380,6 +380,20 @@ export function DayBoxesGrid() {
               : null;
 
             const isBeforeStart = isDayBeforeStart(currentWeek, day);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dayStart = dayDate
+              ? new Date(
+                  dayDate.getFullYear(),
+                  dayDate.getMonth(),
+                  dayDate.getDate(),
+                  0,
+                  0,
+                  0,
+                  0,
+                )
+              : null;
+            const isPastDate = dayStart ? dayStart.getTime() < today.getTime() : false;
             const isDayCopied =
               copiedDayIndex?.week === currentWeek &&
               copiedDayIndex?.day === dayIndex;
@@ -396,6 +410,7 @@ export function DayBoxesGrid() {
                 items={items}
                 formattedDate={formattedDate}
                 isBeforeStart={isBeforeStart}
+                isPastDate={isPastDate}
                 isDayCopied={isDayCopied}
                 isDayPasteDisabled={isDayPasteDisabled}
                 isPasteAnimating={

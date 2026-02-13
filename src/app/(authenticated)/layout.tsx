@@ -11,13 +11,7 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className="min-h-screen w-full bg-linear-to-b from-[#0D47A1] via-[#2196F3] to-[#B3E5FC] relative"
-      style={{
-        background:
-          'linear-gradient(180deg, #0D47A1 0%, #2196F3 50%, #B3E5FC 100%)',
-      }}
-    >
+    <div className="min-h-screen w-full relative">
       <VantaBuddyTrigger />
       <Sidebar />
       <ViewTransition name="main">

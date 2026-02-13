@@ -119,7 +119,7 @@ export function LoginForm() {
               placeholder="Enter your email"
               required
               disabled={isPending}
-              className="w-full h-12 px-4 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-background text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2454FF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-12 px-4 rounded-full border border-gray-300 dark:border-gray-600 bg-card text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2454FF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
           <Button
@@ -178,7 +178,7 @@ export function LoginForm() {
               onKeyDown={(e) => handleOtpKeyDown(index, e)}
               onPaste={handleOtpPaste}
               disabled={isVerifying || isPending}
-              className="h-12 w-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-background text-center text-lg font-semibold text-gray-900 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-[#2454FF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-12 w-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-card text-center text-lg font-semibold text-gray-900 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-[#2454FF] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
           ))}
         </div>

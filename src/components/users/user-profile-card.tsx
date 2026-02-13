@@ -229,7 +229,7 @@ export function UserProfileCard({
           onMouseEnter={() => !isUploading && setIsHoveringAvatar(true)}
           onMouseLeave={() => setIsHoveringAvatar(false)}
         >
-          <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-white dark:bg-gray-800">
+          <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-card">
             <Avatar
               src={avatarUrl}
               firstName={firstName}
