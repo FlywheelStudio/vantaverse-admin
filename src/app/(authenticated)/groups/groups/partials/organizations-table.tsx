@@ -194,7 +194,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <Button
           onClick={handleCreate}
-          className="h-11 rounded-[var(--radius-pill)] px-5 shadow-[var(--shadow-md)] cursor-pointer"
+          className="h-11 rounded-pill px-5 shadow-(--shadow-md) cursor-pointer"
         >
           {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
         </Button>
@@ -202,12 +202,12 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           placeholder="Search groups..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="h-11 flex-1 rounded-[var(--radius-md)] bg-card"
+          className="h-11 flex-1 rounded-md bg-background"
         />
       </div>
       <div
         ref={tableContainerRef}
-        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-[var(--radius-lg)] border border-border/60 bg-card"
+        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-lg border border-border/60 bg-card"
       >
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
@@ -287,7 +287,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                         !newOrgData.name.trim() || !!uploadingImage || savingOrg
                       }
                       size="icon-sm"
-                      className="h-9 w-9 rounded-[var(--radius-md)] cursor-pointer"
+                      className="h-9 w-9 rounded-md cursor-pointer"
                     >
                       <Save className="h-4 w-4" />
                     </Button>
@@ -296,7 +296,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       variant="outline"
                       disabled={!!uploadingImage || savingOrg}
                       size="icon-sm"
-                      className="h-9 w-9 rounded-[var(--radius-md)] cursor-pointer"
+                      className="h-9 w-9 rounded-md cursor-pointer"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -388,12 +388,12 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="rounded-[var(--radius-pill)]"
+            className="rounded-pill"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <div className="px-4 py-2 rounded-[var(--radius-md)] border border-border bg-secondary text-secondary-foreground font-medium text-sm">
+          <div className="px-4 py-2 rounded-md border border-border bg-secondary text-secondary-foreground font-medium text-sm">
             {isMobile
               ? `${table.getState().pagination.pageIndex + 1}/${table.getPageCount()}`
               : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
@@ -403,7 +403,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="rounded-[var(--radius-pill)]"
+            className="rounded-pill"
           >
             Next
             <ChevronRight className="h-4 w-4 ml-1" />

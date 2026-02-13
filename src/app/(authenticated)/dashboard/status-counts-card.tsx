@@ -2,13 +2,15 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendBulkInvitations } from '@/app/(authenticated)/users/actions';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import { StatusCountsListPanel } from '@/app/(authenticated)/dashboard/status-counts-list-panel';
+import { cn } from '@/lib/utils';
 import type {
   DashboardStatusCounts,
   DashboardStatusUser,
@@ -37,9 +39,9 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
 };
 
 const BADGES: { key: StatusFilter; countKey: keyof StatusCountsWithProgramCompleted; label: string; colorClass?: string }[] = [
+  { key: 'active', countKey: 'active', label: 'Active', colorClass: 'text-emerald-500' },
   { key: 'pending', countKey: 'pending', label: 'Pending', colorClass: 'text-orange-500' },
   { key: 'invited', countKey: 'invited', label: 'Invited', colorClass: 'text-violet-500' },
-  { key: 'active', countKey: 'active', label: 'Active', colorClass: 'text-emerald-500' },
   { key: 'noProgram', countKey: 'noProgram', label: 'No program' },
   { key: 'inProgram', countKey: 'inProgram', label: 'In program' },
   { key: 'programCompleted', countKey: 'programCompleted', label: 'Program completed' },
@@ -99,8 +101,7 @@ export function StatusCountsCard({
   };
 }) {
   const router = useRouter();
-  const [showList, setShowList] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<StatusFilter | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<StatusFilter>('active');
   const [search, setSearch] = useState('');
   const [optimisticallyInvitedIds, setOptimisticallyInvitedIds] = useState<Set<string>>(
     () => new Set()
@@ -138,7 +139,6 @@ export function StatusCountsCard({
 
   const handleBadgeClick = (filter: StatusFilter) => {
     setSelectedFilter(filter);
-    setShowList(true);
     setSearch('');
   };
 
@@ -184,132 +184,71 @@ export function StatusCountsCard({
       transition={{ duration: 0.4, delay: 0 }}
       className="flex-1 min-w-0"
     >
-      <Card className="h-full min-h-0 flex flex-col gap-0 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {!showList ? (
-            <motion.div
-              key="summary"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col min-h-0"
-            >
-              <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-2xl text-dimmed font-normal tracking-tight">
-                  <span className="text-2xl">Member</span>{' '}
-                  <span className="text-2xl font-semibold text-foreground">
-                    Status
-                  </span>
-                </CardTitle>
-                <Badge variant="secondary" className="text-sm font-semibold bg-[oklch(0.95_0.03_262.705)] text-[oklch(0.42_0.2_262.705)] border-0">
-                  {totalCount} total
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-5 pt-6 flex-1 flex flex-col min-h-0 overflow-y-auto">
-                <div className="flex flex-col items-center justify-center pb-6 pt-5 mb-4">
-                  <span className="text-6xl font-bold tracking-tight text-foreground tabular-nums">
-                    {counts.active}
-                  </span>
-                  <span className="text-sm text-muted-foreground mt-1 font-medium">
-                    Active Members
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {BADGES.slice(0, 3).map(({ key, countKey, label, colorClass }, i) => (
-                    <motion.div
-                      key={key}
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.25, delay: i * 0.05 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-card border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
-                      onClick={() => handleBadgeClick(key)}
-                    >
-                      <span className={`text-3xl font-bold tracking-tight ${colorClass || 'text-foreground'} tabular-nums`}>
-                        {counts[countKey]}
-                      </span>
-                      <span className="text-sm text-muted-foreground mt-1 font-medium">
-                        {label}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  {BADGES.slice(3, 5).map(({ key, countKey, label }, i) => (
-                    <motion.div
-                      key={key}
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.25, delay: (3 + i) * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex flex-row items-center justify-between p-4 px-6 rounded-xl bg-muted/30 border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
-                      onClick={() => handleBadgeClick(key)}
-                    >
-                      <span className="text-sm text-muted-foreground font-medium">
-                        {label}
-                      </span>
-                      <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                        {counts[countKey]}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 gap-4 mt-4">
-                  {BADGES.slice(5, 6).map(({ key, countKey, label }, i) => (
-                    <motion.div
-                      key={key}
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.25, delay: (5 + i) * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex flex-row items-center justify-between p-4 px-6 rounded-xl bg-muted/30 border border-border/40 shadow-sm cursor-pointer transition-all hover:bg-accent/50 hover:border-primary/20"
-                      onClick={() => handleBadgeClick(key)}
-                    >
-                      <span className="text-sm text-muted-foreground font-medium">
-                        {label}
-                      </span>
-                      <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                        {counts[countKey] ?? 0}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="list"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col min-h-0"
-            >
-              <StatusCountsListPanel
-                title={selectedFilter ? FILTER_LABELS[selectedFilter] : ''}
-                onBack={() => {
-                  setShowList(false);
-                  setSelectedFilter(null);
-                }}
-                search={search}
-                onSearchChange={setSearch}
-                usersLength={users.length}
-                filteredLength={filtered.length}
-                searchTrim={search.trim()}
-                filtered={filtered}
-                isPending={isPending}
-                isNoProgram={isNoProgram}
-                sendingBulkInvites={sendingBulkInvites}
-                onSendInvitations={handleSendInvitations}
-                onUserClick={handleUserClick}
-                onAssignProgram={setAssignProgramUser}
-                complianceBadgeClass={complianceBadgeClass}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <Card className="h-full min-h-[500px] flex flex-row gap-0 overflow-hidden">
+        {/* Left Sidebar (1/4) */}
+        <div className="w-1/4 min-w-[200px] border-r border-border/60 flex flex-col bg-muted/20">
+          <div className="p-5 border-b border-border/60">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">Member Status</h3>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
+                {counts.active}
+              </span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Active Members
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {totalCount} Total Members
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-3 space-y-1">
+              {BADGES.map((badge) => (
+                <button
+                  key={badge.key}
+                  onClick={() => handleBadgeClick(badge.key)}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-all text-left",
+                    selectedFilter === badge.key
+                      ? "bg-background shadow-sm text-foreground font-medium ring-1 ring-border/50"
+                      : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span>{badge.label}</span>
+                  <Badge 
+                    variant="secondary" 
+                    className={cn(
+                      "ml-auto text-xs h-5 px-1.5 min-w-[1.5rem] justify-center bg-muted",
+                      selectedFilter === badge.key && "bg-muted/80"
+                    )}
+                  >
+                    {counts[badge.countKey] ?? 0}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Right Content (3/4) */}
+        <div className="flex-1 flex flex-col min-w-0 bg-card">
+          <StatusCountsListPanel
+            title={FILTER_LABELS[selectedFilter]}
+            search={search}
+            onSearchChange={setSearch}
+            usersLength={users.length}
+            filteredLength={filtered.length}
+            searchTrim={search.trim()}
+            filtered={filtered}
+            isPending={isPending}
+            isNoProgram={isNoProgram}
+            sendingBulkInvites={sendingBulkInvites}
+            onSendInvitations={handleSendInvitations}
+            onUserClick={handleUserClick}
+            onAssignProgram={setAssignProgramUser}
+            complianceBadgeClass={complianceBadgeClass}
+          />
+        </div>
       </Card>
 
       {assignProgramUser && (

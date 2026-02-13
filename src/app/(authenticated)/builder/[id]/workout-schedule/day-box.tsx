@@ -17,6 +17,7 @@ interface DayBoxProps {
   items: SelectedItem[];
   formattedDate: string | null;
   isBeforeStart: boolean;
+  isPastDate: boolean;
   isDayCopied: boolean;
   isDayPasteDisabled: boolean;
   isPasteAnimating?: boolean;
@@ -35,6 +36,7 @@ export function DayBox({
   items,
   formattedDate,
   isBeforeStart,
+  isPastDate,
   isDayCopied,
   isDayPasteDisabled,
   isPasteAnimating = false,
@@ -47,6 +49,12 @@ export function DayBox({
   defaultValues,
 }: DayBoxProps) {
   const hasItems = items.length > 0;
+  const isWarning = isBeforeStart || isPastDate;
+  const warningLabel = isBeforeStart
+    ? ' (Before Start)'
+    : isPastDate
+      ? ' (Past Date)'
+      : '';
 
   const copyPasteButtons = (
     <CopyPasteButtons
@@ -155,7 +163,7 @@ export function DayBox({
         <h3
           className={cn(
             'text-base font-semibold text-center',
-            isBeforeStart ? 'text-destructive' : 'text-foreground',
+            isWarning ? 'text-destructive' : 'text-foreground',
           )}
         >
           {getDayOfWeek(day)}
@@ -165,16 +173,16 @@ export function DayBox({
         <p
           className={cn(
             'text-xs mb-3 text-center',
-            isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
+            isWarning ? 'text-destructive/70' : 'text-muted-foreground',
           )}
         >
-          {formattedDate} {isBeforeStart ? ' (Before Start)' : ''}
+          {formattedDate}{warningLabel}
         </p>
       )}
       <div
         className={cn(
           'group relative border-2 rounded-xl p-4 min-h-[280px] flex flex-col items-center gap-3 transition-colors duration-200',
-          isBeforeStart
+          isWarning
             ? 'border-dashed border-destructive/40 bg-destructive/5 justify-center'
             : hasItems
               ? 'border-primary bg-muted/30 justify-start' // Blue border for non-rest
@@ -200,7 +208,7 @@ export function DayBox({
               key={`week-${weekIndex}-day-${day}-rest`}
               className={cn(
                 'h-full max-h-[240px] min-h-[240px] flex flex-col items-center justify-center text-sm cursor-default',
-                isBeforeStart ? 'text-destructive/70' : 'text-muted-foreground',
+                isWarning ? 'text-destructive/70' : 'text-muted-foreground',
               )}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -217,7 +225,7 @@ export function DayBox({
             size="sm"
             className={cn(
               'border-dashed flex-1',
-              isBeforeStart
+              isWarning
                 ? 'border-destructive/40 text-destructive cursor-not-allowed bg-destructive/5'
                 : hasItems 
                   ? 'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary cursor-pointer'

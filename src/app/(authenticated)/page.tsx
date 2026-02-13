@@ -78,32 +78,33 @@ export default async function HomePage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-6 md:flex-row md:items-stretch flex-1 min-h-0 overflow-hidden">
-        <StatusCountsCard
-          counts={{
-            ...(data.statusCounts ?? {
-              pending: 0,
-              invited: 0,
-              active: 0,
-              noProgram: 0,
-              inProgram: 0,
-            }),
-            programCompleted: data.programCompleted?.total ?? 0,
-          }}
-          usersByFilter={{
-            pending: data.usersPending ?? [],
-            invited: data.usersInvited ?? [],
-            active: data.usersActive ?? [],
-            noProgram: data.usersNoProgram ?? [],
-            inProgram: data.usersInProgram ?? [],
-            programCompleted: data.programCompleted?.users ?? [],
-          }}
-        />
-        <ComplianceCard
-          compliance={data.compliance?.compliance ?? 0}
-          programCompletion={data.compliance?.programCompletion ?? 0}
-        />
-        <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
+      <div className="flex flex-col gap-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-1">
+        <div className="flex flex-col md:flex-row gap-6 shrink-0 h-[450px]">
+          <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
+          <ComplianceCard compliance={data.compliance?.compliance ?? 0} />
+        </div>
+        <div className="flex-1 min-h-[500px]">
+          <StatusCountsCard
+            counts={{
+              ...(data.statusCounts ?? {
+                pending: 0,
+                invited: 0,
+                active: 0,
+                noProgram: 0,
+                inProgram: 0,
+              }),
+              programCompleted: data.programCompleted?.total ?? 0,
+            }}
+            usersByFilter={{
+              pending: data.usersPending ?? [],
+              invited: data.usersInvited ?? [],
+              active: data.usersActive ?? [],
+              noProgram: data.usersNoProgram ?? [],
+              inProgram: data.usersInProgram ?? [],
+              programCompleted: data.programCompleted?.users ?? [],
+            }}
+          />
+        </div>
       </div>
     </PageWrapper>
   );

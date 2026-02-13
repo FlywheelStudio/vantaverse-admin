@@ -19,6 +19,7 @@ export type DashboardStatusUser = {
   last_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  last_sign_in: string | null;
   compliance?: number | null;
 };
 
@@ -28,6 +29,7 @@ export type UserNeedingAttention = {
   last_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  last_sign_in: string | null;
   compliance: number;
   program_name: string | null;
   organization_id: string | null;
@@ -63,6 +65,7 @@ export function profileStatToUser(
     last_name: profile.last_name ?? null,
     email: profile.email ?? null,
     avatar_url: profile.avatar_url ?? null,
+    last_sign_in: profile.last_sign_in ?? null,
     compliance,
     program_name,
     organization_id,
@@ -155,7 +158,7 @@ export class DashboardQuery extends SupabaseQuery {
 
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, avatar_url')
+      .select('id, first_name, last_name, email, avatar_url, last_sign_in')
       .eq('status', status)
       .order('last_sign_in', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
@@ -173,6 +176,7 @@ export class DashboardQuery extends SupabaseQuery {
       last_name: p.last_name ?? null,
       email: p.email ?? null,
       avatar_url: p.avatar_url ?? null,
+      last_sign_in: p.last_sign_in ?? null,
     }));
 
     return { success: true, data: users };
@@ -200,7 +204,7 @@ export class DashboardQuery extends SupabaseQuery {
 
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, avatar_url')
+      .select('id, first_name, last_name, email, avatar_url, last_sign_in')
       .in('status', ['pending', 'invited', 'active'])
       .order('last_sign_in', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
@@ -220,6 +224,7 @@ export class DashboardQuery extends SupabaseQuery {
         last_name: p.last_name ?? null,
         email: p.email ?? null,
         avatar_url: p.avatar_url ?? null,
+        last_sign_in: p.last_sign_in ?? null,
       }));
 
     return { success: true, data: users };
@@ -265,7 +270,7 @@ export class DashboardQuery extends SupabaseQuery {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, avatar_url')
+      .select('id, first_name, last_name, email, avatar_url, last_sign_in')
       .in('id', userIds)
       .order('last_sign_in', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
@@ -284,6 +289,7 @@ export class DashboardQuery extends SupabaseQuery {
         last_name: p.last_name ?? null,
         email: p.email ?? null,
         avatar_url: p.avatar_url ?? null,
+        last_sign_in: p.last_sign_in ?? null,
         compliance: byUser.get(p.id) ?? 0,
       }))
       .sort((a, b) => b.compliance - a.compliance);

@@ -10,8 +10,7 @@ import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/progr
 import {
   formatDateForDB,
   calculateEndDate,
-  isProgramStartDateDisabled,
-  getNextProgramStartMonday,
+  parseLocalDateString,
 } from '@/lib/utils';
 import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/program/schemas';
 
@@ -48,23 +47,19 @@ export function useProgramFormDates({
     }
 
     if (initialAssignment.start_date) {
-      const start = new Date(initialAssignment.start_date);
-      const normalizedStart = startOfDay(start);
-      const validStart = isProgramStartDateDisabled(normalizedStart)
-        ? getNextProgramStartMonday()
-        : normalizedStart;
+      const normalizedStart = startOfDay(
+        parseLocalDateString(initialAssignment.start_date),
+      );
       const weeks = initialAssignment.program_template?.weeks || 4;
-      const end =
-        initialAssignment.end_date &&
-        !isProgramStartDateDisabled(normalizedStart)
-          ? new Date(initialAssignment.end_date)
-          : calculateEndDate(validStart, weeks);
+      const end = initialAssignment.end_date
+        ? startOfDay(parseLocalDateString(initialAssignment.end_date))
+        : calculateEndDate(normalizedStart, weeks);
 
       if (end) {
         const normalizedEnd = startOfDay(end);
-        setValue('startDate', validStart);
+        setValue('startDate', normalizedStart);
         setValue('endDate', normalizedEnd);
-        setProgramStartDate(formatDateForDB(validStart));
+        setProgramStartDate(formatDateForDB(normalizedStart));
         loadedDatesForTemplateIdRef.current = initialAssignment.id;
       }
     }

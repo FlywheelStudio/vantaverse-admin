@@ -12,26 +12,17 @@ import {
 
 interface CompliancePieChartProps {
   compliance: number
-  programCompletion?: number
   size?: number
 }
 
 const chartConfig = {
   completed: {
-    label: "Average compliance:",
-    color: "var(--chart-2)",
+    label: "Completion:",
+    color: "oklch(0.64 0.165 267.36)",
   },
   nonCompleted: {
-    label: "Non-compliance:",
-    color: "var(--chart-3)",
-  },
-  programCompleted: {
-    label: "Average program completion:",
-    color: "gray",
-  },
-  programNonCompleted: {
-    label: "Still missing:",
-    color: "lightgray",
+    label: "Remaining:",
+    color: "oklch(0.3268 0.1202 266.97)",
   },
 } satisfies ChartConfig
 
@@ -39,7 +30,6 @@ const DEFAULT_SIZE = 128
 
 export function CompliancePieChart({
   compliance,
-  programCompletion,
   size = DEFAULT_SIZE,
 }: CompliancePieChartProps) {
   const complianceData = React.useMemo(() => {
@@ -51,30 +41,10 @@ export function CompliancePieChart({
     ]
   }, [compliance])
 
-  const programCompletionData = React.useMemo(() => {
-    if (programCompletion === undefined) return null
-    const completed = Math.max(0, Math.min(100, programCompletion))
-    const nonCompleted = Math.max(0, 100 - completed)
-    return [
-      {
-        name: "programCompleted",
-        value: completed,
-        fill: chartConfig.programCompleted.color,
-      },
-      {
-        name: "programNonCompleted",
-        value: nonCompleted,
-        fill: chartConfig.programNonCompleted.color,
-      },
-    ]
-  }, [programCompletion])
-
   const displayPercentage = Math.round(compliance)
   const scale = size / DEFAULT_SIZE
   const innerRadius = Math.round(48 * scale)
   const outerRadius = Math.round(64 * scale)
-  const programInnerRadius = Math.round(43 * scale)
-  const programOuterRadius = Math.round(50 * scale)
   const labelOffset = Math.round(18 * scale)
 
   return (
@@ -123,7 +93,7 @@ export function CompliancePieChart({
                       className="fill-muted-foreground"
                       style={{ fontSize: Math.round(12 * scale) }}
                     >
-                      compliance
+                      completion
                     </tspan>
                   </text>
                 )
@@ -131,18 +101,6 @@ export function CompliancePieChart({
             }}
           />
         </Pie>
-        {programCompletionData && (
-          
-            <Pie
-              data={programCompletionData}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={programInnerRadius}
-              outerRadius={programOuterRadius}
-              startAngle={90}
-              endAngle={-270}
-            />
-        )}
       </PieChart>
     </ChartContainer>
   )

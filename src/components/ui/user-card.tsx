@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
 import { Avatar } from '@/components/ui/avatar';
 
 export type UserCardUser = {
@@ -9,6 +10,7 @@ export type UserCardUser = {
   last_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  last_sign_in?: string | null;
 };
 
 type UserCardProps = {
@@ -22,6 +24,12 @@ export function UserCard({ user, action, index = 0 }: UserCardProps) {
     user.first_name && user.last_name
       ? `${user.first_name} ${user.last_name}`
       : user.first_name || user.last_name || 'Unknown';
+
+  let relativeTime: string | null = null;
+
+  if (user.last_sign_in) {
+      relativeTime = formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true });
+  }
 
   return (
     <motion.div
@@ -54,6 +62,11 @@ export function UserCard({ user, action, index = 0 }: UserCardProps) {
             ) : null}
           </div>
         </div>
+        {relativeTime ? (
+          <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+            Active {relativeTime}
+          </div>
+        ) : null}
         <div className="shrink-0">{action}</div>
       </div>
     </motion.div>
