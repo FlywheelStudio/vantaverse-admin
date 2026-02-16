@@ -4,14 +4,16 @@ import * as React from 'react';
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Loader2, Search } from 'lucide-react';
+import NextLink from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatInterface } from '@/app/(authenticated)/users/[id]/partials/chat-interface';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
+import { getConversationsForAdmin } from './actions';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
 import { cn } from '@/lib/utils';
@@ -46,11 +48,22 @@ export function MessagesPageUI({
     userId: string;
   } | null>(null);
   const [openingUserId, setOpeningUserId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { data: conversationsData } = useQuery({
+    queryKey: ['messages', 'conversations'],
+    queryFn: async () => {
+      const result = await getConversationsForAdmin();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    initialData: conversations,
+  });
+  const conversationsList = conversationsData ?? conversations;
 
   const q = debouncedSearch.trim().toLowerCase();
 
   const filteredConversations = useMemo(() => {
-    let list = conversations;
+    let list = conversationsList;
 
     if (filter !== 'all' && filter.type === 'org') {
       list = list.filter((c) => c.organization_id === filter.orgId);
@@ -74,15 +87,15 @@ export function MessagesPageUI({
     }
 
     return list;
-  }, [conversations, filter, q]);
+  }, [conversationsList, filter, q]);
 
   const orgCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of conversations) {
+    for (const c of conversationsList) {
       counts.set(c.organization_id, (counts.get(c.organization_id) ?? 0) + 1);
     }
     return counts;
-  }, [conversations]);
+  }, [conversationsList]);
 
   const handleSelectConversation = async (c: ConversationItem) => {
     if (openingUserId) return;
@@ -144,8 +157,8 @@ export function MessagesPageUI({
         <div className="flex flex-1 min-h-0">
           <div
             className={cn(
-              'flex flex-col border-r border-border shrink-0',
-              'w-[320px]',
+              'flex flex-col border-r border-border shrink-0 min-w-0 overflow-hidden',
+              'w-[320px] max-w-[320px]',
             )}
           >
         <div className="p-4 space-y-3 shrink-0">
@@ -199,11 +212,12 @@ export function MessagesPageUI({
           </ScrollArea>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 slim-scrollbar">
-          <div className="p-2 space-y-1">
+        <div className="messages-conversations-scroll flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 min-h-0 min-w-0 slim-scrollbar">
+            <div className="p-2 space-y-1 w-full min-w-0">
             {filteredConversations.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                {conversations.length === 0
+                {conversationsList.length === 0
                   ? 'No conversations yet'
                   : q
                     ? `No matches for "${debouncedSearch.trim()}"`
@@ -226,12 +240,12 @@ export function MessagesPageUI({
                     onClick={() => handleSelectConversation(c)}
                     disabled={!!openingUserId}
                     className={cn(
-                      'w-full text-left rounded-lg p-3 transition-colors',
-                      'hover:bg-muted/60 disabled:opacity-50 disabled:cursor-not-allowed',
+                      'w-full min-w-0 text-left rounded-lg p-3 transition-colors cursor-pointer overflow-hidden',
+                      'hover:bg-primary/40 disabled:opacity-50 disabled:cursor-not-allowed',
                       isSelected && 'bg-muted/80 ring-1 ring-border/60',
                     )}
                   >
-                    <div className="flex gap-3 min-w-0">
+                    <div className="flex gap-3 min-w-0 overflow-hidden">
                       <div className="size-10 shrink-0 flex items-center justify-center">
                         {isOpening ? (
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -250,20 +264,25 @@ export function MessagesPageUI({
                         <div className="text-sm font-medium text-highlighted truncate">
                           {fullName}
                         </div>
-                        <div className="text-xs text-dimmed truncate mt-0.5">
+                        <div className="text-xs text-dimmed mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                           {c.last_message_content ?? 'No messages yet'}
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 mt-1.5 min-w-0 overflow-hidden">
+                          <span className="text-xs text-muted-foreground shrink-0">
                             {formatMessageTime(c.last_message_at)}
                           </span>
-                          {c.program_name && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] px-1.5 py-0 h-4 font-normal"
+                          {c.unread_count > 0 && (
+                            <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full border border-red-500 px-1 text-[10px] font-semibold leading-none text-red-500">
+                              {c.unread_count}
+                            </span>
+                          )}
+                          {c.program_name && c.program_assignment_id && (
+                            <NextLink
+                              href={`/builder/${c.program_assignment_id}?from=messages`}
+                              className="text-xs text-foreground no-underline hover:underline hover:text-primary cursor-pointer truncate min-w-0 flex-1 block"
                             >
                               {c.program_name}
-                            </Badge>
+                            </NextLink>
                           )}
                         </div>
                       </div>
@@ -272,8 +291,9 @@ export function MessagesPageUI({
                 );
               })
             )}
-          </div>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+        </div>
       </div>
 
           <div className="flex-1 min-w-0 flex flex-col">
@@ -283,6 +303,11 @@ export function MessagesPageUI({
                   chatId={selected.chatId}
                   patientName={selected.patientName}
                   onClose={handleCloseChat}
+                  onMarkedAsSeen={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ['messages', 'conversations'],
+                  })
+                }
                 />
               </div>
             ) : (

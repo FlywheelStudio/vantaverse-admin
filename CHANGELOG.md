@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.21.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.20.0...0.21.0) (2026-02-16)
+
+
+### Features
+
+* **chat:** implement file upload functionality and enhance message handling with attachments ([1b94b89](https://github.com/FlywheelStudio/vantaverse-admin/commit/1b94b89d35a2e1bd04ee3811ddcee8e0edb3b1f2))
+
 # [0.20.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.19.0...0.20.0) (2026-02-13)
 
 

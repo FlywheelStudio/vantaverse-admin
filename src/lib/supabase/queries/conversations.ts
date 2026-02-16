@@ -3,6 +3,7 @@ import {
   type SupabaseSuccess,
   type SupabaseError,
 } from '../query';
+import type { MessageAttachment } from '../schemas/messages';
 import { OrganizationMembers } from './organization-members';
 
 export type ConversationItem = {
@@ -16,7 +17,9 @@ export type ConversationItem = {
   avatar_url: string | null;
   last_message_content: string | null;
   last_message_at: string | null;
+  program_assignment_id: string | null;
   program_name: string | null;
+  unread_count: number;
 };
 
 export class ConversationsQuery extends SupabaseQuery {
@@ -115,35 +118,99 @@ export class ConversationsQuery extends SupabaseQuery {
     }
     const chatIds = [...chatByUserId.values()];
 
-    // 5. Get last message per chat
+    // 5. Unread count = user messages with created_at after the latest user message that has last_seen_at
+    const unreadCountByChatId = new Map<string, number>();
+    if (chatIds.length > 0) {
+      const { data: userMsgRows, error: unreadError } = await supabase
+        .from('messages')
+        .select('chat_id, created_at, last_seen_at')
+        .in('chat_id', chatIds)
+        .eq('message_type', 'user');
+
+      if (unreadError) {
+        return this.parseResponsePostgresError(
+          unreadError,
+          'Failed to get unread message counts',
+        );
+      }
+
+      const rows = (userMsgRows ?? []) as {
+        chat_id: string;
+        created_at: string | null;
+        last_seen_at: string | null;
+      }[];
+
+      // Calculate unread count per chat, we only count messages that are after the last seen at
+      const chatToCutoff = new Map<string, string>();
+      for (const row of rows) {
+        if (row.last_seen_at != null && row.created_at != null) {
+          const cur = chatToCutoff.get(row.chat_id);
+          if (!cur || row.created_at > cur) {
+            chatToCutoff.set(row.chat_id, row.created_at);
+          }
+        }
+      }
+      for (const row of rows) {
+        const cutoff = chatToCutoff.get(row.chat_id);
+        const created = row.created_at ?? '';
+        if (cutoff == null || created > cutoff) {
+          unreadCountByChatId.set(
+            row.chat_id,
+            (unreadCountByChatId.get(row.chat_id) ?? 0) + 1,
+          );
+        }
+      }
+    }
+
+    // 6. Get last message per chat (one query per chat so every chat gets its latest)
     const lastMessageByChatId = new Map<
       string,
       { content: string; created_at: string | null }
     >();
     if (chatIds.length > 0) {
-      const { data: messages, error: msgError } = await supabase
-        .from('messages')
-        .select('chat_id, content, created_at')
-        .in('chat_id', chatIds)
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-      if (!msgError && messages) {
-        for (const m of messages) {
-          if (!lastMessageByChatId.has(m.chat_id)) {
-            lastMessageByChatId.set(m.chat_id, {
-              content: m.content,
-              created_at: m.created_at,
-            });
-          }
-        }
+      const results = await Promise.all(
+        chatIds.map(async (chatId) => {
+          const { data: rows, error } = await supabase
+            .from('messages')
+            .select('chat_id, content, attachments, created_at')
+            .eq('chat_id', chatId)
+            .neq('message_type', 'system')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error || !rows) return null;
+          return rows as {
+            chat_id: string;
+            content: string | null;
+            attachments: unknown;
+            created_at: string | null;
+          };
+        }),
+      );
+      for (const m of results) {
+        if (!m) continue;
+        const raw = m.attachments as
+          | MessageAttachment
+          | MessageAttachment[]
+          | null;
+        const first = Array.isArray(raw) ? raw[0] : raw;
+        const fallback = first?.type;
+        lastMessageByChatId.set(m.chat_id, {
+          content:
+            (m.content?.trim().length ?? 0) > 0
+              ? m.content!
+              : fallback
+                ? `New ${fallback} attachment`
+                : '',
+          created_at: m.created_at,
+        });
       }
     }
 
-    // 6. Get program names (active assignments)
+    // 7. Get program assignment id + name (active assignments)
     const { data: assignments, error: assignError } = await supabase
       .from('program_assignment')
-      .select('user_id, program_template(name)')
+      .select('id, user_id, program_template(name)')
       .in('user_id', patientUserIds)
       .eq('status', 'active');
 
@@ -154,6 +221,7 @@ export class ConversationsQuery extends SupabaseQuery {
       );
     }
     type RawAssignment = {
+      id: string;
       user_id: string;
       program_template:
         | { name: string }
@@ -161,21 +229,26 @@ export class ConversationsQuery extends SupabaseQuery {
         | null
         | undefined;
     };
+    const programAssignmentIdByUserId = new Map<string, string>();
     const programNameByUserId = new Map<string, string>();
     for (const a of (assignments ?? []) as RawAssignment[]) {
       const raw = a.program_template;
       const template = Array.isArray(raw) ? raw[0] : raw;
-      if (template?.name && !programNameByUserId.has(a.user_id ?? '')) {
-        programNameByUserId.set(a.user_id, template.name);
+      const uid = a.user_id ?? '';
+      if (!programAssignmentIdByUserId.has(uid)) {
+        programAssignmentIdByUserId.set(uid, a.id);
+        if (template?.name) programNameByUserId.set(uid, template.name);
       }
     }
 
-    // 7. Build conversation list, sorted by last_message_at desc
+    // 8. Build conversation list, sorted by last_message_at desc
     const items: ConversationItem[] = patientUserIds.map((userId) => {
       const orgInfo = patientByUser.get(userId)!;
       const profile = profileMap.get(userId);
       const chatId = chatByUserId.get(userId) ?? null;
       const lastMsg = chatId ? lastMessageByChatId.get(chatId) : null;
+      const programAssignmentId =
+        programAssignmentIdByUserId.get(userId) ?? null;
       const programName = programNameByUserId.get(userId) ?? null;
 
       return {
@@ -189,7 +262,9 @@ export class ConversationsQuery extends SupabaseQuery {
         avatar_url: profile?.avatar_url ?? null,
         last_message_content: lastMsg?.content ?? null,
         last_message_at: lastMsg?.created_at ?? null,
+        program_assignment_id: programAssignmentId,
         program_name: programName,
+        unread_count: chatId ? (unreadCountByChatId.get(chatId) ?? 0) : 0,
       };
     });
 

@@ -109,10 +109,6 @@ export function StatusCountsCard({
   const [sendingBulkInvites, setSendingBulkInvites] = useState(false);
   const [assignProgramUser, setAssignProgramUser] = useState<DashboardStatusUser | null>(null);
 
-  const totalCount = new Set(
-    Object.values(usersByFilter).flat().map((u) => u.user_id)
-  ).size;
-
   const rawUsers = selectedFilter ? usersByFilter[selectedFilter] : [];
   const users =
     selectedFilter === 'pending'
@@ -188,22 +184,6 @@ export function StatusCountsCard({
         {/* Header */}
         <div className="px-5 py-4 shrink-0">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">Member Status</h2>
-        </div>
-
-        {/* Summary cards: 50% each */}
-        <div className="grid grid-cols-2 gap-3 shrink-0 px-5 pb-5">
-          <div className="p-5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
-            <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums block">
-              {counts.active}
-            </span>
-            <span className="text-sm font-medium text-muted-foreground">Active members</span>
-          </div>
-          <div className="p-5 rounded-xl bg-card">
-            <span className="text-3xl font-bold tracking-tight text-foreground tabular-nums block">
-              {totalCount}
-            </span>
-            <span className="text-sm font-medium text-muted-foreground">Total Members</span>
-          </div>
         </div>
 
         {/* Status menu + user list */}

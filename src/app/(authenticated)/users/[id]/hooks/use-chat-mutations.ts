@@ -3,7 +3,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { sendMessage } from '../chat-actions';
 import toast from 'react-hot-toast';
-import type { Message } from '@/lib/supabase/schemas/messages';
+import type {
+  Message,
+  MessageAttachment,
+} from '@/lib/supabase/schemas/messages';
 
 /**
  * Query key factory for chat
@@ -17,6 +20,7 @@ export const chatKeys = {
 interface SendMessageData {
   content: string;
   userId: string;
+  attachment?: MessageAttachment | null;
 }
 
 /**
@@ -29,7 +33,12 @@ export function useSendMessage(chatId: string) {
 
   return useMutation({
     mutationFn: async (data: SendMessageData) => {
-      const result = await sendMessage(chatId, data.content, data.userId);
+      const result = await sendMessage(
+        chatId,
+        data.content,
+        data.userId,
+        data.attachment ?? null,
+      );
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to send message');
@@ -50,6 +59,7 @@ export function useSendMessage(chatId: string) {
         id: `temp-${Date.now()}`,
         chat_id: chatId,
         content: variables.content,
+        attachments: variables.attachment ?? null,
         message_type: 'admin',
         user_id: variables.userId,
         metadata: null,
