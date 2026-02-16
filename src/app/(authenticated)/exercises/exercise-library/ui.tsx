@@ -73,6 +73,13 @@ const ASSIGNMENT_FILTER_LABEL: Record<AssignmentFilter, string> = {
   assigned: 'Assigned',
 };
 
+function formatTypeLabel(type: string) {
+  return type
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
 }
@@ -82,6 +89,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
   const [searchValue, setSearchValue] = useState('');
   const [assignmentFilter, setAssignmentFilter] =
     useState<AssignmentFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 16;
 
@@ -99,8 +107,15 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const typeOptions = useMemo(
+    () =>
+      [...new Set(exercises?.map((exercise) => exercise.type).filter(Boolean))]
+        .map((type) => type as string)
+        .sort((a, b) => a.localeCompare(b)),
+    [exercises],
+  );
 
-  // Filter exercises by search term and assignment filter
+  // Filter exercises by search term, type and assignment filter
   const filteredExercises = exercises?.filter((exercise) => {
     // Search filter
     if (debouncedSearch) {
@@ -108,6 +123,11 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
         .toLowerCase()
         .includes(debouncedSearch.toLowerCase());
       if (!matchesSearch) return false;
+    }
+
+    // Type filter
+    if (typeFilter && exercise.type !== typeFilter) {
+      return false;
     }
 
     // Assignment filter
@@ -165,7 +185,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
           ) : (
             <>
               {/* Search and Filter */}
-              <div className="mb-6 flex max-w-md gap-3">
+              <div className="mb-6 flex max-w-2xl gap-3">
                 <Input
                   type="text"
                   placeholder="Search exercises..."
@@ -177,7 +197,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="h-11 w-40 justify-between rounded-[var(--radius-pill)] bg-background"
+                      className="h-11 w-40 justify-between rounded-pill bg-background"
                     >
                       {ASSIGNMENT_FILTER_LABEL[assignmentFilter]}
                       <ChevronDown className="ml-2 h-4 w-4" />
@@ -194,9 +214,45 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
                           handleFilterChange();
                         }}
                         data-selected={assignmentFilter === value}
-                        className="cursor-pointer truncate data-[selected=true]:!bg-primary/10 data-[selected=true]:focus:!bg-primary/10"
+                        className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
                       >
                         {ASSIGNMENT_FILTER_LABEL[value]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-11 w-44 justify-between rounded-pill bg-background"
+                    >
+                      {typeFilter ? formatTypeLabel(typeFilter) : 'All sources'}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setTypeFilter(null);
+                        handleFilterChange();
+                      }}
+                      data-selected={typeFilter === null}
+                      className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
+                    >
+                      All sources
+                    </DropdownMenuItem>
+                    {typeOptions.map((type) => (
+                      <DropdownMenuItem
+                        key={type}
+                        onClick={() => {
+                          setTypeFilter(type);
+                          handleFilterChange();
+                        }}
+                        data-selected={typeFilter === type}
+                        className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
+                      >
+                        {formatTypeLabel(type)}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
