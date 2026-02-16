@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.22.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.21.0...0.22.0) (2026-02-16)
+
+
+### Features
+
+* **exercises:** added type filter ([a2ea080](https://github.com/FlywheelStudio/vantaverse-admin/commit/a2ea080417d64879b42014446ae9f3e111cbda55))
+
 # [0.21.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.20.0...0.21.0) (2026-02-16)
 
 
