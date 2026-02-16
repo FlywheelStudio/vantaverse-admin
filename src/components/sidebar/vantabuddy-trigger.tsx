@@ -3,6 +3,7 @@
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
 import { useEffect } from 'react';
 import { VANTABUDDY_CONFIG } from '@/lib/configs/sidebar';
+import Image from 'next/image';
 
 export const VANTABUDDY_LOOK_RIGHT_EVENT = 'vantabuddy-look-right';
 export const VANTABUDDY_LOOK_DOWN_EVENT = 'vantabuddy-look-down';
@@ -42,7 +43,7 @@ export function VantaBuddyTrigger() {
 
   return (
     <div
-      className="fixed touch-manipulation"
+      className="fixed touch-manipulation flex items-center gap-2"
       role="img"
       aria-label="VantaBuddy"
       style={{
@@ -50,12 +51,11 @@ export function VantaBuddyTrigger() {
         touchAction: 'manipulation',
         top: `${VANTABUDDY_CONFIG.top}px`,
         left: `${VANTABUDDY_CONFIG.left}px`,
-        width: `${VANTABUDDY_CONFIG.width}px`,
         height: `${VANTABUDDY_CONFIG.height}px`,
       }}
     >
       <div
-        className="pointer-events-none"
+        className="pointer-events-none shrink-0"
         style={{
           width: `${VANTABUDDY_CONFIG.width}px`,
           height: `${VANTABUDDY_CONFIG.height}px`,
@@ -63,6 +63,13 @@ export function VantaBuddyTrigger() {
       >
         <RiveComponent />
       </div>
+      <Image
+        width={64}
+        height={54}
+        src="/vantathrive-logo-min.png"
+        alt="VantaThrive"
+        className="h-10 pb-2 w-auto object-contain"
+      />
     </div>
   );
 }

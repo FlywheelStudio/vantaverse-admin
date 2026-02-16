@@ -100,20 +100,20 @@
 }
 
 :root {
-  /* Surfaces: light blue-tinted to sit on dark app background (hue 267) */
-  --background: oklch(0.965 0.022 267);
+  /* Surfaces: card and element backgrounds */
+  --background: oklch(0.9702 0.0111 269.55);
   --foreground: oklch(0.22 0.03 267);
-  --card: oklch(0.91 0.045 267);
+  --card: oklch(0.9702 0.0111 269.55);
   --card-foreground: oklch(0.22 0.03 267);
-  --popover: oklch(0.97 0.028 267);
+  --popover: oklch(0.9702 0.0111 269.55);
   --popover-foreground: oklch(0.22 0.03 267);
   --primary: oklch(0.4988 0.1894 267.36);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.92 0.04 267);
+  --secondary: oklch(0.9702 0.0111 269.55);
   --secondary-foreground: oklch(0.22 0.03 267);
-  --muted: oklch(0.91 0.045 267);
+  --muted: oklch(0.9702 0.0111 269.55);
   --muted-foreground: oklch(0.5 0.03 267);
-  --accent: oklch(0.92 0.04 267);
+  --accent: oklch(0.9702 0.0111 269.55);
   --accent-foreground: oklch(0.22 0.03 267);
   --destructive: oklch(0.68 0.21 25);
   --border: oklch(0.82 0.045 267);
@@ -124,11 +124,11 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.96 0.025 267);
+  --sidebar: oklch(0.9702 0.0111 269.55);
   --sidebar-foreground: oklch(0.22 0.03 267);
   --sidebar-primary: oklch(0.4988 0.1894 267.36);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.92 0.04 267);
+  --sidebar-accent: oklch(0.9702 0.0111 269.55);
   --sidebar-accent-foreground: oklch(0.22 0.03 267);
   --sidebar-border: oklch(0.82 0.045 267);
   --sidebar-ring: oklch(0.4988 0.1894 267.36 / 0.35);
@@ -150,7 +150,7 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.9702 0.0111 269.55);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -278,6 +278,12 @@ header::after {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Radix ScrollArea viewport uses display:table which breaks width constraint / ellipsis */
+.messages-conversations-scroll [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  min-width: 0;
 }
 
 .loader {

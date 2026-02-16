@@ -99,6 +99,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       chats: {
@@ -166,6 +173,98 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          button_label: string | null
+          button_url: string | null
+          content: string
+          created_at: string | null
+          id: string
+          slug: string
+          subject: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          button_label?: string | null
+          button_url?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          slug: string
+          subject?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          button_label?: string | null
+          button_url?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          slug?: string
+          subject?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      email_tracker: {
+        Row: {
+          created_at: string | null
+          id: string
+          sent_at: string
+          template_slug: string | null
+          trigger_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          sent_at?: string
+          template_slug?: string | null
+          trigger_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          sent_at?: string
+          template_slug?: string | null
+          trigger_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracker_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracker_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracker_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -464,6 +563,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gate_unlocks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       groups: {
@@ -617,6 +723,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "habit_contents_user_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       habit_pledges: {
@@ -661,6 +774,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "habit_pledges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -794,6 +914,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "hp_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       ip_transactions: {
@@ -835,6 +962,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ip_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -939,34 +1073,47 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mc_intake_survey_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       messages: {
         Row: {
+          attachments: Json | null
           chat_id: string
           content: string
           created_at: string | null
           id: string
+          last_seen_at: string | null
           message_type: string
           metadata: Json | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          attachments?: Json | null
           chat_id: string
           content: string
           created_at?: string | null
           id?: string
+          last_seen_at?: string | null
           message_type: string
           metadata?: Json | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          attachments?: Json | null
           chat_id?: string
           content?: string
           created_at?: string | null
           id?: string
+          last_seen_at?: string | null
           message_type?: string
           metadata?: Json | null
           updated_at?: string | null
@@ -993,6 +1140,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1045,6 +1199,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1181,6 +1342,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           email: string | null
+          first_login: string | null
           first_name: string | null
           id: string
           intro_completed: boolean | null
@@ -1203,6 +1365,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           email?: string | null
+          first_login?: string | null
           first_name?: string | null
           id: string
           intro_completed?: boolean | null
@@ -1225,6 +1388,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           email?: string | null
+          first_login?: string | null
           first_name?: string | null
           id?: string
           intro_completed?: boolean | null
@@ -1248,11 +1412,14 @@ export type Database = {
           completion: Json[] | null
           created_at: string | null
           end_date: string | null
+          hijack_first_day_applied: boolean | null
           id: string
           organization_id: string | null
           patient_override: Json[] | null
+          program_completed: boolean | null
           program_template_id: string
-          start_date: string
+          schedule_offset: number | null
+          start_date: string | null
           status: string | null
           updated_at: string | null
           user_id: string | null
@@ -1263,11 +1430,14 @@ export type Database = {
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
+          hijack_first_day_applied?: boolean | null
           id?: string
           organization_id?: string | null
           patient_override?: Json[] | null
+          program_completed?: boolean | null
           program_template_id: string
-          start_date: string
+          schedule_offset?: number | null
+          start_date?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1278,11 +1448,14 @@ export type Database = {
           completion?: Json[] | null
           created_at?: string | null
           end_date?: string | null
+          hijack_first_day_applied?: boolean | null
           id?: string
           organization_id?: string | null
           patient_override?: Json[] | null
+          program_completed?: boolean | null
           program_template_id?: string
-          start_date?: string
+          schedule_offset?: number | null
+          start_date?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1330,6 +1503,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_assignment_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
           {
             foreignKeyName: "program_assignment_workout_schedule_id_fkey"
@@ -1440,6 +1620,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reminder_emails_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       reminder_templates: {
@@ -1530,6 +1717,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reminder_user_config_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       team_membership: {
@@ -1572,6 +1766,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_membership_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1739,6 +1940,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       exercises_with_stats: {
@@ -1826,6 +2034,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "habit_contents_user_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       profiles_with_stats: {
@@ -1850,6 +2065,7 @@ export type Database = {
           intro_completed: boolean | null
           journey_phase: Database["public"]["Enums"]["journey_phase"] | null
           last_name: string | null
+          last_sign_in: string | null
           max_gate_type: Database["public"]["Enums"]["gate_unlock_type"] | null
           max_gate_unlocked: number | null
           phone: string | null
@@ -1862,6 +2078,7 @@ export type Database = {
           program_started: boolean | null
           program_weeks: number | null
           screening_completed: boolean | null
+          status: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1885,6 +2102,7 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
+          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
@@ -1897,6 +2115,7 @@ export type Database = {
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
+          status?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1920,6 +2139,7 @@ export type Database = {
           intro_completed?: boolean | null
           journey_phase?: Database["public"]["Enums"]["journey_phase"] | null
           last_name?: string | null
+          last_sign_in?: string | null
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
@@ -1932,15 +2152,19 @@ export type Database = {
           program_started?: boolean | null
           program_weeks?: never
           screening_completed?: boolean | null
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: []
       }
       program_with_stats: {
         Row: {
+          admin_avatar_url: string | null
           admin_description: string | null
           admin_full_name: string | null
+          admin_id: string | null
           admin_name: string | null
+          compliance: number | null
           id: string | null
           organization_id: string | null
           program_completed: boolean | null
@@ -1983,6 +2207,13 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_assignment_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "program_with_stats"
+            referencedColumns: ["admin_id"]
+          },
         ]
       }
       reminder_user_config_groups: {
@@ -2005,6 +2236,10 @@ export type Database = {
       answer_check_in_question: {
         Args: { p_exercise_template_id: string }
         Returns: Json
+      }
+      calculate_compliance: {
+        Args: { p_program_assignment_id: string }
+        Returns: number
       }
       complete_set: {
         Args: {
@@ -2062,6 +2297,16 @@ export type Database = {
         Args: { due_date: string; response: string }
         Returns: string
       }
+      get_next_workout_date: {
+        Args: {
+          p_patient_override?: Json[]
+          p_schedule?: Json[]
+          p_schedule_offset?: number
+          p_start_date?: string
+          p_weeks?: number
+        }
+        Returns: string
+      }
       get_user_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["organization_role"]
@@ -2085,6 +2330,20 @@ export type Database = {
       }
       get_workouts_historic: { Args: never; Returns: Json }
       handle_initial_page: { Args: never; Returns: Json }
+      hijack_first_day_find_first_exercises: {
+        Args: { p_schedule: Json[]; p_total_weeks: number }
+        Returns: Json
+      }
+      hijack_first_day_set_override_cell: {
+        Args: {
+          p_day: number
+          p_existing_override: Json[]
+          p_total_weeks: number
+          p_value: Json
+          p_week: number
+        }
+        Returns: Json[]
+      }
       normalize_exercise_template_structure: {
         Args: {
           p_distance: string
@@ -2116,13 +2375,22 @@ export type Database = {
         Args: { schedule_input: Json }
         Returns: Json[]
       }
+      process_habit: {
+        Args: { p_response?: string; p_user_id?: string }
+        Returns: Json
+      }
       reset_user_data: {
         Args: { hard_reset?: boolean; user_id_param?: string }
         Returns: Json
       }
+      run_email_triggers: { Args: never; Returns: Json }
       serve_daily_workout: {
         Args: { p_date?: string; p_organization_id?: string; p_user_id: string }
         Returns: Json
+      }
+      sync_program_due_date_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       test_mark_as_attended: {
         Args: { appointment_id_param: number }
@@ -2196,14 +2464,15 @@ export type Database = {
         Args: { p_notes?: string; p_schedule: Json }
         Returns: Json
       }
+      user_can_access_chat_folder: {
+        Args: { p_object_name: string }
+        Returns: boolean
+      }
       user_can_manage_organization: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: boolean
       }
-      user_has_admin_member_role: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
+      user_has_admin_role: { Args: { p_user_id: string }; Returns: boolean }
       user_has_permission: {
         Args: {
           p_action: string
@@ -2252,9 +2521,8 @@ export type Database = {
         | "decay"
         | "check_in_question"
       journey_phase: "discovery" | "onboarding" | "scaffolding"
-      organization_role: "admin" | "member" | "patient"
+      organization_role: "admin" | "patient"
       reminder_type: "SoftMode" | "FocusMode" | "BeastMode"
-      super_organization_role: "admin" | "member"
       time_slot:
         | "morning"
         | "midday"
@@ -2430,9 +2698,8 @@ export const Constants = {
         "check_in_question",
       ],
       journey_phase: ["discovery", "onboarding", "scaffolding"],
-      organization_role: ["admin", "member", "patient"],
+      organization_role: ["admin", "patient"],
       reminder_type: ["SoftMode", "FocusMode", "BeastMode"],
-      super_organization_role: ["admin", "member"],
       time_slot: [
         "morning",
         "midday",
