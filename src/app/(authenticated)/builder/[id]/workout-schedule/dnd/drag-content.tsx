@@ -163,6 +163,7 @@ export function DragContent({
                 exercise_name: modalState.item.data.exercise_name,
                 video_type: modalState.item.data.video_type,
                 video_url: modalState.item.data.video_url,
+                thumbnail_url: modalState.item.data.thumbnail_url ?? undefined,
                 ...templateData,
               } as ExerciseTemplate;
 

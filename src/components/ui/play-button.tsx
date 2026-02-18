@@ -7,11 +7,18 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useDragContextOptional } from '@/app/(authenticated)/builder/[id]/workout-schedule/dnd/drag-context';
+import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
+
+export type ThumbnailUrlShape = {
+  blurhash?: string;
+  image_url?: string;
+} | null;
 
 interface PlayButtonProps {
   videoUrl: string | null;
   videoType?: string;
   exerciseName?: string;
+  thumbnailUrl?: ThumbnailUrlShape;
   disableHover?: boolean;
 }
 
@@ -19,6 +26,7 @@ export function PlayButton({
   videoUrl,
   videoType,
   exerciseName,
+  thumbnailUrl,
   disableHover = false,
 }: PlayButtonProps) {
   const dragContext = useDragContextOptional();
@@ -94,25 +102,41 @@ export function PlayButton({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative aspect-video w-[300px] min-w-[300px] max-w-[300px] overflow-hidden rounded-[var(--radius-lg)] bg-black">
-          {videoType === 'youtube' ? (
-            <iframe
-              src={embeddedUrl}
-              className="w-[300px] min-w-[300px] max-w-[300px]"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={exerciseName || 'Exercise Video'}
+          {thumbnailUrl && (thumbnailUrl.blurhash || thumbnailUrl.image_url) ? (
+            <ExerciseThumbnail
+              blurhash={thumbnailUrl.blurhash ?? null}
+              imageUrl={thumbnailUrl.image_url ?? null}
+              videoUrl={videoUrl}
+              videoType={videoType}
+              alt={exerciseName || 'Exercise Video'}
+              className="h-full w-full rounded-[var(--radius-lg)]"
+              fill
+              aspectVideo={false}
+              showVideoFallback={true}
             />
           ) : (
-            <video
-              src={embeddedUrl}
-              className="w-[300px] min-w-[300px] max-w-[300px] object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-            >
-              Your browser does not support the video tag.
-            </video>
+            <>
+              {videoType === 'youtube' ? (
+                <iframe
+                  src={embeddedUrl}
+                  className="w-[300px] min-w-[300px] max-w-[300px]"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={exerciseName || 'Exercise Video'}
+                />
+              ) : (
+                <video
+                  src={embeddedUrl}
+                  className="w-[300px] min-w-[300px] max-w-[300px] object-cover"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )}
+            </>
           )}
         </div>
       </PopoverContent>

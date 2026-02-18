@@ -419,6 +419,7 @@ export type Database = {
           library_tip: string | null
           match_score: number | null
           matched_library_exercise_name: string | null
+          thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
           video_type: string
@@ -433,6 +434,7 @@ export type Database = {
           library_tip?: string | null
           match_score?: number | null
           matched_library_exercise_name?: string | null
+          thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
           video_type?: string
@@ -447,6 +449,7 @@ export type Database = {
           library_tip?: string | null
           match_score?: number | null
           matched_library_exercise_name?: string | null
+          thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
           video_type?: string
@@ -2384,6 +2387,7 @@ export type Database = {
         Returns: Json
       }
       run_email_triggers: { Args: never; Returns: Json }
+      run_message_notification_emails: { Args: never; Returns: Json }
       serve_daily_workout: {
         Args: { p_date?: string; p_organization_id?: string; p_user_id: string }
         Returns: Json
