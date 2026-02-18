@@ -1,25 +1,16 @@
 'use client';
 
-import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
+import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
+
 interface ExerciseCardProps {
   exercise: Exercise;
   onClick: () => void;
 }
 
 export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
-  const getThumbnailUrl = () => {
-    if (exercise.video_type === 'youtube' && exercise.video_url) {
-      return `https://img.youtube.com/vi/${exercise.video_url}/maxresdefault.jpg`;
-    }
-    if (exercise.video_type === 'file' && exercise.video_url) {
-      return exercise.video_url;
-    }
-    return null;
-  };
-
-  const thumbnailUrl = getThumbnailUrl();
+  const thumb = exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object' ? exercise.thumbnail_url : null;
 
   // Format date display with relative dates
   const getDateDisplay = () => {
@@ -71,36 +62,21 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
   return (
     <Card
       onClick={onClick}
-      className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-[var(--radius-lg)] border border-border/80 bg-card shadow-[var(--shadow-sm)] transition-all duration-300 hover:border-primary/60 hover:shadow-[var(--shadow-md)]"
+      className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-lg border border-border/80 bg-card shadow-(--shadow-sm) transition-all duration-300 hover:border-primary/60 hover:shadow-(--shadow-md)"
     >
       {/* Exercise Image */}
-      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-muted to-secondary">
-        {thumbnailUrl ? (
-          <>
-            {exercise.video_type === 'youtube' ? (
-              <Image
-                src={thumbnailUrl}
-                alt={exercise.exercise_name}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                unoptimized
-              />
-            ) : (
-              <video
-                src={thumbnailUrl}
-                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                muted
-                playsInline
-              />
-            )}
-          </>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-secondary">
-            <span className="text-muted-foreground text-sm font-medium">
-              No video
-            </span>
-          </div>
-        )}
+      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-muted to-secondary transition-transform duration-300 group-hover:scale-105">
+        <ExerciseThumbnail
+          blurhash={thumb?.blurhash ?? null}
+          imageUrl={thumb?.image_url ?? null}
+          videoUrl={exercise.video_url ?? null}
+          videoType={exercise.video_type}
+          alt={exercise.exercise_name}
+          className="h-full w-full"
+          fill
+          aspectVideo={false}
+          showVideoFallback={true}
+        />
       </div>
 
       {/* Exercise Info */}
@@ -114,7 +90,7 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
         <div className="mt-auto space-y-2">
           <span
             className={[
-              'inline-flex h-7 items-center rounded-[var(--radius-pill)] border px-2.5 text-xs font-medium',
+              'inline-flex h-7 items-center rounded-pill border px-2.5 text-xs font-medium',
               hasAssignments
                 ? 'border-primary/20 bg-primary/10 text-primary'
                 : 'border-border bg-secondary text-secondary-foreground',

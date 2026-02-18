@@ -106,6 +106,7 @@ export function DayBox({
       exercise_name: item.data.exercise_name,
       video_type: item.data.video_type,
       video_url: item.data.video_url,
+      thumbnail_url: item.data.thumbnail_url ?? undefined,
       // Default to null if not provided by defaultValues
       sets: base.sets ?? null,
       time: base.time ?? null,
