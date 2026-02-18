@@ -44,7 +44,8 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
         exercises!exercise_templates_exercise_id_fkey (
           exercise_name,
           video_type,
-          video_url
+          video_url,
+          thumbnail_url
         )
       `,
       { count: 'exact' },
@@ -88,7 +89,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       };
     }
 
-    // Transform data to include exercise_name, video_type, video_url and filter by search if needed
+    // Transform data to include exercise_name, video_type, video_url, thumbnail_url and filter by search if needed
     let transformedData = data.map((item) => {
       const exercise = Array.isArray(item.exercises)
         ? item.exercises[0]
@@ -98,6 +99,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
         exercise_name: exercise?.exercise_name || '',
         video_type: exercise?.video_type || undefined,
         video_url: exercise?.video_url || undefined,
+        thumbnail_url: exercise?.thumbnail_url ?? undefined,
       };
     });
 
@@ -160,7 +162,8 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
         exercises!exercise_templates_exercise_id_fkey (
           exercise_name,
           video_type,
-          video_url
+          video_url,
+          thumbnail_url
         )
       `,
       )
@@ -181,7 +184,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       };
     }
 
-    // Transform data to include exercise_name, video_type, video_url
+    // Transform data to include exercise_name, video_type, video_url, thumbnail_url
     const exercise = Array.isArray(data.exercises)
       ? data.exercises[0]
       : data.exercises;
@@ -190,6 +193,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       exercise_name: exercise?.exercise_name || '',
       video_type: exercise?.video_type || undefined,
       video_url: exercise?.video_url || undefined,
+      thumbnail_url: exercise?.thumbnail_url ?? undefined,
     };
 
     const result = exerciseTemplateSchema.safeParse(transformedData);
@@ -229,7 +233,8 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
         exercises!exercise_templates_exercise_id_fkey (
           exercise_name,
           video_type,
-          video_url
+          video_url,
+          thumbnail_url
         )
       `,
       )
@@ -260,6 +265,7 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
         exercise_name: exercise?.exercise_name || '',
         video_type: exercise?.video_type || undefined,
         video_url: exercise?.video_url || undefined,
+        thumbnail_url: exercise?.thumbnail_url ?? undefined,
       };
 
       const result = exerciseTemplateSchema.safeParse(transformedData);

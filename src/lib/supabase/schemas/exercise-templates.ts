@@ -1,4 +1,5 @@
 import { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
+import { exerciseThumbnailUrlSchema } from '@/lib/supabase/schemas/exercises';
 import { z } from 'zod';
 
 export const exerciseTemplateSchema = z.object({
@@ -25,6 +26,7 @@ export const exerciseTemplateSchema = z.object({
   exercise_name: z.string().optional(),
   video_type: z.string().optional(),
   video_url: z.string().nullable().optional(),
+  thumbnail_url: exerciseThumbnailUrlSchema,
 });
 
 export type ExerciseTemplate = z.infer<typeof exerciseTemplateSchema>;

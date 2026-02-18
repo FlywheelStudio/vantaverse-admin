@@ -58,6 +58,11 @@ export function SelectedItemComponent({
               videoUrl={item.data.video_url || null}
               videoType={item.data.video_type}
               exerciseName={exerciseName}
+              thumbnailUrl={
+                item.data.thumbnail_url && typeof item.data.thumbnail_url === 'object'
+                  ? item.data.thumbnail_url
+                  : undefined
+              }
             />
           </div>
         )}

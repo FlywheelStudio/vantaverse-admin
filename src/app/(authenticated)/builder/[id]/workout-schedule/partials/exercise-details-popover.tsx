@@ -58,6 +58,11 @@ export function ExerciseDetailsPopover({
                 videoUrl={template.video_url || null}
                 videoType={template.video_type}
                 exerciseName={template.exercise_name || 'Unnamed Exercise'}
+                thumbnailUrl={
+                  template.thumbnail_url && typeof template.thumbnail_url === 'object'
+                    ? template.thumbnail_url
+                    : undefined
+                }
               />
             </div>
           )}

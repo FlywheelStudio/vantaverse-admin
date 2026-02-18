@@ -1,10 +1,19 @@
 import { z } from 'zod';
 
+export const exerciseThumbnailUrlSchema = z
+  .object({
+    blurhash: z.string().optional(),
+    image_url: z.string().optional(),
+  })
+  .nullable()
+  .optional();
+
 export const exerciseSchema = z.object({
   id: z.number(),
   exercise_name: z.string(),
   video_type: z.string(),
   video_url: z.string().nullable(),
+  thumbnail_url: exerciseThumbnailUrlSchema,
   library_tip: z.string().nullable(),
   library_check_in_question: z.string().nullable(),
   type: z.string().nullable(),

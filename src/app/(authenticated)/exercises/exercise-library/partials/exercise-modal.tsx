@@ -7,10 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
+import { Play } from 'lucide-react';
 
 interface ExerciseModalProps {
   exercise: Exercise | null;
@@ -34,6 +36,7 @@ export function ExerciseModal({
   );
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
+  const [showVideo, setShowVideo] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   // Focus input when editing starts
@@ -111,6 +114,7 @@ export function ExerciseModal({
   };
 
   const videoUrl = getVideoUrl();
+  const thumb = exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object' ? exercise.thumbnail_url : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -145,26 +149,54 @@ export function ExerciseModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Video Player */}
+        {/* Video Player: poster (blurhash → image) then video on play */}
         {videoUrl && (
           <div className="bg-muted relative mx-auto aspect-video w-full max-w-2xl overflow-hidden rounded-[var(--radius-lg)]">
-            {exercise.video_type === 'youtube' ? (
-              <iframe
-                src={videoUrl}
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={exercise.exercise_name}
-              />
+            {!showVideo ? (
+              <>
+                <ExerciseThumbnail
+                  blurhash={thumb?.blurhash ?? null}
+                  imageUrl={thumb?.image_url ?? null}
+                  videoUrl={null}
+                  videoType={exercise.video_type}
+                  alt={exercise.exercise_name}
+                  className="h-full w-full"
+                  fill
+                  aspectVideo={false}
+                  showVideoFallback={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowVideo(true)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors hover:bg-black/40"
+                  aria-label="Play video"
+                >
+                  <span className="rounded-full bg-primary p-4 text-primary-foreground shadow-lg">
+                    <Play className="h-8 w-8" fill="currentColor" />
+                  </span>
+                </button>
+              </>
             ) : (
-              <video
-                src={videoUrl}
-                controls
-                className="h-full w-full"
-                preload="metadata"
-              >
-                Your browser does not support the video tag.
-              </video>
+              <>
+                {exercise.video_type === 'youtube' ? (
+                  <iframe
+                    src={videoUrl}
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={exercise.exercise_name}
+                  />
+                ) : (
+                  <video
+                    src={videoUrl}
+                    controls
+                    className="h-full w-full"
+                    preload="metadata"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+              </>
             )}
           </div>
         )}

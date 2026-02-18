@@ -222,6 +222,7 @@ export async function convertSelectedItemsToDatabaseSchedule(
               exercise_name: exercise.exercise_name,
               video_type: exercise.video_type,
               video_url: exercise.video_url ?? null,
+              thumbnail_url: exercise.thumbnail_url ?? undefined,
               notes: null,
               sets: defaultValues.sets,
               rep: defaultValues.rep,
