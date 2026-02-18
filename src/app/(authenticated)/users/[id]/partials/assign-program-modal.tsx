@@ -21,9 +21,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { useProgramAssignmentsInfinite } from '@/hooks/use-passignments-for-user';
 import { useAssignProgramToUser } from '../hooks/use-user-mutations';
 import { useDebounce } from '@/hooks/use-debounce';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import { generateColorFromSeed } from '@/components/ui/avatar';
-import { cn, isProgramStartDateDisabled, getNextProgramStartMonday } from '@/lib/utils';
+import {
+  cn,
+  isProgramStartDateDisabled,
+  getNextProgramStartMonday,
+  calculateEndDate,
+} from '@/lib/utils';
 
 function ProgramPreview({
   seed,
@@ -134,12 +140,44 @@ export function AssignProgramModal({
 
   // Flatten pages into single array
   const assignments = data?.pages.flat() ?? [];
+  const selectedAssignment = assignments.find(
+    (a) => a.id === selectedAssignmentId,
+  );
+  const programWeeks = selectedAssignment?.program_template?.weeks ?? 0;
+  const dateRange: DateRange | undefined =
+    startDate && programWeeks >= 1
+      ? {
+          from: startDate,
+          to: (() => {
+            const end = calculateEndDate(startDate, programWeeks);
+            return end ? startOfDay(end) : undefined;
+          })(),
+        }
+      : startDate
+        ? { from: startDate, to: undefined }
+        : undefined;
 
   const handleCardSelect = (assignmentId: string | null) => {
     setSelectedAssignmentId(assignmentId);
     if (assignmentId) {
       setStartDate(getNextProgramStartMonday());
       setIsDatePickerOpen(true);
+    }
+  };
+
+  const handleDateSelect = (range: DateRange | undefined) => {
+    if (
+      startDate &&
+      range?.from &&
+      startOfDay(range.from).getTime() === startOfDay(startDate).getTime()
+    ) {
+      setStartDate(undefined);
+      return;
+    }
+    if (range?.from) {
+      setStartDate(startOfDay(range.from));
+    } else {
+      setStartDate(undefined);
     }
   };
 
@@ -352,18 +390,31 @@ export function AssignProgramModal({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={startDate}
-                  onSelect={(date) => {
-                    setStartDate(date);
-                    setIsDatePickerOpen(false);
-                  }}
-                  disabled={isProgramStartDateDisabled}
-                  defaultMonth={startDate ?? getNextProgramStartMonday()}
-                  weekStartsOn={1}
-                  autoFocus
-                />
+                {programWeeks >= 1 ? (
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={handleDateSelect}
+                    disabled={isProgramStartDateDisabled}
+                    defaultMonth={startDate ?? getNextProgramStartMonday()}
+                    weekStartsOn={1}
+                    numberOfMonths={1}
+                    autoFocus
+                  />
+                ) : (
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => {
+                      setStartDate(date ?? undefined);
+                      setIsDatePickerOpen(false);
+                    }}
+                    disabled={isProgramStartDateDisabled}
+                    defaultMonth={startDate ?? getNextProgramStartMonday()}
+                    weekStartsOn={1}
+                    autoFocus
+                  />
+                )}
               </PopoverContent>
             </Popover>
             <p className="text-xs text-muted-foreground">
