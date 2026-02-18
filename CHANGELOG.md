@@ -1,5 +1,12 @@
 # Changelog
 
+# [](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.22.0...null) (2026-02-18)
+
+
+### Features
+
+* **assign-program-modal:** enhance date selection with range support and refactor calendar handling ([cc354a5](https://github.com/FlywheelStudio/vantaverse-admin/commit/cc354a59e5187a2f8e11359e7f4f4a1a9204e771))
+
 # [0.22.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.21.0...0.22.0) (2026-02-16)
 
 
