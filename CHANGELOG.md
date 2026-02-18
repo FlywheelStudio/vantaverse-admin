@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.23.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.23.0...0.23.1) (2026-02-18)
+
 # [](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.22.0...null) (2026-02-18)
 
 
