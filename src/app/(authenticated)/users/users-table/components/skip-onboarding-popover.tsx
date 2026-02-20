@@ -11,11 +11,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
 
-export type SkipOnboardingPopoverProps = {
+type SkipOnboardingPopoverProps = {
   trigger: React.ReactNode;
   userIds: string[];
   onSuccess?: (
