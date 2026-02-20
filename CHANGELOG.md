@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.24.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.23.1...0.24.0) (2026-02-20)
+
+
+### Features
+
+* **workout-schedule:** add thumbnail_url support for exercises in various components ([57639ee](https://github.com/FlywheelStudio/vantaverse-admin/commit/57639ee7c315c1cf02966a4198b7d4cb2a1c5b8b))
+
 ## [0.23.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.23.0...0.23.1) (2026-02-18)
 
 # [](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.22.0...null) (2026-02-18)
