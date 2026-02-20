@@ -5,13 +5,17 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { upsertExerciseTemplate } from '@/app/(authenticated)/builder/actions';
+import {
+  upsertExerciseTemplate,
+  editExerciseTemplate,
+} from '@/app/(authenticated)/builder/actions';
 import { exercisesKeys } from './use-exercises';
 import toast from 'react-hot-toast';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 
 interface UpdateExerciseTemplateData {
   exerciseId: number;
+  templateId?: string;
   sets?: number;
   rep?: number | null;
   time?: number | null;
@@ -56,8 +60,7 @@ export function useUpdateExerciseTemplate(
     MutationContext
   >({
     mutationFn: async (data: UpdateExerciseTemplateData) => {
-      const result = await upsertExerciseTemplate({
-        p_exercise_id: data.exerciseId,
+      const rpcPayload = {
         p_sets: data.sets,
         p_rep: data.rep,
         p_time: data.time,
@@ -70,6 +73,27 @@ export function useUpdateExerciseTemplate(
         p_distance_override: data.distance_override,
         p_weight_override: data.weight_override,
         p_rest_time_override: data.rest_time_override,
+      };
+
+      if (data.templateId) {
+        const result = await editExerciseTemplate({
+          p_template_id: data.templateId,
+          p_exercise_id: data.exerciseId,
+          ...rpcPayload,
+        });
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to edit exercise template');
+        }
+        const payload = result.data as UpsertExerciseTemplateResult;
+        return {
+          id: payload.id ?? data.templateId,
+          template_hash: payload.template_hash ?? '',
+        };
+      }
+
+      const result = await upsertExerciseTemplate({
+        p_exercise_id: data.exerciseId,
+        ...rpcPayload,
       });
 
       if (!result.success) {
@@ -115,7 +139,10 @@ export function useUpdateExerciseTemplate(
                 if (!Array.isArray(page)) return page;
 
                 return page.map((template) => {
-                  if (template.exercise_id === variables.exerciseId) {
+                  const match = variables.templateId
+                    ? template.id === variables.templateId
+                    : template.exercise_id === variables.exerciseId;
+                  if (match) {
                     const v = variables;
                     const t = template;
                     return {

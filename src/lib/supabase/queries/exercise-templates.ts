@@ -339,4 +339,63 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
       data: result,
     };
   }
+
+  /**
+   * Edit existing exercise template via RPC (updates the specific row by id)
+   */
+  public async editExerciseTemplate(data: {
+    p_template_id: string;
+    p_exercise_id: number;
+    p_sets?: number;
+    p_rep?: number | null;
+    p_time?: number | null;
+    p_distance?: string | null;
+    p_weight?: string | null;
+    p_rest_time?: number | null;
+    p_tempo?: string[] | null;
+    p_rep_override?: number[] | null;
+    p_time_override?: number[] | null;
+    p_distance_override?: string[] | null;
+    p_weight_override?: string[] | null;
+    p_rest_time_override?: number[] | null;
+    p_equipment_ids?: number[];
+    p_notes?: string;
+  }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    type RpcArgs = Database['public']['Functions']['edit_exercise_template']['Args'];
+    const { data: result, error } = await supabase.rpc(
+      'edit_exercise_template',
+      data as RpcArgs,
+    );
+
+    if (error) {
+      console.error('Error calling edit_exercise_template RPC:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to edit exercise template',
+      };
+    }
+
+    if (!result || (result as { success?: boolean }).success === false) {
+      const errorResult = result as { message?: string; error?: string };
+      const errorMessage =
+        errorResult.message ||
+        errorResult.error ||
+        'Failed to edit exercise template';
+      console.error(
+        'Error from edit_exercise_template SQL function:',
+        result,
+      );
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
 }

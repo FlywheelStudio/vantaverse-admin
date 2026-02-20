@@ -392,6 +392,51 @@ export async function upsertExerciseTemplate(data: {
 }
 
 /**
+ * Edit existing exercise template via RPC (updates the row by id)
+ */
+export async function editExerciseTemplate(data: {
+  p_template_id: string;
+  p_exercise_id: number;
+  p_sets?: number;
+  p_rep?: number | null;
+  p_time?: number | null;
+  p_distance?: string | null;
+  p_weight?: string | null;
+  p_rest_time?: number | null;
+  p_tempo?: string[] | null;
+  p_rep_override?: number[] | null;
+  p_time_override?: number[] | null;
+  p_distance_override?: string[] | null;
+  p_weight_override?: string[] | null;
+  p_rest_time_override?: number[] | null;
+  p_equipment_ids?: number[];
+  p_notes?: string;
+}): Promise<
+  | { success: true; data: { id: string; template_hash: string } }
+  | { success: false; error: string }
+> {
+  const query = new ExerciseTemplatesQuery();
+  const result = await query.editExerciseTemplate(data);
+
+  if (!result.success) {
+    return result;
+  }
+
+  const rpcResult = result.data as {
+    id?: string;
+    template_hash?: string;
+  };
+
+  return {
+    success: true,
+    data: {
+      id: rpcResult.id ?? data.p_template_id,
+      template_hash: rpcResult.template_hash ?? '',
+    },
+  };
+}
+
+/**
  * Upsert group via RPC function
  * Returns either success with group data or error
  */
