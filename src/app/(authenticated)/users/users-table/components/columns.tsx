@@ -41,9 +41,12 @@ import Link from 'next/link';
 import {
   useDeleteUser,
   useToggleSuperAdmin,
+  useBulkDeleteUsers,
+  useBulkToggleSuperAdmin,
 } from '../hooks/use-users-table-mutations';
 import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
+import { SkipOnboardingPopover } from './skip-onboarding-popover';
 import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
@@ -217,16 +220,25 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
   if (!canAssignProgram) {
     const gateN = profile.max_gate_unlocked ?? 0;
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-sm text-muted-foreground cursor-default">
+      <SkipOnboardingPopover
+        userIds={[profile.id]}
+        successMessage={(n) =>
+          n === 1 ? 'Onboarding state updated.' : `Updated ${n} users.`
+        }
+        tooltipContent={
+          <TooltipContent side="top">
+            Click to skip to screening or consultation
+          </TooltipContent>
+        }
+        trigger={
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+          >
             Gate {gateN}/5
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>User must complete all 5 gates</p>
-        </TooltipContent>
-      </Tooltip>
+          </button>
+        }
+      />
     );
   }
 
@@ -473,8 +485,8 @@ function ActionsCell({
 
 function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
   const queryClient = useQueryClient();
-  const deleteUserMutation = useDeleteUser();
-  const toggleSuperAdminMutation = useToggleSuperAdmin();
+  const bulkDeleteMutation = useBulkDeleteUsers();
+  const bulkToggleMutation = useBulkToggleSuperAdmin();
   const [sendingInvites, setSendingInvites] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [bulkToggleOpen, setBulkToggleOpen] = React.useState(false);
@@ -526,40 +538,32 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
 
   const handleBulkDelete = async () => {
     const userIds = selectedUsers.map((user) => user.id);
-    
     try {
-      // Delete all users sequentially
-      for (const userId of userIds) {
-        await deleteUserMutation.mutateAsync(userId);
-      }
+      await bulkDeleteMutation.mutateAsync(userIds);
       setBulkDeleteOpen(false);
       table.resetRowSelection();
-    } catch (error) {
-      console.error('Error deleting users:', error);
+    } catch {
+      // Error toast handled in mutation
     }
   };
 
   const handleBulkToggleAdmin = async () => {
-    try {
-      // Determine target state: if all are admins, make them members. Otherwise, make them admins.
-      const allAreAdmins = selectedUsers.every((user) => user.is_super_admin);
-      const targetIsAdmin = !allAreAdmins;
-      
-      // Toggle all users to the target state
-      for (const user of selectedUsers) {
-        const currentIsAdmin = user.is_super_admin ?? false;
-        // Only toggle if current state differs from target state
-        if (currentIsAdmin !== targetIsAdmin) {
-          await toggleSuperAdminMutation.mutateAsync({
-            userId: user.id,
-            isSuperAdmin: currentIsAdmin,
-          });
-        }
-      }
+    const allAreAdmins = selectedUsers.every((user) => user.is_super_admin);
+    const targetIsAdmin = !allAreAdmins;
+    const userIds = selectedUsers
+      .filter((user) => (user.is_super_admin ?? false) !== targetIsAdmin)
+      .map((user) => user.id);
+    if (userIds.length === 0) {
       setBulkToggleOpen(false);
       table.resetRowSelection();
-    } catch (error) {
-      console.error('Error toggling roles:', error);
+      return;
+    }
+    try {
+      await bulkToggleMutation.mutateAsync({ userIds, targetIsAdmin });
+      setBulkToggleOpen(false);
+      table.resetRowSelection();
+    } catch {
+      // Error toast handled in mutation
     }
   };
 
@@ -608,7 +612,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   variant="ghost"
                   size="sm"
                   onClick={() => setBulkToggleOpen(true)}
-                  disabled={toggleSuperAdminMutation.isPending}
+                  disabled={bulkToggleMutation.isPending}
                   className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   {allAreAdmins ? (
@@ -635,16 +639,18 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
           <AlertDialogFooter>
             <AlertDialogCancel
               className="cursor-pointer"
-              disabled={toggleSuperAdminMutation.isPending}
+              disabled={bulkToggleMutation.isPending}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="cursor-pointer"
               onClick={handleBulkToggleAdmin}
-              disabled={toggleSuperAdminMutation.isPending}
+              disabled={bulkToggleMutation.isPending}
             >
-              {toggleSuperAdminMutation.isPending ? 'Updating...' : 'Confirm'}
+              {bulkToggleMutation.isPending
+                ? `Updating ${selectedCount} user${selectedCount > 1 ? 's' : ''}...`
+                : 'Confirm'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -660,16 +666,18 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
           <AlertDialogFooter>
             <AlertDialogCancel
               className="cursor-pointer"
-              disabled={deleteUserMutation.isPending}
+              disabled={bulkDeleteMutation.isPending}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="cursor-pointer"
               onClick={handleBulkDelete}
-              disabled={deleteUserMutation.isPending}
+              disabled={bulkDeleteMutation.isPending}
             >
-              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+              {bulkDeleteMutation.isPending
+                ? `Deleting ${selectedCount} user${selectedCount > 1 ? 's' : ''}...`
+                : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -680,7 +688,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   variant="ghost"
                   size="sm"
                   onClick={() => setBulkDeleteOpen(true)}
-                  disabled={deleteUserMutation.isPending}
+                  disabled={bulkDeleteMutation.isPending}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   <Trash2 className="h-4 w-4" />
