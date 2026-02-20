@@ -166,8 +166,14 @@ export function useTemplateFormSubmit({
     // Call onMutate callback for optimistic UI updates
     onMutate?.(data);
 
+    const templateId =
+      item.type === 'template' && item.data.id?.trim()
+        ? item.data.id
+        : undefined;
+
     updateMutation.mutate({
       exerciseId,
+      templateId,
       sets: data.sets ?? undefined,
       rep: data.rep,
       time: data.time,
