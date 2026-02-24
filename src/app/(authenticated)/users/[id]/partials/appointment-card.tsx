@@ -23,13 +23,27 @@ import { Button } from '@/components/ui/button';
 interface AppointmentCardProps {
   title: string;
   appointments: Appointment[];
+  /** Profile completion flags from DB; card uses these as override when no appointment data */
+  profileCompletion?: {
+    screening_completed: boolean | null;
+    consultation_completed: boolean | null;
+  };
+  /** Which step this card is; used to pick the right profile override */
+  stepType: 'screening' | 'consultation';
 }
 
 export function AppointmentCard({
   title,
   appointments,
+  profileCompletion,
+  stepType,
 }: AppointmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const completedByProfile =
+    stepType === 'screening'
+      ? (profileCompletion?.screening_completed ?? false)
+      : (profileCompletion?.consultation_completed ?? false);
 
   // Sort appointments: latest created first
   const sortedAppointments = [...appointments].sort(
@@ -40,10 +54,12 @@ export function AppointmentCard({
   const latestAppointment = sortedAppointments[0];
   const history = sortedAppointments.slice(1);
 
-  // Determine status from latest appointment
+  // Determine status: profile columns (set_onboarding_state) override when true
   let status: 'not_programmed' | 'canceled' | 'scheduled' | 'attended' =
     'not_programmed';
-  if (latestAppointment) {
+  if (completedByProfile) {
+    status = 'attended';
+  } else if (latestAppointment) {
     status = latestAppointment.status;
   }
 
@@ -55,7 +71,7 @@ export function AppointmentCard({
     return statusStr;
   };
 
-  const isDisabled = status === 'not_programmed';
+  const isDisabled = status === 'not_programmed' && !completedByProfile;
   
   // Color scheme based on status
   const getColorScheme = () => {
@@ -394,7 +410,9 @@ export function AppointmentCard({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: 0.05 }}
               >
-                No appointment scheduled yet.
+                {completedByProfile
+                  ? 'Marked complete (onboarding skipped).'
+                  : 'No appointment scheduled yet.'}
               </motion.div>
             )}
 

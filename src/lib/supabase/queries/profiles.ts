@@ -3,6 +3,7 @@ import {
   type SupabaseSuccess,
   type SupabaseError,
 } from '../query';
+import type { Database } from '../database.types';
 import {
   profileSchema,
   profileWithStatsSchema,
@@ -10,6 +11,10 @@ import {
   type ProfileWithStats,
 } from '../schemas/profiles';
 import { MemberRole } from '../schemas/organization-members';
+
+export type SetOnboardingStateTarget = 'screening' | 'consultation';
+
+export type SetOnboardingStateResult = void;
 
 export type ProfileWithMemberships = Profile & {
   orgMemberships: Array<{
@@ -1064,5 +1069,33 @@ export class ProfilesQuery extends SupabaseQuery {
         error: error instanceof Error ? error.message : 'Failed to create user',
       };
     }
+  }
+
+  /**
+   * Set onboarding state for a user (screening or consultation).
+   * Uses service_role. Returns void on success.
+   */
+  public async setOnboardingState(
+    p_user_id: string,
+    p_target: SetOnboardingStateTarget,
+  ): Promise<SupabaseSuccess<SetOnboardingStateResult> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    type RpcArgs =
+      Database['public']['Functions']['set_onboarding_state']['Args'];
+
+    const { data, error } = await supabase.rpc('set_onboarding_state', {
+      p_user_id,
+      p_target,
+    } as RpcArgs);
+
+    if (error || data.success === false) {
+      return this.parseResponsePostgresError(
+        error || data.error,
+        'Failed to set onboarding state',
+      );
+    }
+
+    return { success: true, data: data as unknown as SetOnboardingStateResult };
   }
 }
