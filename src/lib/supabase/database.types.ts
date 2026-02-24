@@ -1963,6 +1963,7 @@ export type Database = {
           library_tip: string | null
           match_score: number | null
           matched_library_exercise_name: string | null
+          thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
           video_type: string | null
@@ -1978,6 +1979,7 @@ export type Database = {
           library_tip?: string | null
           match_score?: number | null
           matched_library_exercise_name?: string | null
+          thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
           video_type?: string | null
@@ -1993,6 +1995,7 @@ export type Database = {
           library_tip?: string | null
           match_score?: number | null
           matched_library_exercise_name?: string | null
+          thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
           video_type?: string | null
@@ -2240,6 +2243,40 @@ export type Database = {
         Args: { p_exercise_template_id: string }
         Returns: Json
       }
+      broadcast_program_template_schedule_updated:
+        | { Args: { p_workout_schedule_id: string }; Returns: undefined }
+        | {
+            Args: { p_schedule?: Json[]; p_workout_schedule_id: string }
+            Returns: undefined
+          }
+      broadcast_program_template_update:
+        | {
+            Args: {
+              p_data?: Json
+              p_event: string
+              p_program_assignment_id: string
+              p_program_template_id: string
+              p_user_id?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_event: string
+              p_program_template_id: string
+              p_user_id?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_data?: Json
+              p_event: string
+              p_program_template_id: string
+              p_user_id?: string
+            }
+            Returns: undefined
+          }
       calculate_compliance: {
         Args: { p_program_assignment_id: string }
         Returns: number
@@ -2390,6 +2427,10 @@ export type Database = {
       run_message_notification_emails: { Args: never; Returns: Json }
       serve_daily_workout: {
         Args: { p_date?: string; p_organization_id?: string; p_user_id: string }
+        Returns: Json
+      }
+      set_onboarding_state: {
+        Args: { p_target: string; p_user_id: string }
         Returns: Json
       }
       sync_program_due_date_for_user: {

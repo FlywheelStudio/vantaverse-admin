@@ -1,6 +1,10 @@
 'use server';
 
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import { revalidatePath } from 'next/cache';
+import {
+  ProfilesQuery,
+  type SetOnboardingStateTarget,
+} from '@/lib/supabase/queries/profiles';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
@@ -812,4 +816,68 @@ export async function importUsersExcel(
       errors: [...parsed.data.errors, ...createResult.errors],
     },
   };
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+export async function setOnboardingStateForUsers(
+  userIds: string[],
+  target: SetOnboardingStateTarget,
+  opts?: { skipRevalidate?: boolean },
+): Promise<
+  { success: true; updatedCount: number } | { success: false; error: string }
+> {
+  try {
+    const uniqueValidIds = [...new Set(userIds)].filter(isValidUuid);
+    if (uniqueValidIds.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+
+    const profilesQuery = new ProfilesQuery();
+    const BATCH_SIZE = 10;
+    const batches = chunkArray(uniqueValidIds, BATCH_SIZE);
+    let updatedCount = 0;
+
+    for (const batch of batches) {
+      const results = await Promise.all(
+        batch.map((userId) => profilesQuery.setOnboardingState(userId, target)),
+      );
+
+      const firstError = results.find((r) => !r.success);
+      if (firstError && !firstError.success) {
+        return {
+          success: false,
+          error: firstError.error,
+        };
+      }
+
+      updatedCount += results.length;
+    }
+
+    if (!opts?.skipRevalidate) {
+      revalidatePath('/users');
+      uniqueValidIds.forEach((uid) => revalidatePath(`/users/${uid}`));
+    }
+    return { success: true, updatedCount };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update onboarding state.',
+    };
+  }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState } from 'react';
+import { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
 
 type PendingUsersSource = 'created' | 'existing' | 'failed';
 
@@ -11,6 +12,8 @@ interface PendingUsersUser {
   lastName: string;
   status: string;
   source: PendingUsersSource;
+  screeningCompleted?: boolean;
+  consultationCompleted?: boolean;
 }
 
 interface PendingUsersRow extends PendingUsersUser {
@@ -28,6 +31,13 @@ type PendingUsersState = {
   addBatch: (input: AddBatchInput) => void;
   removeUser: (id: string) => void;
   markInvited: (emails: string[]) => void;
+  toggleSelection: (id: string) => void;
+  clearSelection: () => void;
+  setSelection: (ids: string[]) => void;
+  markOnboardingStep: (
+    userIds: string[],
+    step: SetOnboardingStateTarget,
+  ) => void;
   reset: () => void;
 
   rows: PendingUsersRow[];
@@ -37,6 +47,7 @@ type PendingUsersState = {
     activeExisting: number;
   };
   latestBatchId: number | null;
+  selectedIds: Set<string>;
 };
 
 const PendingUsersContext = createContext<PendingUsersState | null>(null);
@@ -55,6 +66,7 @@ export function PendingUsersProvider({
 }) {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [nextBatchId, setNextBatchId] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const latestBatchId =
     batches.length > 0 ? batches[batches.length - 1]!.id : null;
@@ -130,6 +142,12 @@ export function PendingUsersProvider({
             b.failedUsers.length > 0,
         ),
     );
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const markInvited = (emails: string[]) => {
@@ -150,9 +168,63 @@ export function PendingUsersProvider({
     );
   };
 
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const setSelection = (ids: string[]) => {
+    setSelectedIds(new Set(ids));
+  };
+
+  const markOnboardingStep = (
+    userIds: string[],
+    step: SetOnboardingStateTarget,
+  ) => {
+    const ids = new Set(userIds);
+    if (!ids.size) return;
+
+    const update = (users: PendingUsersUser[]) =>
+      users.map((u) => {
+        if (!ids.has(u.id)) return u;
+
+        if (step === 'consultation') {
+          // Consultation implies screening was completed first.
+          return {
+            ...u,
+            screeningCompleted: true,
+            consultationCompleted: true,
+          };
+        }
+
+        return {
+          ...u,
+          screeningCompleted: true,
+        };
+      });
+
+    setBatches((prev) =>
+      prev.map((b) => ({
+        ...b,
+        createdUsers: update(b.createdUsers),
+        existingUsers: update(b.existingUsers),
+        failedUsers: update(b.failedUsers),
+      })),
+    );
+  };
+
   const reset = () => {
     setBatches([]);
     setNextBatchId(1);
+    setSelectedIds(new Set());
   };
 
   const rows: PendingUsersRow[] = useMemo(() => {
@@ -192,10 +264,15 @@ export function PendingUsersProvider({
     addBatch,
     removeUser,
     markInvited,
+    toggleSelection,
+    clearSelection,
+    setSelection,
+    markOnboardingStep,
     reset,
     rows,
     counts,
     latestBatchId,
+    selectedIds,
   };
 
   return (

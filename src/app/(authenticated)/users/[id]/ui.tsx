@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { PageWrapper } from '@/components/page-wrapper';
 import { UserProfileCard } from '@/components/users/user-profile-card';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
@@ -17,10 +18,11 @@ import { ProgramAssignmentCard } from './partials/program-assignment-card';
 import { ProgramStatusCard } from './program-status/card';
 import { ComplianceChartCard } from './partials/compliance-chart-card';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { useMemo } from 'react';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import { ChangeOnboardingDialog } from './partials/change-onboarding-dialog';
 
 export function UserProfilePageUI({
   user,
@@ -102,6 +104,7 @@ export function UserProfilePageUI({
   );
 
   const { user: currentUser } = useAuth();
+  const [changeOnboardingOpen, setChangeOnboardingOpen] = useState(false);
 
   const isYourself = useMemo(
     () => user.id === currentUser?.id,
@@ -148,18 +151,37 @@ export function UserProfilePageUI({
             <div className="grid grid-cols-3 gap-6 items-stretch">
               {/* Left Column: Program Onboarding Progress (2/3 width) */}
               <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                  Program Onboarding Progress
-                </h2>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Program Onboarding Progress
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setChangeOnboardingOpen(true)}
+                  >
+                    Change onboarding
+                  </Button>
+                </div>
                 <div className="space-y-4">
                   <AppointmentCard
                     title="1. Screening"
                     appointments={screeningAppointments}
+                    profileCompletion={{
+                      screening_completed: user.screening_completed,
+                      consultation_completed: user.consultation_completed,
+                    }}
+                    stepType="screening"
                   />
                   <McIntakeCard survey={mcIntakeSurvey} />
                   <AppointmentCard
                     title="3. Virtual Consultation"
                     appointments={consultationAppointments}
+                    profileCompletion={{
+                      screening_completed: user.screening_completed,
+                      consultation_completed: user.consultation_completed,
+                    }}
+                    stepType="consultation"
                   />
                   <GroupAssignmentCard
                     organizations={organizations ?? []}
@@ -181,6 +203,17 @@ export function UserProfilePageUI({
                     maxGateUnlocked={user.max_gate_unlocked}
                   />
                 </div>
+                <ChangeOnboardingDialog
+                  open={changeOnboardingOpen}
+                  onOpenChange={setChangeOnboardingOpen}
+                  user={{
+                    id: user.id,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    status: user.status,
+                  }}
+                />
               </div>
 
               {/* Right Column: VantaThrive Insights (1/3 width) */}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,6 +59,7 @@ function AddUserModalInner({
   role = 'patient',
   title,
 }: AddUserModalProps) {
+  const queryClient = useQueryClient();
   const { addBatch, reset, rows } = usePendingUsers();
   const createUserMutation = useCreateUserQuickAdd();
 
@@ -78,6 +80,8 @@ function AddUserModalInner({
     setIndividualLastName('');
   };
 
+  const wasOpen = useRef(false);
+
   const handleClose = () => {
     resetIndividual();
     setMode('upload');
@@ -85,6 +89,13 @@ function AddUserModalInner({
     reset();
     onOpenChange(false);
   };
+
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+    wasOpen.current = open;
+  }, [open, queryClient]);
 
   const handleCancel = () => {
     if (rows.length > 0) {
