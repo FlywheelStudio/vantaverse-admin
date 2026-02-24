@@ -1,5 +1,18 @@
 # Changelog
 
+# [0.26.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.25.0...0.26.0) (2026-02-24)
+
+
+### Bug Fixes
+
+* **users:** remove unused TooltipContent import in skip-onboarding-popover component ([9356574](https://github.com/FlywheelStudio/vantaverse-admin/commit/935657461e7c4d8f056137e818603774fc5e71d7))
+
+
+### Features
+
+* **users:** enhance user onboarding management with revalidation and UI improvements ([e3944ba](https://github.com/FlywheelStudio/vantaverse-admin/commit/e3944ba7f1131fa4f422b04f6721ba30a90476e3))
+* **users:** implement onboarding state management for users with bulk actions and UI enhancements ([6d0c0f6](https://github.com/FlywheelStudio/vantaverse-admin/commit/6d0c0f6b97db524eb8c7a02236546f22eb3f85de))
+
 # [0.25.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.24.0...0.25.0) (2026-02-24)
 
 
