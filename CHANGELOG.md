@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.27.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.26.0...0.27.0) (2026-02-24)
+
+
+### Features
+
+* **exercises:** add exercise type filtering and distinct exercise types retrieval in builder page ([1549509](https://github.com/FlywheelStudio/vantaverse-admin/commit/1549509aeec5edf3e712700c6bfd006180e6c87a))
+
 # [0.26.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.25.0...0.26.0) (2026-02-24)
 
 
