@@ -140,12 +140,38 @@ export class ExercisesQuery extends SupabaseQuery {
   }
 
   /**
+   * Get distinct exercise types (sources) for filtering
+   */
+  public async getDistinctTypes(): Promise<
+    SupabaseSuccess<string[]> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('type')
+      .not('video_url', 'is', null)
+      .not('type', 'is', null);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get exercise types',
+      );
+    }
+    const types = [
+      ...new Set((data ?? []).map((r) => r.type as string).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b));
+    return { success: true, data: types };
+  }
+
+  /**
    * Get paginated exercises with search and sort
    * @param page - Page number (1-indexed)
    * @param pageSize - Number of items per page
    * @param search - Search term for exercise name
    * @param sortBy - Sort field (default: 'updated_at')
    * @param sortOrder - Sort order ('asc' or 'desc', default: 'desc')
+   * @param type - Optional filter by exercise type (source)
    * @returns Success with paginated data or error
    */
   public async getListPaginated(
@@ -154,6 +180,7 @@ export class ExercisesQuery extends SupabaseQuery {
     search?: string,
     sortBy: string = 'updated_at',
     sortOrder: 'asc' | 'desc' = 'desc',
+    type?: string | null,
   ): Promise<SupabaseSuccess<PaginatedResult<Exercise>> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
@@ -165,6 +192,11 @@ export class ExercisesQuery extends SupabaseQuery {
     // Apply search filter if provided
     if (search) {
       query = query.ilike('exercise_name', `%${search}%`);
+    }
+
+    // Apply type (source) filter if provided
+    if (type) {
+      query = query.eq('type', type);
     }
 
     // Apply sorting
