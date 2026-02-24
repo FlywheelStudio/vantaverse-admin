@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.25.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.24.0...0.25.0) (2026-02-24)
+
+
+### Features
+
+* **exercise-templates:** add editExerciseTemplate function for updating exercise templates via RPC ([262e2c6](https://github.com/FlywheelStudio/vantaverse-admin/commit/262e2c6ea8f6999ce580d67f1708d1c9729f4e66))
+
 # [0.24.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.23.1...0.24.0) (2026-02-20)
 
 
