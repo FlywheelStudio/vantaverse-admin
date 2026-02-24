@@ -10,11 +10,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Search, ChevronDown } from 'lucide-react';
 
+function formatTypeLabel(type: string) {
+  return type
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 interface ExerciseSearchControlsProps {
   search: string;
   onSearchChange: (value: string) => void;
   sortBy: string;
   onSortChange: (by: string, order: 'asc' | 'desc') => void;
+  sourceFilter: string | null;
+  onSourceFilterChange: (value: string | null) => void;
+  typeOptions: string[];
 }
 
 export function ExerciseSearchControls({
@@ -22,6 +32,9 @@ export function ExerciseSearchControls({
   onSearchChange,
   sortBy,
   onSortChange,
+  sourceFilter,
+  onSourceFilterChange,
+  typeOptions,
 }: ExerciseSearchControlsProps) {
   return (
     <div className="flex items-center gap-4 mb-4">
@@ -34,6 +47,33 @@ export function ExerciseSearchControls({
           className="pl-10"
         />
       </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            {sourceFilter ? formatTypeLabel(sourceFilter) : 'All sources'}
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem
+            onClick={() => onSourceFilterChange(null)}
+            data-selected={sourceFilter === null}
+            className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
+          >
+            All sources
+          </DropdownMenuItem>
+          {typeOptions.map((type) => (
+            <DropdownMenuItem
+              key={type}
+              onClick={() => onSourceFilterChange(type)}
+              data-selected={sourceFilter === type}
+              className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
+            >
+              {formatTypeLabel(type)}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="gap-2">

@@ -7,6 +7,7 @@ import {
   getExerciseTemplatesPaginated,
   getExerciseTemplatesByIds,
   getGroupsPaginated,
+  getExerciseTypes,
 } from '@/app/(authenticated)/builder/actions';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
@@ -24,7 +25,9 @@ export const exercisesKeys = {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
     pageSize: number;
+    type?: string | null;
   }) => [...exercisesKeys.lists(), 'infinite', filters] as const,
+  types: () => [...exercisesKeys.all, 'types'] as const,
   templatesInfinite: (filters: {
     search?: string;
     sortBy: string;
@@ -57,14 +60,32 @@ export function useExercises(initialData?: Exercise[]) {
   });
 }
 
+export function useExerciseTypes() {
+  return useQuery<string[], Error>({
+    queryKey: exercisesKeys.types(),
+    queryFn: async () => {
+      const result = await getExerciseTypes();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
+}
+
 export function useExercisesInfinite(
   search?: string,
   sortBy: string = 'updated_at',
   sortOrder: 'asc' | 'desc' = 'desc',
   pageSize: number = 20,
+  type?: string | null,
 ) {
   return useInfiniteQuery<Exercise[], Error>({
-    queryKey: exercisesKeys.infinite({ search, sortBy, sortOrder, pageSize }),
+    queryKey: exercisesKeys.infinite({
+      search,
+      sortBy,
+      sortOrder,
+      pageSize,
+      type,
+    }),
     queryFn: async ({ pageParam = 1 }) => {
       const result = await getExercisesPaginated(
         pageParam as number,
@@ -72,6 +93,7 @@ export function useExercisesInfinite(
         search,
         sortBy,
         sortOrder,
+        type,
       );
 
       if (!result.success) {

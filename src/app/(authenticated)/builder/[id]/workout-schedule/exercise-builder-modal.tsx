@@ -16,6 +16,7 @@ import {
   useExerciseTemplatesInfinite,
   useExerciseTemplatesByIds,
   useGroupsInfinite,
+  useExerciseTypes,
 } from '@/hooks/use-exercises';
 import { useDebounce } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
@@ -61,6 +62,7 @@ export function ExerciseBuilderModal({
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] =
     useState<SelectedItem[]>(initialItems);
   const [showGroupInput, setShowGroupInput] = useState(false);
@@ -69,11 +71,13 @@ export function ExerciseBuilderModal({
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
+  const { data: typeOptions = [] } = useExerciseTypes();
   const exercisesQuery = useExercisesInfinite(
     debouncedSearch || undefined,
     sortBy,
     sortOrder,
     20,
+    sourceFilter ?? undefined,
   );
 
   const templatesQuery = useExerciseTemplatesInfinite(
@@ -316,6 +320,9 @@ export function ExerciseBuilderModal({
                 onSearchChange={setSearch}
                 sortBy={sortBy}
                 onSortChange={handleSortChange}
+                sourceFilter={sourceFilter}
+                onSourceFilterChange={setSourceFilter}
+                typeOptions={typeOptions}
               />
             )}
 

@@ -294,9 +294,25 @@ export async function getExercisesPaginated(
   search?: string,
   sortBy: string = 'updated_at',
   sortOrder: 'asc' | 'desc' = 'desc',
+  type?: string | null,
 ) {
   const query = new ExercisesQuery();
-  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+  return query.getListPaginated(
+    page,
+    pageSize,
+    search,
+    sortBy,
+    sortOrder,
+    type,
+  );
+}
+
+/**
+ * Get distinct exercise types (sources) for filter dropdown
+ */
+export async function getExerciseTypes() {
+  const query = new ExercisesQuery();
+  return query.getDistinctTypes();
 }
 
 /**
