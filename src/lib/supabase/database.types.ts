@@ -2433,6 +2433,7 @@ export type Database = {
         Args: { p_target: string; p_user_id: string }
         Returns: Json
       }
+      sync_last_sign_in: { Args: never; Returns: undefined }
       sync_program_due_date_for_user: {
         Args: { p_user_id: string }
         Returns: undefined

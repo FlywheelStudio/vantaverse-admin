@@ -162,11 +162,7 @@ export async function serverVerifyOtp(email: string, token: string) {
     }
 
     if (data.user) {
-      // Update last_sign_in timestamp
-      const profilesQuery = new ProfilesQuery();
-      await profilesQuery.update(data.user.id, {
-        last_sign_in: new Date().toISOString(),
-      });
+      await supabase.rpc('sync_last_sign_in');
 
       // Get the next URL from cookie
       const next = await serverGetNext();
