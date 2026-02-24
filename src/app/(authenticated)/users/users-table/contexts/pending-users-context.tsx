@@ -33,6 +33,7 @@ type PendingUsersState = {
   markInvited: (emails: string[]) => void;
   toggleSelection: (id: string) => void;
   clearSelection: () => void;
+  setSelection: (ids: string[]) => void;
   markOnboardingStep: (
     userIds: string[],
     step: SetOnboardingStateTarget,
@@ -180,6 +181,10 @@ export function PendingUsersProvider({
     setSelectedIds(new Set());
   };
 
+  const setSelection = (ids: string[]) => {
+    setSelectedIds(new Set(ids));
+  };
+
   const markOnboardingStep = (
     userIds: string[],
     step: SetOnboardingStateTarget,
@@ -261,6 +266,7 @@ export function PendingUsersProvider({
     markInvited,
     toggleSelection,
     clearSelection,
+    setSelection,
     markOnboardingStep,
     reset,
     rows,

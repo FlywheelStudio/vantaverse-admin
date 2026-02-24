@@ -868,6 +868,7 @@ export async function setOnboardingStateForUsers(
 
     if (!opts?.skipRevalidate) {
       revalidatePath('/users');
+      uniqueValidIds.forEach((uid) => revalidatePath(`/users/${uid}`));
     }
     return { success: true, updatedCount };
   } catch (error) {

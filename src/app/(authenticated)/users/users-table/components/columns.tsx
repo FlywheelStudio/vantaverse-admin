@@ -46,7 +46,6 @@ import {
 } from '../hooks/use-users-table-mutations';
 import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
-import { SkipOnboardingPopover } from './skip-onboarding-popover';
 import toast from 'react-hot-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
@@ -220,25 +219,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
   if (!canAssignProgram) {
     const gateN = profile.max_gate_unlocked ?? 0;
     return (
-      <SkipOnboardingPopover
-        userIds={[profile.id]}
-        successMessage={(n) =>
-          n === 1 ? 'Onboarding state updated.' : `Updated ${n} users.`
-        }
-        tooltipContent={
-          <TooltipContent side="top">
-            Click to skip to screening or consultation
-          </TooltipContent>
-        }
-        trigger={
-          <button
-            type="button"
-            className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            Gate {gateN}/5
-          </button>
-        }
-      />
+      <span className="text-sm text-muted-foreground">Gate {gateN}/5</span>
     );
   }
 
