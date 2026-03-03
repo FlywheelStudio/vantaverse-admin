@@ -225,7 +225,7 @@ export function PendingUsersView({
           <div className="text-right">Status</div>
         </div>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="divide-y divide-border">
             {rows.length === 0 ? (
               <div className="p-6 text-sm text-muted-foreground text-center">
