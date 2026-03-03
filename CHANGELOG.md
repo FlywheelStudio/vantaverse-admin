@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.28.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.27.0...0.28.0) (2026-03-03)
+
+
+### Features
+
+* **auth:** replace last_sign_in update logic with RPC call to sync_last_sign_in ([7aa1b7f](https://github.com/FlywheelStudio/vantaverse-admin/commit/7aa1b7f151fada177661d2fd0d0782bdcf143ab5))
+
 # [0.27.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.26.0...0.27.0) (2026-02-24)
 
 
