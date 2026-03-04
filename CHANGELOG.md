@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.0...0.28.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* **users:** adjust ScrollArea component to ensure minimum height in pending users view ([523598c](https://github.com/FlywheelStudio/vantaverse-admin/commit/523598ce6438667a2891b4519b096040a76e8a69))
+
 # [0.28.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.27.0...0.28.0) (2026-03-03)
 
 
