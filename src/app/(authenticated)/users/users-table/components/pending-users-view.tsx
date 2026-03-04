@@ -129,10 +129,10 @@ export function PendingUsersView({
   );
   const [overrideExpanded, setOverrideExpanded] = useState(false);
 
-  const pendingRows = rows.filter(
-    (r) => (r.status || '').toLowerCase() === 'pending',
+  const pendingOrInvitedRows = rows.filter((r) =>
+    ['pending', 'invited'].includes((r.status || '').toLowerCase()),
   );
-  const pendingEmails = pendingRows.map((r) => r.email);
+  const pendingOrInvitedEmails = pendingOrInvitedRows.map((r) => r.email);
   const isUuid = (value: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       value,
@@ -154,7 +154,7 @@ export function PendingUsersView({
   };
 
   const handleSendInvitations = async () => {
-    if (!pendingEmails.length || sending) return;
+    if (!pendingOrInvitedEmails.length || sending) return;
     setSending(true);
     try {
       const runOverride =
@@ -162,7 +162,7 @@ export function PendingUsersView({
 
       const [overrideResult, inviteResult] = await Promise.all([
         runOverride ? applyOnboardingOverride(selectedUserIds) : Promise.resolve({ success: true as const }),
-        sendBulkInvitations(pendingEmails, role === 'admin'),
+        sendBulkInvitations(pendingOrInvitedEmails, role === 'admin'),
       ]);
 
       if (!overrideResult.success) {
@@ -283,7 +283,7 @@ export function PendingUsersView({
           'border-primary/20 bg-primary/10 text-foreground',
         )}
       >
-        Click &quot;Send Invitations&quot; to email all pending users.
+        Click &quot;Send Invitations&quot; to email all pending or invited users.
         They&apos;ll move to &quot;Invited&quot; status.
       </div>
 
@@ -374,7 +374,7 @@ export function PendingUsersView({
           <Button
             onClick={handleSendInvitations}
             className="rounded-pill"
-            disabled={counts.pending === 0 || sending}
+            disabled={counts.pending + counts.invited === 0 || sending}
           >
             {sending ? (
               <>
@@ -382,7 +382,7 @@ export function PendingUsersView({
                 Sending…
               </>
             ) : (
-              `Send Invitations (${counts.pending})`
+              `Send Invitations (${counts.pending + counts.invited})`
             )}
           </Button>
         </div>

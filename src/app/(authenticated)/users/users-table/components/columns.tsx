@@ -313,7 +313,8 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
     }
   };
 
-  const isPending = status === 'pending';
+  const canSendInvitation =
+    status === 'pending' || status === 'invited';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -322,13 +323,13 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
           variant="outline"
           className={cn(
             getBadgeClasses(),
-            isPending ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+            canSendInvitation ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
           )}
         >
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </Badge>
       </PopoverTrigger>
-      {isPending && (
+      {canSendInvitation && (
         <PopoverContent 
           side="bottom" 
           className="w-auto p-0 bg-transparent border-0 shadow-none"
@@ -339,7 +340,11 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
             disabled={sending}
             className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            {sending ? 'Sending...' : 'Send Invitation'}
+            {sending
+              ? 'Sending...'
+              : status === 'invited'
+                ? 'Re-send Invitation'
+                : 'Send Invitation'}
           </button>
         </PopoverContent>
       )}
@@ -474,16 +479,20 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
 
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedUsers = selectedRows.map((row) => row.original);
-  const pendingUsers = selectedUsers.filter(
-    (user) => user.status?.toLowerCase() === 'pending' && user.email,
+  const pendingOrInvitedUsers = selectedUsers.filter(
+    (user) =>
+      ['pending', 'invited'].includes(user.status?.toLowerCase() ?? '') &&
+      user.email,
   );
   const hasSelected = selectedRows.length > 0;
-  const hasPending = pendingUsers.length > 0;
+  const hasPendingOrInvited = pendingOrInvitedUsers.length > 0;
 
   const handleBulkInvite = async () => {
-    if (!hasPending || sendingInvites) return;
+    if (!hasPendingOrInvited || sendingInvites) return;
 
-    const emails = pendingUsers.map((user) => user.email!).filter(Boolean);
+    const emails = pendingOrInvitedUsers
+      .map((user) => user.email!)
+      .filter(Boolean);
     if (emails.length === 0) return;
 
     setSendingInvites(true);
@@ -571,7 +580,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   variant="ghost"
                   size="sm"
                   onClick={handleBulkInvite}
-                  disabled={!hasPending || sendingInvites}
+                  disabled={!hasPendingOrInvited || sendingInvites}
                   className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   {sendingInvites ? (
@@ -582,9 +591,9 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {hasPending
-                  ? 're-send invitations to pending users'
-                  : 'Select pending users to send invitations'}
+                {hasPendingOrInvited
+                  ? 'Send/re-send invitations to selected pending or invited users'
+                  : 'Select pending or invited users to send/re-send invitations'}
               </TooltipContent>
             </Tooltip>
             <Tooltip>

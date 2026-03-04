@@ -26,12 +26,15 @@ export class McIntakeQuery extends SupabaseQuery {
   ): Promise<SupabaseSuccess<McIntakeSurvey | null> | SupabaseError> {
     const supabase = await this.getClient('service_role');
 
-    // First, get the survey
-    const { data: survey, error: surveyError } = await supabase
+    // First, get the latest survey (user may have multiple)
+    const { data: surveys, error: surveyError } = await supabase
       .from('mc_intake_survey')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const survey = surveys?.[0] ?? null;
 
     if (surveyError) {
       return this.parseResponsePostgresError(
