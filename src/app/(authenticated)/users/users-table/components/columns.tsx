@@ -313,9 +313,6 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
     }
   };
 
-  const canSendInvitation =
-    status === 'pending' || status === 'invited';
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -323,31 +320,25 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
           variant="outline"
           className={cn(
             getBadgeClasses(),
-            canSendInvitation ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+            'cursor-pointer hover:opacity-80'
           )}
         >
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </Badge>
       </PopoverTrigger>
-      {canSendInvitation && (
-        <PopoverContent 
-          side="bottom" 
-          className="w-auto p-0 bg-transparent border-0 shadow-none"
+      <PopoverContent 
+        side="bottom" 
+        className="w-auto p-0 bg-transparent border-0 shadow-none"
+      >
+        <button
+          type="button"
+          onClick={handleSendInvitation}
+          disabled={sending}
+          className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
         >
-          <button
-            type="button"
-            onClick={handleSendInvitation}
-            disabled={sending}
-            className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-          >
-            {sending
-              ? 'Sending...'
-              : status === 'invited'
-                ? 'Re-send Invitation'
-                : 'Send Invitation'}
-          </button>
-        </PopoverContent>
-      )}
+          {sending ? 'Sending...' : 'Re-send Invitation'}
+        </button>
+      </PopoverContent>
     </Popover>
   );
 }
@@ -479,18 +470,14 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
 
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedUsers = selectedRows.map((row) => row.original);
-  const pendingOrInvitedUsers = selectedUsers.filter(
-    (user) =>
-      ['pending', 'invited'].includes(user.status?.toLowerCase() ?? '') &&
-      user.email,
-  );
+  const selectedWithEmail = selectedUsers.filter((user) => user.email);
   const hasSelected = selectedRows.length > 0;
-  const hasPendingOrInvited = pendingOrInvitedUsers.length > 0;
+  const hasAnyWithEmail = selectedWithEmail.length > 0;
 
   const handleBulkInvite = async () => {
-    if (!hasPendingOrInvited || sendingInvites) return;
+    if (!hasAnyWithEmail || sendingInvites) return;
 
-    const emails = pendingOrInvitedUsers
+    const emails = selectedWithEmail
       .map((user) => user.email!)
       .filter(Boolean);
     if (emails.length === 0) return;
@@ -580,7 +567,7 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                   variant="ghost"
                   size="sm"
                   onClick={handleBulkInvite}
-                  disabled={!hasPendingOrInvited || sendingInvites}
+                  disabled={!hasAnyWithEmail || sendingInvites}
                   className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
                 >
                   {sendingInvites ? (
@@ -591,9 +578,9 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {hasPendingOrInvited
-                  ? 'Send/re-send invitations to selected pending or invited users'
-                  : 'Select pending or invited users to send/re-send invitations'}
+                {hasAnyWithEmail
+                  ? 'Send/re-send invitations to selected users'
+                  : 'Select users to send/re-send invitations'}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
