@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Loader2, Search } from 'lucide-react';
@@ -173,8 +172,8 @@ export function MessagesPageUI({
             />
           </div>
 
-          <ScrollArea className="w-full">
-            <div className="flex gap-2 pb-2 -mx-1 px-1">
+          <div className="w-full overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1 slim-scrollbar">
+            <div className="flex gap-2 min-w-0 w-max">
               <button
                 type="button"
                 onClick={() => setFilter('all')}
@@ -209,7 +208,7 @@ export function MessagesPageUI({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         <div className="messages-conversations-scroll flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
