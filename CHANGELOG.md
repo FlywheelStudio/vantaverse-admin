@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.28.3](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.2...0.28.3) (2026-03-19)
+
+
+### Bug Fixes
+
+* **messages:** ad ([33307d5](https://github.com/FlywheelStudio/vantaverse-admin/commit/33307d55e2f351809578bb1420e3528f87b612dc))
+* **users:** simplify invitation logic by removing redundant status checks and improving user selection criteria ([f36fcec](https://github.com/FlywheelStudio/vantaverse-admin/commit/f36fcec770c652800125f0f477b3e870e78a9f2e))
+* **users:** update status handling to include invited users in dashboard and user tables ([bc6fc4b](https://github.com/FlywheelStudio/vantaverse-admin/commit/bc6fc4ba21c24bb8acb2fb0ecb3a7b17ac131d15))
+
 ## [0.28.2](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.1...0.28.2) (2026-03-05)
 
 ## [0.28.1](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.0...0.28.1) (2026-03-04)
