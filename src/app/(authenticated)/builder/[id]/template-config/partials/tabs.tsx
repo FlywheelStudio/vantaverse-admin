@@ -27,6 +27,7 @@ const NavigationButtons = ({
     <>
       {activeTab === 'set' && sets > 0 && (
         <button
+          type="button"
           onClick={() => onSetIndexChange(Math.max(0, currentSetIndex - 1))}
           disabled={currentSetIndex === 0}
           className="p-1 hover:bg-muted/60 rounded-sm disabled:opacity-50"
@@ -37,6 +38,7 @@ const NavigationButtons = ({
       {children}
       {activeTab === 'set' && sets > 0 && (
         <button
+          type="button"
           onClick={() =>
             onSetIndexChange(Math.min(sets - 1, currentSetIndex + 1))
           }
@@ -62,6 +64,7 @@ export function TemplateConfigTabs({
   return (
     <div className="flex border-b border-border">
       <button
+        type="button"
         className={cn(
           'flex-1 px-3 py-1.5 text-xs font-medium cursor-pointer',
           activeTab === 'all'
@@ -74,6 +77,8 @@ export function TemplateConfigTabs({
       </button>
       <div className="flex-1 flex items-center justify-center gap-1 relative">
         <div
+          role="button"
+          tabIndex={0}
           className={cn(
             'flex-1 px-3 py-1.5 text-xs font-medium flex items-center justify-center gap-1 cursor-pointer',
             activeTab === 'set'
@@ -81,6 +86,12 @@ export function TemplateConfigTabs({
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
           )}
           onClick={() => onTabChange('set')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onTabChange('set');
+            }
+          }}
         >
           <NavigationButtons
             activeTab={activeTab}

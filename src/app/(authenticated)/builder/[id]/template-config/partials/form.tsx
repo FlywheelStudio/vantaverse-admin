@@ -28,31 +28,31 @@ export function TemplateConfigForm({
   const { control, setValue } = form;
 
   const currentRep =
-    activeTab === 'all' ? formData.rep : formData.rep_override[currentSetIndex];
+    activeTab === 'all' ? formData.rep : (formData.rep_override ?? [])[currentSetIndex];
   const currentTime =
     activeTab === 'all'
       ? formData.time
-      : formData.time_override[currentSetIndex];
+      : (formData.time_override ?? [])[currentSetIndex];
   const currentRest =
     activeTab === 'all'
       ? formData.rest_time
-      : formData.rest_time_override[currentSetIndex];
+      : (formData.rest_time_override ?? [])[currentSetIndex];
   const currentDistance =
     activeTab === 'all'
       ? formData.distance
-      : formData.distance_override[currentSetIndex];
+      : (formData.distance_override ?? [])[currentSetIndex];
   const currentDistanceUnit =
     activeTab === 'all'
       ? formData.distanceUnit
-      : formData.distance_override_units[currentSetIndex] || 'm';
+      : (formData.distance_override_units ?? [])[currentSetIndex] || 'm';
   const currentWeight =
     activeTab === 'all'
       ? formData.weight
-      : formData.weight_override[currentSetIndex];
+      : (formData.weight_override ?? [])[currentSetIndex];
   const currentWeightUnit =
     activeTab === 'all'
       ? formData.weightUnit
-      : formData.weight_override_units[currentSetIndex] || 'kg';
+      : (formData.weight_override_units ?? [])[currentSetIndex] || 'kg';
   const currentTempo =
     activeTab === 'all' ? formData.tempo : formData.tempo;
 
@@ -60,27 +60,50 @@ export function TemplateConfigForm({
     <div className="p-4 space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground w-14 shrink-0">Reps</span>
-        <Input
-          className="flex-1 h-10 text-xs"
-          min="0"
-          placeholder={
-            activeTab === 'set' && formData.rep ? String(formData.rep) : ''
-          }
-          type="number"
-          value={currentRep ?? ''}
-          onChange={(e) => {
-            const value = e.target.value ? parseInt(e.target.value) : null;
-            setCurrentValue('rep', value);
-          }}
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            (e.target as HTMLInputElement).focus();
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        />
+        {activeTab === 'all' ? (
+          <Input
+            className="flex-1 h-10 text-xs"
+            min="0"
+            placeholder=""
+            type="number"
+            value={currentRep ?? ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseInt(e.target.value) : null;
+              setCurrentValue('rep', value);
+            }}
+            disabled={disabled}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <Controller
+            name="rep_override"
+            control={control}
+            render={({ field }) => {
+              const arr = (field.value ?? []).slice();
+              while (arr.length <= currentSetIndex) arr.push(null);
+              const current = arr[currentSetIndex];
+              return (
+                <Input
+                  className="flex-1 h-10 text-xs"
+                  min="0"
+                  placeholder={formData.rep != null ? String(formData.rep) : ''}
+                  type="number"
+                  value={current ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value ? parseInt(e.target.value) : null;
+                    const next = [...arr];
+                    next[currentSetIndex] = v;
+                    field.onChange(next);
+                  }}
+                  disabled={disabled}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              );
+            }}
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -143,7 +166,7 @@ export function TemplateConfigForm({
                 if (activeTab === 'all') {
                   setValue('distanceUnit', e.target.value);
                 } else {
-                  const units = [...formData.distance_override_units];
+                  const units = [...(formData.distance_override_units ?? [])];
                   units[currentSetIndex] = e.target.value;
                   setValue('distance_override_units', units);
                 }
@@ -208,7 +231,7 @@ export function TemplateConfigForm({
                 if (activeTab === 'all') {
                   setValue('weightUnit', e.target.value);
                 } else {
-                  const units = [...formData.weight_override_units];
+                  const units = [...(formData.weight_override_units ?? [])];
                   units[currentSetIndex] = e.target.value;
                   setValue('weight_override_units', units);
                 }
@@ -225,54 +248,98 @@ export function TemplateConfigForm({
 
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground w-14 shrink-0">Time (s)</span>
-        <Input
-          className="flex-1 h-10 text-xs"
-          min="0"
-          placeholder={
-            activeTab === 'set' && formData.time ? String(formData.time) : ''
-          }
-          type="number"
-          value={currentTime ?? ''}
-          onChange={(e) => {
-            const value = e.target.value ? parseInt(e.target.value) : null;
-            setCurrentValue('time', value);
-          }}
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            (e.target as HTMLInputElement).focus();
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        />
+        {activeTab === 'all' ? (
+          <Input
+            className="flex-1 h-10 text-xs"
+            min="0"
+            placeholder=""
+            type="number"
+            value={currentTime ?? ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseInt(e.target.value) : null;
+              setCurrentValue('time', value);
+            }}
+            disabled={disabled}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <Controller
+            name="time_override"
+            control={control}
+            render={({ field }) => {
+              const arr = (field.value ?? []).slice();
+              while (arr.length <= currentSetIndex) arr.push(null);
+              const current = arr[currentSetIndex];
+              return (
+                <Input
+                  className="flex-1 h-10 text-xs"
+                  min="0"
+                  placeholder={formData.time != null ? String(formData.time) : ''}
+                  type="number"
+                  value={current ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value ? parseInt(e.target.value) : null;
+                    const next = [...arr];
+                    next[currentSetIndex] = v;
+                    field.onChange(next);
+                  }}
+                  disabled={disabled}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              );
+            }}
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground w-14 shrink-0">Rest (s)</span>
-        <Input
-          className="flex-1 h-10 text-xs"
-          min="0"
-          placeholder={
-            activeTab === 'set' && formData.rest_time
-              ? String(formData.rest_time)
-              : ''
-          }
-          type="number"
-          value={currentRest ?? ''}
-          onChange={(e) => {
-            const value = e.target.value ? parseInt(e.target.value) : null;
-            setCurrentValue('rest_time', value);
-          }}
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            (e.target as HTMLInputElement).focus();
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        />
+        {activeTab === 'all' ? (
+          <Input
+            className="flex-1 h-10 text-xs"
+            min="0"
+            placeholder=""
+            type="number"
+            value={currentRest ?? ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseInt(e.target.value) : null;
+              setCurrentValue('rest_time', value);
+            }}
+            disabled={disabled}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <Controller
+            name="rest_time_override"
+            control={control}
+            render={({ field }) => {
+              const arr = (field.value ?? []).slice();
+              while (arr.length <= currentSetIndex) arr.push(null);
+              const current = arr[currentSetIndex];
+              return (
+                <Input
+                  className="flex-1 h-10 text-xs"
+                  min="0"
+                  placeholder={formData.rest_time != null ? String(formData.rest_time) : ''}
+                  type="number"
+                  value={current ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value ? parseInt(e.target.value) : null;
+                    const next = [...arr];
+                    next[currentSetIndex] = v;
+                    field.onChange(next);
+                  }}
+                  disabled={disabled}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              );
+            }}
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-2">

@@ -32,6 +32,7 @@ export function TemplateConfig({
   onCopy,
   onUpdate,
   onSuccessWithTemplate,
+  onSaveStart,
 }: TemplateConfigProps) {
   const { modalRef, modalPosition, handleMouseDown } = useModalDrag(position);
   const formRef = useRef<HTMLFormElement>(null);
@@ -49,7 +50,7 @@ export function TemplateConfig({
     handlePaste,
     onSubmit,
     isSubmitting,
-  } = useTemplateForm(item, onClose, copiedData, onUpdate, onSuccessWithTemplate);
+  } = useTemplateForm(item, onClose, copiedData, onUpdate, onSuccessWithTemplate, onSaveStart);
 
   // Click outside detection - save on outside click
   useEffect(() => {
@@ -83,7 +84,7 @@ export function TemplateConfig({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-card text-card-foreground rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] border border-border"
+      className="bg-card text-card-foreground rounded-(--radius-xl) shadow-(--shadow-lg) border border-border"
       style={{
         position: 'fixed',
         left: `${modalPosition.x}px`,
