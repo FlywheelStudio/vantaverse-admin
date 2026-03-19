@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
@@ -68,6 +69,13 @@ export function DragContent({
     onItemsReorder,
   } = useDragContext();
 
+  const pendingSuccessContextRef = useRef<{
+    itemIndex: number | null;
+    groupIndex: number | null;
+    groupItemIndex: number | null;
+    items: SelectedItem[];
+  } | null>(null);
+
   return (
     <>
       <DndContext
@@ -111,7 +119,7 @@ export function DragContent({
               {activeId && activeItem ? (
                 <div className="opacity-80">
                   {activeItem.type === 'group' ? (
-                    <div className="border border-border rounded-[var(--radius-lg)] p-4 bg-card shadow-[var(--shadow-lg)]">
+                    <div className="border border-border rounded-lg p-4 bg-card shadow-(--shadow-lg)">
                       <div className="font-semibold text-sm text-foreground">
                         {activeItem.data.name}
                       </div>
@@ -140,6 +148,14 @@ export function DragContent({
           onClose={handleCloseModal}
           copiedData={copiedTemplateData}
           onCopy={handleCopy}
+          onSaveStart={() => {
+            pendingSuccessContextRef.current = {
+              itemIndex: modalState.itemIndex,
+              groupIndex: modalState.groupIndex ?? null,
+              groupItemIndex: modalState.groupItemIndex ?? null,
+              items,
+            };
+          }}
           onUpdate={(templateData) => {
             if (modalState.itemIndex !== null && modalState.item) {
               const exerciseId =
@@ -176,10 +192,12 @@ export function DragContent({
             }
           }}
           onSuccessWithTemplate={(template) => {
-            const gIdx = modalState.groupIndex;
-            const iIdx = modalState.groupItemIndex;
+            const ctx2 = pendingSuccessContextRef.current;
+            const gIdx = ctx2?.groupIndex ?? modalState.groupIndex;
+            const iIdx = ctx2?.groupItemIndex ?? modalState.groupItemIndex;
+            const itemsToUse = ctx2?.items ?? items;
             if (gIdx != null && iIdx != null) {
-              const group = items[gIdx];
+              const group = itemsToUse[gIdx];
               if (group?.type === 'group') {
                 const next = [...(group.data.items ?? [])];
                 next[iIdx] = { type: 'template' as const, data: template };
@@ -188,12 +206,14 @@ export function DragContent({
                   data: { ...group.data, items: next },
                 });
               }
-            } else if (modalState.itemIndex !== null) {
-              onUpdate(modalState.itemIndex, {
+            } else if ((ctx2?.itemIndex ?? modalState.itemIndex) !== null) {
+              const idx = ctx2?.itemIndex ?? modalState.itemIndex;
+              onUpdate(idx!, {
                 type: 'template',
                 data: template,
               });
             }
+            pendingSuccessContextRef.current = null;
           }}
         />
       )}

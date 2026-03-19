@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useUpdateExerciseTemplate } from '@/hooks/use-exercise-template-mutations';
 import type { TemplateFormData } from '../schemas';
 import type { SelectedItem } from '../types';
@@ -17,6 +19,17 @@ const isValidTemplateItem = (
 const getExerciseId = (item: ValidTemplateItem): number => {
   return item.type === 'exercise' ? item.data.id : item.data.exercise_id;
 };
+
+const isMissingValue = (value: number | string | null | undefined): boolean => {
+  return value === null || value === undefined || value === '';
+};
+
+function normalizeOverrideValues<T extends number | string>(
+  overrides: Array<T | null | undefined>,
+  sets: number,
+) {
+  return Array.from({ length: sets }, (_, idx) => overrides[idx] ?? null);
+}
 
 function buildMergedTemplate(
   item: ValidTemplateItem,
@@ -90,6 +103,7 @@ function buildMergedTemplate(
 interface UseTemplateFormSubmitProps {
   item: SelectedItem | null;
   onSuccess?: () => void;
+  onSaveStart?: () => void;
   onMutate?: (data: Partial<TemplateFormData>) => void;
   onSuccessWithTemplate?: (template: ExerciseTemplate) => void;
 }
@@ -97,24 +111,29 @@ interface UseTemplateFormSubmitProps {
 export function useTemplateFormSubmit({
   item,
   onSuccess,
+  onSaveStart,
   onMutate,
   onSuccessWithTemplate,
 }: UseTemplateFormSubmitProps) {
+  const lastVariablesRef = useRef<
+    Parameters<ReturnType<typeof useUpdateExerciseTemplate>['mutate']>[0] | null
+  >(null);
+
   const updateMutation = useUpdateExerciseTemplate({
     onSuccess: (data) => {
+      const variables = lastVariablesRef.current;
       if (
         onSuccessWithTemplate &&
         item &&
         isValidTemplateItem(item) &&
         data?.id &&
-        data?.template_hash
+        data?.template_hash &&
+        variables
       ) {
-        const variables = updateMutation.variables;
-        if (variables) {
-          const merged = buildMergedTemplate(item, variables, data);
-          onSuccessWithTemplate(merged);
-        }
+        const merged = buildMergedTemplate(item, variables, data);
+        onSuccessWithTemplate(merged);
       }
+      lastVariablesRef.current = null;
       onSuccess?.();
     },
   });
@@ -123,22 +142,107 @@ export function useTemplateFormSubmit({
     if (!isValidTemplateItem(item)) return;
 
     const exerciseId = getExerciseId(item);
+    const sets = data.sets ?? 1;
 
-    const distanceValue = formatValueWithUnit(data.distance, data.distanceUnit);
-    const weightValue = formatValueWithUnit(data.weight, data.weightUnit);
-
-    const distanceOverrides = data.distance_override.map((val, idx) =>
-      formatValueWithUnit(val, data.distance_override_units[idx] || 'm'),
+    const repOverrideValues = normalizeOverrideValues(data.rep_override, sets);
+    const timeOverrideValues = normalizeOverrideValues(data.time_override, sets);
+    const distanceOverrideValues = normalizeOverrideValues(
+      data.distance_override,
+      sets,
+    );
+    const weightOverrideValues = normalizeOverrideValues(data.weight_override, sets);
+    const restTimeOverrideValues = normalizeOverrideValues(
+      data.rest_time_override,
+      sets,
     );
 
-    const weightOverrides = data.weight_override.map((val, idx) =>
-      formatValueWithUnit(val, data.weight_override_units[idx] || 'kg'),
+    const hasRepOverrides = repOverrideValues.some((v) => !isMissingValue(v));
+    const hasTimeOverrides = timeOverrideValues.some((v) => !isMissingValue(v));
+    const hasDistanceOverrides = distanceOverrideValues.some(
+      (v) => !isMissingValue(v),
+    );
+    const hasWeightOverrides = weightOverrideValues.some(
+      (v) => !isMissingValue(v),
+    );
+    const hasRestTimeOverrides = restTimeOverrideValues.some(
+      (v) => !isMissingValue(v),
     );
 
-    const repOverrides: number[] = data.rep_override.map((v) =>
+    const missingOverrideField =
+      (hasRepOverrides &&
+        isMissingValue(data.rep) &&
+        repOverrideValues.some((v) => isMissingValue(v)) &&
+        'reps') ||
+      (hasTimeOverrides &&
+        isMissingValue(data.time) &&
+        timeOverrideValues.some((v) => isMissingValue(v)) &&
+        'time') ||
+      (hasDistanceOverrides &&
+        isMissingValue(data.distance) &&
+        distanceOverrideValues.some((v) => isMissingValue(v)) &&
+        'distance') ||
+      (hasWeightOverrides &&
+        isMissingValue(data.weight) &&
+        weightOverrideValues.some((v) => isMissingValue(v)) &&
+        'weight') ||
+      (hasRestTimeOverrides &&
+        isMissingValue(data.rest_time) &&
+        restTimeOverrideValues.some((v) => isMissingValue(v)) &&
+        'rest') ||
+      null;
+
+    if (missingOverrideField) {
+      toast.error(
+        `Add ${missingOverrideField} for every set or set a base value first.`,
+      );
+      return;
+    }
+
+    const normalizedData: TemplateFormData = {
+      ...data,
+      sets,
+      rep_override: repOverrideValues,
+      time_override: timeOverrideValues,
+      distance_override: distanceOverrideValues,
+      distance_override_units: Array.from({ length: sets }, (_, idx) => {
+        return data.distance_override_units[idx] ?? 'm';
+      }),
+      weight_override: weightOverrideValues,
+      weight_override_units: Array.from({ length: sets }, (_, idx) => {
+        return data.weight_override_units[idx] ?? 'kg';
+      }),
+      rest_time_override: restTimeOverrideValues,
+    };
+
+    onSaveStart?.();
+
+    const distanceValue = formatValueWithUnit(
+      normalizedData.distance ?? null,
+      normalizedData.distanceUnit ?? 'm',
+    );
+    const weightValue = formatValueWithUnit(
+      normalizedData.weight ?? null,
+      normalizedData.weightUnit ?? 'kg',
+    );
+
+    const distanceOverrides = normalizedData.distance_override.map((val, idx) =>
+      formatValueWithUnit(
+        val,
+        normalizedData.distance_override_units[idx] || 'm',
+      ),
+    );
+
+    const weightOverrides = normalizedData.weight_override.map((val, idx) =>
+      formatValueWithUnit(
+        val,
+        normalizedData.weight_override_units[idx] || 'kg',
+      ),
+    );
+
+    const repOverrides: number[] = normalizedData.rep_override.map((v) =>
       v !== null && v !== undefined ? v : -1,
     );
-    const timeOverrides: number[] = data.time_override.map((v) =>
+    const timeOverrides: number[] = normalizedData.time_override.map((v) =>
       v !== null && v !== undefined ? v : -1,
     );
     const distanceOverridesFormatted: string[] = distanceOverrides.map(
@@ -147,39 +251,31 @@ export function useTemplateFormSubmit({
     const weightOverridesFormatted: string[] = weightOverrides.map(
       (v) => v ?? '-1',
     );
-    const restTimeOverrides: number[] = data.rest_time_override.map((v) =>
-      v !== null && v !== undefined ? v : -1,
+    const restTimeOverrides: number[] = normalizedData.rest_time_override.map(
+      (v) => (v !== null && v !== undefined ? v : -1),
     );
-
-    const hasRepOverrides = repOverrides.some((v) => v !== -1);
-    const hasTimeOverrides = timeOverrides.some((v) => v !== -1);
-    const hasDistanceOverrides = distanceOverridesFormatted.some(
-      (v) => v !== '-1',
-    );
-    const hasWeightOverrides = weightOverridesFormatted.some((v) => v !== '-1');
-    const hasRestTimeOverrides = restTimeOverrides.some((v) => v !== -1);
 
     // Format tempo: convert to string[] of length 4, filter out nulls but maintain array length
-    const tempoFormatted: string[] = data.tempo.map((v) => v ?? '');
+    const tempoFormatted: string[] = normalizedData.tempo.map((v) => v ?? '');
     const hasTempo = tempoFormatted.some((v) => v !== '');
 
     // Call onMutate callback for optimistic UI updates
-    onMutate?.(data);
+    onMutate?.(normalizedData);
 
     const templateId =
       item.type === 'template' && item.data.id?.trim()
         ? item.data.id
         : undefined;
 
-    updateMutation.mutate({
+    const variables = {
       exerciseId,
       templateId,
-      sets: data.sets ?? undefined,
-      rep: data.rep,
-      time: data.time,
+      sets: normalizedData.sets ?? undefined,
+      rep: normalizedData.rep,
+      time: normalizedData.time,
       distance: distanceValue,
       weight: weightValue,
-      rest_time: data.rest_time,
+      rest_time: normalizedData.rest_time,
       tempo: hasTempo ? tempoFormatted : null,
       rep_override: hasRepOverrides ? repOverrides : null,
       time_override: hasTimeOverrides ? timeOverrides : null,
@@ -188,7 +284,9 @@ export function useTemplateFormSubmit({
         : null,
       weight_override: hasWeightOverrides ? weightOverridesFormatted : null,
       rest_time_override: hasRestTimeOverrides ? restTimeOverrides : null,
-    });
+    };
+    lastVariablesRef.current = variables;
+    updateMutation.mutate(variables);
   };
 
   return {

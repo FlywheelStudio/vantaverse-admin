@@ -45,6 +45,7 @@ export function useTemplateForm(
   copiedData: Partial<ExerciseTemplate> | null,
   onUpdate?: (data: Partial<ExerciseTemplate>) => void,
   onSuccessWithTemplate?: (template: ExerciseTemplate) => void,
+  onSaveStart?: () => void,
 ) {
   const form = useForm<TemplateFormData>({
     resolver: zodResolver(templateFormSchema),
@@ -61,6 +62,7 @@ export function useTemplateForm(
   const { onSubmit, isSubmitting } = useTemplateFormSubmit({
     item,
     onSuccess: onClose,
+    onSaveStart,
     onMutate: (data) => {
       // Transform form data for optimistic update
       if (!isValidTemplateItem(item) || !onUpdate) return;
@@ -253,7 +255,10 @@ export function useTemplateForm(
       const overrideField = overrideFieldMap[field];
       if (!overrideField) return;
 
-      const overrideArray = [...(formData[overrideField] ?? [])];
+      const currentSets = formData.sets ?? TemplateConfigDefaultValues.sets;
+      const base = formData[overrideField] ?? [];
+      const overrideArray = [...base];
+      while (overrideArray.length < currentSets) overrideArray.push(null);
       overrideArray[currentSetIndex] = value;
       setValue(overrideField, overrideArray as never);
     }
