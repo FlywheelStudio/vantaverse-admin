@@ -15,3 +15,15 @@ export async function getConversationsForAdmin(): Promise<
   const conversationsQuery = new ConversationsQuery();
   return conversationsQuery.getConversationsForAdmin(profile.data.id);
 }
+
+export async function hasUnreadMessagesForAdmin(): Promise<
+  | { success: true; data: boolean }
+  | { success: false; error: string }
+> {
+  const profile = await getAuthProfile();
+  if (!profile.success) {
+    return { success: false, error: profile.error ?? 'Unauthorized' };
+  }
+  const conversationsQuery = new ConversationsQuery();
+  return conversationsQuery.hasUnreadMessagesForAdmin(profile.data.id);
+}

@@ -160,7 +160,7 @@ export function MessagesPageUI({
               'w-[320px] max-w-[320px]',
             )}
           >
-        <div className="p-4 space-y-3 shrink-0">
+        <div className="p-4 space-y-2 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -213,7 +213,7 @@ export function MessagesPageUI({
 
         <div className="messages-conversations-scroll flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 min-h-0 min-w-0 slim-scrollbar">
-            <div className="p-2 space-y-1 w-full min-w-0">
+            <div className="w-full min-w-0 space-y-1 px-2 pb-2 pt-2.5">
             {filteredConversations.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 {conversationsList.length === 0
@@ -239,24 +239,34 @@ export function MessagesPageUI({
                     onClick={() => handleSelectConversation(c)}
                     disabled={!!openingUserId}
                     className={cn(
-                      'w-full min-w-0 text-left rounded-lg p-3 transition-colors cursor-pointer overflow-hidden',
+                      'w-full min-w-0 text-left rounded-lg p-3 transition-colors cursor-pointer',
                       'hover:bg-primary/40 disabled:opacity-50 disabled:cursor-not-allowed',
                       isSelected && 'bg-muted/80 ring-1 ring-border/60',
                     )}
                   >
-                    <div className="flex gap-3 min-w-0 overflow-hidden">
-                      <div className="size-10 shrink-0 flex items-center justify-center">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="relative size-10 shrink-0 overflow-visible flex items-center justify-center">
                         {isOpening ? (
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         ) : (
-                          <Avatar
-                            src={c.avatar_url}
-                            firstName={c.first_name ?? ''}
-                            lastName={c.last_name ?? ''}
-                            userId={c.user_id}
-                            size={40}
-                            disableNavigation
-                          />
+                          <>
+                            <Avatar
+                              src={c.avatar_url}
+                              firstName={c.first_name ?? ''}
+                              lastName={c.last_name ?? ''}
+                              userId={c.user_id}
+                              size={40}
+                              disableNavigation
+                            />
+                            {c.unread_count > 0 && (
+                              <span
+                                aria-hidden
+                                className="absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-red-500 bg-background px-1 text-[10px] font-semibold leading-none text-red-500 shadow-sm"
+                              >
+                                {c.unread_count}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
@@ -270,11 +280,6 @@ export function MessagesPageUI({
                           <span className="text-xs text-muted-foreground shrink-0">
                             {formatMessageTime(c.last_message_at)}
                           </span>
-                          {c.unread_count > 0 && (
-                            <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full border border-red-500 px-1 text-[10px] font-semibold leading-none text-red-500">
-                              {c.unread_count}
-                            </span>
-                          )}
                           {c.program_name && c.program_assignment_id && (
                             <NextLink
                               href={`/builder/${c.program_assignment_id}?from=messages`}

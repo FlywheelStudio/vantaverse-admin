@@ -24,6 +24,94 @@ export type ConversationItem = {
 
 export class ConversationsQuery extends SupabaseQuery {
   /**
+   * Check if admin has at least one unread user message across all patient chats.
+   * Unread semantics match conversation unread_count: user messages after latest seen user message.
+   */
+  public async hasUnreadMessagesForAdmin(
+    adminUserId: string,
+  ): Promise<SupabaseSuccess<boolean> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+    const orgMembersQuery = new OrganizationMembers();
+
+    const adminOrgsResult =
+      await orgMembersQuery.getOrganizationsWhereUserIsAdmin(adminUserId);
+    if (!adminOrgsResult.success) return adminOrgsResult;
+    const adminOrgIds = adminOrgsResult.data.map((o) => o.id);
+    if (adminOrgIds.length === 0) {
+      return { success: true, data: false };
+    }
+
+    const { data: patientMembers, error: patientError } = await supabase
+      .from('organization_members')
+      .select('user_id, created_at')
+      .in('organization_id', adminOrgIds)
+      .eq('role', 'patient')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (patientError) {
+      return this.parseResponsePostgresError(
+        patientError,
+        'Failed to get patients',
+      );
+    }
+
+    if (!patientMembers || patientMembers.length === 0) {
+      return { success: true, data: false };
+    }
+
+    const patientRows = patientMembers as { user_id: string }[];
+    const patientUserIds = [...new Set(patientRows.map((m) => m.user_id))];
+    if (patientUserIds.length === 0) {
+      return { success: true, data: false };
+    }
+
+    const { data: userMsgRows, error: unreadError } = await supabase
+      .from('messages')
+      .select('chat_id, created_at, last_seen_at, chats!inner(user_id)')
+      .eq('message_type', 'user')
+      .in('chats.user_id', patientUserIds)
+      .eq('chats.target_type', 'user')
+      .is('chats.deleted_at', null);
+
+    if (unreadError) {
+      return this.parseResponsePostgresError(
+        unreadError,
+        'Failed to check unread messages',
+      );
+    }
+
+    const rows = (userMsgRows ?? []) as {
+      chat_id: string;
+      created_at: string | null;
+      last_seen_at: string | null;
+    }[];
+    if (rows.length === 0) {
+      return { success: true, data: false };
+    }
+
+    const chatToCutoff = new Map<string, string>();
+    for (const row of rows) {
+      if (row.last_seen_at != null && row.created_at != null) {
+        const cur = chatToCutoff.get(row.chat_id);
+        if (!cur || row.created_at > cur) {
+          chatToCutoff.set(row.chat_id, row.created_at);
+        }
+      }
+    }
+
+    for (const row of rows) {
+      const cutoff = chatToCutoff.get(row.chat_id);
+      const created = row.created_at ?? '';
+      if (cutoff == null || created > cutoff) {
+        return { success: true, data: true };
+      }
+    }
+
+    return { success: true, data: false };
+  }
+
+  /**
    * Get all conversations for an admin (patients in orgs where admin has role=admin)
    * Includes last message and program name per user
    */
@@ -99,7 +187,15 @@ export class ConversationsQuery extends SupabaseQuery {
         'Failed to get profiles',
       );
     }
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    type RawProfile = {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+      avatar_url: string | null;
+    };
+    const profileRows = (profiles ?? []) as RawProfile[];
+    const profileMap = new Map(profileRows.map((p) => [p.id, p]));
 
     // 4. Get chats for these users
     const { data: chats, error: chatsError } = await supabase

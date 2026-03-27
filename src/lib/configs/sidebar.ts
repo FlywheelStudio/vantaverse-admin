@@ -26,10 +26,40 @@ export const HEADER_HEIGHT = 0;
 
 // Navigation links
 export const NAV_LINKS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/groups', label: 'Groups', icon: Building2 },
-  { href: '/users', label: 'Users', icon: Users },
-  { href: '/builder', label: 'Programs', icon: Dumbbell },
-  { href: '/messages', label: 'Messages', icon: MessageSquare },
-  { href: '/exercises', label: 'Exercises', icon: Activity },
+  {
+    href: '/',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    supportsUnreadBadge: false,
+  },
+  {
+    href: '/groups',
+    label: 'Groups',
+    icon: Building2,
+    supportsUnreadBadge: false,
+  },
+  {
+    href: '/users',
+    label: 'Users',
+    icon: Users,
+    supportsUnreadBadge: false,
+  },
+  {
+    href: '/builder',
+    label: 'Programs',
+    icon: Dumbbell,
+    supportsUnreadBadge: false,
+  },
+  {
+    href: '/messages',
+    label: 'Messages',
+    icon: MessageSquare,
+    supportsUnreadBadge: true,
+  },
+  {
+    href: '/exercises',
+    label: 'Exercises',
+    icon: Activity,
+    supportsUnreadBadge: false,
+  },
 ] as const;
