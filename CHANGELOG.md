@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.29.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.3...0.29.0) (2026-03-27)
+
+
+### Features
+
+* fixed issue of set tab erroing out and added an error message for incomplete overrides ([212d82e](https://github.com/FlywheelStudio/vantaverse-admin/commit/212d82e47c06444b89dbd8b24aba286b8a28d640))
+
 ## [0.28.3](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.2...0.28.3) (2026-03-19)
 
 
