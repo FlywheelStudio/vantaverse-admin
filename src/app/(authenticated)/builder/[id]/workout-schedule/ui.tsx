@@ -19,15 +19,21 @@ import { createParallelQueries } from '@/lib/supabase/query';
 import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
 import { UpdateDerivedDialog } from './update-derived-dialog';
-import { updateDerivedProgramSchedules } from '../../actions';
+import { updateDerivedProgramSchedules, updateDerivedPreProgramSchedules } from '../../actions';
 import { useQueryClient } from '@tanstack/react-query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
 import { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
+import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+
+type BuilderAssignmentStatus =
+  | typeof PROGRAM_ASSIGNMENT_STATUS.ACTIVE
+  | typeof PROGRAM_ASSIGNMENT_STATUS.TEMPLATE
+  | typeof PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE;
 
 interface BuildWorkoutSectionProps {
   initialWeeks: number;
   template: ProgramTemplate;
-  assignmentStatus?: 'active' | 'template';
+  assignmentStatus?: BuilderAssignmentStatus;
 }
 
 export function BuildWorkoutSection({
@@ -75,8 +81,14 @@ export function BuildWorkoutSection({
       return;
     }
 
+    // Pre-program template: always propagate, no confirmation dialog
+    if (assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE) {
+      await performSave(true);
+      return;
+    }
+
     // If editing a template, show confirmation dialog
-    if (assignmentStatus === 'template') {
+    if (assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE) {
       setShowDerivedDialog(true);
       return;
     }
@@ -89,6 +101,10 @@ export function BuildWorkoutSection({
     if (!programAssignmentId) return;
 
     const values = programForm.getValues();
+    const isPreProgramTemplate =
+      assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE;
+    const isRegularTemplate =
+      assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE;
 
     const oldImageUrl =
       typeof template.image_url === 'string'
@@ -106,15 +122,25 @@ export function BuildWorkoutSection({
             try {
               const result = await updateProgramTemplateMutation.mutateAsync({
                 templateId: template.id,
-                name: values.name,
+                name: isPreProgramTemplate ? template.name : values.name,
                 weeks: values.weeks,
-                startDate: assignmentStatus === 'template' ? undefined : values.startDate,
-                endDate: assignmentStatus === 'template' ? undefined : values.endDate,
-                description: values.description?.trim() || null,
-                goals: values.goals?.trim() || null,
-                notes: values.notes?.trim() || null,
-                imageFile: values.imageFile || null,
-                imagePreview: values.imagePreview || null,
+                startDate: isRegularTemplate || isPreProgramTemplate
+                  ? undefined
+                  : values.startDate,
+                endDate: isRegularTemplate || isPreProgramTemplate
+                  ? undefined
+                  : values.endDate,
+                description: isPreProgramTemplate
+                  ? template.description ?? null
+                  : values.description?.trim() || null,
+                goals: isPreProgramTemplate
+                  ? template.goals ?? null
+                  : values.goals?.trim() || null,
+                notes: isPreProgramTemplate
+                  ? template.notes ?? null
+                  : values.notes?.trim() || null,
+                imageFile: isPreProgramTemplate ? null : values.imageFile || null,
+                imagePreview: isPreProgramTemplate ? null : values.imagePreview || null,
                 oldImageUrl,
                 organizationId: template.organization_id || null,
               });
@@ -176,8 +202,30 @@ export function BuildWorkoutSection({
         },
       });
 
-      // If template and user wants to update derived assignments
-      if (assignmentStatus === 'template' && updateDerived && result.schedule) {
+      if (isPreProgramTemplate && result.schedule) {
+        const derivedResult = await updateDerivedPreProgramSchedules(
+          programAssignmentId,
+          result.schedule.id,
+        );
+
+        if (derivedResult.success) {
+          const count = derivedResult.data;
+
+          await queryClient.invalidateQueries({
+            queryKey: programAssignmentsKeys.all,
+          });
+
+          if (count > 0) {
+            toast.success(
+              `Saved and updated ${count} pre-program user${count !== 1 ? 's' : ''}`,
+            );
+          } else {
+            toast.success('Saved (no pre-program users to update)');
+          }
+        } else {
+          toast.success('Template saved, but failed to update pre-program users');
+        }
+      } else if (isRegularTemplate && updateDerived && result.schedule) {
         const derivedResult = await updateDerivedProgramSchedules(
           programAssignmentId,
           result.schedule.id,
