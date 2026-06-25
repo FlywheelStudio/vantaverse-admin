@@ -17,11 +17,13 @@ export function FormTextField({
   label,
   placeholder,
   required = false,
+  disabled = false,
 }: FormFieldProps & {
   name: keyof ProgramTemplateFormData;
   label: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -35,6 +37,7 @@ export function FormTextField({
         id={name}
         {...register(name)}
         placeholder={placeholder}
+        disabled={disabled}
       />
       {errors[name] && (
         <p className="text-sm text-red-500 mt-1">
@@ -52,11 +55,13 @@ export function FormNumberField({
   label,
   min = 1,
   required = false,
+  disabled = false,
 }: FormFieldProps & {
   name: keyof ProgramTemplateFormData;
   label: string;
   min?: number;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -70,6 +75,7 @@ export function FormNumberField({
         id={name}
         type="number"
         min={min}
+        disabled={disabled}
         {...register(name, {
           valueAsNumber: true,
         })}
@@ -90,11 +96,13 @@ export function FormTextareaField({
   label,
   placeholder,
   rows = 3,
+  disabled = false,
 }: FormFieldProps & {
   name: keyof ProgramTemplateFormData;
   label: string;
   placeholder?: string;
   rows?: number;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -109,6 +117,7 @@ export function FormTextareaField({
         {...register(name)}
         placeholder={placeholder}
         rows={rows}
+        disabled={disabled}
       />
       {errors[name] && (
         <p className="text-sm text-red-500 mt-1">
