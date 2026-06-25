@@ -5,9 +5,6 @@ export const PROGRAM_ASSIGNMENT_STATUS = {
   ACTIVE: 'active',
 } as const;
 
-export type ProgramAssignmentStatus =
-  (typeof PROGRAM_ASSIGNMENT_STATUS)[keyof typeof PROGRAM_ASSIGNMENT_STATUS];
-
 export function isPreProgramTemplateStatus(
   status: string | null | undefined,
 ): boolean {
