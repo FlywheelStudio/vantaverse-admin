@@ -13,6 +13,7 @@ import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 
 /**
  * Get paginated program assignments with status='template' (joined with program_template)
@@ -41,6 +42,14 @@ export async function getProgramAssignmentsPaginated(
 export async function getProgramAssignmentById(id: string) {
   const query = new ProgramAssignmentsQuery();
   return query.getById(id);
+}
+
+/**
+ * Get the global pre-program template assignment for the pinned builder card.
+ */
+export async function getPreProgramTemplate() {
+  const query = new ProgramAssignmentsQuery();
+  return query.getPreProgramTemplate();
 }
 
 /**
@@ -669,5 +678,21 @@ export async function updateDerivedProgramSchedules(
   return query.updateDerivedAssignmentsSchedule(
     baseAssignmentId,
     workoutScheduleId,
+    PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+  );
+}
+
+/**
+ * Update workout schedule for derived pre-program user assignments.
+ */
+export async function updateDerivedPreProgramSchedules(
+  baseAssignmentId: string,
+  workoutScheduleId: string,
+) {
+  const query = new ProgramAssignmentsQuery();
+  return query.updateDerivedAssignmentsSchedule(
+    baseAssignmentId,
+    workoutScheduleId,
+    PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
   );
 }
