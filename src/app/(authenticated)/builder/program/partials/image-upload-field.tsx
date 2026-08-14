@@ -10,12 +10,14 @@ interface ImageUploadFieldProps {
   imagePreview: string | null;
   setImagePreview: (preview: string | null) => void;
   setValue: UseFormSetValue<ProgramTemplateFormData>;
+  disabled?: boolean;
 }
 
 export function ImageUploadField({
   imagePreview,
   setImagePreview,
   setValue,
+  disabled = false,
 }: ImageUploadFieldProps) {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,13 +49,15 @@ export function ImageUploadField({
       >
         Image
       </label>
-      <Input
-        id="image"
-        name="image"
-        type="file"
-        accept="image/*"
-        onChange={handleImageChange}
-      />
+      {!disabled ? (
+        <Input
+          id="image"
+          name="image"
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+        />
+      ) : null}
       {imagePreview && (
         <div className="mt-2 relative w-full h-48 rounded-[var(--radius-lg)] overflow-hidden border border-border">
           <Image

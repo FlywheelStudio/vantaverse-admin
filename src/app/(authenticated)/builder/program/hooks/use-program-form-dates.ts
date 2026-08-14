@@ -13,6 +13,7 @@ import {
   parseLocalDateString,
 } from '@/lib/utils';
 import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/program/schemas';
+import { isPreProgramTemplateStatus } from '@/lib/constants/program-assignment-status';
 
 interface UseProgramFormDatesProps {
   initialData?: ProgramTemplate | null;
@@ -41,6 +42,7 @@ export function useProgramFormDates({
     if (
       !initialAssignment ||
       initialAssignment.status === 'template' ||
+      isPreProgramTemplateStatus(initialAssignment.status) ||
       loadedDatesForTemplateIdRef.current === initialAssignment.id
     ) {
       return;

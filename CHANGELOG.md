@@ -1,5 +1,19 @@
 # Changelog
 
+# [0.30.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.29.0...0.30.0) (2026-06-25)
+
+
+### Features
+
+* added icon notification to the sidebar ([cc8dd6a](https://github.com/FlywheelStudio/vantaverse-admin/commit/cc8dd6a7df6a91b177142c52f039ba447d95cd35))
+* **builder:** add pre-program template and derived schedule actions ([1236363](https://github.com/FlywheelStudio/vantaverse-admin/commit/123636389b390b6cf2a769ac4b3702fb1a922c7d))
+* **builder:** add pre-program warning banner in workout builder ([0d93965](https://github.com/FlywheelStudio/vantaverse-admin/commit/0d93965211111f25c2efd7699cf07ac020b467a8))
+* **builder:** lock pre-program metadata fields except weeks ([dca0838](https://github.com/FlywheelStudio/vantaverse-admin/commit/dca0838f36c1df214ec52dbb3f3cc1cff20fd740))
+* **builder:** propagate pre-program template saves to all users ([876a2e5](https://github.com/FlywheelStudio/vantaverse-admin/commit/876a2e58949e94bb7fd13be9f3d992d769faffc6))
+* **builder:** show pinned pre-program card on builder list ([2dfdb4f](https://github.com/FlywheelStudio/vantaverse-admin/commit/2dfdb4fce250df5ad5bff5e409c74244a405341f))
+* **builder:** support pre-program template in assignment queries ([657c17b](https://github.com/FlywheelStudio/vantaverse-admin/commit/657c17b3935dda1e346123e52756ef472c3e702e))
+* fixed knip issues ([0eb1f9b](https://github.com/FlywheelStudio/vantaverse-admin/commit/0eb1f9b2e9e38319240c0da562ee41bcb63834a0))
+
 # [0.29.0](https://github.com/FlywheelStudio/vantaverse-admin/compare/0.28.3...0.29.0) (2026-03-27)
 
 

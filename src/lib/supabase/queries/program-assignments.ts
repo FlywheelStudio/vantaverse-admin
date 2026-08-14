@@ -15,6 +15,7 @@ import { ExerciseTemplatesQuery } from './exercise-templates';
 import { ProgramTemplatesQuery } from './program-templates';
 import { Database } from '../database.types';
 import { calculateEndDate, formatDateForDB } from '@/lib/utils';
+import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 
 export const MIN_GATES_FOR_PROGRAM_ASSIGNMENT = 5;
 
@@ -443,6 +444,61 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Get the global pre-program template assignment (singleton).
+   * @returns Success with assignment or null if not seeded
+   */
+  public async getPreProgramTemplate(): Promise<
+    SupabaseSuccess<ProgramAssignmentWithTemplate | null> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase
+      .from('program_assignment')
+      .select(
+        `
+        *,
+        program_template (*),
+        workout_schedule:workout_schedules (*)
+      `,
+      )
+      .eq('status', PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get pre-program template',
+      );
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        data: null,
+      };
+    }
+
+    const transformedData = {
+      ...data,
+      program_template: data.program_template || null,
+      workout_schedule:
+        (data as { workout_schedule?: unknown }).workout_schedule || null,
+    };
+
+    const result = programAssignmentWithTemplateSchema.safeParse(transformedData);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  }
+
+  /**
    * Clone a program assignment into a new template (new program_template + new program_assignment).
    * Copies all template fields with name + " (clone)", same workout_schedule_id; no user/completion.
    * @param assignmentId - The source program assignment ID
@@ -463,6 +519,13 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       return {
         success: false,
         error: 'Program template not found',
+      };
+    }
+
+    if (source.status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE) {
+      return {
+        success: false,
+        error: 'Cannot clone the Pre-Program template',
       };
     }
 
@@ -553,6 +616,26 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     id: string,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('program_assignment')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) {
+      return this.parseResponsePostgresError(
+        fetchError,
+        'Failed to delete program assignment',
+      );
+    }
+
+    if (existing?.status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE) {
+      return {
+        success: false,
+        error: 'Cannot delete the Pre-Program template',
+      };
+    }
 
     const { error } = await supabase
       .from('program_assignment')
@@ -1238,14 +1321,16 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
-   * Update workout_schedule_id for all active assignments derived from a template
+   * Update workout_schedule_id for derived assignments from a template
    * @param baseAssignmentId - The base template assignment ID
    * @param workoutScheduleId - The new workout schedule ID
+   * @param derivedStatus - Assignment status to update ('active' or 'pre_program')
    * @returns Success with count of updated records or error
    */
   public async updateDerivedAssignmentsSchedule(
     baseAssignmentId: string,
     workoutScheduleId: string,
+    derivedStatus: typeof PROGRAM_ASSIGNMENT_STATUS.ACTIVE | typeof PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM = PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
   ): Promise<SupabaseSuccess<number> | SupabaseError> {
     if (!baseAssignmentId || !workoutScheduleId) {
       return {
@@ -1254,7 +1339,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       };
     }
 
-    // Use service_role so we can update derived (active) assignments belonging to other users
+    // Use service_role so we can update derived assignments belonging to other users
     const supabase = await this.getClient('service_role');
 
     // First, get the count of matching records
@@ -1262,7 +1347,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .from('program_assignment')
       .select('*', { count: 'exact', head: true })
       .eq('base', baseAssignmentId)
-      .eq('status', 'active');
+      .eq('status', derivedStatus);
 
     if (countError) {
       return this.parseResponsePostgresError(
@@ -1284,7 +1369,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       .from('program_assignment')
       .update({ workout_schedule_id: workoutScheduleId })
       .eq('base', baseAssignmentId)
-      .eq('status', 'active');
+      .eq('status', derivedStatus);
 
     if (error) {
       return this.parseResponsePostgresError(

@@ -31,6 +31,7 @@ interface CreateTemplateFormProps {
   showDates?: boolean;
   hideActions?: boolean;
   formMethods?: UseFormReturn<ProgramTemplateFormData>;
+  lockMetadataExceptWeeks?: boolean;
 }
 
 export function CreateTemplateForm({
@@ -41,6 +42,7 @@ export function CreateTemplateForm({
   showDates = true,
   hideActions = false,
   formMethods,
+  lockMetadataExceptWeeks = false,
 }: CreateTemplateFormProps) {
   const loadedDatesForTemplateIdRef = useRef<string | null>(null);
 
@@ -124,6 +126,7 @@ export function CreateTemplateForm({
                 label="Name"
                 placeholder="Program name"
                 required
+                disabled={lockMetadataExceptWeeks}
               />
 
               <FormNumberField
@@ -154,6 +157,7 @@ export function CreateTemplateForm({
                 name="goals"
                 label="Goals"
                 placeholder="Build strength, muscle & balance"
+                disabled={lockMetadataExceptWeeks}
               />
 
               <FormTextareaField
@@ -163,6 +167,7 @@ export function CreateTemplateForm({
                 label="Description"
                 placeholder="Program description"
                 rows={3}
+                disabled={lockMetadataExceptWeeks}
               />
             </div>
 
@@ -173,12 +178,14 @@ export function CreateTemplateForm({
               label="Notes"
               placeholder="Notes for administrators and staff"
               rows={3}
+              disabled={lockMetadataExceptWeeks}
             />
 
             <ImageUploadField
               imagePreview={imagePreview}
               setImagePreview={setImagePreview}
               setValue={form.setValue}
+              disabled={lockMetadataExceptWeeks}
             />
 
             {!hideActions && (

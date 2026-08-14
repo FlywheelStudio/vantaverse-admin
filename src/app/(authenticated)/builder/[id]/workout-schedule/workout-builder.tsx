@@ -14,6 +14,11 @@ import {
   type ProgramTemplateFormData,
 } from '../../program/schemas';
 import { getNextProgramStartMonday, parseLocalDateString } from '@/lib/utils';
+import {
+  isPreProgramTemplateStatus,
+  PROGRAM_ASSIGNMENT_STATUS,
+} from '@/lib/constants/program-assignment-status';
+import { PreProgramWarningBanner } from '../pre-program-warning-banner';
 
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
@@ -29,6 +34,7 @@ export function WorkoutBuilder({
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
 
   const template = initialAssignment.program_template;
+  const isPreProgramTemplate = isPreProgramTemplateStatus(initialAssignment.status);
 
   const formDefaultValues = useMemo(() => ({
     name: template?.name || '',
@@ -36,15 +42,24 @@ export function WorkoutBuilder({
     weeks: template?.weeks || 4,
     goals: template?.goals || '',
     notes: template?.notes || '',
-    startDate: initialAssignment.status === 'template'
+    startDate: initialAssignment.status === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE ||
+      isPreProgramTemplate
       ? undefined
       : (initialAssignment.start_date ? parseLocalDateString(initialAssignment.start_date) : getNextProgramStartMonday()),
-    endDate: initialAssignment.status === 'template'
+    endDate: initialAssignment.status === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE ||
+      isPreProgramTemplate
       ? undefined
       : (initialAssignment.end_date ? parseLocalDateString(initialAssignment.end_date) : undefined),
     imageFile: undefined,
     imagePreview: undefined,
-  }), [initialAssignment, template]);
+  }), [initialAssignment, template, isPreProgramTemplate]);
+
+  const builderAssignmentStatus =
+    initialAssignment.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE
+      ? PROGRAM_ASSIGNMENT_STATUS.ACTIVE
+      : initialAssignment.status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE
+        ? PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE
+        : PROGRAM_ASSIGNMENT_STATUS.TEMPLATE;
 
   // Initialize context when assignment data is available
   useEffect(() => {
@@ -84,6 +99,7 @@ export function WorkoutBuilder({
         <Card className="flex flex-col overflow-hidden">
           <div className="flex-1">
             <div className="p-5 sm:p-6 space-y-6">
+              {isPreProgramTemplate ? <PreProgramWarningBanner /> : null}
               <FormProvider {...programForm}>
                 <ProgramDetailsSection
                   template={template}
@@ -96,7 +112,7 @@ export function WorkoutBuilder({
                 <BuildWorkoutSection
                   initialWeeks={template.weeks}
                   template={template}
-                  assignmentStatus={(initialAssignment.status === 'active' || initialAssignment.status === 'template') ? initialAssignment.status : 'template'}
+                  assignmentStatus={builderAssignmentStatus}
                 />
               </FormProvider>
             </div>
