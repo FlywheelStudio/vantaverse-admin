@@ -1,15 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Badge, Button, Card, Icon } from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import { cn } from '@/lib/utils';
-
-const STATUS_CHIPS = [
-  { label: 'Always active', tone: 'success' as const },
-  { label: 'Auto-assigned to all users', tone: 'brand' as const },
-  { label: 'Editing updates it for everyone', tone: 'warning' as const },
-];
 
 interface PreProgramCardProps {
   assignment: ProgramAssignmentWithTemplate;
@@ -27,54 +20,65 @@ export function PreProgramCard({ assignment }: PreProgramCardProps): React.React
 
   return (
     <div
-      className={cn(
-        'relative mb-6 rounded-[var(--radius-sm)] p-px',
-        'bg-linear-to-r from-[var(--warning)] via-[var(--accent)] to-[var(--warning)]',
-      )}
+      className="card"
+      style={{
+        background: 'var(--navy-50)',
+        borderColor: 'var(--navy-200)',
+        boxShadow: 'none',
+        padding: '16px 20px',
+        marginBottom: 18,
+      }}
     >
-      <Card padding={20} className="rounded-[calc(var(--radius-sm)-1px)]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-1 gap-4">
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--warning-soft)] bg-[var(--warning-soft)]"
-              aria-hidden
+      <div className="row" style={{ gap: 14 }}>
+        <span
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--navy-100)',
+            color: 'var(--navy-700)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '0 0 auto',
+          }}
+        >
+          <Icon name="Pin" size={20} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="row" style={{ gap: 9 }}>
+            <span
+              style={{
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--fw-bold)',
+                color: 'var(--text-strong)',
+              }}
             >
-              <Icon name="Anchor" size={28} className="text-[var(--warning)]" />
-            </div>
-
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-[length:var(--text-xl)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
-                  {template.name}
-                </h2>
-                <Badge tone="brand">Anchored</Badge>
-              </div>
-
-              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                <span className="font-[var(--fw-medium)] text-[var(--text-strong)]">
-                  {weeksLabel}
-                </span>
-                {template.description ? <> · {template.description}</> : null}
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {STATUS_CHIPS.map((chip) => (
-                  <Badge key={chip.label} tone={chip.tone}>
-                    {chip.label}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+              Pre-program
+            </span>
+            <span className="bdg bdg-inv">Anchored</span>
           </div>
-
-          <Button
-            className="shrink-0"
-            onClick={() => router.push(`/builder/${assignment.id}`)}
+          <div
+            style={{
+              fontSize: 'var(--text-sm)',
+              color: 'var(--text-body)',
+              marginTop: 3,
+            }}
           >
-            Edit PreProgram
-          </Button>
+            {weeksLabel} · Auto-assigned to every new member while they wait for a personalised
+            program
+            {template.description ? <> · {template.description}</> : null}
+          </div>
         </div>
-      </Card>
+        <button
+          type="button"
+          className="btn btn-sec"
+          onClick={() => router.push(`/builder/${assignment.id}`)}
+        >
+          <Icon name="SquarePen" size={17} />
+          Edit pre-program
+        </button>
+      </div>
     </div>
   );
 }

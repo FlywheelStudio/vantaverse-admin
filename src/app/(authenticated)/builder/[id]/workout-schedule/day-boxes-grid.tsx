@@ -362,12 +362,8 @@ export function DayBoxesGrid() {
 
   return (
     <>
-      <div
-        ref={scrollContainerRefCallback}
-        className="mt-6 overflow-x-auto slim-scrollbar"
-      >
-        <div className="flex gap-4">
-          {days.map((day, index) => {
+      <div ref={scrollContainerRefCallback} className="dgrid">
+        {days.map((day, index) => {
             // day is 1-7 (Monday-Sunday), convert to 0-6 for storage
             const dayIndex = day - 1;
             const items = dayItems(day);
@@ -428,7 +424,6 @@ export function DayBoxesGrid() {
               />
             );
           })}
-        </div>
       </div>
       <ExerciseBuilderModal
         key={`modal-${currentWeek}-${selectedDay}`}

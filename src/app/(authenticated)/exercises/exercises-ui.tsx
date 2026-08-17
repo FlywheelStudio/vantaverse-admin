@@ -1,0 +1,39 @@
+'use client';
+
+import { Icon } from '@/components/medvanta';
+import { AppBar } from '@/components/medvanta/shell';
+import { ExerciseLibrary } from './exercise-library/ui';
+import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
+import type { Exercise } from '@/lib/supabase/schemas/exercises';
+
+interface ExercisesUIProps {
+  initialExercises: Exercise[];
+}
+
+export function ExercisesUI({ initialExercises }: ExercisesUIProps): React.ReactElement {
+  const total = initialExercises.length;
+  const unassigned = initialExercises.filter((e) => (e.assigned_count ?? 0) === 0).length;
+  const sources = new Set(initialExercises.map((e) => e.type).filter(Boolean)).size;
+
+  return (
+    <>
+      <AppBar
+        crumbs={[{ label: 'Exercises' }]}
+        title="Exercise library"
+        subtitle={`${total} exercises · ${sources} source${sources === 1 ? '' : 's'} · ${unassigned} unassigned`}
+        actions={
+          <>
+            <button type="button" className="btn btn-pri" disabled title="New exercise placeholder">
+              <Icon name="Plus" size={17} />
+              New exercise
+            </button>
+            <HtmlMoreButton tooltip="Import from a partner library · Bulk edit categories · Export" />
+          </>
+        }
+      />
+      <div className="body">
+        <ExerciseLibrary initialExercises={initialExercises} />
+      </div>
+    </>
+  );
+}
