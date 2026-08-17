@@ -15,6 +15,9 @@ export interface InputProps {
   invalid?: boolean;
   disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -38,6 +41,9 @@ export function Input({
   invalid = false,
   disabled = false,
   onChange,
+  onBlur,
+  onFocus,
+  onKeyDown,
   className,
   style,
 }: InputProps): React.ReactElement {
@@ -72,6 +78,9 @@ export function Input({
         placeholder={placeholder}
         disabled={disabled}
         onChange={onChange}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onKeyDown={onKeyDown}
         className="min-w-0 flex-1 border-none bg-transparent font-[family-name:var(--font-sans)] text-[length:var(--text-md)] text-[var(--text-strong)] outline-none disabled:cursor-not-allowed"
       />
       {iconRight ? (

@@ -10,6 +10,9 @@ export interface TextareaProps {
   disabled?: boolean;
   invalid?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -23,6 +26,9 @@ export function Textarea({
   disabled = false,
   invalid = false,
   onChange,
+  onBlur,
+  onFocus,
+  onKeyDown,
   className,
   style,
 }: TextareaProps): React.ReactElement {
@@ -34,6 +40,9 @@ export function Textarea({
       rows={rows}
       disabled={disabled}
       onChange={onChange}
+      onBlur={onBlur}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
       className={cn(
         'w-full resize-y px-3.5 py-2.5 font-[family-name:var(--font-sans)] text-[length:var(--text-md)] leading-[var(--lh-normal)] text-[var(--text-strong)]',
         'rounded-[var(--radius-md)] border outline-none transition-[border-color,box-shadow] duration-[var(--dur-fast)]',
