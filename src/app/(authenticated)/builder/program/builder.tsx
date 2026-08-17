@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Icon } from '@/components/medvanta';
 import {
   useProgramAssignments,
@@ -138,7 +138,17 @@ export function ProgramBuilder({
   );
 
   const totalCount = data?.pages[0]?.total ?? assignments.length;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeListPage = Math.min(listPage, pageCount);
   const prefetchTriggeredRef = useRef(false);
+
+  const visibleAssignments = useMemo(() => {
+    const start = (safeListPage - 1) * pageSize;
+    return assignments.slice(start, start + pageSize);
+  }, [assignments, safeListPage, pageSize]);
+
+  const visibleRangeStart = totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(safeListPage * pageSize, totalCount);
 
   const handleRowClick = (assignment: ProgramAssignmentWithTemplate): void => {
     if (assignment.id) {
@@ -160,9 +170,29 @@ export function ProgramBuilder({
     closeCreateForm();
   };
 
-  useEffect(() => {
+  const handleSearchChange = useCallback((value: string): void => {
+    setSearchValue(value);
+    setListPage(1);
     prefetchTriggeredRef.current = false;
-  }, [debouncedSearch]);
+  }, []);
+
+  const handlePageChange = useCallback((nextPage: number): void => {
+    setListPage(nextPage);
+  }, []);
+
+  useEffect(() => {
+    const neededCount = safeListPage * pageSize;
+    if (assignments.length < neededCount && hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [
+    safeListPage,
+    pageSize,
+    assignments.length,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  ]);
 
   useEffect(() => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -201,8 +231,6 @@ export function ProgramBuilder({
     pageSize,
   ]);
 
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
-
   return (
     <>
       {showCreateForm ? (
@@ -217,7 +245,7 @@ export function ProgramBuilder({
         <HtmlSearchField
           placeholder="Search by name, goal or description…"
           value={searchValue}
-          onChange={setSearchValue}
+          onChange={handleSearchChange}
         />
         <HtmlFiltersButton activeCount={0} />
       </div>
@@ -253,7 +281,7 @@ export function ProgramBuilder({
                 </td>
               </tr>
             ) : (
-              assignments.map((assignment) => (
+              visibleAssignments.map((assignment) => (
                 <ProgramTableRow
                   key={assignment.id}
                   assignment={assignment}
@@ -268,7 +296,7 @@ export function ProgramBuilder({
             <>
               Showing{' '}
               <b className="mono" style={{ color: 'var(--text-body)' }}>
-                {assignments.length}
+                {visibleRangeStart}-{visibleRangeEnd}
               </b>{' '}
               of{' '}
               <b className="mono" style={{ color: 'var(--text-body)' }}>
@@ -277,9 +305,9 @@ export function ProgramBuilder({
               templates
             </>
           }
-          page={listPage}
+          page={safeListPage}
           pageCount={pageCount}
-          onPageChange={setListPage}
+          onPageChange={handlePageChange}
         />
       </div>
 
