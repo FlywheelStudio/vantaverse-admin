@@ -1,11 +1,15 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import { HtmlMoreButton } from './html-toolbar';
 
 export interface BuilderSaveBarProps {
-  activeStep: 1 | 2;
+  activeStep: 1 | 2 | 3;
   onStepClick?: (step: 1 | 2) => void;
+  detailsHref?: string;
+  workoutHref?: string;
+  reviewAssignHref?: string;
   onSave?: () => void;
   saveDisabled?: boolean;
   saveLoading?: boolean;
@@ -13,9 +17,56 @@ export interface BuilderSaveBarProps {
 }
 
 /** HTML `saveBar()` step rail for program builder / workout screens. */
+function SaveBarStep({
+  active,
+  href,
+  onClick,
+  disabled,
+  title,
+  children,
+}: {
+  active: boolean;
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const router = useRouter();
+  const className = active ? 'on' : undefined;
+
+  if (href && !active) {
+    return (
+      <button
+        type="button"
+        className={className}
+        title={title}
+        onClick={() => router.push(href)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function BuilderSaveBar({
   activeStep,
   onStepClick,
+  detailsHref,
+  workoutHref,
+  reviewAssignHref,
   onSave,
   saveDisabled = false,
   saveLoading = false,
@@ -24,26 +75,35 @@ export function BuilderSaveBar({
   return (
     <div className="row" style={{ gap: 10, marginBottom: 18 }}>
       <span className="seg seg-lg">
-        <button
-          type="button"
-          className={activeStep === 1 ? 'on' : ''}
-          onClick={() => onStepClick?.(1)}
+        <SaveBarStep
+          active={activeStep === 1}
+          href={detailsHref}
+          onClick={detailsHref ? undefined : () => onStepClick?.(1)}
         >
           <Icon name="FileText" size={16} />
           1 · Details
-        </button>
-        <button
-          type="button"
-          className={activeStep === 2 ? 'on' : ''}
-          onClick={() => onStepClick?.(2)}
+        </SaveBarStep>
+        <SaveBarStep
+          active={activeStep === 2}
+          href={workoutHref}
+          onClick={workoutHref ? undefined : () => onStepClick?.(2)}
         >
           <Icon name="CalendarDays" size={16} />
           2 · Workout schedule
-        </button>
-        <button type="button" disabled title="Review & assign — Task 9">
+        </SaveBarStep>
+        <SaveBarStep
+          active={activeStep === 3}
+          href={reviewAssignHref}
+          disabled={!reviewAssignHref && activeStep !== 3}
+          title={
+            reviewAssignHref || activeStep === 3
+              ? undefined
+              : 'Review & assign — open a program first'
+          }
+        >
           <Icon name="BadgeCheck" size={16} />
           3 · Review &amp; assign
-        </button>
+        </SaveBarStep>
       </span>
       <span className="sp row" style={{ gap: 10 }}>
         {showUnsaved ? (

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { WorkoutBuilder } from './[id]/workout-schedule/workout-builder';
@@ -35,6 +37,15 @@ export function BuilderDetailUI({
         ]}
         title={templateName}
         subtitle={`Template · ${weeks} week${weeks === 1 ? '' : 's'}`}
+        actions={
+          <Link
+            href={`/builder/review-assign?id=${assignmentId}`}
+            className="btn btn-sec"
+          >
+            <Icon name="BadgeCheck" size={17} />
+            Review &amp; assign
+          </Link>
+        }
       />
       <WorkoutBuilder
         assignmentId={assignmentId}
