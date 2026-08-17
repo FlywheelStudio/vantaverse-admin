@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/medvanta';
 import { useBuilder } from '@/context/builder-context';
 import {
   useUpsertWorkoutSchedule,
@@ -268,20 +268,17 @@ export function BuildWorkoutSection({
   return (
     <>
       <div className="w-full">
-        <div className="w-full flex items-center justify-between px-5 py-4">
-          <span className="text-lg font-semibold text-foreground">Build Workout</span>
-          <Button
-            onClick={handleSave}
-            disabled={isDisabled}
-            size="sm"
-            className="cursor-pointer"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
+        <div className="flex w-full items-center justify-between px-5 py-4">
+          <span className="text-[length:var(--text-lg)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
+            Build Workout
+          </span>
+          <Button onClick={handleSave} disabled={isDisabled} size="sm" loading={isSaving}>
+            Save
           </Button>
         </div>
         <div
           className={cn(
-            'px-5 pb-5 pt-4 border-t border-border',
+            'border-t border-[var(--border-subtle)] px-5 pb-5 pt-4',
             isDisabled && 'disabled-div',
           )}
         >

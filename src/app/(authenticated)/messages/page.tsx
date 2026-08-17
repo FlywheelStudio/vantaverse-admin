@@ -33,7 +33,7 @@ export default async function MessagesPage() {
   return (
     <PageWrapper
       subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
+        <h1 className="text-[length:var(--text-3xl)] font-[var(--fw-semibold)] tracking-[var(--tracking-tight)] text-[var(--text-strong)]">
           Messages
         </h1>
       }

@@ -4,7 +4,7 @@ import { useMemo, useEffect } from 'react';
 import { useBuilder } from '@/context/builder-context';
 import { ProgramDetailsSection } from '../../program/ui';
 import { BuildWorkoutSection } from './ui';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/medvanta';
 import { motion } from 'framer-motion';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -84,7 +84,7 @@ export function WorkoutBuilder({
         suppressHydrationWarning
         className="p-6 flex-1 min-h-0 overflow-y-auto h-full slim-scrollbar flex items-center justify-center"
       >
-        <p className="text-muted-foreground">Program not found</p>
+        <p className="text-[var(--text-muted)]">Program not found</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export function WorkoutBuilder({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="flex flex-col overflow-hidden">
+        <Card padding={0} className="flex flex-col overflow-hidden">
           <div className="flex-1">
             <div className="p-5 sm:p-6 space-y-6">
               {isPreProgramTemplate ? <PreProgramWarningBanner /> : null}

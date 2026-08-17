@@ -19,8 +19,7 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/medvanta';
 import { useBuilder } from '@/context/builder-context';
 import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import { cn } from '@/lib/utils';
@@ -101,14 +100,14 @@ function DraggableWeekButton({
       className={cn(
         'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-pill)] text-sm font-medium transition-all min-w-[108px] h-10 px-4 select-none touch-none',
         isDisabled
-          ? 'opacity-70 cursor-not-allowed border border-destructive/40 bg-destructive/5 text-destructive'
+          ? 'cursor-not-allowed border border-[var(--danger-soft)] bg-[var(--danger-soft)] text-[var(--danger)] opacity-70'
           : isDragging
-            ? 'cursor-grabbing border border-border bg-background shadow-[var(--shadow-sm)]'
+            ? 'cursor-grabbing border border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]'
             : 'cursor-pointer active:cursor-grabbing',
         !isDisabled && !isDragging && isCurrent
-          ? 'bg-primary text-primary-foreground shadow-[var(--shadow-md)]'
+          ? 'bg-[var(--primary)] text-[var(--text-inverse)] shadow-[var(--shadow-md)]'
           : !isDisabled
-            ? 'border border-border bg-background shadow-[var(--shadow-sm)] hover:bg-muted/60 hover:text-foreground'
+            ? 'border border-[var(--border-default)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-strong)]'
             : '',
       )}
     >
@@ -354,15 +353,14 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
+      <IconButton
+        icon="ChevronLeft"
+        label="Scroll weeks left"
+        variant="secondary"
         onClick={() => handleScroll('left')}
         disabled={!canScrollLeft}
         className="shrink-0"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
+      />
 
       <div
         ref={scrollContainerRef}
@@ -407,15 +405,14 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
         </DndContext>
       </div>
 
-      <Button
-        variant="outline"
-        size="icon"
+      <IconButton
+        icon="ChevronRight"
+        label="Scroll weeks right"
+        variant="secondary"
         onClick={() => handleScroll('right')}
         disabled={!canScrollRight}
         className="shrink-0"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+      />
 
       <CopyPasteButtons
         size="md"

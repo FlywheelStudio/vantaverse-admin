@@ -2,20 +2,22 @@
 
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Loader2, Search } from 'lucide-react';
-import NextLink from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
-import { Avatar } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Avatar,
+  Card,
+  Icon,
+  Input,
+} from '@/components/medvanta';
 import { ChatInterface } from '@/app/(authenticated)/users/[id]/partials/chat-interface';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
 import { getConversationsForAdmin } from './actions';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
 import { cn } from '@/lib/utils';
+import NextLink from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function formatMessageTime(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -151,177 +153,172 @@ export function MessagesPageUI({
   };
 
   return (
-    <Card className="flex flex-1 min-h-0 flex-col overflow-hidden">
-      <CardContent className="p-0 flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-1 min-h-0">
-          <div
-            className={cn(
-              'flex flex-col border-r border-border shrink-0 min-w-0 overflow-hidden',
-              'w-[320px] max-w-[320px]',
-            )}
-          >
-        <div className="p-4 space-y-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Card padding={0} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1">
+        <div
+          className={cn(
+            'flex min-w-0 shrink-0 flex-col overflow-hidden border-r border-[var(--border-subtle)]',
+            'w-[320px] max-w-[320px]',
+          )}
+        >
+          <div className="shrink-0 space-y-2 p-4">
             <Input
               type="search"
               placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-11 pl-10 rounded-md bg-background"
+              iconLeft="Search"
             />
-          </div>
 
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1 slim-scrollbar">
-            <div className="flex gap-2 min-w-0 w-max">
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className={cn(
-                  'shrink-0 h-7 px-3 rounded-full text-sm font-medium transition-colors cursor-pointer',
-                  'border',
-                  isFilterActive('all')
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-border hover:bg-muted/60',
-                )}
-              >
-                All
-              </button>
-              {organizations.length > 0 ? organizations.map((org) => (
+            <div className="slim-scrollbar -mx-1 w-full overflow-x-auto overflow-y-hidden px-1 pb-2">
+              <div className="flex w-max min-w-0 gap-2">
                 <button
-                  key={org.id}
                   type="button"
-                  onClick={() => setFilter({ type: 'org', orgId: org.id })}
+                  onClick={() => setFilter('all')}
                   className={cn(
-                    'shrink-0 h-7 px-3 rounded-full text-sm font-medium transition-colors cursor-pointer',
-                    'border',
-                    isFilterActive({ type: 'org', orgId: org.id })
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background border-border hover:bg-muted/60',
+                    'shrink-0 cursor-pointer rounded-[var(--radius-pill)] border px-3 py-1 text-[length:var(--text-sm)] font-[var(--fw-medium)] transition-colors',
+                    isFilterActive('all')
+                      ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--text-inverse)]'
+                      : 'border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-body)] hover:bg-[var(--bg-subtle)]',
                   )}
                 >
-                  {org.name} ({orgCounts.get(org.id) ?? 0})
+                  All
                 </button>
-              )) : (
-                <div className="flex shrink-0 h-7 px-3 text-sm font-medium text-muted-foreground text-center items-center justify-center">
-                  No groups assigned
-                </div>
-              )}
+                {organizations.length > 0 ? (
+                  organizations.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => setFilter({ type: 'org', orgId: org.id })}
+                      className={cn(
+                        'shrink-0 cursor-pointer whitespace-nowrap rounded-[var(--radius-pill)] border px-3 py-1 text-[length:var(--text-sm)] font-[var(--fw-medium)] transition-colors',
+                        isFilterActive({ type: 'org', orgId: org.id })
+                          ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--text-inverse)]'
+                          : 'border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-body)] hover:bg-[var(--bg-subtle)]',
+                      )}
+                    >
+                      {org.name} ({orgCounts.get(org.id) ?? 0})
+                    </button>
+                  ))
+                ) : (
+                  <span className="flex h-7 shrink-0 items-center justify-center px-3 text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-muted)]">
+                    No groups assigned
+                  </span>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div className="messages-conversations-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <ScrollArea className="slim-scrollbar min-h-0 min-w-0 flex-1">
+              <div className="w-full min-w-0 space-y-1 px-2 pb-2 pt-2.5">
+                {filteredConversations.length === 0 ? (
+                  <div className="py-8 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+                    {conversationsList.length === 0
+                      ? 'No conversations yet'
+                      : q
+                        ? `No matches for "${debouncedSearch.trim()}"`
+                        : 'No conversations in this filter'}
+                  </div>
+                ) : (
+                  filteredConversations.map((c) => {
+                    const isOpening = openingUserId === c.user_id;
+                    const isSelected = selected?.userId === c.user_id;
+                    const fullName =
+                      c.first_name && c.last_name
+                        ? `${c.first_name} ${c.last_name}`
+                        : c.first_name || c.last_name || 'Unknown';
+
+                    return (
+                      <button
+                        key={c.user_id}
+                        type="button"
+                        onClick={() => handleSelectConversation(c)}
+                        disabled={!!openingUserId}
+                        className={cn(
+                          'w-full min-w-0 cursor-pointer rounded-[var(--radius-sm)] p-3 text-left transition-colors',
+                          'hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-50',
+                          isSelected && 'bg-[var(--navy-50)] ring-1 ring-[var(--border-default)]',
+                        )}
+                      >
+                        <div className="flex min-w-0 gap-3">
+                          <div className="relative flex size-10 shrink-0 items-center justify-center overflow-visible">
+                            {isOpening ? (
+                              <Icon
+                                name="LoaderCircle"
+                                size={20}
+                                className="animate-spin text-[var(--text-muted)]"
+                              />
+                            ) : (
+                              <>
+                                <Avatar
+                                  name={fullName}
+                                  src={c.avatar_url ?? undefined}
+                                  size="md"
+                                />
+                                {c.unread_count > 0 ? (
+                                  <span
+                                    aria-hidden
+                                    className="absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-[var(--danger)] bg-[var(--surface-card)] px-1 text-[10px] font-[var(--fw-semibold)] leading-none text-[var(--danger)] shadow-[var(--shadow-sm)]"
+                                  >
+                                    {c.unread_count}
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <div className="truncate text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-strong)]">
+                              {fullName}
+                            </div>
+                            <div className="mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                              {c.last_message_content ?? 'No messages yet'}
+                            </div>
+                            <div className="mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden">
+                              <span className="shrink-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                                {formatMessageTime(c.last_message_at)}
+                              </span>
+                              {c.program_name && c.program_assignment_id ? (
+                                <NextLink
+                                  href={`/builder/${c.program_assignment_id}?from=messages`}
+                                  className="block min-w-0 flex-1 cursor-pointer truncate text-[length:var(--text-xs)] text-[var(--text-body)] no-underline hover:text-[var(--primary)] hover:underline"
+                                >
+                                  {c.program_name}
+                                </NextLink>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
           </div>
         </div>
 
-        <div className="messages-conversations-scroll flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 min-h-0 min-w-0 slim-scrollbar">
-            <div className="w-full min-w-0 space-y-1 px-2 pb-2 pt-2.5">
-            {filteredConversations.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                {conversationsList.length === 0
-                  ? 'No conversations yet'
-                  : q
-                    ? `No matches for "${debouncedSearch.trim()}"`
-                    : 'No conversations in this filter'}
-              </div>
-            ) : (
-              filteredConversations.map((c) => {
-                const isOpening = openingUserId === c.user_id;
-                const isSelected =
-                  selected?.userId === c.user_id;
-                const fullName =
-                  c.first_name && c.last_name
-                    ? `${c.first_name} ${c.last_name}`
-                    : c.first_name || c.last_name || 'Unknown';
-
-                return (
-                  <button
-                    key={c.user_id}
-                    type="button"
-                    onClick={() => handleSelectConversation(c)}
-                    disabled={!!openingUserId}
-                    className={cn(
-                      'w-full min-w-0 text-left rounded-lg p-3 transition-colors cursor-pointer',
-                      'hover:bg-primary/40 disabled:opacity-50 disabled:cursor-not-allowed',
-                      isSelected && 'bg-muted/80 ring-1 ring-border/60',
-                    )}
-                  >
-                    <div className="flex min-w-0 gap-3">
-                      <div className="relative size-10 shrink-0 overflow-visible flex items-center justify-center">
-                        {isOpening ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        ) : (
-                          <>
-                            <Avatar
-                              src={c.avatar_url}
-                              firstName={c.first_name ?? ''}
-                              lastName={c.last_name ?? ''}
-                              userId={c.user_id}
-                              size={40}
-                              disableNavigation
-                            />
-                            {c.unread_count > 0 && (
-                              <span
-                                aria-hidden
-                                className="absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-red-500 bg-background px-1 text-[10px] font-semibold leading-none text-red-500 shadow-sm"
-                              >
-                                {c.unread_count}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="text-sm font-medium text-highlighted truncate">
-                          {fullName}
-                        </div>
-                        <div className="text-xs text-dimmed mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {c.last_message_content ?? 'No messages yet'}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5 min-w-0 overflow-hidden">
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatMessageTime(c.last_message_at)}
-                          </span>
-                          {c.program_name && c.program_assignment_id && (
-                            <NextLink
-                              href={`/builder/${c.program_assignment_id}?from=messages`}
-                              className="text-xs text-foreground no-underline hover:underline hover:text-primary cursor-pointer truncate min-w-0 flex-1 block"
-                            >
-                              {c.program_name}
-                            </NextLink>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
-
-          <div className="flex-1 min-w-0 flex flex-col">
-            {selected ? (
-              <div className="flex-1 min-h-0 p-4">
-                <ChatInterface
-                  chatId={selected.chatId}
-                  patientName={selected.patientName}
-                  onClose={handleCloseChat}
-                  onMarkedAsSeen={() =>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {selected ? (
+            <div className="mv-messages-plain-compose flex min-h-0 flex-1 p-4 [&_.border-t>div.flex>button.self-end:first-of-type]:hidden [&_input[type=file]]:hidden">
+              <ChatInterface
+                chatId={selected.chatId}
+                patientName={selected.patientName}
+                onClose={handleCloseChat}
+                onMarkedAsSeen={() =>
                   queryClient.invalidateQueries({
                     queryKey: ['messages', 'conversations'],
                   })
                 }
-                />
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                Select a conversation
-              </div>
-            )}
-          </div>
+              />
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+              Select a conversation
+            </div>
+          )}
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }

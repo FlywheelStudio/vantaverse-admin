@@ -12,7 +12,7 @@ export default function LoginPage() {
         className="absolute inset-0 h-full w-full"
         style={{
           background:
-            'linear-gradient(180deg, #1E3A5F 0%, #2454FF 50%, #D4EEF7 100%)',
+            'linear-gradient(180deg, var(--navy-800) 0%, var(--primary) 50%, var(--cyan-100) 100%)',
         }}
       />
 

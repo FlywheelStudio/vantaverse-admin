@@ -26,7 +26,9 @@ export default async function BuilderPage() {
   return (
     <PageWrapper
       subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Program Builder</h1>
+        <h1 className="text-[length:var(--text-3xl)] font-[var(--fw-semibold)] tracking-[var(--tracking-tight)] text-[var(--text-strong)]">
+          Program Builder
+        </h1>
       }
     >
       <BuilderContextProvider initialAssignment={null} initialSchedule={null}>

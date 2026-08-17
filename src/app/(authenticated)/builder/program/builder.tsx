@@ -2,8 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Icon,
+  Input,
+} from '@/components/medvanta';
 import {
   useProgramAssignments,
   useDeleteProgramAssignment,
@@ -12,9 +17,6 @@ import {
 } from '@/hooks/use-passignments';
 import { ProgramTemplateCard } from './card';
 import { CreateTemplateForm } from './form';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
@@ -226,31 +228,23 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
             />
           )}
 
-          <Card className="gap-6 flex flex-col">
+          <Card padding={0} className="flex flex-col gap-6">
             <div className="flex flex-col p-5 sm:p-6">
-              {/* Header with Create Button */}
-              {/* Filters */}
-              <div className="mb-6 flex gap-3 flex-wrap items-center">
+              <div className="mb-6 flex flex-wrap items-center gap-3">
                 <Button
                   onClick={() => setShowCreateForm(!showCreateForm)}
                   disabled={showCreateForm}
-                  className="cursor-pointer flex items-center gap-2 shrink-0 shadow-[var(--shadow-md)]"
+                  iconLeft="Plus"
+                  className="shrink-0"
                 >
-                  {isMobile ? (
-                    <Plus className="h-4 w-4" />
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      Create New Template
-                    </>
-                  )}
+                  {isMobile ? null : 'Create New Template'}
                 </Button>
                 <Input
                   type="text"
                   placeholder="Search by name, description, or goals..."
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  className="flex-1 min-w-[200px]"
+                  className="min-w-[200px] flex-1"
                 />
                 <Input
                   type="number"
@@ -259,19 +253,11 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                   onChange={(e) => setWeeksFilter(e.target.value)}
                   className="w-40 shrink-0"
                 />
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="show-assigned"
-                    checked={showAssigned}
-                    onCheckedChange={(checked) => setShowAssigned(checked === true)}
-                  />
-                  <label
-                    htmlFor="show-assigned"
-                    className="text-sm text-muted-foreground cursor-pointer"
-                  >
-                    Show assigned
-                  </label>
-                </div>
+                <Checkbox
+                  checked={showAssigned}
+                  label="Show assigned"
+                  onChange={(checked) => setShowAssigned(checked)}
+                />
               </div>
 
               {/* Templates Grid */}
@@ -285,7 +271,7 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
                 >
                   {assignments.length === 0 && !isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
+                      <p className="text-[var(--text-muted)]">
                         {debouncedSearch || debouncedWeeksFilter
                           ? 'No programs found matching your filters.'
                           : 'No programs available.'}
@@ -321,8 +307,9 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
 
                       {/* Loading indicator */}
                       {isFetchingNextPage && (
-                        <div className="flex items-center justify-center py-8">
-                          <p className="text-muted-foreground">Loading more programs...</p>
+                        <div className="flex items-center justify-center gap-2 py-8">
+                          <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
+                          <p className="text-[var(--text-muted)]">Loading more programs...</p>
                         </div>
                       )}
                     </>
