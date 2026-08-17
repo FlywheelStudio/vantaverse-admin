@@ -42,21 +42,28 @@ export function Switch({
         className,
       )}
       style={style}
-      onClick={handleToggle}
     >
-      <span
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isActive}
+        disabled={disabled}
+        onClick={handleToggle}
         className={cn(
-          'inline-flex h-[23px] w-10 shrink-0 items-center rounded-[var(--radius-pill)] p-0.5 transition-[background] duration-[var(--dur-base)] ease-[var(--ease-out)]',
+          'inline-flex h-[23px] w-10 shrink-0 items-center rounded-[var(--radius-pill)] border-0 p-0.5 transition-[background] duration-[var(--dur-base)] ease-[var(--ease-out)]',
+          'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
           isActive ? 'bg-[var(--accent)]' : 'bg-[var(--slate-300)]',
         )}
       >
         <span
+          aria-hidden
           className={cn(
             'h-[19px] w-[19px] rounded-[var(--radius-pill)] bg-[var(--white)] shadow-[var(--shadow-sm)] transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]',
             isActive ? 'translate-x-[17px]' : 'translate-x-0',
           )}
         />
-      </span>
+      </button>
       {label ? (
         <span className="text-[length:var(--text-md)] text-[var(--text-body)]">
           {label}
