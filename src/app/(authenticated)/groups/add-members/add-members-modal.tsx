@@ -1,24 +1,59 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import {
-  Button,
+  Avatar,
   Checkbox,
-  Dialog,
+  Icon,
   Input,
   Tooltip,
 } from '@/components/medvanta';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useMemberData } from './hooks/use-member-data';
 import { useMemberSelection } from './hooks/use-member-selection';
 import { useSaveMembers } from './hooks/use-save-members';
 import { filterProfiles } from './utils/filter-profiles';
-import { ProfileItem } from './components/profile-item';
 import type { AddMembersModalProps } from './types';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
-import { cn } from '@/lib/utils';
+
+function MemberSelectRow({
+  profile,
+  isSelected,
+  isCurrentMember,
+  onToggle,
+  disabled,
+}: {
+  profile: ProfileWithMemberships;
+  isSelected: boolean;
+  isCurrentMember: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}): React.ReactElement {
+  const name =
+    [profile.first_name, profile.last_name].filter(Boolean).join(' ') ||
+    profile.email ||
+    'Unknown';
+
+  return (
+    <button
+      type="button"
+      className={`lrow${isSelected ? ' on' : ''}`}
+      disabled={disabled}
+      onClick={onToggle}
+    >
+      <span className={`cb${isSelected ? ' on' : ''}`}>
+        {isSelected ? <Icon name="Check" size={14} /> : null}
+      </span>
+      <Avatar name={name} src={profile.avatar_url ?? undefined} size="sm" />
+      <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+        <span className="nm">{name}</span>
+        <span className="em">{profile.email ?? '—'}</span>
+      </span>
+      {isCurrentMember ? <span className="bdg">Member</span> : null}
+    </button>
+  );
+}
 
 function filterByRole(
   profiles: ProfileWithMemberships[],
@@ -176,188 +211,150 @@ export function AddMembersModal({
           : 'Assign Physiologist';
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
+      title={inviteTitle}
+      subtitle={`${targetLabel} (${targetKind})`}
       onClose={handleCancel}
-      title={
-        <>
-          {inviteTitle} to{' '}
-          <span className="text-[var(--text-strong)]">
-            {targetLabel} ({targetKind})
-          </span>
-        </>
-      }
-      width={760}
-      className="flex max-h-[85vh] flex-col overflow-hidden"
+      width={560}
       footer={
         <>
-          <Button variant="secondary" onClick={handleCancel} disabled={isPending}>
+          <button type="button" className="btn btn-sec" onClick={handleCancel} disabled={isPending}>
             Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={!canSave || isPending} loading={isPending}>
+          </button>
+          <button
+            type="button"
+            className="btn btn-pri"
+            onClick={handleSave}
+            disabled={!canSave || isPending}
+          >
+            {isPending ? (
+              <Icon name="LoaderCircle" size={17} className="animate-spin" />
+            ) : (
+              <Icon name="UserPlus" size={17} />
+            )}
             {saveLabel}
-          </Button>
+          </button>
         </>
       }
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={
-          open
-            ? { opacity: 1, scale: 1, y: 0 }
-            : { opacity: 0, scale: 0.95, y: 20 }
-        }
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <div className="pb-2 pt-1">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setSelectedRole('patient')}
-              className={cn(
-                'cursor-pointer rounded-[var(--radius-md)] p-4 text-left transition-all',
-                selectedRole === 'patient'
-                  ? 'border-2 border-[var(--primary)] bg-[color-mix(in_oklch,var(--primary)_10%,var(--surface-card))]'
-                  : 'border border-[var(--border-subtle)] bg-[var(--surface-card)] hover:border-[var(--border-strong)]',
-              )}
-            >
-              <div className="mb-1 text-[length:var(--text-base)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
-                Member
-              </div>
-              <div className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                Participates in program
-              </div>
-            </button>
+      <div className="g g2" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className={`choice${selectedRole === 'patient' ? ' on' : ''}`}
+          onClick={() => setSelectedRole('patient')}
+        >
+          <span className="rd" />
+          <span>
+            <span className="ct">Member</span>
+            <span className="cs">Participates in program</span>
+          </span>
+        </button>
 
-            <Tooltip
-              label={
-                isPhysiologistDisabled
-                  ? 'Physiologist is managed at organization level and applies to all teams in the organization'
-                  : 'Co-manages group'
-              }
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  !isPhysiologistDisabled && setSelectedRole('admin')
-                }
-                disabled={isPhysiologistDisabled}
-                className={cn(
-                  'w-full cursor-pointer rounded-[var(--radius-md)] p-4 text-left transition-all',
-                  isPhysiologistDisabled
-                    ? 'cursor-not-allowed border border-[var(--border-subtle)] bg-[var(--slate-50)] opacity-60'
-                    : selectedRole === 'admin'
-                      ? 'border-2 border-[var(--primary)] bg-[color-mix(in_oklch,var(--primary)_10%,var(--surface-card))]'
-                      : 'border border-[var(--border-subtle)] bg-[var(--surface-card)] hover:border-[var(--border-strong)]',
-                )}
-              >
-                <div className="mb-1 text-[length:var(--text-base)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
-                  Physiologist
-                </div>
-                <div className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                  Co-manages group
-                </div>
-              </button>
-            </Tooltip>
-          </div>
-        </div>
+        <Tooltip
+          label={
+            isPhysiologistDisabled
+              ? 'Physiologist is managed at organization level and applies to all teams in the organization'
+              : 'Co-manages group'
+          }
+        >
+          <button
+            type="button"
+            className={`choice${selectedRole === 'admin' ? ' on' : ''}`}
+            onClick={() => !isPhysiologistDisabled && setSelectedRole('admin')}
+            disabled={isPhysiologistDisabled}
+            style={isPhysiologistDisabled ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          >
+            <span className="rd" />
+            <span>
+              <span className="ct">Physiologist</span>
+              <span className="cs">Co-manages group</span>
+            </span>
+          </button>
+        </Tooltip>
+      </div>
 
-        <div className="space-y-3 pt-2">
-          <Input
-            placeholder="Search by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            iconLeft="Search"
+      <Input
+        placeholder="Search by name or email..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        iconLeft="Search"
+        className="mb-3"
+      />
+
+      {selectedRole === 'patient' ? (
+        <div className="row" style={{ marginBottom: 12, gap: 8, justifyContent: 'space-between' }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleSelectAll}>
+            Select all
+          </button>
+          <Checkbox
+            checked={viewUnassigned}
+            onChange={setViewUnassigned}
+            label="View unassigned"
           />
-          {selectedRole === 'patient' ? (
-            <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--slate-50)] p-2">
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="cursor-pointer border-0 bg-transparent p-0 text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--primary)] hover:underline"
-              >
-                Select All
-              </button>
-              <Checkbox
-                checked={viewUnassigned}
-                onChange={setViewUnassigned}
-                label="View unassigned"
-              />
-            </div>
-          ) : null}
         </div>
+      ) : null}
 
-        <ScrollArea className="mt-4 min-h-0 flex-1" style={{ maxHeight: 320 }}>
-          {isLoading ? (
-            <div className="py-8 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-              Loading...
-            </div>
-          ) : (
-            <div className="space-y-1 pr-1">
-              {selectedRole === 'admin' &&
-                currentPhysiologist &&
+      <div className="list-rows slim-scrollbar" style={{ maxHeight: 320, overflowY: 'auto' }}>
+        {isLoading ? (
+          <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}>
+            <Icon name="LoaderCircle" size={18} className="animate-spin" />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</span>
+          </div>
+        ) : filteredProfiles.length === 0 &&
+          !(selectedRole === 'admin' && currentPhysiologistProfile && initialPhysiologistId) ? (
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: '12px 0' }}>
+            No users found
+          </p>
+        ) : (
+          <>
+            {selectedRole === 'admin' &&
+            currentPhysiologist &&
+            currentPhysiologistProfile &&
+            initialPhysiologistId ? (
+              <MemberSelectRow
+                key={currentPhysiologist.userId}
+                profile={currentPhysiologistProfile}
+                isSelected={selectedPhysiologistId === initialPhysiologistId}
+                isCurrentMember={false}
+                onToggle={() => {
+                  if (isPhysiologistDisabled) return;
+                  handleToggleUser(currentPhysiologist.userId, 'admin');
+                }}
+                disabled={isPhysiologistDisabled}
+              />
+            ) : null}
+            {filteredProfiles.map((profile) => {
+              if (
+                selectedRole === 'admin' &&
                 currentPhysiologistProfile &&
-                initialPhysiologistId && (
-                  <ProfileItem
-                    key={currentPhysiologist.userId}
-                    groupedProfile={{
-                      profile: currentPhysiologistProfile,
-                      isCurrentMember: false,
-                    }}
-                    isSelected={
-                      selectedPhysiologistId === initialPhysiologistId
-                    }
-                    onToggle={() => {
-                      if (isPhysiologistDisabled) return;
-                      handleToggleUser(currentPhysiologist.userId, 'admin');
-                    }}
-                  />
-                )}
-              {filteredProfiles.length === 0 ? (
-                <div className="py-8 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                  No users found
-                </div>
-              ) : (
-                filteredProfiles.map((profile) => {
-                  if (
-                    selectedRole === 'admin' &&
-                    currentPhysiologistProfile &&
-                    profile.id === currentPhysiologistProfile.id
-                  ) {
-                    return null;
-                  }
+                profile.id === currentPhysiologistProfile.id
+              ) {
+                return null;
+              }
 
-                  const isSelected =
-                    selectedRole === 'patient'
-                      ? selectedMemberIds.has(profile.id)
-                      : selectedPhysiologistId === profile.id;
+              const isSelected =
+                selectedRole === 'patient'
+                  ? selectedMemberIds.has(profile.id)
+                  : selectedPhysiologistId === profile.id;
 
-                  return (
-                    <ProfileItem
-                      key={profile.id}
-                      groupedProfile={{
-                        profile,
-                        isCurrentMember: initialMemberIds.has(profile.id),
-                      }}
-                      isSelected={isSelected}
-                      onToggle={() => {
-                        if (
-                          selectedRole === 'admin' &&
-                          isPhysiologistDisabled
-                        ) {
-                          return;
-                        }
-                        handleToggleUser(profile.id, selectedRole);
-                      }}
-                    />
-                  );
-                })
-              )}
-            </div>
-          )}
-        </ScrollArea>
-      </motion.div>
-    </Dialog>
+              return (
+                <MemberSelectRow
+                  key={profile.id}
+                  profile={profile}
+                  isSelected={isSelected}
+                  isCurrentMember={initialMemberIds.has(profile.id)}
+                  onToggle={() => {
+                    if (selectedRole === 'admin' && isPhysiologistDisabled) return;
+                    handleToggleUser(profile.id, selectedRole);
+                  }}
+                  disabled={selectedRole === 'admin' && isPhysiologistDisabled}
+                />
+              );
+            })}
+          </>
+        )}
+      </div>
+    </HtmlModal>
   );
 }

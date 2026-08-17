@@ -1,14 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Alert,
-  Badge,
-  Button,
-  Dialog,
-  FormField,
-  Radio,
-} from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
+import { HtmlModal } from './intake-survey-placeholder-modal';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
 import { useRouter } from 'next/navigation';
@@ -35,11 +29,20 @@ const statusLabel: Record<string, string> = {
 };
 
 const onboardingOptions = [
-  { value: 'full' as const, label: 'Full onboarding' },
-  { value: 'screening' as const, label: 'Skip screening' },
+  {
+    value: 'full' as const,
+    label: 'Full onboarding',
+    description: 'Member completes screening, consultation, and intake as normal.',
+  },
+  {
+    value: 'screening' as const,
+    label: 'Skip screening',
+    description: 'Member starts at consultation; screening answers are skipped.',
+  },
   {
     value: 'consultation' as const,
     label: 'Skip screening + consultation',
+    description: 'Member starts at intake survey only.',
   },
 ] as const;
 
@@ -80,66 +83,106 @@ export function ChangeOnboardingDialog({
   };
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
       onClose={handleClose}
-      title="Change Onboarding"
-      width={448}
+      title="Change onboarding path"
+      subtitle={`Override the default onboarding flow for ${displayName}.`}
+      width={540}
       footer={
         <>
-          <Button variant="secondary" onClick={handleClose} disabled={saving}>
+          <button type="button" className="btn btn-sec" onClick={handleClose} disabled={saving}>
             Cancel
-          </Button>
-          <Button onClick={handleSave} loading={saving}>
-            Save Changes
-          </Button>
+          </button>
+          <button type="button" className="btn btn-pri" onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <Icon name="LoaderCircle" size={17} className="animate-spin" />
+            ) : (
+              <Icon name="Save" size={17} />
+            )}
+            Save override
+          </button>
         </>
       }
     >
-      <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-        Modify the onboarding path for this user.
-      </p>
-
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-[var(--fw-semibold)] text-[var(--text-strong)]">
+      <div
+        className="row"
+        style={{
+          gap: 12,
+          padding: '12px 14px',
+          background: 'var(--slate-50)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: 18,
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              display: 'block',
+              fontSize: 'var(--text-md)',
+              fontWeight: 'var(--fw-semibold)',
+              color: 'var(--text-strong)',
+            }}
+          >
             {displayName}
-          </p>
-          <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          </span>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
             {displayEmail}
-          </p>
-        </div>
-        {status ? <Badge tone="brand">{status}</Badge> : null}
+          </span>
+        </span>
+        {status ? <span className="bdg bdg-b">{status}</span> : null}
       </div>
 
-      <FormField label="Onboarding override">
-        <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--slate-50)] p-3">
-          {onboardingOptions.map(({ value, label }) => (
-            <Radio
+      <div className="g g1" style={{ gap: 10 }}>
+        {onboardingOptions.map(({ value, label, description }) => {
+          const selected = override === value;
+          return (
+            <button
               key={value}
-              name="onboarding-override"
-              value={value}
-              label={label}
-              checked={override === value}
+              type="button"
+              className={`choice${selected ? ' on' : ''}`}
               disabled={saving}
-              onChange={() => setOverride(value)}
-            />
-          ))}
-        </div>
-      </FormField>
+              onClick={() => setOverride(value)}
+            >
+              <span className={`rd${selected ? ' on' : ''}`}>
+                {selected ? <i /> : null}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--text-md)',
+                    fontWeight: 'var(--fw-semibold)',
+                    color: 'var(--text-strong)',
+                  }}
+                >
+                  {label}
+                </span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                  {description}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {override !== 'full' ? (
-        <Alert kind="warning" className="mt-4">
-          Skipping onboarding steps may result in a confusing experience for
-          invited users. Only use this override in exceptional situations.
-        </Alert>
+        <div className="alert alert-w" style={{ marginTop: 16 }}>
+          <Icon name="TriangleAlert" size={19} />
+          <div>
+            Skipping onboarding steps may confuse invited members. Use only in exceptional
+            situations.
+          </div>
+        </div>
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-[length:var(--text-sm)] text-[var(--danger)]">
+        <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--danger)' }}>
           {error}
         </p>
       ) : null}
-    </Dialog>
+    </HtmlModal>
   );
 }

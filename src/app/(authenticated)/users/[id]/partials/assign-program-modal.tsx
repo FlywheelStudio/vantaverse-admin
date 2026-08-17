@@ -2,16 +2,15 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  FormField,
+  Icon,
   Input,
 } from '@/components/medvanta';
+import { HtmlModal } from './intake-survey-placeholder-modal';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -204,45 +203,49 @@ export function AssignProgramModal({
   };
 
   const isAssigning = assignProgram.isPending;
+  const memberLabel = [userFirstName, userLastName].filter(Boolean).join(' ');
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
       onClose={handleCancel}
-      title="Assign Program"
-      width={760}
-      className="flex max-h-[85vh] flex-col overflow-hidden"
+      title="Assign program"
+      subtitle={
+        memberLabel
+          ? `Choose a template and start date for ${memberLabel}.`
+          : 'Choose a template and start date for this member.'
+      }
+      width={640}
+      style={{ maxHeight: 'min(90vh, 720px)', display: 'flex', flexDirection: 'column' }}
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      headerExtra={
+        <div className="msteps" style={{ marginTop: 10 }}>
+          <span className="on">1 · Template</span>
+          <span className="sep">›</span>
+          <span className={startDate ? 'on' : ''}>2 · Start date</span>
+        </div>
+      }
       footer={
         <>
-          <Button variant="secondary" onClick={handleCancel} disabled={isAssigning}>
+          <button type="button" className="btn btn-sec" onClick={handleCancel} disabled={isAssigning}>
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
+            type="button"
+            className="btn btn-pri"
             onClick={handleAssignClick}
             disabled={!selectedAssignmentId || !startDate || isAssigning}
-            loading={isAssigning}
           >
-            Assign
-          </Button>
+            {isAssigning ? (
+              <Icon name="LoaderCircle" size={17} className="animate-spin" />
+            ) : (
+              <Icon name="ClipboardList" size={17} />
+            )}
+            Assign program
+          </button>
         </>
       }
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={
-          open
-            ? { opacity: 1, scale: 1, y: 0 }
-            : { opacity: 0, scale: 0.95, y: 20 }
-        }
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          {userFirstName || userLastName
-            ? `Select a program template for ${[userFirstName, userLastName].filter(Boolean).join(' ')}.`
-            : 'Select a program to assign to this user.'}
-        </p>
-
         <div className="space-y-3">
           <Input
             placeholder="Search by program name, user name, or email..."
@@ -257,7 +260,7 @@ export function AssignProgramModal({
           />
         </div>
 
-        <ScrollArea className="mt-3 min-h-0 flex-1 pr-2" style={{ maxHeight: 280 }}>
+        <ScrollArea className="list-rows mt-3 min-h-0 flex-1 pr-2" style={{ maxHeight: 280 }}>
           {isLoading ? (
             <div className="py-8 text-center text-[var(--text-muted)]">
               Loading...
@@ -271,7 +274,7 @@ export function AssignProgramModal({
               No programs found
             </div>
           ) : (
-            <div className="space-y-3 p-2">
+            <>
               {assignments.map((assignment) => {
                 const template = assignment.program_template;
                 const isSelected = selectedAssignmentId === assignment.id;
@@ -299,69 +302,55 @@ export function AssignProgramModal({
                   <button
                     key={assignment.id}
                     type="button"
+                    className={`lrow${isSelected ? ' on' : ''}`}
                     onClick={() => handleCardSelect(assignment.id || null)}
                     disabled={isAssigning}
-                    className={cn(
-                      'w-full cursor-pointer p-4 text-left transition-colors',
-                      'rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]',
-                      'hover:bg-[color-mix(in_oklch,var(--primary)_12%,var(--surface-card))] hover:shadow-[var(--shadow-md)]',
-                      'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
-                      'disabled:cursor-not-allowed disabled:opacity-50',
-                      isSelected &&
-                        'border-[var(--primary)] bg-[var(--slate-50)] ring-2 ring-[var(--primary)]',
-                    )}
                   >
-                    <div className="flex min-h-18 min-w-0 items-stretch gap-4">
-                      <ProgramPreview
-                        seed={template?.id || assignment.id}
-                        imageUrl={programImageUrl}
-                        className="w-18"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <div className="truncate text-[length:var(--text-base)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
-                            {template?.name || 'Unnamed Program'}
-                          </div>
-                          <Badge
-                            tone={
-                              assignment.status === 'active' ? 'brand' : 'neutral'
-                            }
-                          >
-                            {assignment.status || 'template'}
-                          </Badge>
-                        </div>
-                        {template?.description ? (
-                          <div className="mt-1 line-clamp-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                            {template.description}
-                          </div>
-                        ) : null}
-                        <div className="mt-2 flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                          <span>{template?.weeks || 0} weeks</span>
-                          {userName && assignment.status === 'active' ? (
-                            <span>| Assigned to: {userName}</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
+                    <span className={`rd${isSelected ? ' on' : ''}`}>
+                      {isSelected ? <i /> : null}
+                    </span>
+                    <ProgramPreview
+                      seed={template?.id || assignment.id}
+                      imageUrl={programImageUrl}
+                      className="h-9 w-9 shrink-0"
+                    />
+                    <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <span className="row" style={{ gap: 8 }}>
+                        <span className="nm">{template?.name || 'Unnamed Program'}</span>
+                        <Badge tone={assignment.status === 'active' ? 'brand' : 'neutral'}>
+                          {assignment.status || 'template'}
+                        </Badge>
+                      </span>
+                      {template?.description ? (
+                        <span className="em">{template.description}</span>
+                      ) : null}
+                      <span className="em" style={{ display: 'block' }}>
+                        {template?.weeks || 0} weeks
+                        {userName && assignment.status === 'active'
+                          ? ` · Assigned to ${userName}`
+                          : ''}
+                      </span>
+                    </span>
                   </button>
                 );
               })}
               <div ref={observerTargetRef} className="h-4" />
               {isFetchingNextPage ? (
-                <div className="py-4 text-center text-[var(--text-muted)]">
-                  Loading more...
+                <div className="py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  Loading more…
                 </div>
               ) : null}
-            </div>
+            </>
           )}
         </ScrollArea>
 
-        <FormField
-          label="Start Date"
-          required
-          hint="Start date must be a Monday (today or later)."
-          className="mt-3"
-        >
+        <div className="ff mt-3">
+          <label className="lbl" htmlFor="assign-program-start">
+            Start date <span style={{ color: 'var(--danger)' }}>*</span>
+          </label>
+          <p className="mut" style={{ fontSize: 'var(--text-xs)', marginBottom: 8 }}>
+            Start date must be a Monday (today or later).
+          </p>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -406,8 +395,7 @@ export function AssignProgramModal({
               )}
             </PopoverContent>
           </Popover>
-        </FormField>
-      </motion.div>
-    </Dialog>
+        </div>
+    </HtmlModal>
   );
 }
