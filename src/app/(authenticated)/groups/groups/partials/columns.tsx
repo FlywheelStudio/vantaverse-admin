@@ -9,108 +9,55 @@ import { useOrganizationsTable } from '@/context/organizations';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
-import { Icon, Textarea } from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
 
-function EditableNameCell({ org }: { org: Organization }) {
-  const value = org.name;
+function groupInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function GroupCell({ org }: { org: Organization }): React.ReactElement {
   const router = useRouter();
 
   return (
-    <div className="flex items-center gap-2">
-      <span
-        onClick={() => router.push(`/groups/${org.id}`)}
-        className="cursor-pointer font-[var(--fw-semibold)] text-[var(--text-strong)] transition-colors hover:text-[var(--primary)]"
-      >
-        {value}
+    <div className="cellp">
+      <GroupLogo org={org} />
+      <span style={{ minWidth: 0 }}>
+        <button
+          type="button"
+          className="nm"
+          style={{ display: 'block', cursor: 'pointer', border: 'none', background: 'transparent', padding: 0, textAlign: 'left' }}
+          onClick={() => router.push(`/groups/${org.id}`)}
+        >
+          {org.name}
+        </button>
+        <span className="em">{org.description || '—'}</span>
       </span>
     </div>
   );
 }
 
-function EditableDescriptionCell({ org }: { org: Organization }) {
-  const {
-    editingCell,
-    editingValue,
-    setEditingValue,
-    handleCellEdit,
-    handleCellBlur,
-  } = useOrganizationsTable();
-  const isEditing =
-    editingCell?.id === org.id && editingCell?.field === 'description';
-  const description = org.description;
-
-  if (isEditing) {
-    return (
-      <Textarea
-        value={editingValue}
-        onChange={(e) => setEditingValue(e.target.value)}
-        onBlur={() =>
-          handleCellBlur(org.id, 'description', editingValue, description)
-        }
-        rows={2}
-        className="text-[length:var(--text-sm)]"
-      />
-    );
-  }
-
-  return (
-    <span
-      onClick={() => handleCellEdit(org.id, 'description')}
-      className="cursor-pointer text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]"
-    >
-      {description || '—'}
-    </span>
-  );
-}
-
-function PictureCell({ org }: { org: Organization }) {
+function GroupLogo({ org }: { org: Organization }): React.ReactElement {
   const { handleImageUpload, uploadingImage } = useOrganizationsTable();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isUploading = uploadingImage === org.id;
-  const pictureUrl = org.picture_url;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
       return;
     }
-
     await handleImageUpload(file, org.id);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
-  const handleClick = (): void => {
-    fileInputRef.current?.click();
-  };
-
-  if (!pictureUrl) {
-    return (
-      <>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <button
-          type="button"
-          onClick={handleClick}
-          disabled={isUploading}
-          className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Icon name="Upload" size={20} className="text-[var(--text-muted)]" />
-        </button>
-      </>
-    );
-  }
 
   return (
     <>
@@ -123,29 +70,49 @@ function PictureCell({ org }: { org: Organization }) {
       />
       <button
         type="button"
-        onClick={handleClick}
+        onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="thmb gr"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 'var(--radius-sm)',
+          flex: '0 0 auto',
+          overflow: 'hidden',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+        }}
       >
-        <Image
-          src={pictureUrl}
-          alt=""
-          className="aspect-square size-full object-contain"
-          width={48}
-          height={48}
-          key={pictureUrl}
-        />
-        {isUploading ? (
-          <div className="pointer-events-none absolute -inset-1 flex items-center justify-center">
-            <div className="loader" style={{ width: '56px', height: '56px' }} />
-          </div>
-        ) : null}
+        {org.picture_url ? (
+          <Image
+            src={org.picture_url}
+            alt=""
+            width={38}
+            height={38}
+            className="size-full object-cover"
+          />
+        ) : (
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
+              fontSize: 12,
+              fontWeight: 'var(--fw-bold)',
+            }}
+          >
+            {groupInitials(org.name)}
+          </span>
+        )}
       </button>
     </>
   );
 }
 
-function MembersCell({ org }: { org: Organization }) {
+function MembersCell({ org }: { org: Organization }): React.ReactElement {
   const { handleOpenAddMembers } = useOrganizationsTable();
   const members = (org.members || []).filter((m) => m.role !== 'admin');
   const avatars = members.map((member) => {
@@ -157,30 +124,60 @@ function MembersCell({ org }: { org: Organization }) {
       userId: profile?.id || '',
     };
   });
+
   return (
-    <AvatarGroup
-      avatars={avatars}
-      maxVisible={5}
-      onAddClick={() => handleOpenAddMembers('organization', org.id)}
-    />
+    <div className="row" style={{ gap: 10 }}>
+      <AvatarGroup
+        avatars={avatars}
+        maxVisible={4}
+        onAddClick={() => handleOpenAddMembers('organization', org.id)}
+      />
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-sm)',
+          color: 'var(--text-muted)',
+        }}
+      >
+        {members.length}
+      </span>
+    </div>
   );
 }
 
-function PhysiologistCell({ org }: { org: Organization }) {
+function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
   const physiologists = (org.members || []).filter((m) => m.role === 'admin');
-  const avatars = physiologists.map((member) => {
-    const profile = member.profile;
-    return {
-      src: profile?.avatar_url || undefined,
-      firstName: profile?.first_name || '',
-      lastName: profile?.last_name || '',
-      userId: profile?.id || '',
-    };
-  });
-  return <AvatarGroup avatars={avatars} maxVisible={1} />;
+  const admin = physiologists[0]?.profile;
+  const name = admin
+    ? [admin.first_name, admin.last_name].filter(Boolean).join(' ') || 'Admin'
+    : null;
+
+  if (!admin) {
+    return <span className="faint">Not assigned</span>;
+  }
+
+  return (
+    <div className="row" style={{ gap: 9 }}>
+      <span
+        className="av av-t1 av-28"
+        style={{ width: 28, height: 28, fontSize: 11 }}
+      >
+        {admin.avatar_url ? (
+          <img src={admin.avatar_url} alt={name || ''} className="size-full object-cover" />
+        ) : (
+          groupInitials(name || 'A')
+        )}
+      </span>
+      <span style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--fw-medium)', color: 'var(--text-strong)' }}>
+        {name}
+      </span>
+    </div>
+  );
 }
 
-const isTeamsEnabled = process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+function ProgramsCell(): React.ReactElement {
+  return <span className="faint">None</span>;
+}
 
 function SortHeader({
   label,
@@ -190,81 +187,57 @@ function SortHeader({
   label: string;
   sorted: false | 'asc' | 'desc';
   onToggle: () => void;
-}) {
+}): React.ReactElement {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="inline-flex cursor-pointer items-center gap-1.5 transition-colors hover:text-[var(--text-strong)]"
-    >
+    <button type="button" className="srt" onClick={onToggle} style={{ border: 'none', background: 'transparent', padding: 0 }}>
       {label}
       <Icon
         name={sorted === 'desc' ? 'ChevronDown' : 'ChevronUp'}
         size={14}
-        className={sorted ? 'text-[var(--text-strong)]' : 'text-[var(--text-faint)]'}
+        style={{ marginLeft: 4, verticalAlign: 'middle', opacity: sorted ? 1 : 0.4 }}
       />
     </button>
   );
 }
 
+const isTeamsEnabled = process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+
 export const columns: ColumnDef<Organization>[] = [
   {
-    accessorKey: 'picture_url',
-    header: () => <span>Image</span>,
-    cell: ({ row }) => <PictureCell org={row.original} />,
-    enableSorting: false,
-    enableColumnFilter: false,
-  },
-  {
+    id: 'group',
     accessorKey: 'name',
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
         <SortHeader
-          label="Name"
+          label="Group"
           sorted={sorted}
           onToggle={() => column.toggleSorting(sorted === 'asc')}
         />
       );
     },
-    cell: ({ row }) => <EditableNameCell org={row.original} />,
+    cell: ({ row }) => <GroupCell org={row.original} />,
     filterFn: (row, id, value) => {
       const name = row.getValue(id) as string;
       return name?.toLowerCase().includes(String(value).toLowerCase());
     },
   },
   {
-    accessorKey: 'description',
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <SortHeader
-          label="Description"
-          sorted={sorted}
-          onToggle={() => column.toggleSorting(sorted === 'asc')}
-        />
-      );
-    },
-    cell: ({ row }) => <EditableDescriptionCell org={row.original} />,
-  },
-  {
     accessorKey: 'members_count',
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <SortHeader
-          label="Members"
-          sorted={sorted}
-          onToggle={() => column.toggleSorting(sorted === 'asc')}
-        />
-      );
-    },
+    header: () => <span>Members</span>,
     cell: ({ row }) => <MembersCell org={row.original} />,
   },
   {
-    accessorKey: 'physiologist',
+    id: 'physiologist',
     header: () => <span>Physiologist</span>,
     cell: ({ row }) => <PhysiologistCell org={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
+  },
+  {
+    id: 'programs',
+    header: () => <span>Programs</span>,
+    cell: () => <ProgramsCell />,
     enableSorting: false,
     enableColumnFilter: false,
   },
@@ -295,9 +268,15 @@ export const columns: ColumnDef<Organization>[] = [
     },
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string | null;
-      if (!date) return <span className="text-[var(--text-muted)]">—</span>;
+      if (!date) return <span className="faint">—</span>;
       return (
-        <span className="text-[var(--text-muted)]">
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--text-muted)',
+          }}
+        >
           {new Date(date).toLocaleDateString()}
         </span>
       );

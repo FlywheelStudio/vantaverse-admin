@@ -4,7 +4,7 @@ import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { Avatar, Button, Dialog, Tag } from '@/components/medvanta';
+import { Dialog } from '@/components/medvanta';
 
 export type GroupMemberRow = {
   user_id: string;
@@ -23,13 +23,23 @@ function memberDisplayName(member: GroupMemberRow): string {
   return member.first_name || member.last_name || 'Unknown';
 }
 
+function memberInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 function NameEmailCell({
   member,
   organizationId,
 }: {
   member: GroupMemberRow;
   organizationId: string;
-}) {
+}): React.ReactElement {
   const router = useRouter();
   const fullName = memberDisplayName(member);
 
@@ -41,40 +51,39 @@ function NameEmailCell({
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer items-center gap-3 text-left"
+      className="cellp"
+      style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }}
       onClick={handleClick}
     >
-      <Avatar
-        name={fullName}
-        src={member.avatar_url || undefined}
-        size="md"
-      />
-      <div className="min-w-0 max-w-60 flex-1">
-        <div className="truncate text-[length:var(--text-md)] font-[var(--fw-medium)] text-[var(--text-strong)]">
+      <span className="av av-t1 av-32" style={{ width: 34, height: 34, fontSize: 12 }}>
+        {member.avatar_url ? (
+          <img src={member.avatar_url} alt={fullName} className="size-full object-cover" />
+        ) : (
+          memberInitials(fullName)
+        )}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span className="nm" style={{ display: 'block' }}>
           {fullName}
-        </div>
-        {member.email ? (
-          <div className="truncate text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            {member.email}
-          </div>
-        ) : null}
-      </div>
+        </span>
+        {member.email ? <span className="em">{member.email}</span> : null}
+      </span>
     </button>
   );
 }
 
-function ProgramCell({ member }: { member: GroupMemberRow }) {
+function ProgramCell({ member }: { member: GroupMemberRow }): React.ReactElement {
   if (!member.program_name) {
-    return <span className="text-[var(--text-muted)]">—</span>;
+    return <span className="faint">Not assigned</span>;
   }
-  return <Tag tone="accent">{member.program_name}</Tag>;
+  return <span className="lnk">{member.program_name}</span>;
 }
 
-function RoleCell({ member }: { member: GroupMemberRow }) {
+function RoleCell({ member }: { member: GroupMemberRow }): React.ReactElement {
   if (!member.role) {
-    return <span className="text-[var(--text-muted)]">—</span>;
+    return <span className="faint">—</span>;
   }
-  return <Tag>{member.role}</Tag>;
+  return <span className="bdg">{member.role}</span>;
 }
 
 function RemoveButton({
@@ -85,7 +94,7 @@ function RemoveButton({
   member: GroupMemberRow;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   confirmText: string;
-}) {
+}): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const isRemoving = removeMemberMutation.isPending;
 
@@ -99,21 +108,36 @@ function RemoveButton({
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="text-[var(--danger)]" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        style={{ color: 'var(--danger)' }}
+        onClick={() => setOpen(true)}
+      >
         Remove
-      </Button>
+      </button>
       <Dialog
         open={open}
         title="Remove member"
         onClose={() => setOpen(false)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setOpen(false)} disabled={isRemoving}>
+            <button
+              type="button"
+              className="btn btn-sec"
+              onClick={() => setOpen(false)}
+              disabled={isRemoving}
+            >
               Cancel
-            </Button>
-            <Button variant="danger" loading={isRemoving} onClick={handleRemove}>
-              Remove
-            </Button>
+            </button>
+            <button
+              type="button"
+              className="btn btn-dan"
+              onClick={handleRemove}
+              disabled={isRemoving}
+            >
+              {isRemoving ? 'Removing…' : 'Remove'}
+            </button>
           </>
         }
       >
@@ -133,26 +157,25 @@ function ActionsCell({
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
   isSuperAdminOrg?: boolean;
-}) {
+}): React.ReactElement {
   if (isSuperAdminOrg && member.role === 'unassigned' && addAdminMutation) {
     const isPending = addAdminMutation.isPending;
     return (
-      <div className="flex items-center justify-end">
-        <Button
-          variant="secondary"
-          size="sm"
+      <div style={{ textAlign: 'right' }}>
+        <button
+          type="button"
+          className="btn btn-sec btn-sm"
           disabled={isPending}
-          loading={isPending}
           onClick={() => addAdminMutation.mutate(member.user_id)}
         >
-          Make admin
-        </Button>
+          {isPending ? 'Assigning…' : 'Make admin'}
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-end">
+    <div style={{ textAlign: 'right' }}>
       <RemoveButton
         member={member}
         removeMemberMutation={removeMemberMutation}
@@ -179,7 +202,7 @@ export function getMembersColumns({
 }): ColumnDef<GroupMemberRow>[] {
   const nameCol: ColumnDef<GroupMemberRow> = {
     accessorKey: 'name',
-    header: () => <span>Name / Email</span>,
+    header: () => <span className="srt">Member</span>,
     cell: ({ row }) => (
       <NameEmailCell member={row.original} organizationId={organizationId} />
     ),
@@ -201,7 +224,7 @@ export function getMembersColumns({
 
   const actionsCol: ColumnDef<GroupMemberRow> = {
     id: 'actions',
-    header: () => <span>Actions</span>,
+    header: () => null,
     cell: ({ row }) => (
       <ActionsCell
         member={row.original}

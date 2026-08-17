@@ -1,14 +1,14 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/medvanta';
+import { useMemo } from 'react';
+import { Icon } from '@/components/medvanta';
+import { AppBar } from '@/components/medvanta/shell';
 import { useOrganizations } from '@/hooks/use-organizations';
-import { OrganizationsTableProvider } from '@/context/organizations';
+import { OrganizationsTableProvider, useOrganizationsTable } from '@/context/organizations';
 import { AddMembersModal } from '../add-members/add-members-modal';
 import { OrganizationsTable } from './partials/organizations-table';
 import { columns } from './partials/columns';
 import { useGroupsState } from './hooks/use-groups-state';
-import { cn } from '@/lib/utils';
 import {
   useCreateOrganization,
   useUpdateOrganization,
@@ -28,23 +28,29 @@ import type {
   EditableTeamField,
 } from '@/context/organizations';
 
-const contentVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    y: 20,
-    transition: {
-      duration: 0.3,
-    },
-  },
-};
+function GroupsListAppBar({
+  groupCount,
+  memberCount,
+}: {
+  groupCount: number;
+  memberCount: number;
+}): React.ReactElement {
+  const { handleCreate } = useOrganizationsTable();
+
+  return (
+    <AppBar
+      crumbs={[{ label: 'Groups' }]}
+      title="Groups"
+      subtitle={`${groupCount} partner group${groupCount === 1 ? '' : 's'} · ${memberCount} members`}
+      actions={
+        <button type="button" className="btn btn-pri" onClick={handleCreate}>
+          <Icon name="Plus" size={17} />
+          New group
+        </button>
+      }
+    />
+  );
+}
 
 interface GroupsUIProps {
   initialOrganizations?: Organization[];
@@ -257,7 +263,19 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
     await deleteTeamMutation.mutateAsync(teamId);
   };
 
-  const displayOrganizations = organizations || [];
+  const displayOrganizations = useMemo(
+    () => organizations || [],
+    [organizations],
+  );
+
+  const memberTotal = useMemo(
+    () =>
+      displayOrganizations.reduce((sum, org) => {
+        const fromMembers = (org.members || []).filter((m) => m.role !== 'admin').length;
+        return sum + (fromMembers || org.members_count || 0);
+      }, 0),
+    [displayOrganizations],
+  );
 
   const contextValue = {
     handleCreate: state.handleCreate,
@@ -309,26 +327,12 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
 
   return (
     <OrganizationsTableProvider value={contextValue}>
-      {!isLoading && (
-        <Card className={cn('flex flex-col gap-6', !state.addingMembersTo && 'overflow-hidden')}>
-          <div>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key="table"
-                variants={contentVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <OrganizationsTable
-                  columns={columns}
-                  data={displayOrganizations}
-                />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </Card>
-      )}
+      <GroupsListAppBar groupCount={displayOrganizations.length} memberCount={memberTotal} />
+      <div className="body">
+        {!isLoading ? (
+          <OrganizationsTable columns={columns} data={displayOrganizations} />
+        ) : null}
+      </div>
       {state.addingMembersTo &&
         (() => {
           const addingMembersTo = state.addingMembersTo;
