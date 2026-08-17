@@ -1,9 +1,6 @@
 /* MedVanta tokens — sourced from MedVanta Design System/tokens */
-/* Webfonts via Google Fonts CDN.
-   NOTE: the MEDVANTA wordmark uses an unknown wide geometric sans; we have
-   NOT matched it for UI type. Plus Jakarta Sans is the substitute (modern,
-   friendly, healthcare-appropriate). IBM Plex Mono for tabular data. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* Webfonts (Plus Jakarta Sans + IBM Plex Mono) load from src/app/globals.css
+   via a top-level @import — nested @import here breaks CSS bundling after Tailwind. */
 /* MedVanta color system — derived from the MEDVANTA wordmark
    (deep navy → cyan gradient). Navy = brand/structure, Cyan = interactive. */
 :root {

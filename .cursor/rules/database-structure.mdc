@@ -87,7 +87,7 @@ updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 -- All profile columns plus:
 current_level INTEGER -- User's current level (defaults to 1)
 hp_points INTEGER -- Total HP points earned (defaults to 0)
-points_required_for_next_level INTEGER -- HP points needed for next level (NULL for max level)
+points_for_next_level INTEGER -- HP points needed for next level (NULL for max level)
 ```
 **RLS**: Users can view their own profile with stats, service_role has full access
 **Security**: Uses security_invoker = true to inherit RLS from underlying tables

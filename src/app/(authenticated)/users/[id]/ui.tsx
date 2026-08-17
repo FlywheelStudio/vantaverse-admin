@@ -224,7 +224,7 @@ export function UserProfilePageUI({
                   <HpCard
                     currentLevel={user.current_level}
                     hpPoints={user.hp_points}
-                    pointsRequiredForNextLevel={user.points_required_for_next_level}
+                    pointsRequiredForNextLevel={user.points_for_next_level}
                     currentPhase={user.current_phase}
                     levelDescription={hpLevelThreshold?.description ?? null}
                     levelImageUrl={hpLevelThreshold?.image_url ?? null}

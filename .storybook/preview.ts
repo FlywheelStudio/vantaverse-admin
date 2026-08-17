@@ -1,5 +1,6 @@
 import type { Preview } from '@storybook/react';
-import '../src/styles/medvanta-tokens.css';
+/* globals.css loads fonts (@import first) + tokens; do not import tokens alone
+   or a nested fonts @import ends up after other rules when bundled. */
 import '../src/app/globals.css';
 
 const preview: Preview = {

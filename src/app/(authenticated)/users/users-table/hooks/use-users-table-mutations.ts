@@ -58,7 +58,7 @@ function createOptimisticUser(
     hp_points: null,
     max_gate_type: null,
     max_gate_unlocked: null,
-    points_required_for_next_level: null,
+    points_for_next_level: null,
     program_completion_percentage: null,
     program_weeks: null,
     program_assignment_id: null,
