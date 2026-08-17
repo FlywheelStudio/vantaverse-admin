@@ -1,16 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Check, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Button, Dialog, IconButton, Input } from '@/components/medvanta';
 import {
   useExercisesInfinite,
   useExerciseTemplatesInfinite,
@@ -299,16 +290,26 @@ export function ExerciseBuilderModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] h-[90vh] max-w-[90vw] flex flex-col p-0">
-        <div className="flex flex-col flex-1 min-h-0">
-        <DialogHeader className="p-6">
-          <DialogTitle>{getHeaderTitle()}</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex flex-1 overflow-hidden">
+    <Dialog
+      open={open}
+      title={getHeaderTitle()}
+      onClose={() => onOpenChange(false)}
+      className="flex max-h-[90vh] max-w-[90vw] flex-col overflow-hidden"
+      style={{ maxWidth: '90vw', height: '90vh' }}
+      width={2000}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleDone}>Done</Button>
+        </>
+      }
+    >
+      <div className="-mx-6 -mt-3.5 -mb-5 flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Left Panel */}
-          <div className="w-2/3 border-r px-6 flex flex-col overflow-hidden">
+          <div className="flex w-2/3 flex-col overflow-hidden border-r border-[var(--border-subtle)] px-6">
             {/* Tabs and Controls */}
             <ExerciseTabSwitcher
               activeTab={activeTab}
@@ -343,18 +344,18 @@ export function ExerciseBuilderModal({
                       />
                     ))}
                     {(exercisesQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-muted-foreground">
+                      <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                         Loading...
                       </div>
                     )) ||
                       (!exercisesQuery.hasNextPage &&
                         allExercises.length === 0 && (
-                          <div className="col-span-full text-center py-4 text-muted-foreground">
+                          <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                             No exercises found
                           </div>
                         ))}
                     {exercisesQuery.isError && (
-                      <div className="col-span-full text-center py-4 text-red-500">
+                      <div className="col-span-full py-4 text-center text-[var(--danger)]">
                         Error loading exercises
                       </div>
                     )}
@@ -370,18 +371,18 @@ export function ExerciseBuilderModal({
                       />
                     ))}
                     {(templatesQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-muted-foreground">
+                      <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                         Loading...
                       </div>
                     )) ||
                       (!templatesQuery.hasNextPage &&
                         allTemplates.length === 0 && (
-                          <div className="col-span-full text-center py-4 text-muted-foreground">
+                          <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                             No templates found
                           </div>
                         ))}
                     {templatesQuery.isError && (
-                      <div className="col-span-full text-center py-4 text-red-500">
+                      <div className="col-span-full py-4 text-center text-[var(--danger)]">
                         Error loading templates
                       </div>
                     )}
@@ -399,18 +400,18 @@ export function ExerciseBuilderModal({
                     ))}
 
                     {(groupsQuery.isLoading && (
-                      <div className="col-span-full text-center py-4 text-muted-foreground">
+                      <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                         Loading...
                       </div>
                     )) ||
                       (!groupsQuery.hasNextPage && allGroups.length === 0 && (
-                        <div className="col-span-full text-center py-4 text-muted-foreground">
+                        <div className="col-span-full py-4 text-center text-[var(--text-muted)]">
                           No groups found
                         </div>
                       ))}
 
                     {groupsQuery.isError && (
-                      <div className="col-span-full text-center py-4 text-red-500">
+                      <div className="col-span-full py-4 text-center text-[var(--danger)]">
                         Error loading groups
                       </div>
                     )}
@@ -436,7 +437,7 @@ export function ExerciseBuilderModal({
                   )}
                   {currentQuery && currentQuery.isFetchingNextPage && (
                     <div className="mt-4 flex justify-center">
-                      <div className="text-muted-foreground">Loading more...</div>
+                      <div className="text-[var(--text-muted)]">Loading more...</div>
                     </div>
                   )}
                 </>
@@ -445,47 +446,51 @@ export function ExerciseBuilderModal({
           </div>
 
           {/* Right Panel - Selected Items */}
-          <div className="w-1/3 flex flex-col overflow-y-auto px-6 slim-scrollbar">
-            <h4 className="font-semibold mb-4">Selected Items</h4>
+          <div className="slim-scrollbar flex w-1/3 flex-col overflow-y-auto px-6">
+            <h4 className="mb-4 font-[var(--fw-semibold)] text-[var(--text-strong)]">
+              Selected Items
+            </h4>
             {!showGroupInput ? (
               <button
+                type="button"
                 onClick={() => setShowGroupInput(true)}
-                className="cursor-pointer mb-4 w-full px-4 py-3 border-2 border-dashed border-border rounded-md text-sm font-medium text-muted-foreground hover:border-primary/50 hover:bg-muted/60 hover:text-foreground transition-colors"
+                className="mb-4 w-full cursor-pointer rounded-[var(--radius-md)] border-2 border-dashed border-[var(--border-default)] px-4 py-3 text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-muted)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--slate-50)] hover:text-[var(--text-strong)]"
               >
                 + Add Group
               </button>
             ) : (
-              <div className="flex items-center gap-2 mb-4">
+              <div
+                className="mb-4 flex items-center gap-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddGroup();
+                  } else if (e.key === 'Escape') {
+                    handleCancelGroupInput();
+                  }
+                }}
+              >
                 <Input
-                  type="text"
                   value={groupNameInput}
                   onChange={(e) => setGroupNameInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddGroup();
-                    } else if (e.key === 'Escape') {
-                      handleCancelGroupInput();
-                    }
-                  }}
                   placeholder="Group name..."
                   className="flex-1"
-                  autoFocus
                 />
-                <Button
+                <IconButton
+                  icon="Check"
+                  label="Save group"
+                  variant="primary"
+                  size="sm"
+                  shape="rounded"
                   onClick={handleAddGroup}
-                  size="icon-sm"
-                  className="cursor-pointer shadow-(--shadow-sm)"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={handleCancelGroupInput}
+                />
+                <IconButton
+                  icon="X"
+                  label="Cancel"
                   variant="secondary"
-                  size="icon-sm"
-                  className="cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                  size="sm"
+                  shape="rounded"
+                  onClick={handleCancelGroupInput}
+                />
               </div>
             )}
             <SelectedItemsList
@@ -498,17 +503,7 @@ export function ExerciseBuilderModal({
             />
           </div>
         </div>
-
-        <DialogFooter className="p-4">
-          <Button onClick={handleCancel} variant="outline">
-            Cancel
-          </Button>
-          <Button onClick={handleDone}>
-            Done
-          </Button>
-        </DialogFooter>
-        </div>
-      </DialogContent>
+      </div>
     </Dialog>
   );
 }
