@@ -17,8 +17,7 @@ import { PhysicianAssignmentCard } from './partials/physician-assignment-card';
 import { ProgramAssignmentCard } from './partials/program-assignment-card';
 import { ProgramStatusCard } from './program-status/card';
 import { ComplianceChartCard } from './partials/compliance-chart-card';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardHeader, Button } from '@/components/medvanta';
 import { useAuth } from '@/hooks/use-auth';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
@@ -131,9 +130,8 @@ export function UserProfilePageUI({
         </h1>
       }
     >
-      <Card className="border border-border shadow-(--shadow-lg)">
-        {/* User Profile Header */}
-        <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
+      <Card padding={0} className="overflow-hidden">
+        <div className="border-b border-[var(--border-subtle)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--surface-card))] p-8">
           <UserProfileCard
             userId={user.id}
             firstName={user.first_name || ''}
@@ -142,27 +140,27 @@ export function UserProfilePageUI({
             email={user.email || ''}
             avatarUrl={user.avatar_url}
             role={user.role}
+            programDueDate={user.program_due_date}
           />
         </div>
 
-        {/* Cards Section - Only show for members, hide for admins */}
         {isMember && (
-          <CardContent className="p-8">
-            <div className="grid grid-cols-3 gap-6 items-stretch">
-              {/* Left Column: Program Onboarding Progress (2/3 width) */}
-              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <h2 className="text-xl font-semibold text-foreground">
-                    Program Onboarding Progress
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setChangeOnboardingOpen(true)}
-                  >
-                    Change onboarding
-                  </Button>
-                </div>
+          <div className="p-8">
+            <div className="grid grid-cols-3 items-stretch gap-6">
+              <div className="col-span-2 space-y-4 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-4 py-6">
+                <CardHeader
+                  title="Program Onboarding Progress"
+                  action={
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setChangeOnboardingOpen(true)}
+                    >
+                      Change onboarding
+                    </Button>
+                  }
+                  className="mb-0"
+                />
                 <div className="space-y-4">
                   <AppointmentCard
                     title="1. Screening"
@@ -216,11 +214,8 @@ export function UserProfilePageUI({
                 />
               </div>
 
-              {/* Right Column: VantaThrive Insights (1/3 width) */}
-              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                  VantaThrive Insights
-                </h2>
+              <div className="col-span-1 space-y-4 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-4 py-6">
+                <CardHeader title="VantaThrive Insights" className="mb-0" />
                 <div className="space-y-4">
                   <ComplianceChartCard
                     compliance={compliance}
@@ -254,8 +249,7 @@ export function UserProfilePageUI({
               </div>
             </div>
 
-            {/* Program Status Card - Full width at bottom */}
-            <div className="col-span-full w-full mt-6">
+            <div className="col-span-full mt-6 w-full">
               <ProgramStatusCard
                 assignment={programAssignment}
                 compliance={compliance}
@@ -269,7 +263,7 @@ export function UserProfilePageUI({
                 maxGateUnlocked={user.max_gate_unlocked}
               />
             </div>
-          </CardContent>
+          </div>
         )}
       </Card>
     </PageWrapper>

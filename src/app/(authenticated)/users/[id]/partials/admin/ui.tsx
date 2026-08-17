@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
 import { UserProfileCard } from '@/components/users/user-profile-card';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/medvanta';
 import { ManagementOverviewCard } from './management-overview-card';
 import { ComplianceCard } from './compliance-card';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
@@ -73,8 +73,8 @@ export function AdminProfileViewUI({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="overflow-hidden border border-border shadow-(--shadow-lg)">
-            <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
+          <Card padding={0} className="overflow-hidden">
+            <div className="border-b border-[var(--border-subtle)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--surface-card))] p-8">
               <UserProfileCard
                 userId={user.id}
                 firstName={user.first_name || ''}
@@ -83,6 +83,7 @@ export function AdminProfileViewUI({
                 avatarUrl={user.avatar_url}
                 description={user.description}
                 role={user.role}
+                programDueDate={user.program_due_date}
               />
             </div>
           </Card>
