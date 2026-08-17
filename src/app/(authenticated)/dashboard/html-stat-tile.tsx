@@ -1,26 +1,23 @@
 import { Icon } from '@/components/medvanta';
+import { HtmlSparkline } from './html-sparkline';
 
-export interface HtmlStatTileProps {
-  label: string;
-  value: string;
-  icon: string;
-  delta?: string;
-  trend?: 'up' | 'down' | 'flat';
-  foot?: string;
-}
-
-/** HTML `.stat` KPI tile from `statTile()`. */
 export function HtmlStatTile({
   label,
   value,
-  icon,
   delta,
   trend,
-  foot,
-}: HtmlStatTileProps): React.ReactElement {
-  const trendIcon =
-    trend === 'up' ? 'TrendingUp' : trend === 'down' ? 'TrendingDown' : 'Minus';
-
+  icon,
+  footer,
+  spark,
+}: {
+  label: string;
+  value: React.ReactNode;
+  delta?: string;
+  trend?: 'up' | 'down' | 'flat';
+  icon: string;
+  footer?: string;
+  spark?: number[];
+}): React.ReactElement {
   return (
     <div className="stat">
       <div className="top">
@@ -33,12 +30,26 @@ export function HtmlStatTile({
         <span className="v">{value}</span>
         {delta ? (
           <span className="d">
-            <Icon name={trendIcon} size={15} />
+            <Icon
+              name={
+                trend === 'up'
+                  ? 'TrendingUp'
+                  : trend === 'down'
+                    ? 'TrendingDown'
+                    : 'Minus'
+              }
+              size={15}
+            />
             {delta}
           </span>
         ) : null}
       </div>
-      {foot ? <div className="foot">{foot}</div> : null}
+      {footer ? <div className="foot">{footer}</div> : null}
+      {spark?.length ? (
+        <div className="spk">
+          <HtmlSparkline values={spark} />
+        </div>
+      ) : null}
     </div>
   );
 }

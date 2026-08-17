@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@/components/medvanta';
+import { Avatar, Icon } from '@/components/medvanta';
 import { HtmlModal } from './intake-survey-placeholder-modal';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
@@ -21,28 +21,25 @@ interface ChangeOnboardingDialogProps {
   };
 }
 
-const statusLabel: Record<string, string> = {
-  pending: 'pending',
-  invited: 'invited',
-  active: 'active',
-  assigned: 'assigned',
-};
-
+/** Copy + structure match HTML `mdChangeOnboarding`. */
 const onboardingOptions = [
   {
     value: 'full' as const,
     label: 'Full onboarding',
-    description: 'Member completes screening, consultation, and intake as normal.',
+    description:
+      'All four gates: intake survey, screening appointment, virtual consultation, program assignment.',
   },
   {
     value: 'screening' as const,
-    label: 'Skip screening',
-    description: 'Member starts at consultation; screening answers are skipped.',
+    label: 'Skip the screening appointment',
+    description:
+      'Intake survey straight to the virtual consultation. Use when the member has already been screened in clinic.',
   },
   {
     value: 'consultation' as const,
-    label: 'Skip screening + consultation',
-    description: 'Member starts at intake survey only.',
+    label: 'Skip screening and consultation',
+    description:
+      'Intake survey straight to program assignment. Use for members transferring in with a plan already agreed.',
   },
 ] as const;
 
@@ -59,7 +56,6 @@ export function ChangeOnboardingDialog({
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
   const displayEmail = user.email ?? '';
-  const status = user.status ? (statusLabel[user.status] ?? user.status) : null;
 
   const handleClose = (): void => {
     onOpenChange(false);
@@ -87,20 +83,18 @@ export function ChangeOnboardingDialog({
       open={open}
       onClose={handleClose}
       title="Change onboarding path"
-      subtitle={`Override the default onboarding flow for ${displayName}.`}
+      subtitle="Controls which gates this member has to clear."
       width={540}
       footer={
         <>
-          <button type="button" className="btn btn-sec" onClick={handleClose} disabled={saving}>
+          <button type="button" className="btn btn-ghost" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
           <button type="button" className="btn btn-pri" onClick={handleSave} disabled={saving}>
             {saving ? (
               <Icon name="LoaderCircle" size={17} className="animate-spin" />
-            ) : (
-              <Icon name="Save" size={17} />
-            )}
-            Save override
+            ) : null}
+            Save path
           </button>
         </>
       }
@@ -112,10 +106,11 @@ export function ChangeOnboardingDialog({
           padding: '12px 14px',
           background: 'var(--slate-50)',
           border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-sm)',
+          borderRadius: 'var(--radius-md)',
           marginBottom: 18,
         }}
       >
+        <Avatar name={displayName} size="md" />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span
             style={{
@@ -127,14 +122,20 @@ export function ChangeOnboardingDialog({
           >
             {displayName}
           </span>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            {displayEmail}
+          <span
+            className="mono"
+            style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
+          >
+            {displayEmail || '—'}
           </span>
         </span>
-        {status ? <span className="bdg bdg-b">{status}</span> : null}
+        <span className="bdg bdg-b">Onboarding</span>
       </div>
 
-      <div className="g g1" style={{ gap: 10 }}>
+      <label className="lbl" style={{ marginBottom: 9, display: 'block' }}>
+        Onboarding path
+      </label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {onboardingOptions.map(({ value, label, description }) => {
           const selected = override === value;
           return (
@@ -145,23 +146,10 @@ export function ChangeOnboardingDialog({
               disabled={saving}
               onClick={() => setOverride(value)}
             >
-              <span className={`rd${selected ? ' on' : ''}`}>
-                {selected ? <i /> : null}
-              </span>
-              <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                <span
-                  style={{
-                    display: 'block',
-                    fontSize: 'var(--text-md)',
-                    fontWeight: 'var(--fw-semibold)',
-                    color: 'var(--text-strong)',
-                  }}
-                >
-                  {label}
-                </span>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                  {description}
-                </span>
+              <span className={`rd${selected ? ' on' : ''}`}>{selected ? <i /> : null}</span>
+              <span>
+                <span className="ct">{label}</span>
+                <span className="cd">{description}</span>
               </span>
             </button>
           );
@@ -172,8 +160,10 @@ export function ChangeOnboardingDialog({
         <div className="alert alert-w" style={{ marginTop: 16 }}>
           <Icon name="TriangleAlert" size={19} />
           <div>
-            Skipping onboarding steps may confuse invited members. Use only in exceptional
-            situations.
+            <div className="at">
+              Skipping a completed gate hides it from their path but keeps the record
+            </div>
+            Restoring it later requires resetting onboarding.
           </div>
         </div>
       ) : null}

@@ -1,156 +1,96 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Icon } from '@/components/medvanta';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-import { OrgTeamFilter } from '../org-team-filter';
-import { RoleFilter } from '../role-filter';
+import { RoleFilter } from './role-filter';
+import { OrgTeamFilter } from './org-team-filter';
 import { HtmlSearchField } from '../../html-helpers';
-import type { UsersTableFilters } from '../types';
-import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { MembersFilterPanel } from './members-filter-panel';
+import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
-type DueFilter = 'all' | 'due' | 'overdue';
-
-interface UsersTableFiltersProps {
-  searchValue: string;
+interface FiltersProps {
+  searchQuery: string;
   onSearchChange: (value: string) => void;
-  filters: UsersTableFilters;
-  selectedOrgName?: string;
-  selectedTeamName?: string;
-  onFiltersChange?: (filters: UsersTableFilters) => void;
-  onTeamNameChange: (name: string | undefined) => void;
-  data?: ProfileWithStats[];
-  dueFilter?: DueFilter;
-  onDueFilterChange?: (filter: DueFilter) => void;
+  roleFilter: MemberRole | null;
+  onRoleFilterChange: (role: MemberRole | null) => void;
+  selectedOrgId: string | null;
+  selectedTeamId: string | null;
+  onOrgChange: (orgId: string | null) => void;
+  onTeamChange: (teamId: string | null) => void;
+  dueFilter?: 'all' | 'overdue' | 'due_soon';
+  onDueFilterChange?: (value: 'all' | 'overdue' | 'due_soon') => void;
 }
 
-export function UsersTableFilters({
-  searchValue,
+/**
+ * Members toolbar + HTML `filterPanel` chrome (`filtersBtn` + FILTERS.members).
+ */
+export function Filters({
+  searchQuery,
   onSearchChange,
-  filters,
-  selectedOrgName,
-  selectedTeamName,
-  onFiltersChange,
-  onTeamNameChange,
-  data = [],
+  roleFilter,
+  onRoleFilterChange,
+  selectedOrgId,
+  selectedTeamId,
+  onOrgChange,
+  onTeamChange,
   dueFilter = 'all',
   onDueFilterChange,
-}: UsersTableFiltersProps): React.ReactElement {
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const hasDueDates = data.some((profile) => profile.program_due_date);
+}: FiltersProps): React.ReactElement {
+  const [open, setOpen] = useState(false);
 
-  const memberCount = useMemo(
-    () => data.filter((profile) => profile.role !== 'admin').length,
-    [data],
-  );
-  const adminCount = useMemo(
-    () => data.filter((profile) => profile.role === 'admin').length,
-    [data],
-  );
+  const activeCount =
+    (roleFilter ? 1 : 0) +
+    (selectedOrgId || selectedTeamId ? 1 : 0) +
+    (dueFilter !== 'all' ? 1 : 0);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.organization_id) count += 1;
-    if (filters.team_id) count += 1;
-    if (dueFilter !== 'all') count += 1;
-    return count;
-  }, [filters.organization_id, filters.team_id, dueFilter]);
-
-  const handleOrgSelect = (orgId?: string): void => {
-    onTeamNameChange(undefined);
-    const newFilters: UsersTableFilters = {
-      ...(orgId && { organization_id: orgId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleTeamSelect = (teamId?: string, teamName?: string): void => {
-    onTeamNameChange(teamName);
-    const newFilters: UsersTableFilters = {
-      ...(filters.organization_id && {
-        organization_id: filters.organization_id,
-      }),
-      ...(teamId && { team_id: teamId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleClear = (): void => {
-    onTeamNameChange(undefined);
+  const clearAll = (): void => {
+    onRoleFilterChange(null);
+    onOrgChange(null);
+    onTeamChange(null);
     onDueFilterChange?.('all');
-    onFiltersChange?.({ role: filters.role || 'patient' });
-  };
-
-  const handleRoleSelect = (role: MemberRole): void => {
-    onFiltersChange?.({ ...filters, role });
   };
 
   return (
-    <>
+    <div style={{ marginBottom: 14 }}>
       <div className="tbar">
-        <RoleFilter
-          selectedRole={filters.role || 'patient'}
-          onRoleSelect={handleRoleSelect}
-          memberCount={memberCount}
-          adminCount={adminCount}
-        />
+        <RoleFilter value={roleFilter} onChange={onRoleFilterChange} />
         <HtmlSearchField
-          value={searchValue}
+          value={searchQuery}
           onChange={onSearchChange}
-          placeholder="Search by name or email…"
+          placeholder="Search by name or email"
+          style={{ width: 280 }}
         />
+        <span className="sp" />
         <button
           type="button"
-          className="btn btn-sec"
-          onClick={() => setFiltersOpen((open) => !open)}
+          className={`btn btn-sec btn-sm${open ? ' btn-pri' : ''}`}
+          onClick={() => setOpen((v) => !v)}
         >
-          <Icon name="Funnel" size={16} />
+          <Icon name="Funnel" size={15} />
           Filters
-          {activeFilterCount > 0 ? (
-            <span className="bdg bdg-b" style={{ padding: '0 6px', fontSize: 10 }}>
-              {activeFilterCount}
-            </span>
-          ) : null}
+          {activeCount > 0 ? <span className="bdg bdg-b">{activeCount}</span> : null}
         </button>
       </div>
 
-      {filtersOpen ? (
-        <div
-          className="card"
-          style={{ marginBottom: 16, padding: 16 }}
-        >
-          <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
-            <OrgTeamFilter
-              selectedOrgId={filters.organization_id}
-              selectedOrgName={selectedOrgName}
-              selectedTeamId={filters.team_id}
-              selectedTeamName={selectedTeamName}
-              onOrgSelect={handleOrgSelect}
-              onTeamSelect={handleTeamSelect}
-              onClear={handleClear}
-            />
-            {hasDueDates && onDueFilterChange ? (
-              <span className="seg seg-lg">
-                {(['all', 'due', 'overdue'] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={dueFilter === value ? 'on' : undefined}
-                    onClick={() => onDueFilterChange(value)}
-                  >
-                    {value === 'all' ? 'All due' : value.charAt(0).toUpperCase() + value.slice(1)}
-                  </button>
-                ))}
-              </span>
-            ) : null}
-            <button type="button" className="btn btn-ghost btn-sm sp" onClick={handleClear}>
-              Clear filters
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </>
+      <MembersFilterPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        activeCount={activeCount}
+        role={roleFilter}
+        onRoleChange={onRoleFilterChange}
+        dueFilter={dueFilter}
+        onDueFilterChange={(v) => onDueFilterChange?.(v)}
+        onClear={clearAll}
+        onApply={() => setOpen(false)}
+        groupSlot={
+          <OrgTeamFilter
+            selectedOrgId={selectedOrgId}
+            selectedTeamId={selectedTeamId}
+            onOrgChange={onOrgChange}
+            onTeamChange={onTeamChange}
+          />
+        }
+      />
+    </div>
   );
 }

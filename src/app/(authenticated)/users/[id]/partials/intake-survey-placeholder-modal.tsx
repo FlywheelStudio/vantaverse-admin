@@ -19,7 +19,10 @@ export interface HtmlModalProps {
   className?: string;
   style?: React.CSSProperties;
   bodyClassName?: string;
+  bodyStyle?: React.CSSProperties;
   headerClassName?: string;
+  /** When true, omit default `.mb` padding (dual-pane modals). */
+  flushBody?: boolean;
 }
 
 /** HTML `.scrim` / `.mwrap` / `.modal` chrome for in-scope dialogs. */
@@ -36,7 +39,9 @@ export function HtmlModal({
   className,
   style,
   bodyClassName,
+  bodyStyle,
   headerClassName,
+  flushBody = false,
 }: HtmlModalProps): React.ReactElement {
   const handleOpenChange = (nextOpen: boolean): void => {
     if (!nextOpen) onClose?.();
@@ -74,7 +79,18 @@ export function HtmlModal({
                 </DialogPrimitive.Close>
               ) : null}
             </div>
-            {children ? <div className={cn('mb', bodyClassName)}>{children}</div> : null}
+            {children ? (
+              <div
+                className={cn(!flushBody && 'mb', bodyClassName)}
+                style={
+                  flushBody
+                    ? { flex: 1, minHeight: 0, overflow: 'hidden', padding: 0, ...bodyStyle }
+                    : bodyStyle
+                }
+              >
+                {children}
+              </div>
+            ) : null}
             {footer ? (
               <div className="mf">
                 {footerInfo ? <span className="fi">{footerInfo}</span> : null}

@@ -3,14 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 
-import {
-  FormField,
-  Icon,
-  Input,
-  Tabs,
-} from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 
 import { type ImportUsersResult } from '../../actions';
@@ -29,6 +23,8 @@ interface AddUserModalProps {
   role: MemberRole;
   title?: string;
 }
+
+type InviteMode = 'type' | 'paste' | 'csv';
 
 export function AddUserModal({
   open,
@@ -58,11 +54,13 @@ function AddUserModalInner({
   const { addBatch, reset, rows } = usePendingUsers();
   const createUserMutation = useCreateUserQuickAdd();
 
-  const [tab, setTab] = useState<'individual' | 'csv' | 'excel'>('individual');
-  const [mode, setMode] = useState<'upload' | 'pending'>('upload');
+  const [mode, setMode] = useState<'compose' | 'pending'>('compose');
+  const [inviteMode, setInviteMode] = useState<InviteMode>('type');
   const [individualEmail, setIndividualEmail] = useState('');
   const [individualFirstName, setIndividualFirstName] = useState('');
   const [individualLastName, setIndividualLastName] = useState('');
+  const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
+  const [pasteText, setPasteText] = useState('');
 
   const canSubmitIndividual = useMemo(
     () => individualEmail.trim().length > 0,
@@ -79,8 +77,10 @@ function AddUserModalInner({
 
   const handleClose = (): void => {
     resetIndividual();
-    setMode('upload');
-    setTab('individual');
+    setMode('compose');
+    setInviteMode('type');
+    setPasteText('');
+    setSelectedPendingId(null);
     reset();
     onOpenChange(false);
   };
@@ -92,13 +92,18 @@ function AddUserModalInner({
     wasOpen.current = open;
   }, [open, queryClient]);
 
-  const handleCancel = (): void => {
-    if (rows.length > 0) {
-      setMode('pending');
-      return;
+  const activePendingId = useMemo(() => {
+    if (rows.length === 0) return null;
+    if (selectedPendingId && rows.some((r) => r.id === selectedPendingId)) {
+      return selectedPendingId;
     }
-    handleClose();
-  };
+    return rows[0]?.id ?? null;
+  }, [rows, selectedPendingId]);
+
+  const selectedPending = useMemo(
+    () => rows.find((r) => r.id === activePendingId) ?? null,
+    [rows, activePendingId],
+  );
 
   const handleAddToList = async (): Promise<void> => {
     if (!individualEmail.trim()) {
@@ -123,7 +128,7 @@ function AddUserModalInner({
       };
 
       addBatch({ createdUsers: [createdUser], existingUsers: [] });
-      setMode('pending');
+      setSelectedPendingId(result.userId);
       resetIndividual();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -133,7 +138,6 @@ function AddUserModalInner({
   const handleImported = async (result: ImportUsersResult): Promise<void> => {
     try {
       const now = Date.now();
-
       const batchData = {
         createdUsers:
           result.createdUsers?.map((u) => ({
@@ -180,12 +184,18 @@ function AddUserModalInner({
         title={modalTitle}
         subtitle="Review pending invites before sending."
         width={920}
-        style={{ maxHeight: 'min(85vh, 720px)', display: 'flex', flexDirection: 'column' }}
+        style={{
+          maxWidth: 920,
+          height: 'min(660px, calc(100% - 8px))',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+        flushBody
         bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         <PendingUsersView
           onClose={handleClose}
-          onAddMore={() => setMode('upload')}
+          onAddMore={() => setMode('compose')}
           role={role}
         />
       </HtmlModal>
@@ -197,158 +207,296 @@ function AddUserModalInner({
       open={open}
       onClose={handleClose}
       title={modalTitle}
-      subtitle="Add users to your platform. Invitations will be sent separately."
+      subtitle="Build the list on the left, set each person's details on the right."
       width={920}
-      style={{ maxHeight: 'min(85vh, 720px)', display: 'flex', flexDirection: 'column' }}
+      style={{
+        maxWidth: 920,
+        height: 'min(660px, calc(100% - 8px))',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      flushBody
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      footerInfo={
+        <>
+          {rows.length} invitation{rows.length === 1 ? '' : 's'}
+          {rows.length > 0 ? ' · ready to review' : ''}
+        </>
+      }
+      footer={
+        <>
+          <button type="button" className="btn btn-ghost" onClick={handleClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-pri"
+            disabled={rows.length === 0}
+            onClick={() => setMode('pending')}
+          >
+            <Icon name="Send" size={17} />
+            {rows.length > 0 ? `Review ${rows.length} invitations` : 'Send invitations'}
+          </button>
+        </>
+      }
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={
-          open
-            ? { opacity: 1, scale: 1, y: 0 }
-            : { opacity: 0, scale: 0.95, y: 20 }
-        }
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <Tabs
-          tabs={[
-            { id: 'individual', label: 'Individual' },
-            { id: 'csv', label: 'Bulk CSV' },
-            { id: 'excel', label: 'Bulk Excel' },
-          ]}
-          value={tab}
-          onChange={(v) => setTab(v as typeof tab)}
-          className="mb-4"
-        />
+      <div className="dual" style={{ gridTemplateColumns: '352px minmax(0,1fr)', flex: 1, minHeight: 0 }}>
+        {/* Left — HTML invite list builder */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            borderRight: '1px solid var(--border-subtle)',
+            background: 'var(--slate-50)',
+          }}
+        >
+          <div style={{ padding: '16px 16px 12px' }}>
+            <span className="seg" style={{ width: '100%', marginBottom: 12, display: 'flex' }}>
+              {(
+                [
+                  ['type', 'Type'],
+                  ['paste', 'Paste'],
+                  ['csv', 'CSV'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={inviteMode === id ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  onClick={() => setInviteMode(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </span>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <AnimatePresence mode="wait">
-            {tab === 'individual' && (
-              <motion.div
-                key="individual"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="flex flex-col"
-              >
-                <div className="dual">
-                  <div className="dual-l">
-                    <div className="space-y-4">
-                      <FormField label="Email Address" required>
-                        <Input
-                          value={individualEmail}
-                          onChange={(e) => setIndividualEmail(e.target.value)}
-                          placeholder="user@example.com"
-                          type="email"
-                        />
-                      </FormField>
-
-                      <div className="g g2">
-                        <FormField label="First Name (Optional)">
-                          <Input
-                            value={individualFirstName}
-                            onChange={(e) =>
-                              setIndividualFirstName(e.target.value)
-                            }
-                            placeholder="Enter their first name"
-                          />
-                        </FormField>
-                        <FormField label="Last Name (Optional)">
-                          <Input
-                            value={individualLastName}
-                            onChange={(e) => setIndividualLastName(e.target.value)}
-                            placeholder="Enter their last name"
-                          />
-                        </FormField>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="dual-r">
-                    <div className="alert alert-i">
-                      <Icon name="Info" size={19} />
-                      <div>
-                        <div className="at">Pending status</div>
-                        <div>
-                          Users will be added as Pending. Review the list before sending
-                          invitations.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mf" style={{ marginTop: 16, padding: 0, border: 'none' }}>
-                  <span className="sp" />
-                  <span className="r">
-                    <button
-                      type="button"
-                      className="btn btn-sec"
-                      onClick={handleCancel}
-                      disabled={createUserMutation.isPending}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-pri"
-                      onClick={handleAddToList}
-                      disabled={
-                        !canSubmitIndividual || createUserMutation.isPending
-                      }
-                    >
-                      {createUserMutation.isPending ? (
-                        <Icon name="LoaderCircle" size={17} className="animate-spin" />
-                      ) : (
-                        <Icon name="UserPlus" size={17} />
-                      )}
-                      Add to list
-                    </button>
+            {inviteMode === 'type' ? (
+              <>
+                <div className="row" style={{ gap: 7 }}>
+                  <span className="fld fld-sm" style={{ flex: 1 }}>
+                    <Icon name="Mail" size={15} />
+                    <input
+                      placeholder="name@practice.com"
+                      value={individualEmail}
+                      onChange={(e) => setIndividualEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleAddToList();
+                        }
+                      }}
+                    />
                   </span>
+                  <button
+                    type="button"
+                    className="btn btn-sec btn-sm"
+                    onClick={handleAddToList}
+                    disabled={!canSubmitIndividual || createUserMutation.isPending}
+                  >
+                    {createUserMutation.isPending ? (
+                      <Icon name="LoaderCircle" size={15} className="animate-spin" />
+                    ) : (
+                      <Icon name="Plus" size={15} />
+                    )}
+                    Add
+                  </button>
                 </div>
-              </motion.div>
-            )}
+                <div className="hint" style={{ marginTop: 6 }}>
+                  Enter adds and keeps the field focused.
+                </div>
+              </>
+            ) : null}
 
-            {tab === 'csv' && (
-              <motion.div
-                key="csv"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="absolute inset-0 flex flex-col"
-              >
+            {inviteMode === 'paste' ? (
+              <>
+                <textarea
+                  className="fld"
+                  style={{
+                    width: '100%',
+                    minHeight: 88,
+                    padding: 10,
+                    fontSize: 'var(--text-sm)',
+                    resize: 'vertical',
+                  }}
+                  placeholder="Paste emails, one per line"
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                />
+                <div className="hint" style={{ marginTop: 6 }}>
+                  Placeholder — paste import uses CSV/Excel flow for bulk.
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sec btn-sm"
+                  style={{ marginTop: 8 }}
+                  disabled
+                  title="Use CSV tab for bulk import"
+                >
+                  Parse paste (placeholder)
+                </button>
+              </>
+            ) : null}
+
+            {inviteMode === 'csv' ? (
+              <div style={{ marginTop: 4 }}>
                 <FileUploadTab
                   fileType="csv"
                   onImported={handleImported}
-                  onCancel={handleCancel}
+                  onCancel={handleClose}
                   role={role}
                 />
-              </motion.div>
-            )}
+              </div>
+            ) : null}
+          </div>
 
-            {tab === 'excel' && (
-              <motion.div
-                key="excel"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                className="absolute inset-0 flex flex-col"
+          <div
+            className="row"
+            style={{
+              gap: 8,
+              padding: '9px 16px',
+              borderTop: '1px solid var(--border-subtle)',
+              borderBottom: '1px solid var(--border-subtle)',
+              background: 'var(--surface-card)',
+            }}
+          >
+            <span className="ovl">{rows.length} to invite</span>
+            <span className="sp row" style={{ gap: 10 }}>
+              <button
+                type="button"
+                className="lnk"
+                style={{ fontSize: 'var(--text-xs)', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => {
+                  if (rows[0]) setSelectedPendingId(rows[0].id);
+                }}
               >
-                <FileUploadTab
-                  fileType="excel"
-                  onImported={handleImported}
-                  onCancel={handleCancel}
-                  role={role}
-                />
-              </motion.div>
+                Select all
+              </button>
+              <button
+                type="button"
+                className="lnk"
+                style={{ fontSize: 'var(--text-xs)', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => reset()}
+              >
+                Clear
+              </button>
+            </span>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              minHeight: 0,
+              background: 'var(--surface-card)',
+            }}
+          >
+            {rows.length === 0 ? (
+              <p
+                style={{
+                  padding: 16,
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                No one on the list yet.
+              </p>
+            ) : (
+              rows.map((r) => {
+                const name =
+                  [r.firstName, r.lastName].filter(Boolean).join(' ') || r.email;
+                const on = activePendingId === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`lrow${on ? ' on' : ''}`}
+                    onClick={() => setSelectedPendingId(r.id)}
+                  >
+                    <span className={`cb${on ? ' on' : ''}`}>
+                      {on ? <Icon name="Check" size={13} /> : null}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <span className="nm">{name}</span>
+                      <span className="em">{r.email}</span>
+                    </span>
+                    <span className="bdg">{r.status}</span>
+                  </button>
+                );
+              })
             )}
-          </AnimatePresence>
+          </div>
         </div>
-      </motion.div>
+
+        {/* Right — detail pane */}
+        <div style={{ padding: '20px 22px', overflow: 'auto', minHeight: 0 }}>
+          {selectedPending ? (
+            <>
+              <div className="ch" style={{ marginBottom: 14 }}>
+                <div>
+                  <div className="ch-t">
+                    {[selectedPending.firstName, selectedPending.lastName]
+                      .filter(Boolean)
+                      .join(' ') || selectedPending.email}
+                  </div>
+                  <div className="ch-s mono">{selectedPending.email}</div>
+                </div>
+                <span className="bdg bdg-b">{selectedPending.status}</span>
+              </div>
+              <div className="g g2" style={{ marginBottom: 12 }}>
+                <label className="fld">
+                  <span className="lbl">First name</span>
+                  <input value={selectedPending.firstName || ''} readOnly />
+                </label>
+                <label className="fld">
+                  <span className="lbl">Last name</span>
+                  <input value={selectedPending.lastName || ''} readOnly />
+                </label>
+              </div>
+              <div className="alert alert-i">
+                <Icon name="Info" size={19} />
+                <div>
+                  <div className="at">Group assignment</div>
+                  <div>
+                    Assign a group after invite from the member profile, or use Add members on a
+                    group. Placeholder — group picker not wired in this modal.
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="alert alert-i">
+              <Icon name="Info" size={19} />
+              <div>
+                <div className="at">No one selected</div>
+                <div>Add an email on the left to build the invite list.</div>
+              </div>
+            </div>
+          )}
+
+          {inviteMode === 'type' && !selectedPending ? (
+            <div className="g g2" style={{ marginTop: 16 }}>
+              <label className="fld">
+                <span className="lbl">First name (optional)</span>
+                <input
+                  placeholder="First name"
+                  value={individualFirstName}
+                  onChange={(e) => setIndividualFirstName(e.target.value)}
+                />
+              </label>
+              <label className="fld">
+                <span className="lbl">Last name (optional)</span>
+                <input
+                  placeholder="Last name"
+                  value={individualLastName}
+                  onChange={(e) => setIndividualLastName(e.target.value)}
+                />
+              </label>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </HtmlModal>
   );
 }

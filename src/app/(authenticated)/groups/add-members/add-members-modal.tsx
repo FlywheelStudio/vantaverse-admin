@@ -83,7 +83,6 @@ export function AddMembersModal({
   id,
   name,
   organizationId,
-  organizationName,
   initialRole,
 }: AddMembersModalProps): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
@@ -191,11 +190,7 @@ export function AddMembersModal({
       ? selectedMemberIds.size > 0
       : selectedPhysiologistId !== null);
 
-  const inviteTitle =
-    selectedRole === 'admin' ? 'Invite admins' : 'Invite members';
-  const targetLabel =
-    type === 'team' && organizationName ? `${organizationName}/${name}` : name;
-  const targetKind = type === 'organization' ? 'Group' : 'Team';
+  const inviteTitle = `Add members to ${name}`;
 
   const saveLabel =
     isPending || membersLoading
@@ -214,7 +209,7 @@ export function AddMembersModal({
     <HtmlModal
       open={open}
       title={inviteTitle}
-      subtitle={`${targetLabel} (${targetKind})`}
+      subtitle="Choose people already in VantaThrive, or invite someone new by email."
       onClose={handleCancel}
       width={560}
       footer={
@@ -247,7 +242,7 @@ export function AddMembersModal({
           <span className="rd" />
           <span>
             <span className="ct">Member</span>
-            <span className="cs">Participates in program</span>
+            <span className="cd">Participates in the program</span>
           </span>
         </button>
 
@@ -255,7 +250,7 @@ export function AddMembersModal({
           label={
             isPhysiologistDisabled
               ? 'Physiologist is managed at organization level and applies to all teams in the organization'
-              : 'Co-manages group'
+              : 'Co-manages the group'
           }
         >
           <button
@@ -268,19 +263,21 @@ export function AddMembersModal({
             <span className="rd" />
             <span>
               <span className="ct">Physiologist</span>
-              <span className="cs">Co-manages group</span>
+              <span className="cd">Co-manages the group</span>
             </span>
           </button>
         </Tooltip>
       </div>
 
-      <Input
-        placeholder="Search by name or email..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        iconLeft="Search"
-        className="mb-3"
-      />
+      <label className="fld" style={{ marginBottom: 12 }}>
+        <span className="lb">Search</span>
+        <Input
+          placeholder="Name or email"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          iconLeft="Search"
+        />
+      </label>
 
       {selectedRole === 'patient' ? (
         <div className="row" style={{ marginBottom: 12, gap: 8, justifyContent: 'space-between' }}>
@@ -288,9 +285,11 @@ export function AddMembersModal({
             Select all
           </button>
           <Checkbox
+            className="sw"
+            style={{ margin: 0 }}
             checked={viewUnassigned}
             onChange={setViewUnassigned}
-            label="View unassigned"
+            label="Only people with no group"
           />
         </div>
       ) : null}

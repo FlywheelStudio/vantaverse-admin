@@ -17,6 +17,9 @@ interface MemberDetailHeaderProps {
   } | null;
   programAssignment: ProgramAssignmentWithTemplate | null;
   onChangeOnboarding?: () => void;
+  /** Controlled assign-program modal (shared with profile tabs). */
+  assignOpen?: boolean;
+  onAssignOpenChange?: (open: boolean) => void;
 }
 
 function getDisplayName(user: ProfileWithStats): string {
@@ -44,8 +47,12 @@ export function MemberDetailHeader({
   physiologist,
   programAssignment,
   onChangeOnboarding,
+  assignOpen: assignOpenProp,
+  onAssignOpenChange,
 }: MemberDetailHeaderProps): React.ReactElement {
-  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignOpenInternal, setAssignOpenInternal] = useState(false);
+  const assignOpen = assignOpenProp ?? assignOpenInternal;
+  const setAssignOpen = onAssignOpenChange ?? setAssignOpenInternal;
   const displayName = getDisplayName(user);
   const groupName = organizations[0]?.name ?? '—';
   const physiologistName = physiologist
