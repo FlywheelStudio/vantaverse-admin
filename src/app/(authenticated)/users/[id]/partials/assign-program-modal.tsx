@@ -3,18 +3,15 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader, Clock, CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
 import {
+  Badge,
+  Button,
+  Checkbox,
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+  FormField,
+  Input,
+} from '@/components/medvanta';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -39,7 +36,7 @@ function ProgramPreview({
   seed: string | null | undefined;
   imageUrl: string | null | undefined;
   className?: string;
-}) {
+}): React.ReactElement {
   const bg = generateColorFromSeed(seed || 'default', {
     gradient: true,
     style: 'program',
@@ -47,8 +44,8 @@ function ProgramPreview({
   return (
     <div
       className={cn(
-        'relative shrink-0 overflow-hidden bg-muted ring-1 ring-border/40',
-        'rounded-md',
+        'relative shrink-0 overflow-hidden bg-[var(--slate-100)] ring-1 ring-[var(--border-subtle)]',
+        'rounded-[var(--radius-md)]',
         className,
       )}
       aria-hidden
@@ -86,7 +83,7 @@ export function AssignProgramModal({
   userFirstName,
   userLastName,
   fromPath,
-}: AssignProgramModalProps) {
+}: AssignProgramModalProps): React.ReactElement {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssigned, setShowAssigned] = useState(false);
@@ -111,7 +108,6 @@ export function AssignProgramModal({
     25,
   );
 
-  // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -138,7 +134,6 @@ export function AssignProgramModal({
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Flatten pages into single array
   const assignments = data?.pages.flat() ?? [];
   const selectedAssignment = assignments.find(
     (a) => a.id === selectedAssignmentId,
@@ -157,7 +152,7 @@ export function AssignProgramModal({
         ? { from: startDate, to: undefined }
         : undefined;
 
-  const handleCardSelect = (assignmentId: string | null) => {
+  const handleCardSelect = (assignmentId: string | null): void => {
     setSelectedAssignmentId(assignmentId);
     if (assignmentId) {
       setStartDate(getNextProgramStartMonday());
@@ -165,7 +160,7 @@ export function AssignProgramModal({
     }
   };
 
-  const handleDateSelect = (range: DateRange | undefined) => {
+  const handleDateSelect = (range: DateRange | undefined): void => {
     if (
       startDate &&
       range?.from &&
@@ -181,7 +176,7 @@ export function AssignProgramModal({
     }
   };
 
-  const handleAssignClick = async () => {
+  const handleAssignClick = async (): Promise<void> => {
     if (!selectedAssignmentId || !startDate) {
       return;
     }
@@ -200,7 +195,7 @@ export function AssignProgramModal({
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setSearchQuery('');
     setShowAssigned(false);
     setSelectedAssignmentId(null);
@@ -213,236 +208,206 @@ export function AssignProgramModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
+      onClose={handleCancel}
+      title="Assign Program"
+      width={760}
+      className="flex max-h-[85vh] flex-col overflow-hidden"
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel} disabled={isAssigning}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssignClick}
+            disabled={!selectedAssignmentId || !startDate || isAssigning}
+            loading={isAssigning}
+          >
+            Assign
+          </Button>
+        </>
+      }
     >
-      <DialogContent className="w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden bg-card">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={
-            open
-              ? { opacity: 1, scale: 1, y: 0 }
-              : { opacity: 0, scale: 0.95, y: 20 }
-          }
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-(--text-highlighted) tracking-tight">
-              Assign Program
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {userFirstName || userLastName
-                ? `Select a program template for ${[userFirstName, userLastName].filter(Boolean).join(' ')}.`
-                : 'Select a program to assign to this user.'}
-            </DialogDescription>
-          </DialogHeader>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={
+          open
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.95, y: 20 }
+        }
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          {userFirstName || userLastName
+            ? `Select a program template for ${[userFirstName, userLastName].filter(Boolean).join(' ')}.`
+            : 'Select a program to assign to this user.'}
+        </p>
 
-          {/* Search and Controls */}
-          <div className="space-y-3 pt-4">
-            <Input
-              placeholder="Search by program name, user name, or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="show-assigned"
-                checked={showAssigned}
-                onCheckedChange={(checked) => setShowAssigned(checked === true)}
-                disabled={false}
-              />
-              <label
-                htmlFor="show-assigned"
-                className="text-sm text-muted-foreground cursor-pointer"
-              >
-                Show assigned
-              </label>
+        <div className="space-y-3">
+          <Input
+            placeholder="Search by program name, user name, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            iconLeft="Search"
+          />
+          <Checkbox
+            checked={showAssigned}
+            onChange={setShowAssigned}
+            label="Show assigned"
+          />
+        </div>
+
+        <ScrollArea className="mt-3 min-h-0 flex-1 pr-2" style={{ maxHeight: 280 }}>
+          {isLoading ? (
+            <div className="py-8 text-center text-[var(--text-muted)]">
+              Loading...
             </div>
-          </div>
-
-          {/* Program List */}
-          <ScrollArea className="flex-1 min-h-0 mt-2 pr-2">
-            {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">
-                Loading...
-              </div>
-            ) : error ? (
-              <div className="py-8 text-center text-destructive">
-                Error loading programs: {error.message}
-              </div>
-            ) : assignments.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                No programs found
-              </div>
-            ) : (
-              <div className="space-y-3 p-2">
-                {assignments.map((assignment) => {
-                  const template = assignment.program_template;
-                  const isSelected = selectedAssignmentId === assignment.id;
-                  const programImageUrl =
-                    typeof template?.image_url === 'string'
-                      ? template.image_url
-                      : null;
-                  const profiles = assignment.profiles as
-                    | {
+          ) : error ? (
+            <div className="py-8 text-center text-[var(--danger)]">
+              Error loading programs: {error.message}
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="py-8 text-center text-[var(--text-muted)]">
+              No programs found
+            </div>
+          ) : (
+            <div className="space-y-3 p-2">
+              {assignments.map((assignment) => {
+                const template = assignment.program_template;
+                const isSelected = selectedAssignmentId === assignment.id;
+                const programImageUrl =
+                  typeof template?.image_url === 'string'
+                    ? template.image_url
+                    : null;
+                const profiles = assignment.profiles as
+                  | {
                       first_name?: string | null;
                       last_name?: string | null;
                       email?: string | null;
                     }
-                    | null
-                    | undefined;
-                  const userName = profiles
-                    ? [
-                      profiles.first_name,
-                      profiles.last_name,
-                    ]
+                  | null
+                  | undefined;
+                const userName = profiles
+                  ? [profiles.first_name, profiles.last_name]
                       .filter(Boolean)
-                      .join(' ') || profiles.email || 'Unknown User'
-                    : null;
+                      .join(' ') ||
+                    profiles.email ||
+                    'Unknown User'
+                  : null;
 
-                  return (
-                    <button
-                      key={assignment.id}
-                      type="button"
-                      onClick={() => handleCardSelect(assignment.id || null)}
-                      disabled={isAssigning}
-                      className={cn(
-                        'cursor-pointer w-full text-left p-4 transition-colors',
-                        'rounded-lg border border-border/60 bg-card shadow-(--shadow-sm)',
-                        'hover:bg-primary/20 hover:shadow-(--shadow-md)',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                        'disabled:opacity-50 disabled:cursor-not-allowed',
-                        isSelected && 'border-primary/40 bg-muted/50 ring-2 ring-ring'
-                      )}
-                    >
-                      <div className="flex items-stretch gap-4 min-w-0 min-h-18">
-                        <ProgramPreview
-                          seed={template?.id || assignment.id}
-                          imageUrl={programImageUrl}
-                          className="w-18"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="font-semibold text-base text-highlighted truncate">
-                              {template?.name || 'Unnamed Program'}
-                            </div>
-                            <span
-                              className={cn(
-                                'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium shrink-0',
-                                assignment.status === 'active'
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-secondary text-secondary-foreground/80'
-                              )}
-                            >
-                              {assignment.status || 'template'}
-                            </span>
+                return (
+                  <button
+                    key={assignment.id}
+                    type="button"
+                    onClick={() => handleCardSelect(assignment.id || null)}
+                    disabled={isAssigning}
+                    className={cn(
+                      'w-full cursor-pointer p-4 text-left transition-colors',
+                      'rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]',
+                      'hover:bg-[color-mix(in_oklch,var(--primary)_12%,var(--surface-card))] hover:shadow-[var(--shadow-md)]',
+                      'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
+                      'disabled:cursor-not-allowed disabled:opacity-50',
+                      isSelected &&
+                        'border-[var(--primary)] bg-[var(--slate-50)] ring-2 ring-[var(--primary)]',
+                    )}
+                  >
+                    <div className="flex min-h-18 min-w-0 items-stretch gap-4">
+                      <ProgramPreview
+                        seed={template?.id || assignment.id}
+                        imageUrl={programImageUrl}
+                        className="w-18"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <div className="truncate text-[length:var(--text-base)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
+                            {template?.name || 'Unnamed Program'}
                           </div>
-                          {template?.description && (
-                            <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {template.description}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              <span>{template?.weeks || 0} weeks</span>
-                              {userName && assignment.status === 'active' && (
-                                <div className="text-sm text-muted-foreground">
-                                  | Assigned to: {userName}
-                                </div>
-                              )}
-                            </div>
+                          <Badge
+                            tone={
+                              assignment.status === 'active' ? 'brand' : 'neutral'
+                            }
+                          >
+                            {assignment.status || 'template'}
+                          </Badge>
+                        </div>
+                        {template?.description ? (
+                          <div className="mt-1 line-clamp-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+                            {template.description}
                           </div>
+                        ) : null}
+                        <div className="mt-2 flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+                          <span>{template?.weeks || 0} weeks</span>
+                          {userName && assignment.status === 'active' ? (
+                            <span>| Assigned to: {userName}</span>
+                          ) : null}
                         </div>
                       </div>
-                    </button>
-                  );
-                })}
-                {/* Infinite scroll trigger */}
-                <div ref={observerTargetRef} className="h-4" />
-                {isFetchingNextPage && (
-                  <div className="py-4 text-center text-muted-foreground">
-                    Loading more...
-                  </div>
-                )}
-              </div>
-            )}
-          </ScrollArea>
+                    </div>
+                  </button>
+                );
+              })}
+              <div ref={observerTargetRef} className="h-4" />
+              {isFetchingNextPage ? (
+                <div className="py-4 text-center text-[var(--text-muted)]">
+                  Loading more...
+                </div>
+              ) : null}
+            </div>
+          )}
+        </ScrollArea>
 
-          {/* Start Date Picker */}
-          <div className="mt-2 space-y-2">
-            <label className="text-sm font-medium text-dimmed">
-              Start Date <span className="text-destructive">*</span>
-            </label>
-            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !startDate && 'text-muted-foreground',
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate
-                    ? format(startDate, 'EEE, MMM d, yyyy')
-                    : 'Select start date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                {programWeeks >= 1 ? (
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={handleDateSelect}
-                    disabled={isProgramStartDateDisabled}
-                    defaultMonth={startDate ?? getNextProgramStartMonday()}
-                    weekStartsOn={1}
-                    numberOfMonths={1}
-                    autoFocus
-                  />
-                ) : (
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => {
-                      setStartDate(date ?? undefined);
-                      setIsDatePickerOpen(false);
-                    }}
-                    disabled={isProgramStartDateDisabled}
-                    defaultMonth={startDate ?? getNextProgramStartMonday()}
-                    weekStartsOn={1}
-                    autoFocus
-                  />
+        <FormField
+          label="Start Date"
+          required
+          hint="Start date must be a Monday (today or later)."
+          className="mt-3"
+        >
+          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="secondary"
+                fullWidth
+                iconLeft="Calendar"
+                className={cn(
+                  'justify-start text-left font-normal',
+                  !startDate && 'text-[var(--text-muted)]',
                 )}
-              </PopoverContent>
-            </Popover>
-            <p className="text-xs text-muted-foreground">
-              Start date must be a Monday (today or later).
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-2 mt-auto">
-            <Button variant="outline" onClick={handleCancel} disabled={isAssigning}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAssignClick}
-              disabled={!selectedAssignmentId || !startDate || isAssigning}
-            >
-              {isAssigning ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Assigning...
-                </>
+              >
+                {startDate
+                  ? format(startDate, 'EEE, MMM d, yyyy')
+                  : 'Select start date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              {programWeeks >= 1 ? (
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={handleDateSelect}
+                  disabled={isProgramStartDateDisabled}
+                  defaultMonth={startDate ?? getNextProgramStartMonday()}
+                  weekStartsOn={1}
+                  numberOfMonths={1}
+                  autoFocus
+                />
               ) : (
-                'Assign'
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    setStartDate(date ?? undefined);
+                    setIsDatePickerOpen(false);
+                  }}
+                  disabled={isProgramStartDateDisabled}
+                  defaultMonth={startDate ?? getNextProgramStartMonday()}
+                  weekStartsOn={1}
+                  autoFocus
+                />
               )}
-            </Button>
-          </div>
-        </motion.div>
-      </DialogContent>
+            </PopoverContent>
+          </Popover>
+        </FormField>
+      </motion.div>
     </Dialog>
   );
 }

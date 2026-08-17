@@ -2,17 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader } from 'lucide-react';
 import Image from 'next/image';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button, Dialog, FormField, Input } from '@/components/medvanta';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateColorFromSeed } from '@/components/ui/avatar';
 import { useOrganizations } from '@/hooks/use-organizations';
@@ -28,13 +19,13 @@ function OrgAvatar({
   orgId: string;
   pictureUrl: string | null | undefined;
   size?: number;
-}) {
+}): React.ReactElement {
   const bg = generateColorFromSeed(orgId || 'default', { gradient: true });
   const fontSize = Math.max(10, Math.round(size * 0.35));
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-md ring-1 ring-border/40 bg-muted"
+      className="relative shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-[var(--slate-100)] ring-1 ring-[var(--border-subtle)]"
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -48,7 +39,7 @@ function OrgAvatar({
         />
       ) : (
         <div
-          className="size-full flex items-center justify-center text-white font-medium"
+          className="flex size-full items-center justify-center font-[var(--fw-medium)] text-[var(--white)]"
           style={{ backgroundImage: bg, fontSize }}
         />
       )}
@@ -72,7 +63,7 @@ export function AssignGroupModal({
   onAssignSuccess,
   userFirstName,
   userLastName,
-}: AssignGroupModalProps) {
+}: AssignGroupModalProps): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     string | null
@@ -91,13 +82,13 @@ export function AssignGroupModal({
 
   const userName = [userFirstName, userLastName].filter(Boolean).join(' ');
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setSearchQuery('');
     setSelectedOrganizationId(null);
     onOpenChange(false);
   };
 
-  const handleAssign = async () => {
+  const handleAssign = async (): Promise<void> => {
     if (!selectedOrganizationId) return;
 
     await addToOrganization.mutateAsync(selectedOrganizationId, {
@@ -113,131 +104,106 @@ export function AssignGroupModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : handleCancel())}
+      onClose={handleCancel}
+      title="Assign to group"
+      width={576}
+      className="flex max-h-[85vh] flex-col overflow-hidden"
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel} disabled={isAssigning}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssign}
+            disabled={!selectedOrganizationId || isAssigning}
+            loading={isAssigning}
+          >
+            Assign
+          </Button>
+        </>
+      }
     >
-      <DialogContent
-        className={cn(
-          'w-[min(36rem,calc(100%-2rem))] h-140 max-h-[85vh] flex flex-col overflow-hidden',
-          'border-0 bg-card text-card-foreground p-5',
-          'rounded-xl shadow-(--shadow-md)',
-        )}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={
+          open
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.95, y: 20 }
+        }
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="flex min-h-0 flex-1 flex-col"
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={
-            open
-              ? { opacity: 1, scale: 1, y: 0 }
-              : { opacity: 0, scale: 0.95, y: 20 }
-          }
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-(--text-highlighted) tracking-tight">
-              Assign to group
-            </DialogTitle>
-            <DialogDescription>
-              {userName ? `Select a group for ${userName}.` : 'Select a group.'}
-            </DialogDescription>
-          </DialogHeader>
+        <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          {userName ? `Select a group for ${userName}.` : 'Select a group.'}
+        </p>
 
-          <div className="pt-4">
-            <Input
-              placeholder="Search by group name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={isAssigning}
-              className={cn(
-                'h-11 rounded-md bg-card px-4 text-sm',
-                'focus-visible:ring-ring/60 focus-visible:ring-[3px]',
-              )}
-            />
-          </div>
+        <FormField label="Search groups">
+          <Input
+            placeholder="Search by group name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={isAssigning}
+            iconLeft="Search"
+          />
+        </FormField>
 
-          <ScrollArea className="flex-1 min-h-0 mt-4 pr-2">
-            {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">
-                Loading...
-              </div>
-            ) : error ? (
-              <div className="py-8 text-center text-destructive">
-                Error loading groups: {error.message}
-              </div>
-            ) : filteredOrganizations.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                No groups found
-              </div>
-            ) : (
-              <div className="space-y-3 p-2">
-                {filteredOrganizations.map((org) => {
-                  const isSelected = selectedOrganizationId === org.id;
-                  return (
-                    <button
-                      key={org.id}
-                      type="button"
-                      onClick={() => setSelectedOrganizationId(org.id)}
-                      disabled={isAssigning}
-                      className={cn(
-                        'cursor-pointer group w-full text-left p-4 transition-all',
-                        'rounded-lg bg-card shadow-(--shadow-sm)',
-                        'hover:bg-primary/20 hover:shadow-(--shadow-md)',
-                        'focus-visible:outline-none focus-visible:ring-ring/60 focus-visible:ring-[3px]',
-                        'disabled:opacity-50 disabled:cursor-not-allowed',
-                        isSelected &&
-                          'bg-primary/5 ring-2 ring-primary/30 shadow-(--shadow-md)',
-                      )}
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <OrgAvatar
-                          orgId={org.id}
-                          pictureUrl={org.picture_url}
-                          size={40}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-sm text-foreground truncate">
-                            {org.name}
-                          </div>
-                          {org.description && (
-                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {org.description}
-                            </div>
-                          )}
+        <ScrollArea className="mt-4 min-h-0 flex-1 pr-2" style={{ maxHeight: 360 }}>
+          {isLoading ? (
+            <div className="py-8 text-center text-[var(--text-muted)]">
+              Loading...
+            </div>
+          ) : error ? (
+            <div className="py-8 text-center text-[var(--danger)]">
+              Error loading groups: {error.message}
+            </div>
+          ) : filteredOrganizations.length === 0 ? (
+            <div className="py-8 text-center text-[var(--text-muted)]">
+              No groups found
+            </div>
+          ) : (
+            <div className="space-y-3 p-2">
+              {filteredOrganizations.map((org) => {
+                const isSelected = selectedOrganizationId === org.id;
+                return (
+                  <button
+                    key={org.id}
+                    type="button"
+                    onClick={() => setSelectedOrganizationId(org.id)}
+                    disabled={isAssigning}
+                    className={cn(
+                      'group w-full cursor-pointer p-4 text-left transition-all',
+                      'rounded-[var(--radius-md)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]',
+                      'hover:bg-[color-mix(in_oklch,var(--primary)_12%,var(--surface-card))] hover:shadow-[var(--shadow-md)]',
+                      'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
+                      'disabled:cursor-not-allowed disabled:opacity-50',
+                      isSelected &&
+                        'bg-[color-mix(in_oklch,var(--primary)_8%,var(--surface-card))] ring-2 ring-[var(--primary)] shadow-[var(--shadow-md)]',
+                    )}
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <OrgAvatar
+                        orgId={org.id}
+                        pictureUrl={org.picture_url}
+                        size={40}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
+                          {org.name}
                         </div>
+                        {org.description ? (
+                          <div className="mt-1 line-clamp-2 text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                            {org.description}
+                          </div>
+                        ) : null}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-
-          <div className="flex justify-end gap-3 pt-4 mt-auto">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isAssigning}
-              className="h-11 px-5 rounded-pill"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAssign}
-              disabled={!selectedOrganizationId || isAssigning}
-              className="h-11 px-5 rounded-pill shadow-(--shadow-md)"
-            >
-              {isAssigning ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Assigning...
-                </>
-              ) : (
-                'Assign'
-              )}
-            </Button>
-          </div>
-        </motion.div>
-      </DialogContent>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </motion.div>
     </Dialog>
   );
 }
-

@@ -3,19 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
+  Alert,
+  Button,
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  FormField,
+  Input,
+  Tabs,
+} from '@/components/medvanta';
 
 import { type ImportUsersResult } from '../../actions';
 import { FileUploadTab } from './file-upload-tab';
@@ -26,7 +23,6 @@ import {
 } from '../contexts/pending-users-context';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import { useCreateUserQuickAdd } from '../hooks/use-users-table-mutations';
-import { cn } from '@/lib/utils';
 
 interface AddUserModalProps {
   open: boolean;
@@ -40,7 +36,7 @@ export function AddUserModal({
   onOpenChange,
   role = 'patient',
   title,
-}: AddUserModalProps) {
+}: AddUserModalProps): React.ReactElement {
   return (
     <PendingUsersProvider>
       <AddUserModalInner
@@ -58,7 +54,7 @@ function AddUserModalInner({
   onOpenChange,
   role = 'patient',
   title,
-}: AddUserModalProps) {
+}: AddUserModalProps): React.ReactElement {
   const queryClient = useQueryClient();
   const { addBatch, reset, rows } = usePendingUsers();
   const createUserMutation = useCreateUserQuickAdd();
@@ -74,7 +70,7 @@ function AddUserModalInner({
     [individualEmail],
   );
 
-  const resetIndividual = () => {
+  const resetIndividual = (): void => {
     setIndividualEmail('');
     setIndividualFirstName('');
     setIndividualLastName('');
@@ -82,7 +78,7 @@ function AddUserModalInner({
 
   const wasOpen = useRef(false);
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     resetIndividual();
     setMode('upload');
     setTab('individual');
@@ -97,7 +93,7 @@ function AddUserModalInner({
     wasOpen.current = open;
   }, [open, queryClient]);
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     if (rows.length > 0) {
       setMode('pending');
       return;
@@ -105,7 +101,7 @@ function AddUserModalInner({
     handleClose();
   };
 
-  const handleAddToList = async () => {
+  const handleAddToList = async (): Promise<void> => {
     if (!individualEmail.trim()) {
       toast.error('Email is required');
       return;
@@ -131,248 +127,210 @@ function AddUserModalInner({
       setMode('pending');
       resetIndividual();
     } catch (error) {
-      // Error handling is done in mutation hook
       console.error('Error creating user:', error);
     }
   };
 
-  const handleImported = async (result: ImportUsersResult) => {
+  const handleImported = async (result: ImportUsersResult): Promise<void> => {
     try {
       const now = Date.now();
-      
-      const batchData = {
-        createdUsers: result.createdUsers?.map((u) => ({
-          id: u.id,
-          email: u.email,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          status: u.status,
-        })) || [],
-        existingUsers: result.existingUsers?.map((u) => ({
-          id: u.id,
-          email: u.email,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          status: u.status,
-        })) || [],
-        failedUsers: result.failedUsers?.map((u, idx) => ({
-          id: `failed:${now}:${u.rowNumber}:${idx}`,
-          email: u.email,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          status: 'failed',
-        })) || [],
-      };
-      
-      // Always add batch to show results (created, existing, or failed users)
-      addBatch(batchData);
 
-      // Always switch to pending view to show results
+      const batchData = {
+        createdUsers:
+          result.createdUsers?.map((u) => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            status: u.status,
+          })) || [],
+        existingUsers:
+          result.existingUsers?.map((u) => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            status: u.status,
+          })) || [],
+        failedUsers:
+          result.failedUsers?.map((u, idx) => ({
+            id: `failed:${now}:${u.rowNumber}:${idx}`,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            status: 'failed',
+          })) || [],
+      };
+
+      addBatch(batchData);
       setMode('pending');
     } catch (error) {
       console.error('Error handling imported users:', error);
-      // Still switch to pending view even on error
       setMode('pending');
     }
   };
 
+  const modalTitle =
+    title ?? (role === 'admin' ? 'Invite admins' : 'Invite members');
+
+  if (mode === 'pending') {
+    return (
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        title={modalTitle}
+        width={760}
+        className="flex max-h-[85vh] flex-col overflow-hidden"
+      >
+        <PendingUsersView
+          onClose={handleClose}
+          onAddMore={() => setMode('upload')}
+          role={role}
+        />
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}
+      onClose={handleClose}
+      title={modalTitle}
+      width={760}
+      className="flex max-h-[85vh] flex-col overflow-hidden"
     >
-      <DialogContent className="bg-card w-[min(760px,calc(100%-2rem))] h-[680px] max-h-[85vh] flex flex-col overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={
-            open
-              ? { opacity: 1, scale: 1, y: 0 }
-              : { opacity: 0, scale: 0.95, y: 20 }
-          }
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          {mode === 'pending' ? (
-            <PendingUsersView
-              onClose={handleClose}
-              onAddMore={() => setMode('upload')}
-              role={role}
-            />
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-foreground">
-                  {title ??
-                    (role === 'admin' ? 'Invite admins' : 'Invite members')}
-                </DialogTitle>
-                <DialogDescription>
-                  Add users to your platform. Invitations will be sent
-                  separately.
-                </DialogDescription>
-              </DialogHeader>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={
+          open
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.95, y: 20 }
+        }
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          Add users to your platform. Invitations will be sent separately.
+        </p>
 
-              <Tabs
-                value={tab}
-                onValueChange={(v) => setTab(v as typeof tab)}
-                className="flex flex-col flex-1 min-h-0 pt-3"
+        <Tabs
+          tabs={[
+            { id: 'individual', label: 'Individual' },
+            { id: 'csv', label: 'Bulk CSV' },
+            { id: 'excel', label: 'Bulk Excel' },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as typeof tab)}
+          className="mb-4"
+        />
+
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <AnimatePresence mode="wait">
+            {tab === 'individual' && (
+              <motion.div
+                key="individual"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="flex flex-col"
               >
-                <TabsList>
-                  <TabsTrigger value="individual">Individual</TabsTrigger>
-                  <TabsTrigger value="csv">Bulk CSV</TabsTrigger>
-                  <TabsTrigger value="excel">Bulk Excel</TabsTrigger>
-                </TabsList>
+                <div className="flex min-h-0 w-full flex-col">
+                  <div className="w-full flex-1 space-y-4">
+                    <FormField label="Email Address" required>
+                      <Input
+                        value={individualEmail}
+                        onChange={(e) => setIndividualEmail(e.target.value)}
+                        placeholder="user@example.com"
+                        type="email"
+                      />
+                    </FormField>
 
-                <div className="relative flex-1 min-h-0 overflow-hidden">
-                  <AnimatePresence mode="wait">
-                    {tab === 'individual' && (
-                      <motion.div
-                        key="individual"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className="absolute inset-0 flex flex-col"
-                      >
-                        <TabsContent
-                          value="individual"
-                          className="flex flex-col flex-1 min-h-0 w-full"
-                        >
-                          <div className="flex flex-col flex-1 min-h-0 w-full">
-                            <div className="space-y-4 flex-1 w-full">
-                              <div className="space-y-2">
-                                <div className="text-sm font-medium">
-                                  Email Address{' '}
-                                  <span className="text-red-500">*</span>
-                                </div>
-                                <Input
-                                  value={individualEmail}
-                                  onChange={(e) =>
-                                    setIndividualEmail(e.target.value)
-                                  }
-                                  placeholder="user@example.com"
-                                  type="email"
-                                />
-                              </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <FormField label="First Name (Optional)">
+                        <Input
+                          value={individualFirstName}
+                          onChange={(e) =>
+                            setIndividualFirstName(e.target.value)
+                          }
+                          placeholder="Enter their first name"
+                        />
+                      </FormField>
+                      <FormField label="Last Name (Optional)">
+                        <Input
+                          value={individualLastName}
+                          onChange={(e) => setIndividualLastName(e.target.value)}
+                          placeholder="Enter their last name"
+                        />
+                      </FormField>
+                    </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <div className="text-sm font-medium">
-                                    First Name (Optional)
-                                  </div>
-                                  <Input
-                                    value={individualFirstName}
-                                    onChange={(e) =>
-                                      setIndividualFirstName(e.target.value)
-                                    }
-                                    placeholder="Enter their first name"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="text-sm font-medium">
-                                    Last Name (Optional)
-                                  </div>
-                                  <Input
-                                    value={individualLastName}
-                                    onChange={(e) =>
-                                      setIndividualLastName(e.target.value)
-                                    }
-                                    placeholder="Enter their last name"
-                                  />
-                                </div>
-                              </div>
+                    <Alert kind="info" title="Pending status">
+                      Users will be added as Pending. Review the list before
+                      sending invitations.
+                    </Alert>
+                  </div>
 
-                              <div
-                                className={cn(
-                                  'flex items-start gap-3 rounded-md border px-4 py-3 text-sm leading-relaxed',
-                                  'bg-primary/10 border-primary/20 text-foreground',
-                                )}
-                              >
-                                <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
-                                <div>
-                                  Users will be added as{' '}
-                                  <span className="font-semibold">Pending</span>
-                                  . Review the list before sending invitations.
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4 mt-auto">
-                              <Button
-                                variant="outline"
-                                onClick={handleCancel}
-                                disabled={createUserMutation.isPending}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={handleAddToList}
-                                disabled={
-                                  !canSubmitIndividual || createUserMutation.isPending
-                                }
-                                className="rounded-pill"
-                              >
-                                {createUserMutation.isPending
-                                  ? 'Adding...'
-                                  : 'Add to List'}
-                              </Button>
-                            </div>
-                          </div>
-                        </TabsContent>
-                      </motion.div>
-                    )}
-
-                    {tab === 'csv' && (
-                      <motion.div
-                        key="csv"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className="absolute inset-0 flex flex-col"
-                      >
-                        <TabsContent
-                          value="csv"
-                          className="flex flex-col flex-1 min-h-0 w-full"
-                        >
-                          <FileUploadTab
-                            fileType="csv"
-                            onImported={handleImported}
-                            onCancel={handleCancel}
-                            role={role}
-                          />
-                        </TabsContent>
-                      </motion.div>
-                    )}
-
-                    {tab === 'excel' && (
-                      <motion.div
-                        key="excel"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className="absolute inset-0 flex flex-col"
-                      >
-                        <TabsContent
-                          value="excel"
-                          className="flex flex-col flex-1 min-h-0 w-full"
-                        >
-                          <FileUploadTab
-                            fileType="excel"
-                            onImported={handleImported}
-                            onCancel={handleCancel}
-                            role={role}
-                          />
-                        </TabsContent>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div className="mt-auto flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="secondary"
+                      onClick={handleCancel}
+                      disabled={createUserMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddToList}
+                      disabled={
+                        !canSubmitIndividual || createUserMutation.isPending
+                      }
+                      loading={createUserMutation.isPending}
+                    >
+                      Add to List
+                    </Button>
+                  </div>
                 </div>
-              </Tabs>
-            </>
-          )}
-        </motion.div>
-      </DialogContent>
+              </motion.div>
+            )}
+
+            {tab === 'csv' && (
+              <motion.div
+                key="csv"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="absolute inset-0 flex flex-col"
+              >
+                <FileUploadTab
+                  fileType="csv"
+                  onImported={handleImported}
+                  onCancel={handleCancel}
+                  role={role}
+                />
+              </motion.div>
+            )}
+
+            {tab === 'excel' && (
+              <motion.div
+                key="excel"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="absolute inset-0 flex flex-col"
+              >
+                <FileUploadTab
+                  fileType="excel"
+                  onImported={handleImported}
+                  onCancel={handleCancel}
+                  role={role}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </Dialog>
   );
 }

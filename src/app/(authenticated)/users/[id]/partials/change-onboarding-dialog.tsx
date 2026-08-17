@@ -2,23 +2,20 @@
 
 import { useState } from 'react';
 import {
+  Alert,
+  Badge,
+  Button,
   Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+  FormField,
+  Radio,
+} from '@/components/medvanta';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
-import { Loader2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
 type OnboardingOverride = 'full' | SetOnboardingStateTarget;
 
-type ChangeOnboardingDialogProps = {
+interface ChangeOnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: {
@@ -28,7 +25,7 @@ type ChangeOnboardingDialogProps = {
     email: string | null;
     status?: string | null;
   };
-};
+}
 
 const statusLabel: Record<string, string> = {
   pending: 'pending',
@@ -37,21 +34,35 @@ const statusLabel: Record<string, string> = {
   assigned: 'assigned',
 };
 
+const onboardingOptions = [
+  { value: 'full' as const, label: 'Full onboarding' },
+  { value: 'screening' as const, label: 'Skip screening' },
+  {
+    value: 'consultation' as const,
+    label: 'Skip screening + consultation',
+  },
+] as const;
+
 export function ChangeOnboardingDialog({
   open,
   onOpenChange,
   user,
-}: ChangeOnboardingDialogProps) {
+}: ChangeOnboardingDialogProps): React.ReactElement {
   const router = useRouter();
   const [override, setOverride] = useState<OnboardingOverride>('full');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+  const displayName =
+    [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
   const displayEmail = user.email ?? '';
-  const status = user.status ? statusLabel[user.status] ?? user.status : null;
+  const status = user.status ? (statusLabel[user.status] ?? user.status) : null;
 
-  const handleSave = async () => {
+  const handleClose = (): void => {
+    onOpenChange(false);
+  };
+
+  const handleSave = async (): Promise<void> => {
     if (override === 'full') {
       onOpenChange(false);
       return;
@@ -69,97 +80,66 @@ export function ChangeOnboardingDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change Onboarding</DialogTitle>
-          <DialogDescription>
-            Modify the onboarding path for this user.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-medium text-foreground">{displayName}</p>
-              <p className="text-sm text-muted-foreground">{displayEmail}</p>
-            </div>
-            {status && (
-              <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-                {status}
-              </span>
-            )}
-          </div>
-
-          <div>
-            <p className="mb-2 font-medium text-foreground">Onboarding override</p>
-            <div className="space-y-1 rounded-md border border-border bg-muted/30">
-              {(
-                [
-                  { value: 'full' as const, label: 'Full onboarding' },
-                  { value: 'screening' as const, label: 'Skip screening' },
-                  {
-                    value: 'consultation' as const,
-                    label: 'Skip screening + consultation',
-                  },
-                ] as const
-              ).map(({ value, label }) => (
-                <label
-                  key={value}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm transition-colors',
-                    override === value && 'bg-primary/10',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="onboarding-override"
-                    checked={override === value}
-                    onChange={() => setOverride(value)}
-                    className="h-4 w-4 accent-primary"
-                    disabled={saving}
-                  />
-                  <span className="text-foreground">{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {override !== 'full' && (
-            <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                Skipping onboarding steps may result in a confusing experience for
-                invited users. Only use this override in exceptional situations.
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      title="Change Onboarding"
+      width={448}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} className="ml-2" disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              'Save Changes'
-            )}
+          <Button onClick={handleSave} loading={saving}>
+            Save Changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
+        </>
+      }
+    >
+      <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        Modify the onboarding path for this user.
+      </p>
+
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="font-[var(--fw-semibold)] text-[var(--text-strong)]">
+            {displayName}
+          </p>
+          <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            {displayEmail}
+          </p>
+        </div>
+        {status ? <Badge tone="brand">{status}</Badge> : null}
+      </div>
+
+      <FormField label="Onboarding override">
+        <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--slate-50)] p-3">
+          {onboardingOptions.map(({ value, label }) => (
+            <Radio
+              key={value}
+              name="onboarding-override"
+              value={value}
+              label={label}
+              checked={override === value}
+              disabled={saving}
+              onChange={() => setOverride(value)}
+            />
+          ))}
+        </div>
+      </FormField>
+
+      {override !== 'full' ? (
+        <Alert kind="warning" className="mt-4">
+          Skipping onboarding steps may result in a confusing experience for
+          invited users. Only use this override in exceptional situations.
+        </Alert>
+      ) : null}
+
+      {error ? (
+        <p className="mt-3 text-[length:var(--text-sm)] text-[var(--danger)]">
+          {error}
+        </p>
+      ) : null}
     </Dialog>
   );
 }
