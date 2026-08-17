@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { useUsersTable } from '../hooks/use-users-table';
 import { UsersTableFilters } from './filters';
 import { UsersTablePagination } from './pagination';
+import { UsersTableBulkBar } from './bulk-bar';
 import type { UsersTableProps } from '../types';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
@@ -70,7 +70,7 @@ export function UsersTable({
           : 'No results.';
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <UsersTableFilters
         searchValue={searchValue}
         onSearchChange={setSearchValue}
@@ -83,84 +83,84 @@ export function UsersTable({
         dueFilter={dueFilter}
         onDueFilterChange={setDueFilter}
       />
-      <div className="w-full overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)]">
-        <table className="w-full border-collapse text-[length:var(--text-md)]">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="whitespace-nowrap border-b border-[var(--border-subtle)] bg-[var(--slate-50)] px-4 py-3 text-left text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-5 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
-                    <span className="text-[var(--text-muted)]">
-                      Loading members...
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index, array) => (
-                <motion.tr
-                  key={row.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.03,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className="transition-[background] duration-[var(--dur-fast)] hover:bg-[var(--slate-50)]"
-                  style={{
-                    borderBottom:
-                      index < array.length - 1
-                        ? '1px solid var(--border-subtle)'
-                        : undefined,
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-4 py-[13px] align-middle text-[var(--text-body)]"
+
+      <div className="tw" style={{ overflow: 'visible' }}>
+        <UsersTableBulkBar table={table} />
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tbl">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      style={
+                        header.id === 'select'
+                          ? { width: 40 }
+                          : header.id === 'actions'
+                            ? { textAlign: 'right', width: 52 }
+                            : undefined
+                      }
+                      className={
+                        header.column.getCanSort() ? 'srt' : undefined
+                      }
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </th>
                   ))}
-                </motion.tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-5 text-center">
-                  <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                    {emptyStateMessage}
-                  </span>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+                    <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+                      <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
+                      <span className="mut">Loading members…</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={row.getIsSelected() ? 'sel-row' : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        style={
+                          cell.column.id === 'actions'
+                            ? { textAlign: 'right', width: 52 }
+                            : undefined
+                        }
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+                    <span className="mut">{emptyStateMessage}</span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <UsersTablePagination table={table} />
       </div>
-      <UsersTablePagination table={table} />
-    </div>
+    </>
   );
 }

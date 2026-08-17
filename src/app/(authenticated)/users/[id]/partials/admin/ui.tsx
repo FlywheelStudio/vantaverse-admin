@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { PageWrapper } from '@/components/page-wrapper';
+import { AppBar } from '@/components/medvanta/shell';
 import { UserProfileCard } from '@/components/users/user-profile-card';
-import { Card } from '@/components/medvanta';
 import { ManagementOverviewCard } from './management-overview-card';
 import { ComplianceCard } from './compliance-card';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
@@ -33,15 +32,20 @@ export function AdminProfileViewUI({
   memberCountsByOrg,
   complianceByOrg,
   lowComplianceUsers,
-}: AdminProfileViewUIProps) {
+}: AdminProfileViewUIProps): React.ReactElement {
   const isYourself = useMemo(
     () => user.id === currentUserId,
     [user.id, currentUserId],
   );
 
+  const displayName = useMemo(() => {
+    const parts = [user.first_name, user.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Admin';
+  }, [user.first_name, user.last_name]);
+
   const orgNameById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const o of organizations) map.set(o.id, o.name);
+    for (const organization of organizations) map.set(organization.id, organization.name);
     return map;
   }, [organizations]);
 
@@ -49,7 +53,8 @@ export function AdminProfileViewUI({
     () =>
       complianceByOrg.map((row) => ({
         organizationId: row.organizationId,
-        organizationName: orgNameById.get(row.organizationId) ?? row.organizationId,
+        organizationName:
+          orgNameById.get(row.organizationId) ?? row.organizationId,
         compliance: row.compliance,
         programCompletion: row.programCompletion,
       })),
@@ -57,38 +62,44 @@ export function AdminProfileViewUI({
   );
 
   return (
-    <PageWrapper
-      subheader={
-        <h1 className="text-2xl font-medium">
-          {isYourself
-            ? 'Your '
-            : `${user.first_name && `${user.first_name}'s `} `}
-          Profile
-        </h1>
-      }
-    >
-      <div className="flex flex-col gap-6 h-full min-h-0">
+    <>
+      <AppBar
+        crumbs={[
+          { label: 'Members', href: '/users' },
+          { label: displayName },
+        ]}
+        title={isYourself ? 'Your profile' : `${displayName}'s profile`}
+      />
+      <div className="body">
+        <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <div
+            style={{
+              borderBottom: '1px solid var(--border-subtle)',
+              background:
+                'color-mix(in oklch, var(--primary) 8%, var(--surface-card))',
+              padding: 32,
+            }}
+          >
+            <UserProfileCard
+              userId={user.id}
+              firstName={user.first_name || ''}
+              lastName={user.last_name || ''}
+              email={user.email || ''}
+              avatarUrl={user.avatar_url}
+              description={user.description}
+              role={user.role}
+              programDueDate={user.program_due_date}
+            />
+          </div>
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
+          className="g"
+          style={{ gridTemplateColumns: '1fr 1fr' }}
         >
-          <Card padding={0} className="overflow-hidden">
-            <div className="border-b border-[var(--border-subtle)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--surface-card))] p-8">
-              <UserProfileCard
-                userId={user.id}
-                firstName={user.first_name || ''}
-                lastName={user.last_name || ''}
-                email={user.email || ''}
-                avatarUrl={user.avatar_url}
-                description={user.description}
-                role={user.role}
-                programDueDate={user.program_due_date}
-              />
-            </div>
-          </Card>
-        </motion.div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
           <ManagementOverviewCard
             organizations={organizations}
             totalMemberCount={totalMemberCount}
@@ -99,8 +110,8 @@ export function AdminProfileViewUI({
             lowComplianceUsers={lowComplianceUsers}
             organizations={organizations}
           />
-        </div>
+        </motion.div>
       </div>
-    </PageWrapper>
+    </>
   );
 }
