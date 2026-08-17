@@ -4,12 +4,11 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendBulkInvitations } from '@/app/(authenticated)/users/actions';
 import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import { StatusCountsListPanel } from '@/app/(authenticated)/dashboard/status-counts-list-panel';
+import { Badge, Card, CardHeader } from '@/components/medvanta';
 import { cn } from '@/lib/utils';
 import type {
   DashboardStatusCounts,
@@ -29,6 +28,8 @@ type StatusCountsWithProgramCompleted = DashboardStatusCounts & {
   programCompleted?: number;
 };
 
+type BadgeTone = 'neutral' | 'brand' | 'accent' | 'success' | 'warning' | 'danger';
+
 const FILTER_LABELS: Record<StatusFilter, string> = {
   pending: 'Pending',
   invited: 'Invited',
@@ -38,23 +39,25 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
   programCompleted: 'Program completed',
 };
 
-const BADGES: { key: StatusFilter; countKey: keyof StatusCountsWithProgramCompleted; label: string; colorClass?: string }[] = [
-  { key: 'active', countKey: 'active', label: 'Active', colorClass: 'text-emerald-500' },
-  { key: 'pending', countKey: 'pending', label: 'Pending', colorClass: 'text-orange-500' },
-  { key: 'invited', countKey: 'invited', label: 'Invited', colorClass: 'text-violet-500' },
-  { key: 'noProgram', countKey: 'noProgram', label: 'No program' },
-  { key: 'inProgram', countKey: 'inProgram', label: 'In program' },
-  { key: 'programCompleted', countKey: 'programCompleted', label: 'Program completed' },
+const BADGES: {
+  key: StatusFilter;
+  countKey: keyof StatusCountsWithProgramCompleted;
+  label: string;
+  tone: BadgeTone;
+}[] = [
+  { key: 'active', countKey: 'active', label: 'Active', tone: 'success' },
+  { key: 'pending', countKey: 'pending', label: 'Pending', tone: 'warning' },
+  { key: 'invited', countKey: 'invited', label: 'Invited', tone: 'brand' },
+  { key: 'noProgram', countKey: 'noProgram', label: 'No program', tone: 'neutral' },
+  { key: 'inProgram', countKey: 'inProgram', label: 'In program', tone: 'accent' },
+  { key: 'programCompleted', countKey: 'programCompleted', label: 'Program completed', tone: 'success' },
 ];
 
-function complianceBadgeClass(compliance: number): string {
+function complianceBadgeTone(compliance: number): BadgeTone {
   const pct = Math.round(compliance);
-  if (pct >= 100) return 'bg-emerald-600 text-white';
-  if (pct >= 90) return 'bg-emerald-400 text-emerald-900';
-  if (pct >= 80) return 'bg-emerald-200 text-emerald-800';
-  if (pct >= 50) return 'bg-yellow-200 text-yellow-800';
-  if (pct >= 25) return 'bg-orange-200 text-orange-800';
-  return 'bg-red-200 text-red-800';
+  if (pct >= 80) return 'success';
+  if (pct >= 50) return 'warning';
+  return 'danger';
 }
 
 type InvitationResult = { success: boolean; email: string; error?: string };
@@ -99,12 +102,12 @@ export function StatusCountsCard({
     inProgram: DashboardStatusUser[];
     programCompleted: UserNeedingAttention[];
   };
-}) {
+}): React.ReactElement {
   const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>('active');
   const [search, setSearch] = useState('');
   const [optimisticallyInvitedIds, setOptimisticallyInvitedIds] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [sendingBulkInvites, setSendingBulkInvites] = useState(false);
   const [assignProgramUser, setAssignProgramUser] = useState<DashboardStatusUser | null>(null);
@@ -129,11 +132,11 @@ export function StatusCountsCard({
           return fn.includes(q) || ln.includes(q) || fullName.includes(q) || em.includes(q);
         });
 
-  const handleUserClick = (userId: string) => {
+  const handleUserClick = (userId: string): void => {
     router.push(`/users/${userId}`);
   };
 
-  const handleBadgeClick = (filter: StatusFilter) => {
+  const handleBadgeClick = (filter: StatusFilter): void => {
     setSelectedFilter(filter);
     setSearch('');
   };
@@ -178,47 +181,38 @@ export function StatusCountsCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.3 }}
-      className="flex-1 min-w-0 pb-2"
+      className="min-w-0 flex-1 pb-2"
     >
-      <Card className="h-full min-h-[500px] flex flex-col overflow-hidden gap-0">
-        {/* Header */}
-        <div className="px-5 py-4 shrink-0">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Member Status</h2>
+      <Card padding={0} className="flex h-full min-h-[500px] flex-col overflow-hidden">
+        <div className="shrink-0 px-5 pt-5">
+          <CardHeader title="Member Status" className="mb-0" />
         </div>
 
-        {/* Status menu + user list */}
-        <div className="flex-1 flex flex-row min-h-0">
-          <div className="w-1/4 min-w-[200px] border-r border-border/60 flex flex-col bg-muted/20">
+        <div className="flex min-h-0 flex-1 flex-row">
+          <div className="flex w-1/4 min-w-[200px] flex-col border-r border-[var(--border-subtle)] bg-[var(--slate-50)]">
             <ScrollArea className="flex-1">
-              <div className="p-3 space-y-1">
+              <div className="space-y-1 p-3">
                 {BADGES.map((badge) => (
                   <button
                     key={badge.key}
+                    type="button"
                     onClick={() => handleBadgeClick(badge.key)}
                     className={cn(
-                      "cursor-pointer w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-all text-left",
+                      'flex w-full cursor-pointer items-center justify-between rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-[length:var(--text-sm)] transition-all',
                       selectedFilter === badge.key
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                        ? 'bg-[var(--navy-100)] font-[var(--fw-semibold)] text-[var(--primary)]'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-strong)]',
                     )}
                   >
                     <span>{badge.label}</span>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "ml-auto text-xs h-5 px-1.5 min-w-6 justify-center bg-muted",
-                        selectedFilter === badge.key && "text-primary"
-                      )}
-                    >
-                      {counts[badge.countKey] ?? 0}
-                    </Badge>
+                    <Badge tone={badge.tone}>{counts[badge.countKey] ?? 0}</Badge>
                   </button>
                 ))}
               </div>
             </ScrollArea>
           </div>
 
-          <div className="flex-1 flex flex-col min-w-0 bg-card">
+          <div className="flex min-w-0 flex-1 flex-col bg-[var(--surface-card)]">
             <StatusCountsListPanel
               title={FILTER_LABELS[selectedFilter]}
               hideListHeader
@@ -234,13 +228,13 @@ export function StatusCountsCard({
               onSendInvitations={handleSendInvitations}
               onUserClick={handleUserClick}
               onAssignProgram={setAssignProgramUser}
-              complianceBadgeClass={complianceBadgeClass}
+              complianceBadgeTone={complianceBadgeTone}
             />
           </div>
         </div>
       </Card>
 
-      {assignProgramUser && (
+      {assignProgramUser ? (
         <AssignProgramModal
           open={assignProgramUser !== null}
           onOpenChange={(open) => {
@@ -255,7 +249,7 @@ export function StatusCountsCard({
             setAssignProgramUser(null);
           }}
         />
-      )}
+      ) : null}
     </motion.div>
   );
 }

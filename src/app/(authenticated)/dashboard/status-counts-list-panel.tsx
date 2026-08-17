@@ -1,14 +1,20 @@
 'use client';
 
-import { ChevronRight, Mail, Loader2, Search, ClipboardList } from 'lucide-react';
-import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
 import { UserCard } from '@/components/ui/user-card';
-import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Badge,
+  Button,
+  CardHeader,
+  Icon,
+  IconButton,
+  Input,
+} from '@/components/medvanta';
 import { cn } from '@/lib/utils';
 import type { DashboardStatusUser, UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
+
+type BadgeTone = 'neutral' | 'brand' | 'accent' | 'success' | 'warning' | 'danger';
 
 type StatusCountsListPanelProps = {
   title: string;
@@ -26,7 +32,7 @@ type StatusCountsListPanelProps = {
   onSendInvitations: (users: DashboardStatusUser[]) => void;
   onUserClick: (userId: string) => void;
   onAssignProgram: (user: DashboardStatusUser) => void;
-  complianceBadgeClass: (compliance: number) => string;
+  complianceBadgeTone: (compliance: number) => BadgeTone;
 };
 
 export function StatusCountsListPanel({
@@ -45,46 +51,42 @@ export function StatusCountsListPanel({
   onSendInvitations,
   onUserClick,
   onAssignProgram,
-  complianceBadgeClass,
-}: StatusCountsListPanelProps) {
+  complianceBadgeTone,
+}: StatusCountsListPanelProps): React.ReactElement {
   return (
     <>
-      {!hideListHeader && (
-        <CardHeader className="px-5 py-4 shrink-0 border-b border-border/60 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-semibold text-foreground tracking-tight">
-            {title}
-          </CardTitle>
-          {onBack && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="h-8 text-xs text-muted-foreground"
-            >
+      {!hideListHeader ? (
+        <div className="flex shrink-0 flex-row items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4">
+          <CardHeader title={title} className="mb-0" />
+          {onBack ? (
+            <Button variant="ghost" size="sm" onClick={onBack}>
               Back
             </Button>
-          )}
-        </CardHeader>
-      )}
-      <CardContent className={cn("p-5 flex-1 flex flex-col min-h-0 overflow-hidden", hideListHeader && "pt-4")}>
-        <div className="flex items-center gap-2 w-full min-w-0 mt-0.5 mb-4 shrink-0">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Name, email..."
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="h-10 pl-10 bg-card/90 shadow-sm border-border/60 rounded-md text-sm"
-            />
-          </div>
-          {isPending && (
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-hidden p-5',
+          hideListHeader && 'pt-4',
+        )}
+      >
+        <div className="mb-4 mt-0.5 flex w-full min-w-0 shrink-0 items-center gap-2">
+          <Input
+            type="search"
+            placeholder="Name, email..."
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            iconLeft="Search"
+            className="min-w-0 flex-1"
+          />
+          {isPending ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
+                <IconButton
+                  icon={sendingBulkInvites ? 'LoaderCircle' : 'Mail'}
+                  label="Invite all current"
+                  variant="secondary"
                   disabled={
                     filteredLength === 0 ||
                     !filtered.some((u) => u.email?.trim()) ||
@@ -93,29 +95,24 @@ export function StatusCountsListPanel({
                   onClick={() =>
                     onSendInvitations(filtered.filter((u) => u.email?.trim()) as DashboardStatusUser[])
                   }
-                >
-                  {sendingBulkInvites ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                </Button>
+                  className={sendingBulkInvites ? '[&_svg]:animate-spin' : undefined}
+                />
               </TooltipTrigger>
               <TooltipContent>Invite all current</TooltipContent>
             </Tooltip>
-          )}
+          ) : null}
         </div>
         {usersLength === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-dimmed">
+          <div className="flex flex-1 items-center justify-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
             No users in this category.
           </div>
         ) : filteredLength === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-dimmed">
+          <div className="flex flex-1 items-center justify-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
             No matches for &quot;{searchTrim}&quot;.
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0 pr-2 slim-scrollbar">
-            <div className="space-y-3 min-w-0 w-full overflow-hidden p-2">
+          <ScrollArea className="slim-scrollbar min-h-0 flex-1 pr-2">
+            <div className="min-w-0 w-full space-y-3 overflow-hidden p-2">
               {filtered.map((u, i) => (
                 <div
                   key={u.user_id}
@@ -130,12 +127,10 @@ export function StatusCountsListPanel({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex items-center gap-2">
-                              <span
-                                className={`text-xs font-semibold px-2 py-1 rounded-full ${complianceBadgeClass((u as UserNeedingAttention).compliance)}`}
-                              >
+                              <Badge tone={complianceBadgeTone((u as UserNeedingAttention).compliance)}>
                                 {Math.round((u as UserNeedingAttention).compliance)}%
-                              </span>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              </Badge>
+                              <Icon name="ChevronRight" size={16} className="text-[var(--text-muted)]" />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>Completion</TooltipContent>
@@ -143,43 +138,36 @@ export function StatusCountsListPanel({
                       ) : isPending ? (
                         <div className="flex items-center gap-2">
                           {u.email?.trim() ? (
-                            <Button
+                            <IconButton
+                              icon={sendingBulkInvites ? 'LoaderCircle' : 'Mail'}
+                              label="Send invitation"
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
                               disabled={sendingBulkInvites}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSendInvitations([u]);
                               }}
-                            >
-                              {sendingBulkInvites ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Mail className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </Button>
+                              className={sendingBulkInvites ? '[&_svg]:animate-spin' : undefined}
+                            />
                           ) : null}
                         </div>
                       ) : isNoProgram ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
+                            <IconButton
+                              icon="ClipboardList"
+                              label="Assign program"
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onAssignProgram(u);
                               }}
-                            >
-                              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                            </Button>
+                            />
                           </TooltipTrigger>
                           <TooltipContent>Assign program</TooltipContent>
                         </Tooltip>
                       ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <Icon name="ChevronRight" size={16} className="text-[var(--text-muted)]" />
                       )
                     }
                   />
@@ -188,7 +176,7 @@ export function StatusCountsListPanel({
             </div>
           </ScrollArea>
         )}
-      </CardContent>
+      </div>
     </>
   );
 }

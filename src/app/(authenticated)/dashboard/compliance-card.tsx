@@ -1,14 +1,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, StatCard } from '@/components/medvanta';
 import { CompliancePieChart } from '@/components/users/compliance-pie-chart';
 
 export function ComplianceCard({
   compliance,
 }: {
   compliance: number | null;
-}) {
+}): React.ReactElement {
   const value = compliance ?? 0;
 
   return (
@@ -16,27 +16,35 @@ export function ComplianceCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.15 }}
-      className="flex-1 min-w-0"
+      className="min-w-0 flex-1"
     >
-      <Card className="h-full min-h-0 flex flex-col gap-0 overflow-hidden">
-        <CardHeader className="px-5 py-4 shrink-0 gap-0">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="cursor-default text-xl text-dimmed font-normal tracking-tight">
-              <span className="text-xl font-semibold text-foreground">
-                Completion
-              </span>
-            </CardTitle>
+      <Card padding={0} className="flex h-full min-h-0 flex-col overflow-hidden">
+        <div className="shrink-0 px-5 pt-5">
+          <CardHeader
+            title="Completion"
+            subtitle="Aggregate average of completion for all assigned programs."
+            className="mb-0"
+          />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-row items-stretch gap-4 p-5 pt-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <StatCard
+              label="Average completion"
+              value={`${Math.round(value)}%`}
+              icon="Target"
+              accent="var(--primary)"
+            />
+            <p className="rounded-[var(--radius-sm)] bg-[var(--slate-50)] px-3 py-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+              <span className="font-[var(--fw-semibold)] text-[var(--text-strong)]">
+                Based on sets and exercises completed
+              </span>{' '}
+              out of the total number of exercises assigned.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="cursor-default py-3 flex-1 flex flex-row items-start justify-center min-h-0 overflow-hidden gap-4">
-          <p className="text-sm text-muted-foreground text-left max-w-xs rounded-md bg-muted py-2 flex-1">
-            <b className="font-semibold text-foreground">Aggregate for the average of completion for all assigned programs. </b>
-            Completion is based on how many sets and exercises have been completed out of the total number of exercises assigned.
-          </p>
-          <div className="flex items-center justify-center h-48 w-48 shrink-0">
+          <div className="flex h-48 w-48 shrink-0 items-center justify-center">
             <CompliancePieChart compliance={value} size={180} />
           </div>
-        </CardContent>
+        </div>
       </Card>
     </motion.div>
   );
