@@ -31,3 +31,12 @@ export { Table } from './data-display/Table';
 export type { TableColumn, TableProps } from './data-display/Table';
 export { Tag } from './data-display/Tag';
 export type { TagProps } from './data-display/Tag';
+
+export { Alert } from './feedback/Alert';
+export type { AlertProps } from './feedback/Alert';
+export { Dialog } from './feedback/Dialog';
+export type { DialogProps } from './feedback/Dialog';
+export { ProgressBar } from './feedback/ProgressBar';
+export type { ProgressBarProps } from './feedback/ProgressBar';
+export { Tooltip } from './feedback/Tooltip';
+export type { TooltipProps } from './feedback/Tooltip';
