@@ -9,11 +9,8 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
-import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Loader2, UserPlus } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Button, Icon, Input, Pagination } from '@/components/medvanta';
 import {
   getMembersColumns,
   type GroupMemberRow,
@@ -77,42 +74,32 @@ export function MembersTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-1 min-w-[260px]">
-          <Input
-            placeholder="Search by name or email..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-          <Button
-            onClick={onAddClick}
-            className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white shrink-0"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add users
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Search by name or email..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          iconLeft="Search"
+          className="min-w-[220px] flex-1"
+        />
+        <Button onClick={onAddClick} iconLeft="UserPlus" className="shrink-0">
+          Add users
+        </Button>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="border-b-2 border-[#2454FF]/20"
-              >
+              <tr key={headerGroup.id} className="border-b border-[var(--border-subtle)]">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left py-4 px-4 text-sm font-bold text-[#1E3A5F]"
+                    className="px-4 py-3 text-left text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]"
                   >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
               </tr>
@@ -121,41 +108,31 @@ export function MembersTable({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center py-5">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                    <span className="text-[#64748B]">Loading members...</span>
+                <td colSpan={columns.length} className="h-24 py-5 text-center">
+                  <div className="flex items-center justify-center gap-2 text-[var(--text-muted)]">
+                    <Icon name="LoaderCircle" size={20} className="animate-spin" />
+                    Loading members...
                   </div>
                 </td>
               </tr>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row, index, array) => (
-                <motion.tr
+                <tr
                   key={row.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.03,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
+                  className={`border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--slate-50)] ${
                     index === array.length - 1 ? 'border-b-0' : ''
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="py-5 px-4">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                    <td key={cell.id} className="px-4 py-4">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
-                </motion.tr>
+                </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center py-5">
+                <td colSpan={columns.length} className="h-24 py-5 text-center text-[var(--text-muted)]">
                   No results.
                 </td>
               </tr>
@@ -164,38 +141,15 @@ export function MembersTable({
         </table>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
-        <div className="flex justify-center md:justify-start">
-          <span className="text-sm text-[#64748B]">
-            {table.getFilteredRowModel().rows.length} member(s) total.
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <div className="px-4 py-2 bg-[#2454FF]/10 text-[#2454FF] rounded-lg font-medium text-sm">
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
-            {table.getPageCount()}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
+      <div className="flex flex-col gap-4 border-t border-[var(--border-subtle)] pt-4 md:flex-row md:items-center md:justify-between">
+        <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          {table.getFilteredRowModel().rows.length} member(s) total.
+        </span>
+        <Pagination
+          page={table.getState().pagination.pageIndex + 1}
+          pageCount={Math.max(table.getPageCount(), 1)}
+          onChange={(nextPage) => table.setPageIndex(nextPage - 1)}
+        />
       </div>
     </div>
   );

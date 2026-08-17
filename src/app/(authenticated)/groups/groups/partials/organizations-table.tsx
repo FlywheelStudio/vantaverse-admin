@@ -12,25 +12,18 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, Plus, Save, X, Trash2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from '@/context/organizations';
+import {
+  Button,
+  Dialog,
+  Input,
+  Pagination,
+  Textarea,
+  IconButton,
+} from '@/components/medvanta';
 import { CreateRowImageCell } from './create-row-image-cell';
 import { TeamsExpandedRow } from '../../teams/partials/teams-expanded-row';
 
@@ -44,7 +37,7 @@ function DeleteOrganizationButton({
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     setIsDeleting(true);
     try {
       await onDelete(organization.id);
@@ -57,40 +50,34 @@ function DeleteOrganizationButton({
   };
 
   return (
-    <div className="flex gap-2">
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="cursor-pointer font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{organization.name}&rdquo;?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer" disabled={isDeleting}>
+    <>
+      <IconButton
+        icon="Trash2"
+        label={`Delete ${organization.name}`}
+        variant="ghost"
+        size="sm"
+        className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+        onClick={() => setOpen(true)}
+      />
+      <Dialog
+        open={open}
+        title="Delete Organization"
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={isDeleting}>
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="cursor-pointer"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </Button>
+            <Button variant="danger" loading={isDeleting} onClick={handleDelete}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        Are you sure you want to delete &ldquo;{organization.name}&rdquo;? This action cannot be
+        undone.
+      </Dialog>
+    </>
   );
 }
 
@@ -155,7 +142,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     },
   });
 
-  // Close expanded view when pagination changes
   useEffect(() => {
     if (expandedOrganizationId) {
       handleExpandToggle(expandedOrganizationId);
@@ -163,7 +149,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table.getState().pagination.pageIndex]);
 
-  // Close expanded view when sorting changes
   useEffect(() => {
     if (expandedOrganizationId) {
       handleExpandToggle(expandedOrganizationId);
@@ -171,7 +156,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorting]);
 
-  // Close expanded view when filtering changes
   useEffect(() => {
     if (expandedOrganizationId) {
       handleExpandToggle(expandedOrganizationId);
@@ -179,7 +163,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
 
-  // Smooth scroll to top when creating new row
   useEffect(() => {
     if (creatingRow && tableContainerRef.current) {
       tableContainerRef.current.scrollTo({
@@ -194,48 +177,44 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <Button
           onClick={handleCreate}
-          className="h-11 rounded-pill px-5 shadow-(--shadow-md) cursor-pointer"
+          iconLeft={isMobile ? 'Plus' : undefined}
+          className="shrink-0"
         >
-          {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
+          {isMobile ? null : 'Create New'}
         </Button>
         <Input
           placeholder="Search groups..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="h-11 flex-1 rounded-md bg-background"
+          iconLeft="Search"
+          className="flex-1"
         />
       </div>
       <div
         ref={tableContainerRef}
-        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-lg border border-border/60 bg-card"
+        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)]"
       >
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+        <table className="w-full text-[length:var(--text-md)]">
+          <thead className="sticky top-0 z-10 bg-[var(--surface-card)]">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="border-b border-border"
-              >
+              <tr key={headerGroup.id} className="border-b border-[var(--border-subtle)]">
                 {headerGroup.headers.map((header) => {
                   const isDescription = header.column.id === 'description';
                   const isCreated = header.column.id === 'created_at';
                   return (
                     <th
                       key={header.id}
-                      className={`text-left py-3 px-4 text-sm font-semibold text-muted-foreground ${
+                      className={`px-4 py-3 text-left text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)] ${
                         isDescription ? 'hidden lg:table-cell' : ''
                       } ${isCreated ? 'hidden md:table-cell' : ''}`}
                     >
                       {header.isPlaceholder
                         ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   );
                 })}
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
+                <th className="px-4 py-3 text-left text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]">
                   Actions
                 </th>
               </tr>
@@ -243,11 +222,11 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
           </thead>
           <tbody>
             {creatingRow && (
-              <tr className="border-b border-border/60 bg-muted/30">
-                <td className="py-5 px-4">
+              <tr className="border-b border-[var(--border-subtle)] bg-[var(--slate-50)]">
+                <td className="px-4 py-4">
                   <CreateRowImageCell />
                 </td>
-                <td className="py-5 px-4">
+                <td className="px-4 py-4">
                   <Input
                     value={newOrgData.name}
                     onChange={(e) =>
@@ -257,10 +236,9 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       }))
                     }
                     placeholder="Organization name"
-                    className="h-10 bg-card text-sm font-medium"
                   />
                 </td>
-                <td className="py-5 px-4 hidden lg:table-cell">
+                <td className="hidden px-4 py-4 lg:table-cell">
                   <Textarea
                     value={newOrgData.description}
                     onChange={(e) =>
@@ -270,36 +248,35 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                       }))
                     }
                     placeholder="Description"
-                    className="min-h-[60px] bg-card text-sm"
+                    rows={2}
                   />
                 </td>
-                <td className="py-5 px-4">
-                  <span className="font-medium text-muted-foreground">—</span>
+                <td className="px-4 py-4">
+                  <span className="font-[var(--fw-medium)] text-[var(--text-muted)]">—</span>
                 </td>
-                <td className="py-5 px-4 hidden md:table-cell">
-                  <span className="text-muted-foreground">—</span>
+                <td className="hidden px-4 py-4 md:table-cell">
+                  <span className="text-[var(--text-muted)]">—</span>
                 </td>
-                <td className="py-5 px-4">
+                <td className="px-4 py-4">
                   <div className="flex gap-2">
-                    <Button
+                    <IconButton
+                      icon="Save"
+                      label="Save organization"
+                      variant="primary"
+                      size="sm"
+                      shape="rounded"
                       onClick={handleSaveNewOrg}
-                      disabled={
-                        !newOrgData.name.trim() || !!uploadingImage || savingOrg
-                      }
-                      size="icon-sm"
-                      className="h-9 w-9 rounded-md cursor-pointer"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
+                      disabled={!newOrgData.name.trim() || !!uploadingImage || savingOrg}
+                    />
+                    <IconButton
+                      icon="X"
+                      label="Cancel"
+                      variant="secondary"
+                      size="sm"
+                      shape="rounded"
                       onClick={handleCancelNewOrg}
-                      variant="outline"
                       disabled={!!uploadingImage || savingOrg}
-                      size="icon-sm"
-                      className="h-9 w-9 rounded-md cursor-pointer"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    />
                   </div>
                 </td>
               </tr>
@@ -309,22 +286,20 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                 const org = row.original;
                 const isExpanded = expandedOrganizationId === org.id;
                 const teams = org.teams || [];
-                const columnCount = columns.length + 1; // +1 for Actions column
+                const columnCount = columns.length + 1;
 
                 return (
                   <React.Fragment key={row.id}>
                     <tr
-                      className={`border-b border-border/60 hover:bg-muted/40 transition-colors ${
-                        index === array.length - 1 && !isExpanded
-                          ? 'border-b-0'
-                          : ''
+                      className={`border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--slate-50)] ${
+                        index === array.length - 1 && !isExpanded ? 'border-b-0' : ''
                       } ${rowZIndex === org.id ? 'highlighted-row' : ''}`}
                       style={
                         rowZIndex === org.id
                           ? {
                               position: 'relative',
                               zIndex: 9999,
-                              backgroundColor: 'var(--card)',
+                              backgroundColor: 'var(--surface-card)',
                             }
                           : undefined
                       }
@@ -335,18 +310,15 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
                         return (
                           <td
                             key={cell.id}
-                            className={`py-5 px-4 ${
+                            className={`px-4 py-4 ${
                               isDescription ? 'hidden lg:table-cell' : ''
                             } ${isCreated ? 'hidden md:table-cell' : ''}`}
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         );
                       })}
-                      <td className="py-5 px-4">
+                      <td className="px-4 py-4">
                         <DeleteOrganizationButton
                           organization={row.original}
                           onDelete={handleDelete}
@@ -365,50 +337,23 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
               })
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className="h-24 text-center py-5 px-4"
-                >
-                  <span className="text-muted-foreground">No results.</span>
+                <td colSpan={columns.length + 1} className="h-24 px-4 py-5 text-center">
+                  <span className="text-[var(--text-muted)]">No results.</span>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6">
-        <div className="flex justify-center md:justify-start">
-          <span className="text-sm text-muted-foreground">
-            {table.getFilteredRowModel().rows.length} organization(s) total.
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="rounded-pill"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <div className="px-4 py-2 rounded-md border border-border bg-secondary text-secondary-foreground font-medium text-sm">
-            {isMobile
-              ? `${table.getState().pagination.pageIndex + 1}/${table.getPageCount()}`
-              : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="rounded-pill"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+          {table.getFilteredRowModel().rows.length} organization(s) total.
+        </span>
+        <Pagination
+          page={table.getState().pagination.pageIndex + 1}
+          pageCount={Math.max(table.getPageCount(), 1)}
+          onChange={(nextPage) => table.setPageIndex(nextPage - 1)}
+        />
       </div>
     </div>
   );

@@ -2,10 +2,8 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Icon, Input, Textarea } from '@/components/medvanta';
 
 export function EditableTitle({
   value,
@@ -18,41 +16,33 @@ export function EditableTitle({
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(value);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setDraft(value);
   }, [value]);
 
   React.useEffect(() => {
-    if (isEditing) inputRef.current?.focus();
+    if (isEditing) {
+      wrapperRef.current?.querySelector('input')?.focus();
+    }
   }, [isEditing]);
 
   if (isEditing) {
     return (
-      <Input
-        ref={inputRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={async () => {
-          const next = draft.trim();
-          setIsEditing(false);
-          if (next && next !== value.trim()) await onSave(next);
-          if (!next) setDraft(value);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            setDraft(value);
+      <div ref={wrapperRef}>
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={async () => {
+            const next = draft.trim();
             setIsEditing(false);
-          }
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            inputRef.current?.blur();
-          }
-        }}
-        className={className}
-      />
+            if (next && next !== value.trim()) await onSave(next);
+            if (!next) setDraft(value);
+          }}
+          className={className}
+        />
+      </div>
     );
   }
 
@@ -80,43 +70,36 @@ export function EditableDescription({
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(value);
-  const inputRef = React.useRef<HTMLTextAreaElement>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setDraft(value);
   }, [value]);
 
   React.useEffect(() => {
-    if (isEditing) inputRef.current?.focus();
+    if (isEditing) {
+      wrapperRef.current?.querySelector('textarea')?.focus();
+    }
   }, [isEditing]);
 
   if (isEditing) {
     return (
-      <Textarea
-        ref={inputRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={async () => {
-          const next = draft.trim();
-          setIsEditing(false);
-          const normalized = next.length > 0 ? next : null;
-          const currentNormalized =
-            value.trim().length > 0 ? value.trim() : null;
-          if (normalized !== currentNormalized) await onSave(normalized);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            setDraft(value);
+      <div ref={wrapperRef}>
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={async () => {
+            const next = draft.trim();
             setIsEditing(false);
-          }
-          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            inputRef.current?.blur();
-          }
-        }}
-        className={className}
-      />
+            const normalized = next.length > 0 ? next : null;
+            const currentNormalized =
+              value.trim().length > 0 ? value.trim() : null;
+            if (normalized !== currentNormalized) await onSave(normalized);
+          }}
+          rows={3}
+          className={className}
+        />
+      </div>
     );
   }
 
@@ -144,7 +127,7 @@ export function GroupImageUploader({
   const [internalIsUploading, setInternalIsUploading] = React.useState(false);
   const isUploading = externalIsUploading ?? internalIsUploading;
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -180,25 +163,25 @@ export function GroupImageUploader({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="relative flex size-8 shrink-0 overflow-hidden rounded-full h-16 w-16 border-2 border-neutral-300 bg-card/20 items-center justify-center hover:bg-card/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {!pictureUrl ? (
-          <Upload className="h-5 w-5 text-primary-600" />
+          <Icon name="Upload" size={20} className="text-[var(--primary)]" />
         ) : (
           <Image
             src={pictureUrl}
             alt=""
-            className="aspect-square size-full object-contain bg-card/80"
+            className="aspect-square size-full object-contain"
             width={64}
             height={64}
             key={pictureUrl}
           />
         )}
-        {isUploading && (
-          <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
+        {isUploading ? (
+          <div className="pointer-events-none absolute -inset-1 flex items-center justify-center">
             <div className="loader" style={{ width: '72px', height: '72px' }} />
           </div>
-        )}
+        ) : null}
       </button>
     </>
   );

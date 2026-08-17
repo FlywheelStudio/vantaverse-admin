@@ -2,29 +2,73 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Save, X, Trash2, ArrowUpRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { AvatarGroup } from '@/components/ui/avatar-group';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useOrganizationsTable } from '@/context/organizations';
 import type { Team } from '@/lib/supabase/schemas/teams';
+import {
+  Button,
+  Dialog,
+  Icon,
+  IconButton,
+  Input,
+  Textarea,
+} from '@/components/medvanta';
 
 interface TeamsExpandedRowProps {
   organizationId: string;
   teams: Team[];
   columnCount: number;
+}
+
+function DeleteTeamButton({
+  teamName,
+  onDelete,
+}: {
+  teamName: string;
+  onDelete: () => Promise<void>;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDelete = async (): Promise<void> => {
+    setIsDeleting(true);
+    try {
+      await onDelete();
+      setOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <IconButton
+        icon="Trash2"
+        label={`Delete ${teamName}`}
+        variant="ghost"
+        size="sm"
+        className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+        onClick={() => setOpen(true)}
+      />
+      <Dialog
+        open={open}
+        title="Delete Team"
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={isDeleting} onClick={handleDelete}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        Are you sure you want to delete &ldquo;{teamName}&rdquo;? This action cannot be undone.
+      </Dialog>
+    </>
+  );
 }
 
 export function TeamsExpandedRow({
@@ -38,7 +82,6 @@ export function TeamsExpandedRow({
     setEditingTeamValue,
     handleTeamEdit,
     handleTeamBlur,
-    handleTeamCancel,
     handleTeamDelete,
     creatingTeam,
     savingTeam,
@@ -46,12 +89,11 @@ export function TeamsExpandedRow({
     setNewTeamData,
     handleSaveNewTeam,
     handleCancelNewTeam,
-    inputRef,
     handleOpenAddMembers,
     rowZIndex,
   } = useOrganizationsTable();
 
-  const handleDelete = async (teamId: string) => {
+  const handleDelete = async (teamId: string): Promise<void> => {
     await handleTeamDelete(teamId);
   };
 
@@ -60,36 +102,32 @@ export function TeamsExpandedRow({
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.3,
-      },
+      transition: { duration: 0.3 },
     },
     exit: {
       opacity: 0,
       y: -10,
-      transition: {
-        duration: 0.2,
-      },
+      transition: { duration: 0.2 },
     },
   };
 
   return (
     <>
       <AnimatePresence mode="popLayout">
-        {creatingTeam && (
+        {creatingTeam ? (
           <motion.tr
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="border-b border-border/60 bg-muted/30"
+            className="border-b border-[var(--border-subtle)] bg-[var(--slate-50)]"
           >
-            <td className="py-3 px-4" colSpan={1}>
-              <div className="flex items-center justify-center h-full">
-                <ArrowUpRight className="h-4 w-4 text-primary" />
+            <td className="px-4 py-3" colSpan={1}>
+              <div className="flex h-full items-center justify-center">
+                <Icon name="ArrowUpRight" size={16} className="text-[var(--primary)]" />
               </div>
             </td>
-            <td className="py-3 px-4">
+            <td className="px-4 py-3">
               <Input
                 value={newTeamData.name}
                 onChange={(e) =>
@@ -99,10 +137,9 @@ export function TeamsExpandedRow({
                   }))
                 }
                 placeholder="Team name"
-                className="h-10 bg-card text-sm font-medium"
               />
             </td>
-            <td className="py-3 px-4 hidden lg:table-cell">
+            <td className="hidden px-4 py-3 lg:table-cell">
               <Textarea
                 value={newTeamData.description}
                 onChange={(e) =>
@@ -112,37 +149,38 @@ export function TeamsExpandedRow({
                   }))
                 }
                 placeholder="Description"
-                className="min-h-[40px] bg-card text-sm"
+                rows={2}
               />
             </td>
-            <td className="py-3 px-4" colSpan={3} />
-            <td className="py-3 px-4" colSpan={1}>
-              <div className="flex gap-2 justify-end">
-                <Button
+            <td className="px-4 py-3" colSpan={3} />
+            <td className="px-4 py-3" colSpan={1}>
+              <div className="flex justify-end gap-2">
+                <IconButton
+                  icon="Save"
+                  label="Save team"
+                  variant="primary"
+                  size="sm"
+                  shape="rounded"
                   onClick={() => handleSaveNewTeam(newTeamData.organizationId)}
                   disabled={
                     !newTeamData.name.trim() ||
                     newTeamData.organizationId !== organizationId ||
                     savingTeam
                   }
-                  size="icon-sm"
-                  className="h-8 w-8 rounded-[var(--radius-md)] cursor-pointer"
-                >
-                  <Save className="h-3 w-3" />
-                </Button>
-                <Button
+                />
+                <IconButton
+                  icon="X"
+                  label="Cancel"
+                  variant="secondary"
+                  size="sm"
+                  shape="rounded"
                   onClick={handleCancelNewTeam}
-                  variant="outline"
                   disabled={savingTeam}
-                  size="icon-sm"
-                  className="h-8 w-8 rounded-[var(--radius-md)] cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+                />
               </div>
             </td>
           </motion.tr>
-        )}
+        ) : null}
         {teams.map((team) => {
           const isEditingName =
             editingTeam?.id === team.id && editingTeam?.field === 'name';
@@ -167,7 +205,7 @@ export function TeamsExpandedRow({
               initial="hidden"
               animate="visible"
               exit="exit"
-              className={`border-b border-border/60 bg-muted/20 ${
+              className={`border-b border-[var(--border-subtle)] bg-[var(--slate-50)]/70 ${
                 rowZIndex === team.id ? 'highlighted-row' : ''
               }`}
               style={
@@ -175,52 +213,37 @@ export function TeamsExpandedRow({
                   ? {
                       position: 'relative',
                       zIndex: 9999,
-                      backgroundColor: 'var(--card)',
+                      backgroundColor: 'var(--surface-card)',
                     }
                   : undefined
               }
             >
-              <td className="py-3 px-4" colSpan={1}>
-                <div className="flex items-center justify-center h-full">
-                  <ArrowUpRight className="h-4 w-4 text-primary" />
+              <td className="px-4 py-3" colSpan={1}>
+                <div className="flex h-full items-center justify-center">
+                  <Icon name="ArrowUpRight" size={16} className="text-[var(--primary)]" />
                 </div>
               </td>
-              <td className="py-3 px-4">
+              <td className="px-4 py-3">
                 {isEditingName ? (
                   <Input
-                    ref={inputRef as React.RefObject<HTMLInputElement>}
                     value={editingTeamValue}
                     onChange={(e) => setEditingTeamValue(e.target.value)}
                     onBlur={() =>
-                      handleTeamBlur(
-                        team.id,
-                        'name',
-                        editingTeamValue,
-                        team.name,
-                      )
+                      handleTeamBlur(team.id, 'name', editingTeamValue, team.name)
                     }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        e.preventDefault();
-                        handleTeamCancel();
-                      }
-                    }}
-                    className="h-10 bg-card text-sm font-medium"
-                    autoFocus
                   />
                 ) : (
                   <span
                     onClick={() => handleTeamEdit(team.id, 'name')}
-                    className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors text-sm"
+                    className="cursor-pointer text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--text-strong)] transition-colors hover:text-[var(--primary)]"
                   >
                     {team.name}
                   </span>
                 )}
               </td>
-              <td className="py-3 px-4 hidden lg:table-cell">
+              <td className="hidden px-4 py-3 lg:table-cell">
                 {isEditingDescription ? (
                   <Textarea
-                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                     value={editingTeamValue}
                     onChange={(e) => setEditingTeamValue(e.target.value)}
                     onBlur={() =>
@@ -231,92 +254,54 @@ export function TeamsExpandedRow({
                         team.description,
                       )
                     }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        e.preventDefault();
-                        handleTeamCancel();
-                      }
-                    }}
-                    className="min-h-[40px] bg-card text-sm"
-                    autoFocus
+                    rows={2}
                   />
                 ) : (
                   <span
                     onClick={() => handleTeamEdit(team.id, 'description')}
-                    className="text-muted-foreground cursor-pointer hover:text-primary transition-colors text-sm"
+                    className="cursor-pointer text-[length:var(--text-sm)] text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]"
                   >
                     {team.description || '—'}
                   </span>
                 )}
               </td>
-              <td className="py-3 px-4">
+              <td className="px-4 py-3">
                 <AvatarGroup
                   avatars={avatars}
                   maxVisible={5}
                   onAddClick={() => handleOpenAddMembers('team', team.id)}
                 />
               </td>
-              <td className="py-3 px-4">
-                {/* Teams column - empty for teams */}
-              </td>
-              <td className="py-3 px-4 hidden md:table-cell">
+              <td className="px-4 py-3" />
+              <td className="hidden px-4 py-3 md:table-cell">
                 {team.created_at ? (
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
                     {new Date(team.created_at).toLocaleDateString()}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground text-sm">—</span>
+                  <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">—</span>
                 )}
               </td>
-              <td className="py-3 px-4">
-                <div className="flex gap-2">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="cursor-pointer p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Team</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete &ldquo;{team.name}
-                          &rdquo;? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="cursor-pointer">
-                          Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          className="cursor-pointer"
-                          onClick={() => handleDelete(team.id)}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+              <td className="px-4 py-3">
+                <DeleteTeamButton
+                  teamName={team.name}
+                  onDelete={() => handleDelete(team.id)}
+                />
               </td>
             </motion.tr>
           );
         })}
       </AnimatePresence>
-      {teams.length === 0 && !creatingTeam && (
-        <tr className="border-b border-border/60 bg-muted/20">
+      {teams.length === 0 && !creatingTeam ? (
+        <tr className="border-b border-[var(--border-subtle)] bg-[var(--slate-50)]/70">
           <td
-            className="py-3 px-4 text-center text-muted-foreground"
+            className="px-4 py-3 text-center text-[var(--text-muted)]"
             colSpan={columnCount}
           >
             No teams yet. Click the &ldquo;+&rdquo; button to create one.
           </td>
         </tr>
-      )}
+      ) : null}
     </>
   );
 }

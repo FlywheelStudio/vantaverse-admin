@@ -4,19 +4,7 @@ import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Avatar, Button, Dialog, Tag } from '@/components/medvanta';
 
 export type GroupMemberRow = {
   user_id: string;
@@ -28,6 +16,13 @@ export type GroupMemberRow = {
   role: 'unassigned' | 'physician' | null;
 };
 
+function memberDisplayName(member: GroupMemberRow): string {
+  if (member.first_name && member.last_name) {
+    return `${member.first_name} ${member.last_name}`;
+  }
+  return member.first_name || member.last_name || 'Unknown';
+}
+
 function NameEmailCell({
   member,
   organizationId,
@@ -36,52 +31,50 @@ function NameEmailCell({
   organizationId: string;
 }) {
   const router = useRouter();
-  const fullName =
-    member.first_name && member.last_name
-      ? `${member.first_name} ${member.last_name}`
-      : member.first_name || member.last_name || null;
+  const fullName = memberDisplayName(member);
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     const fromParam = encodeURIComponent(`/groups/${organizationId}`);
     router.push(`/users/${member.user_id}?from=${fromParam}`);
   };
 
   return (
-    <div
-      className="flex items-center gap-3 cursor-pointer"
+    <button
+      type="button"
+      className="flex w-full cursor-pointer items-center gap-3 text-left"
       onClick={handleClick}
     >
-      <div className="size-10 shrink-0 flex items-center justify-center">
-        <Avatar
-          src={member.avatar_url}
-          firstName={member.first_name || ''}
-          lastName={member.last_name || ''}
-          userId={member.user_id || 'unknown'}
-          size={40}
-        />
-      </div>
-      <div className="flex-1 min-w-0 max-w-60">
-        <div className="font-medium text-sm text-[#1E3A5F] truncate">
-          {fullName || 'Unknown'}
+      <Avatar
+        name={fullName}
+        src={member.avatar_url || undefined}
+        size="md"
+      />
+      <div className="min-w-0 max-w-60 flex-1">
+        <div className="truncate text-[length:var(--text-md)] font-[var(--fw-medium)] text-[var(--text-strong)]">
+          {fullName}
         </div>
-        {member.email && (
-          <div className="text-xs text-[#64748B] truncate">{member.email}</div>
-        )}
+        {member.email ? (
+          <div className="truncate text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            {member.email}
+          </div>
+        ) : null}
       </div>
-    </div>
+    </button>
   );
 }
 
 function ProgramCell({ member }: { member: GroupMemberRow }) {
-  return (
-    <span className="text-sm text-[#1E3A5F]">{member.program_name || '-'}</span>
-  );
+  if (!member.program_name) {
+    return <span className="text-[var(--text-muted)]">—</span>;
+  }
+  return <Tag tone="accent">{member.program_name}</Tag>;
 }
 
 function RoleCell({ member }: { member: GroupMemberRow }) {
-  return (
-    <span className="text-sm text-[#1E3A5F]">{member.role || '-'}</span>
-  );
+  if (!member.role) {
+    return <span className="text-[var(--text-muted)]">—</span>;
+  }
+  return <Tag>{member.role}</Tag>;
 }
 
 function RemoveButton({
@@ -96,7 +89,7 @@ function RemoveButton({
   const [open, setOpen] = React.useState(false);
   const isRemoving = removeMemberMutation.isPending;
 
-  const handleRemove = () => {
+  const handleRemove = (): void => {
     removeMemberMutation.mutate(member.user_id, {
       onSuccess: () => {
         setOpen(false);
@@ -105,37 +98,28 @@ function RemoveButton({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer"
-        >
-          Remove
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remove member</AlertDialogTitle>
-          <AlertDialogDescription>
-            {confirmText}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="cursor-pointer" disabled={isRemoving}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            className="cursor-pointer"
-            onClick={handleRemove}
-            disabled={isRemoving}
-          >
-            {isRemoving ? 'Removing...' : 'Remove'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <Button variant="ghost" size="sm" className="text-[var(--danger)]" onClick={() => setOpen(true)}>
+        Remove
+      </Button>
+      <Dialog
+        open={open}
+        title="Remove member"
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={isRemoving}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={isRemoving} onClick={handleRemove}>
+              Remove
+            </Button>
+          </>
+        }
+      >
+        {confirmText}
+      </Dialog>
+    </>
   );
 }
 
@@ -155,13 +139,13 @@ function ActionsCell({
     return (
       <div className="flex items-center justify-end">
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
-          className="cursor-pointer"
           disabled={isPending}
+          loading={isPending}
           onClick={() => addAdminMutation.mutate(member.user_id)}
         >
-          {isPending ? 'Assigning...' : 'Make admin'}
+          Make admin
         </Button>
       </div>
     );
@@ -195,9 +179,7 @@ export function getMembersColumns({
 }): ColumnDef<GroupMemberRow>[] {
   const nameCol: ColumnDef<GroupMemberRow> = {
     accessorKey: 'name',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
-    ),
+    header: () => <span>Name / Email</span>,
     cell: ({ row }) => (
       <NameEmailCell member={row.original} organizationId={organizationId} />
     ),
@@ -219,9 +201,7 @@ export function getMembersColumns({
 
   const actionsCol: ColumnDef<GroupMemberRow> = {
     id: 'actions',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>
-    ),
+    header: () => <span>Actions</span>,
     cell: ({ row }) => (
       <ActionsCell
         member={row.original}
@@ -240,9 +220,7 @@ export function getMembersColumns({
       {
         id: 'role',
         accessorFn: (row) => row.role || '',
-        header: () => (
-          <span className="text-sm font-bold text-[#1E3A5F]">Role</span>
-        ),
+        header: () => <span>Role</span>,
         cell: ({ row }) => <RoleCell member={row.original} />,
         enableSorting: false,
         enableColumnFilter: false,
@@ -252,21 +230,15 @@ export function getMembersColumns({
   }
 
   return [
-    {
-      ...nameCol,
-    },
+    nameCol,
     {
       id: 'program',
       accessorFn: (row) => row.program_name || '',
-      header: () => (
-        <span className="text-sm font-bold text-[#1E3A5F]">Program</span>
-      ),
+      header: () => <span>Program</span>,
       cell: ({ row }) => <ProgramCell member={row.original} />,
       enableSorting: false,
       enableColumnFilter: false,
     },
-    {
-      ...actionsCol,
-    },
+    actionsCol,
   ];
 }

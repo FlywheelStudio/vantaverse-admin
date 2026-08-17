@@ -2,15 +2,14 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
-import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationsTable } from '@/context/organizations';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
+import { Icon, Textarea } from '@/components/medvanta';
 
 function EditableNameCell({ org }: { org: Organization }) {
   const value = org.name;
@@ -20,7 +19,7 @@ function EditableNameCell({ org }: { org: Organization }) {
     <div className="flex items-center gap-2">
       <span
         onClick={() => router.push(`/groups/${org.id}`)}
-        className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+        className="cursor-pointer font-[var(--fw-semibold)] text-[var(--text-strong)] transition-colors hover:text-[var(--primary)]"
       >
         {value}
       </span>
@@ -35,8 +34,6 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
     setEditingValue,
     handleCellEdit,
     handleCellBlur,
-    handleCancel,
-    inputRef,
   } = useOrganizationsTable();
   const isEditing =
     editingCell?.id === org.id && editingCell?.field === 'description';
@@ -45,20 +42,13 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
   if (isEditing) {
     return (
       <Textarea
-        ref={inputRef as React.RefObject<HTMLTextAreaElement>}
         value={editingValue}
         onChange={(e) => setEditingValue(e.target.value)}
         onBlur={() =>
           handleCellBlur(org.id, 'description', editingValue, description)
         }
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            handleCancel();
-          }
-        }}
-        className="min-h-[50px] bg-card text-sm"
-        autoFocus
+        rows={2}
+        className="text-[length:var(--text-sm)]"
       />
     );
   }
@@ -66,7 +56,7 @@ function EditableDescriptionCell({ org }: { org: Organization }) {
   return (
     <span
       onClick={() => handleCellEdit(org.id, 'description')}
-      className="text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+      className="cursor-pointer text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]"
     >
       {description || '—'}
     </span>
@@ -79,27 +69,24 @@ function PictureCell({ org }: { org: Organization }) {
   const isUploading = uploadingImage === org.id;
   const pictureUrl = org.picture_url;
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
       return;
     }
 
-    // Upload immediately for existing orgs
     await handleImageUpload(file, org.id);
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     fileInputRef.current?.click();
   };
 
@@ -114,11 +101,12 @@ function PictureCell({ org }: { org: Organization }) {
           className="hidden"
         />
         <button
+          type="button"
           onClick={handleClick}
           disabled={isUploading}
-          className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring hover:bg-primary/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Upload className="h-5 w-5 text-muted-foreground" />
+          <Icon name="Upload" size={20} className="text-[var(--text-muted)]" />
         </button>
       </>
     );
@@ -134,9 +122,10 @@ function PictureCell({ org }: { org: Organization }) {
         className="hidden"
       />
       <button
+        type="button"
         onClick={handleClick}
         disabled={isUploading}
-        className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Image
           src={pictureUrl}
@@ -146,11 +135,11 @@ function PictureCell({ org }: { org: Organization }) {
           height={48}
           key={pictureUrl}
         />
-        {isUploading && (
-          <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
+        {isUploading ? (
+          <div className="pointer-events-none absolute -inset-1 flex items-center justify-center">
             <div className="loader" style={{ width: '56px', height: '56px' }} />
           </div>
-        )}
+        ) : null}
       </button>
     </>
   );
@@ -188,18 +177,40 @@ function PhysiologistCell({ org }: { org: Organization }) {
       userId: profile?.id || '',
     };
   });
-  return (
-    <AvatarGroup avatars={avatars} maxVisible={1} />
-  );
+  return <AvatarGroup avatars={avatars} maxVisible={1} />;
 }
 
-const isTeamsEnabled =
-  process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+const isTeamsEnabled = process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+
+function SortHeader({
+  label,
+  sorted,
+  onToggle,
+}: {
+  label: string;
+  sorted: false | 'asc' | 'desc';
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex cursor-pointer items-center gap-1.5 transition-colors hover:text-[var(--text-strong)]"
+    >
+      {label}
+      <Icon
+        name={sorted === 'desc' ? 'ChevronDown' : 'ChevronUp'}
+        size={14}
+        className={sorted ? 'text-[var(--text-strong)]' : 'text-[var(--text-faint)]'}
+      />
+    </button>
+  );
+}
 
 export const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'picture_url',
-    header: () => <span className="text-xs font-semibold text-muted-foreground">Image</span>,
+    header: () => <span>Image</span>,
     cell: ({ row }) => <PictureCell org={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
@@ -209,19 +220,11 @@ export const columns: ColumnDef<Organization>[] = [
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Name
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Name"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
     cell: ({ row }) => <EditableNameCell org={row.original} />,
@@ -235,19 +238,11 @@ export const columns: ColumnDef<Organization>[] = [
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Description
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Description"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
     cell: ({ row }) => <EditableDescriptionCell org={row.original} />,
@@ -257,30 +252,18 @@ export const columns: ColumnDef<Organization>[] = [
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Members
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Members"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
     cell: ({ row }) => <MembersCell org={row.original} />,
   },
   {
     accessorKey: 'physiologist',
-    header: () => (
-      <span className="text-xs font-semibold text-muted-foreground">
-        Physiologist
-      </span>
-    ),
+    header: () => <span>Physiologist</span>,
     cell: ({ row }) => <PhysiologistCell org={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
@@ -289,7 +272,7 @@ export const columns: ColumnDef<Organization>[] = [
     ? [
         {
           accessorKey: 'teams_count',
-          header: () => <span className="text-xs font-semibold text-muted-foreground">Teams</span>,
+          header: () => <span>Teams</span>,
           cell: ({ row }: { row: { original: Organization } }) => (
             <TeamsCell organization={row.original} />
           ),
@@ -303,26 +286,18 @@ export const columns: ColumnDef<Organization>[] = [
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Created
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Created"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string | null;
-      if (!date) return <span className="text-muted-foreground">—</span>;
+      if (!date) return <span className="text-[var(--text-muted)]">—</span>;
       return (
-        <span className="text-muted-foreground">
+        <span className="text-[var(--text-muted)]">
           {new Date(date).toLocaleDateString()}
         </span>
       );

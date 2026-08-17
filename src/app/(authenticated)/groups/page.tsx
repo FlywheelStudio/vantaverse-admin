@@ -8,7 +8,11 @@ export default async function GroupsPage() {
 
   return (
     <PageWrapper
-      subheader={<h1 className="text-3xl font-semibold tracking-tight text-white">Groups</h1>}
+      subheader={
+        <h1 className="text-[length:var(--text-xl)] font-[var(--fw-bold)] text-[var(--text-strong)]">
+          Groups
+        </h1>
+      }
     >
       <GroupsUI initialOrganizations={initialOrganizations} />
     </PageWrapper>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PageWrapper } from '@/components/page-wrapper';
-import { Card } from '@/components/ui/card';
+import { Alert, Card, CardHeader } from '@/components/medvanta';
 import { AddMembersModal } from '../add-members/add-members-modal';
 import { AddUserModal } from '@/app/(authenticated)/users/users-table/components/add-user-modal';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
@@ -36,10 +36,8 @@ export function GroupDetailsPageUI({
   physician: PhysicianInfo | null;
   initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
 }) {
-  // Use React Query hooks instead of useState
   const { data: org } = useOrganization(organization.id, organization);
 
-  // Ensure initialMembers is always an array
   const safeInitialMembers = useMemo(
     () => (Array.isArray(initialMembers) ? initialMembers : []),
     [initialMembers],
@@ -63,7 +61,7 @@ export function GroupDetailsPageUI({
       ),
     [safeInitialMembers],
   );
-  
+
   const { data: membersData } = useGroupMembers(
     isSuperAdminOrg ? null : organization.id,
     initialPatients,
@@ -78,7 +76,6 @@ export function GroupDetailsPageUI({
   );
 
   const members = useMemo(() => {
-    // Ensure result is always an array, even if membersData is null, undefined, or not an array
     const data = isSuperAdminOrg ? superAdminUsersData : membersData;
     return Array.isArray(data) ? data : [];
   }, [isSuperAdminOrg, membersData, superAdminUsersData]);
@@ -88,7 +85,6 @@ export function GroupDetailsPageUI({
     useState<MemberRole>('patient');
   const [inviteUsersModalOpen, setInviteUsersModalOpen] = useState(false);
 
-  // Remove member mutation
   const removeMemberMutation = useRemoveGroupMember(organization.id);
   const addAdminMutation = useAddGroupAdmin(organization.id);
   const removeAdminMutation = useRemoveGroupAdmin(organization.id);
@@ -113,7 +109,7 @@ export function GroupDetailsPageUI({
     [members],
   );
 
-  const openAddUsers = () => {
+  const openAddUsers = (): void => {
     if (isSuperAdminOrg) {
       setInviteUsersModalOpen(true);
       return;
@@ -122,7 +118,7 @@ export function GroupDetailsPageUI({
     setMembersModalOpen(true);
   };
 
-  const openAssignPhysician = () => {
+  const openAssignPhysician = (): void => {
     setMembersModalRole('admin');
     setMembersModalOpen(true);
   };
@@ -132,13 +128,9 @@ export function GroupDetailsPageUI({
   }
 
   return (
-    <PageWrapper
-      subheader={
-        <GroupDetailsSubheader organization={org} />
-      }
-    >
+    <PageWrapper subheader={<GroupDetailsSubheader organization={org} />}>
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -146,11 +138,9 @@ export function GroupDetailsPageUI({
             className="h-full"
           >
             {isSuperAdminOrg ? (
-              <Card className="p-6 border-2 border-blue-200 bg-blue-50 h-full flex items-center">
-                <div className="text-sm font-medium text-blue-900">
-                  This organization is only for administrators & physicians
-                </div>
-              </Card>
+              <Alert kind="info" title="Administrator organization">
+                This organization is only for administrators and physicians.
+              </Alert>
             ) : (
               <PhysicianCard
                 physician={currentPhysician ?? null}
@@ -177,18 +167,24 @@ export function GroupDetailsPageUI({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <Card className="text-card-foreground flex flex-col gap-6 bg-card/95 rounded-3xl border-2 border-border shadow-2xl overflow-hidden backdrop-blur-sm">
-            <div className="p-6 sm:p-8">
-              <MembersTable
-                data={memberRows}
-                onAddClick={openAddUsers}
-                removeMemberMutation={removeMemberMutation}
-                addAdminMutation={addAdminMutation}
-                removeAdminMutation={removeAdminMutation}
-                isSuperAdminOrg={isSuperAdminOrg}
-                organizationId={org.id}
-              />
-            </div>
+          <Card>
+            <CardHeader
+              title="Members"
+              subtitle={
+                isSuperAdminOrg
+                  ? 'Administrators with access to this organization'
+                  : 'Members and their assigned programs'
+              }
+            />
+            <MembersTable
+              data={memberRows}
+              onAddClick={openAddUsers}
+              removeMemberMutation={removeMemberMutation}
+              addAdminMutation={addAdminMutation}
+              removeAdminMutation={removeAdminMutation}
+              isSuperAdminOrg={isSuperAdminOrg}
+              organizationId={org.id}
+            />
           </Card>
         </motion.div>
       </div>

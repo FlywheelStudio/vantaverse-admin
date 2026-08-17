@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/medvanta';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { OrganizationsTableProvider } from '@/context/organizations';
 import { AddMembersModal } from '../add-members/add-members-modal';
@@ -310,13 +310,8 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
   return (
     <OrganizationsTableProvider value={contextValue}>
       {!isLoading && (
-        <Card
-          className={cn(
-            'flex flex-col gap-6',
-            !state.addingMembersTo && 'backdrop-blur-sm',
-          )}
-        >
-          <div className="p-5 sm:p-6">
+        <Card className={cn('flex flex-col gap-6', !state.addingMembersTo && 'overflow-hidden')}>
+          <div>
             <AnimatePresence mode="wait">
               <motion.div
                 key="table"

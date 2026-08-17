@@ -1,7 +1,6 @@
 'use client';
 
-import { Users } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, Icon } from '@/components/medvanta';
 import { EditableDescription, GroupImageUploader } from './editable-components';
 import {
   useUpdateOrganization,
@@ -19,32 +18,32 @@ export function OrganizationInfoCard({
   const updateOrganizationMutation = useUpdateOrganization(organization.id);
   const updatePictureMutation = useUpdateOrganizationPicture(organization.id);
 
-  const handleSaveDescription = async (next: string | null) => {
+  const handleSaveDescription = async (next: string | null): Promise<void> => {
     updateOrganizationMutation.mutate({ description: next });
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: File): Promise<void> => {
     updatePictureMutation.mutate({ file });
   };
 
   return (
-    <Card className="p-6 border border-border bg-card/95 h-full flex flex-col">
-      <div className="flex items-start justify-between gap-4 flex-1">
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
+    <Card className="flex h-full flex-col">
+      <div className="flex flex-1 items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
           <EditableDescription
             value={organization.description || ''}
             onSave={handleSaveDescription}
-            className="text-sm text-[#64748B] cursor-pointer hover:text-[#2454FF] transition-colors"
+            className="cursor-pointer text-[length:var(--text-sm)] text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]"
             placeholder="Click to add description"
           />
-          <div className="flex items-center gap-2 text-sm text-[#64748B]">
-            <Users className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            <Icon name="Users" size={16} />
             <span>
               {memberCount} {memberCount === 1 ? 'member' : 'members'}
             </span>
           </div>
         </div>
-        <div className="size-16 shrink-0 flex items-center justify-center">
+        <div className="flex size-16 shrink-0 items-center justify-center">
           <GroupImageUploader
             pictureUrl={organization.picture_url}
             onUpload={handleImageUpload}
