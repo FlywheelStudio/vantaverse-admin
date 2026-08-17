@@ -1,7 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/medvanta';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddUserModal } from './add-user-modal';
@@ -11,7 +10,7 @@ interface AddUserMenuProps {
   role: MemberRole;
 }
 
-export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
+export function AddUserMenu({ role = 'patient' }: AddUserMenuProps): React.ReactElement {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
@@ -19,16 +18,10 @@ export function AddUserMenu({ role = 'patient' }: AddUserMenuProps) {
     <>
       <Button
         onClick={() => setOpen(true)}
-        size="default"
-        className="rounded-pill shadow-(--shadow-md) cursor-pointer"
+        size="md"
+        iconLeft={isMobile ? 'Plus' : undefined}
       >
-        {isMobile ? (
-          <Plus className="h-4 w-4" />
-        ) : role === 'admin' ? (
-          'Add Admin'
-        ) : (
-          'Add Member'
-        )}
+        {isMobile ? null : role === 'admin' ? 'Add Admin' : 'Add Member'}
       </Button>
       <AddUserModal
         open={open}

@@ -3,10 +3,7 @@
 import * as React from 'react';
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera } from 'lucide-react';
-import { Avatar } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Avatar, Badge, Icon, Input } from '@/components/medvanta';
 import { updateUserProfile, uploadUserAvatar } from '@/app/(authenticated)/users/actions';
 import toast from 'react-hot-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
@@ -19,6 +16,7 @@ interface UserProfileCardProps {
   email: string;
   avatarUrl?: string | null;
   role?: MemberRole;
+  programDueDate?: string | null;
 }
 
 export function UserProfileCard({
@@ -29,7 +27,8 @@ export function UserProfileCard({
   email,
   avatarUrl: initialAvatarUrl,
   role = 'patient',
-}: UserProfileCardProps) {
+  programDueDate,
+}: UserProfileCardProps): React.ReactElement {
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [description, setDescription] = useState(initialDescription ?? '');
@@ -37,7 +36,6 @@ export function UserProfileCard({
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Inline editing state
   const [editingField, setEditingField] = useState<
     'firstName' | 'lastName' | 'description' | null
   >(null);
@@ -45,24 +43,28 @@ export function UserProfileCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarClick = () => {
+  const displayName = `${firstName || 'Unknown'} ${lastName || 'User'}`.trim();
+  const isOverdue =
+    programDueDate != null && new Date(programDueDate) < new Date();
+
+  const handleAvatarClick = (): void => {
     if (isUploading) return;
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
       return;
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error('File size must be less than 5MB.');
       return;
@@ -71,7 +73,6 @@ export function UserProfileCard({
     setIsUploading(true);
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
@@ -81,7 +82,6 @@ export function UserProfileCard({
           return;
         }
 
-        // Upload to server
         const result = await uploadUserAvatar(userId, base64String);
 
         if (result.success) {
@@ -92,7 +92,6 @@ export function UserProfileCard({
         }
 
         setIsUploading(false);
-        // Reset file input
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -111,25 +110,27 @@ export function UserProfileCard({
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role.toLowerCase()) {
+  const getRoleTone = (
+    memberRole: string,
+  ): 'neutral' | 'brand' | 'danger' => {
+    switch (memberRole.toLowerCase()) {
       case 'admin':
       case 'super_admin':
-        return 'destructive';
+        return 'danger';
       default:
-        return 'default';
+        return 'brand';
     }
   };
 
-  const getDisplayRole = (role: MemberRole | undefined): string => {
-    if (!role) return 'member';
-    switch (role) {
+  const getDisplayRole = (memberRole: MemberRole | undefined): string => {
+    if (!memberRole) return 'member';
+    switch (memberRole) {
       case 'patient':
         return 'member';
       case 'admin':
         return 'admin';
       default:
-        return role;
+        return memberRole;
     }
   };
 
@@ -151,7 +152,9 @@ export function UserProfileCard({
     description: 'Description updated',
   } as const;
 
-  const handleFieldEdit = (field: 'firstName' | 'lastName' | 'description') => {
+  const handleFieldEdit = (
+    field: 'firstName' | 'lastName' | 'description',
+  ): void => {
     setEditingField(field);
     setEditingValue(fieldValueMap[field]);
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -159,21 +162,17 @@ export function UserProfileCard({
 
   const handleFieldBlur = async (
     field: 'firstName' | 'lastName' | 'description',
-  ) => {
+  ): Promise<void> => {
     const currentValue = fieldValueMap[field];
     if (editingValue === currentValue) {
       setEditingField(null);
       return;
     }
 
-    // Set default values if empty
     let valueToSave = editingValue.trim();
     if (!valueToSave) {
-      if (field === 'firstName') {
-        valueToSave = 'Unknown';
-      } else if (field === 'lastName') {
-        valueToSave = 'User';
-      }
+      if (field === 'firstName') valueToSave = 'Unknown';
+      else if (field === 'lastName') valueToSave = 'User';
     }
 
     const result = await updateUserProfile(userId, {
@@ -181,13 +180,9 @@ export function UserProfileCard({
     });
 
     if (result.success) {
-      if (field === 'firstName') {
-        setFirstName(valueToSave);
-      } else if (field === 'lastName') {
-        setLastName(valueToSave);
-      } else {
-        setDescription(valueToSave);
-      }
+      if (field === 'firstName') setFirstName(valueToSave);
+      else if (field === 'lastName') setLastName(valueToSave);
+      else setDescription(valueToSave);
       toast.success(fieldSuccessMessages[field]);
     } else {
       toast.error(result.error);
@@ -196,19 +191,8 @@ export function UserProfileCard({
     setEditingField(null);
   };
 
-  const handleFieldCancel = () => {
-    const currentValue =
-      editingField ? fieldValueMap[editingField] : '';
-    setEditingValue(currentValue);
-    setEditingField(null);
-  };
-
-
   return (
     <>
-      {/* Main Profile Card */}
-
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -218,42 +202,38 @@ export function UserProfileCard({
         disabled={isUploading}
       />
 
-      {/* Header Section with Horizontal Layout */}
       <div className="flex items-center gap-6">
-        {/* Avatar */}
         <div
-          className={`relative group shrink-0 size-24 ${
+          className={`group relative size-24 shrink-0 ${
             isUploading ? 'cursor-wait opacity-50' : 'cursor-pointer'
           }`}
           onClick={handleAvatarClick}
           onMouseEnter={() => !isUploading && setIsHoveringAvatar(true)}
           onMouseLeave={() => setIsHoveringAvatar(false)}
         >
-          <div className="w-full h-full rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 group-hover:scale-105 bg-card">
+          <div className="h-full w-full overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-card)] shadow-[var(--shadow-lg)] ring-4 ring-[color-mix(in_oklch,var(--primary)_20%,transparent)] transition-all duration-300 group-hover:scale-105 group-hover:ring-[color-mix(in_oklch,var(--primary)_40%,transparent)]">
             <Avatar
-              src={avatarUrl}
-              firstName={firstName}
-              lastName={lastName}
-              userId={userId}
-              size={88}
+              src={avatarUrl || undefined}
+              name={displayName}
+              size="lg"
+              className="h-full w-full [&>span:first-child]:h-full [&>span:first-child]:w-full [&>span:first-child]:text-[length:var(--text-xl)]"
             />
           </div>
-          {/* Upload Overlay */}
           <AnimatePresence>
             {isUploading ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10 size-24"
+                className="absolute inset-0 z-10 flex size-24 items-center justify-center rounded-[var(--radius-pill)] bg-[color-mix(in_oklch,var(--navy-950)_70%,transparent)] backdrop-blur-sm"
               >
                 <div className="flex flex-col items-center justify-center">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
+                  <Icon
+                    name="LoaderCircle"
+                    size={24}
+                    className="animate-spin text-[var(--white)]"
                   />
-                  <p className="text-sm text-white font-semibold mt-2">
+                  <p className="mt-2 text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--white)]">
                     Uploading...
                   </p>
                 </div>
@@ -263,119 +243,80 @@ export function UserProfileCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm z-10 size-24"
+                className="absolute inset-0 z-10 flex size-24 items-center justify-center rounded-[var(--radius-pill)] bg-[color-mix(in_oklch,var(--navy-950)_70%,transparent)] backdrop-blur-sm"
               >
                 <div className="flex flex-col items-center justify-center">
-                  <motion.div
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex flex-col items-center justify-center"
-                  >
-                    <Camera className="w-10 h-10 text-white mb-2" />
-                    <p className="text-sm text-white font-semibold">
-                      Upload Photo
-                    </p>
-                  </motion.div>
+                  <Icon name="Camera" size={40} className="mb-2 text-[var(--white)]" />
+                  <p className="text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--white)]">
+                    Upload Photo
+                  </p>
                 </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
         </div>
-        {/* User Info */}
+
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             {editingField === 'firstName' ? (
               <Input
-                ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={editingValue}
                 onChange={(e) => setEditingValue(e.target.value)}
                 onBlur={() => handleFieldBlur('firstName')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    handleFieldCancel();
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleFieldBlur('firstName');
-                  }
-                }}
-                className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
-                placeholder="First Name"
-                autoFocus
+                className="max-w-32"
               />
             ) : (
-              <span
+              <button
+                type="button"
                 onClick={() => handleFieldEdit('firstName')}
-                className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+                className="cursor-pointer border-0 bg-transparent p-0 text-[length:var(--text-2xl)] font-[var(--fw-bold)] text-[var(--text-strong)] hover:text-[var(--primary)]"
               >
                 {firstName || 'Unknown'}
-              </span>
+              </button>
             )}
             {editingField === 'lastName' ? (
               <Input
-                ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={editingValue}
                 onChange={(e) => setEditingValue(e.target.value)}
                 onBlur={() => handleFieldBlur('lastName')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    handleFieldCancel();
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleFieldBlur('lastName');
-                  }
-                }}
-                className="w-auto max-w-32 text-2xl font-bold h-auto py-1 px-2 border-2"
-                placeholder="Last Name"
-                autoFocus
+                className="max-w-32"
               />
             ) : (
-              <span
+              <button
+                type="button"
                 onClick={() => handleFieldEdit('lastName')}
-                className="text-2xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text cursor-pointer hover:text-[#2454FF] transition-colors"
+                className="cursor-pointer border-0 bg-transparent p-0 text-[length:var(--text-2xl)] font-[var(--fw-bold)] text-[var(--text-strong)] hover:text-[var(--primary)]"
               >
                 {lastName || 'User'}
-              </span>
+              </button>
             )}
-            <Badge
-              variant={getRoleBadgeVariant(role)}
-              className="text-xs font-semibold px-3 py-1 capitalize"
-            >
-              {getDisplayRole(role)}
-            </Badge>
+            <Badge tone={getRoleTone(role)}>{getDisplayRole(role)}</Badge>
+            {programDueDate ? (
+              <Badge tone={isOverdue ? 'danger' : 'warning'}>
+                {isOverdue ? 'Overdue' : 'Due'}
+              </Badge>
+            ) : null}
           </div>
-          <p className="text-muted-foreground mb-3 text-sm cursor-default">
+          <p className="mb-3 cursor-default text-[length:var(--text-sm)] text-[var(--text-muted)]">
             {email}
           </p>
-          <div className="text-sm">
+          <div className="text-[length:var(--text-sm)]">
             {editingField === 'description' ? (
               <Input
-                ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={editingValue}
                 onChange={(e) => setEditingValue(e.target.value)}
                 onBlur={() => handleFieldBlur('description')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    handleFieldCancel();
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleFieldBlur('description');
-                  }
-                }}
-                className="w-full max-w-xl"
+                className="max-w-xl"
                 placeholder="Add a description"
-                autoFocus
               />
             ) : (
-              <span
+              <button
+                type="button"
                 onClick={() => handleFieldEdit('description')}
-                className="text-muted-foreground cursor-pointer hover:text-[#2454FF] transition-colors"
+                className="cursor-pointer border-0 bg-transparent p-0 text-[var(--text-muted)] hover:text-[var(--primary)]"
               >
                 {description?.trim() ? description : 'Add a description'}
-              </span>
+              </button>
             )}
           </div>
         </div>

@@ -2,19 +2,17 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Trash2, Shield, ShieldOff, ChevronUp, ChevronDown, Mail, Loader2 } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 import {
+  Avatar,
+  Badge,
+  Button,
+  Checkbox,
+  IconButton,
   Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@/components/medvanta';
 import {
   Popover,
   PopoverContent,
@@ -48,38 +46,70 @@ import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
 import toast from 'react-hot-toast';
 
+const sortHeaderClass =
+  'flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)] cursor-pointer';
+
+function getStatusTone(
+  status: string,
+): 'neutral' | 'brand' | 'accent' | 'success' | 'warning' | 'danger' {
+  switch (status) {
+    case 'pending':
+      return 'warning';
+    case 'invited':
+      return 'brand';
+    case 'active':
+    case 'assigned':
+      return 'success';
+    default:
+      return 'neutral';
+  }
+}
+
+function ProgramDueBadge({
+  profile,
+}: {
+  profile: ProfileWithStats;
+}): React.ReactElement | null {
+  if (!profile.program_due_date) return null;
+  const isOverdue = new Date(profile.program_due_date) < new Date();
+  return (
+    <Badge tone={isOverdue ? 'danger' : 'warning'}>
+      {isOverdue ? 'Overdue' : 'Due'}
+    </Badge>
+  );
+}
+
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
   const fullName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
-      : null;
+      : profile.first_name || profile.last_name || 'Unknown';
 
   return (
     <div
-      className="flex items-center gap-3 cursor-pointer"
+      className="flex cursor-pointer items-center gap-3"
       onClick={() => {
         router.push(`/users/${profile.id}`);
       }}
     >
-      <div className="size-10 shrink-0 flex items-center justify-center">
-        <Avatar
-          src={profile.avatar_url || null}
-          firstName={profile.first_name || ''}
-          lastName={profile.last_name || ''}
-          userId={profile.id}
-          size={40}
-        />
-      </div>
-      <div className="flex-1 min-w-0 max-w-44">
-        <div className="font-medium text-sm text-foreground truncate">
-          {fullName || 'Unknown'}
+      <Avatar
+        src={profile.avatar_url || undefined}
+        name={fullName}
+        size="md"
+      />
+      <div className="min-w-0 max-w-44 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="truncate text-[length:var(--text-sm)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
+            {fullName}
+          </span>
+          <ProgramDueBadge profile={profile} />
         </div>
-        {profile.email && (
-          <div className="text-xs text-muted-foreground truncate">
+        {profile.email ? (
+          <div className="truncate text-[length:var(--text-xs)] text-[var(--text-muted)]">
             {profile.email}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -87,7 +117,7 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
 
 function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
   if (!profile.last_sign_in) {
-    return <span className="text-muted-foreground text-sm">—</span>;
+    return <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">—</span>;
   }
 
   let relativeTime: string | null = null;
@@ -99,10 +129,14 @@ function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
   }
 
   if (!relativeTime) {
-    return <span className="text-muted-foreground text-sm">—</span>;
+    return <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">—</span>;
   }
 
-  return <span className="text-sm text-foreground">{relativeTime}</span>;
+  return (
+    <span className="text-[length:var(--text-sm)] text-[var(--text-body)]">
+      {relativeTime}
+    </span>
+  );
 }
 
 function GroupsCell({ profile }: { profile: ProfileWithStats }) {
@@ -119,19 +153,14 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
 
     return (
       <>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              —
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Click to assign group</p>
-          </TooltipContent>
+        <Tooltip label="Click to assign group">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="cursor-pointer border-0 bg-transparent p-0 text-[length:var(--text-sm)] text-[var(--text-muted)] hover:text-[var(--text-strong)]"
+          >
+            —
+          </button>
         </Tooltip>
         <AssignGroupModal
           open={modalOpen}
@@ -161,7 +190,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
       <button
         type="button"
         onClick={() => handleGroupClick(orgs[0].orgId)}
-        className="text-sm text-primary hover:underline cursor-pointer truncate text-left"
+        className="cursor-pointer truncate text-left text-[length:var(--text-sm)] text-[var(--primary)] hover:underline"
         title={orgNames.join(', ')}
       >
         {displayText}
@@ -177,14 +206,14 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
           key={org.orgId}
           type="button"
           onClick={() => handleGroupClick(org.orgId)}
-          className="text-sm text-primary hover:underline cursor-pointer"
+          className="cursor-pointer text-[length:var(--text-sm)] text-[var(--primary)] hover:underline"
         >
           {org.orgName}
           {index < Math.min(orgs.length, 2) - 1 && ', '}
         </button>
       ))}
       {orgs.length > 2 && (
-        <span className="text-sm text-muted-foreground">, ...</span>
+        <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">, ...</span>
       )}
     </div>
   );
@@ -209,7 +238,7 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
     return (
       <Link
         href={`/builder/${profile.program_assignment_id}?from=users`}
-        className="text-sm text-primary hover:underline cursor-pointer truncate"
+        className="cursor-pointer truncate text-[length:var(--text-sm)] text-[var(--primary)] hover:underline"
       >
         {profile.program_assignment_name}
       </Link>
@@ -219,32 +248,31 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
   if (!canAssignProgram) {
     const gateN = profile.max_gate_unlocked ?? 0;
     return (
-      <span className="text-sm text-muted-foreground">Gate {gateN}/5</span>
+      <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        Gate {gateN}/5
+      </span>
     );
   }
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">
-            <button
-              type="button"
-              onClick={() => hasOrganization && setModalOpen(true)}
-              disabled={!hasOrganization}
-              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              —
-            </button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>
-            {hasOrganization
-              ? 'Click to assign program'
-              : 'Assign a group before assigning a program'}
-          </p>
-        </TooltipContent>
+      <Tooltip
+        label={
+          hasOrganization
+            ? 'Click to assign program'
+            : 'Assign a group before assigning a program'
+        }
+      >
+        <span className="inline-flex">
+          <button
+            type="button"
+            onClick={() => hasOrganization && setModalOpen(true)}
+            disabled={!hasOrganization}
+            className="cursor-pointer border-0 bg-transparent p-0 text-[length:var(--text-sm)] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            —
+          </button>
+        </span>
       </Tooltip>
       {hasOrganization && (
         <AssignProgramModal
@@ -267,24 +295,10 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   const [sending, setSending] = React.useState(false);
 
   if (!status) {
-    return <span className="text-muted-foreground text-sm">—</span>;
+    return <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">—</span>;
   }
 
-  const getBadgeClasses = () => {
-    switch (status) {
-      case 'pending':
-        return 'bg-[oklch(0.95_0.05_55)] text-[oklch(0.34_0.14_55)] border-[oklch(0.9_0.1_55)]';
-      case 'invited':
-        return 'bg-[oklch(0.95_0.03_262.705)] text-[oklch(0.42_0.2_262.705)] border-[oklch(0.86_0.085_262.705)]';
-      case 'active':
-      case 'assigned':
-        return 'bg-[oklch(0.94_0.04_155)] text-[oklch(0.32_0.12_155)] border-[oklch(0.87_0.1_155)]';
-      default:
-        return 'bg-muted text-foreground border-border';
-    }
-  };
-
-  const handleSendInvitation = async () => {
+  const handleSendInvitation = async (): Promise<void> => {
     if (!profile.email || sending) return;
     
     setSending(true);
@@ -316,28 +330,24 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Badge
-          variant="outline"
-          className={cn(
-            getBadgeClasses(),
-            'cursor-pointer hover:opacity-80'
-          )}
-        >
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Badge>
+        <button type="button" className="cursor-pointer border-0 bg-transparent p-0">
+          <Badge tone={getStatusTone(status)}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </Badge>
+        </button>
       </PopoverTrigger>
-      <PopoverContent 
-        side="bottom" 
-        className="w-auto p-0 bg-transparent border-0 shadow-none"
+      <PopoverContent
+        side="bottom"
+        className="w-auto border-0 bg-transparent p-0 shadow-none"
       >
-        <button
-          type="button"
+        <Button
+          size="sm"
           onClick={handleSendInvitation}
           disabled={sending}
-          className="dropdown-item-animate cursor-pointer left-1/2 translate-x-1/2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          loading={sending}
         >
           {sending ? 'Sending...' : 'Re-send Invitation'}
-        </button>
+        </Button>
       </PopoverContent>
     </Popover>
   );
@@ -365,13 +375,13 @@ function DeleteUserButton({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button
+        <IconButton
+          icon="Trash2"
+          label="Delete user"
           variant="ghost"
           size="sm"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer rounded-pill"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+          className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+        />
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -432,25 +442,16 @@ function ActionsCell({
 
   return (
     <div className="flex items-center gap-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToggleAdmin}
-            disabled={toggleSuperAdminMutation.isPending}
-            className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
-          >
-            {isSuperAdmin ? (
-              <ShieldOff className="h-4 w-4" />
-            ) : (
-              <Shield className="h-4 w-4" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {isSuperAdmin ? 'Make member' : 'Make admin'}
-        </TooltipContent>
+      <Tooltip label={isSuperAdmin ? 'Make member' : 'Make admin'}>
+        <IconButton
+          icon={isSuperAdmin ? 'ShieldOff' : 'Shield'}
+          label={isSuperAdmin ? 'Make member' : 'Make admin'}
+          variant="ghost"
+          size="sm"
+          onClick={handleToggleAdmin}
+          disabled={toggleSuperAdminMutation.isPending}
+          className="text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+        />
       </Tooltip>
       <DeleteUserButton
         profile={profile}
@@ -550,7 +551,9 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
   return (
     <div className="flex items-center gap-2">
       {!hasSelected && (
-        <span className="text-xs font-semibold tracking-wide">Actions</span>
+        <span className="text-[length:var(--text-xs)] font-[var(--fw-bold)] uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]">
+          Actions
+        </span>
       )}
       <AnimatePresence>
         {hasSelected && (
@@ -561,47 +564,33 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
             transition={{ duration: 0.2 }}
             className="flex items-center gap-2"
           >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBulkInvite}
-                  disabled={!hasAnyWithEmail || sendingInvites}
-                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
-                >
-                  {sendingInvites ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {hasAnyWithEmail
+            <Tooltip
+              label={
+                hasAnyWithEmail
                   ? 'Send/re-send invitations to selected users'
-                  : 'Select users to send/re-send invitations'}
-              </TooltipContent>
+                  : 'Select users to send/re-send invitations'
+              }
+            >
+              <IconButton
+                icon="Mail"
+                label="Send invitations"
+                variant="ghost"
+                size="sm"
+                onClick={handleBulkInvite}
+                disabled={!hasAnyWithEmail || sendingInvites}
+                className="text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+              />
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setBulkToggleOpen(true)}
-                  disabled={bulkToggleMutation.isPending}
-                  className="text-primary hover:bg-primary/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
-                >
-                  {allAreAdmins ? (
-                    <ShieldOff className="h-4 w-4" />
-                  ) : (
-                    <Shield className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {allAreAdmins ? 'Make members' : 'Make admins'}
-              </TooltipContent>
+            <Tooltip label={allAreAdmins ? 'Make members' : 'Make admins'}>
+              <IconButton
+                icon={allAreAdmins ? 'ShieldOff' : 'Shield'}
+                label={allAreAdmins ? 'Make members' : 'Make admins'}
+                variant="ghost"
+                size="sm"
+                onClick={() => setBulkToggleOpen(true)}
+                disabled={bulkToggleMutation.isPending}
+                className="text-[var(--primary)] hover:bg-[var(--primary-soft)]"
+              />
             </Tooltip>
       <AlertDialog open={bulkToggleOpen} onOpenChange={setBulkToggleOpen}>
         <AlertDialogContent>
@@ -659,21 +648,16 @@ function BulkActionsHeader({ table }: { table: Table<ProfileWithStats> }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setBulkDeleteOpen(true)}
-                  disabled={bulkDeleteMutation.isPending}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold cursor-pointer disabled:opacity-50 rounded-pill"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Delete selected users</p>
-              </TooltipContent>
+            <Tooltip label="Delete selected users">
+              <IconButton
+                icon="Trash2"
+                label="Delete selected users"
+                variant="ghost"
+                size="sm"
+                onClick={() => setBulkDeleteOpen(true)}
+                disabled={bulkDeleteMutation.isPending}
+                className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+              />
             </Tooltip>
           </motion.div>
         )}
@@ -687,21 +671,17 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
     id: 'select',
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        checked={table.getIsAllPageRowsSelected()}
+        onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
       />
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        onClick={(e) => e.stopPropagation()}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={row.getIsSelected()}
+          onChange={(checked) => row.toggleSelected(checked)}
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
@@ -713,15 +693,15 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className={sortHeaderClass}
         >
           Name / Email
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-strong)]" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
+            <ChevronDown className="h-4 w-4 text-[var(--text-strong)]" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-muted)] opacity-60" />
           )}
         </button>
       );
@@ -762,15 +742,15 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className={sortHeaderClass}
         >
           Last login
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-strong)]" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
+            <ChevronDown className="h-4 w-4 text-[var(--text-strong)]" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-muted)] opacity-60" />
           )}
         </button>
       );
@@ -801,15 +781,15 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className={sortHeaderClass}
         >
           Groups
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-strong)]" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
+            <ChevronDown className="h-4 w-4 text-[var(--text-strong)]" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-muted)] opacity-60" />
           )}
         </button>
       );
@@ -826,15 +806,15 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className={sortHeaderClass}
         >
           Program
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-strong)]" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
+            <ChevronDown className="h-4 w-4 text-[var(--text-strong)]" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-muted)] opacity-60" />
           )}
         </button>
       );
@@ -850,15 +830,15 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
       return (
         <button
           onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className={sortHeaderClass}
         >
           Registration
           {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-strong)]" />
           ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
+            <ChevronDown className="h-4 w-4 text-[var(--text-strong)]" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
+            <ChevronUp className="h-4 w-4 text-[var(--text-muted)] opacity-60" />
           )}
         </button>
       );

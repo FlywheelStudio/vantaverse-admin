@@ -13,8 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, Badge } from '@/components/medvanta';
 import type { McIntakeSurvey } from '@/lib/supabase/queries/mc-intake';
 
 interface McIntakeCardProps {
@@ -54,10 +53,11 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
 
   return (
     <Card
+      padding={0}
       className={cn(
-        'gap-0 border transition-all duration-300 overflow-hidden',
+        'overflow-hidden transition-all duration-300',
         !isExpanded && 'min-h-0',
-        isSigned ? 'hover:shadow-(--shadow-lg)' : 'opacity-50 pointer-events-none shadow-none',
+        isSigned ? 'hover:shadow-[var(--shadow-md)]' : 'pointer-events-none opacity-50 shadow-none',
       )}
       style={{
         borderColor: colorScheme.border,
@@ -94,19 +94,9 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                 >
                   2. Intake Survey
                 </h3>
-                {isSigned && (
-                  <Badge
-                    variant="outline"
-                    className="font-semibold border shrink-0"
-                    style={{
-                      borderColor: colorScheme.border,
-                      backgroundColor: colorScheme.bg,
-                      color: colorScheme.text,
-                    }}
-                  >
-                    Signed
-                  </Badge>
-                )}
+                {isSigned ? (
+                  <Badge tone="success">Signed</Badge>
+                ) : null}
               </div>
             </div>
             {isSigned && isExpanded && (
@@ -240,11 +230,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                   </span>
                   <div className="flex flex-wrap gap-2 flex-1">
                     {survey.symptoms.map((symptom, index) => (
-                      <Badge
-                        key={index}
-                        variant="outline"
-                        className="text-xs border border-primary/20 bg-primary/10 text-primary"
-                      >
+                      <Badge key={index} tone="accent">
                         {symptom}
                       </Badge>
                     ))}
@@ -260,11 +246,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                   </span>
                   <div className="flex flex-wrap gap-2 flex-1">
                     {survey.health_conditions.map((condition, index) => (
-                      <Badge
-                        key={index}
-                        variant="outline"
-                        className="text-xs border border-primary/20 bg-primary/10 text-primary"
-                      >
+                      <Badge key={index} tone="brand">
                         {condition}
                       </Badge>
                     ))}
@@ -280,12 +262,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                 <div className="flex flex-col gap-2 flex-1">
                   {hasPreconditions ? (
                     <>
-                      <Badge
-                        variant="outline"
-                        className="text-xs w-fit border border-destructive/20 bg-destructive/10 text-destructive"
-                      >
-                        Yes
-                      </Badge>
+                      <Badge tone="danger">Yes</Badge>
                       {survey.preconditions_details && (
                         <div className="flex items-start gap-2">
                           <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
@@ -296,12 +273,7 @@ export function McIntakeCard({ survey }: McIntakeCardProps) {
                       )}
                     </>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="text-xs w-fit bg-[oklch(0.94 0.04 155)] text-[oklch(0.32 0.05 155)] border-[oklch(0.87 0.05 155)]"
-                    >
-                      No
-                    </Badge>
+                    <Badge tone="success">No</Badge>
                   )}
                 </div>
               </div>
