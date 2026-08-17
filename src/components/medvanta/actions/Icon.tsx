@@ -20,7 +20,7 @@ export function Icon({
   className,
   style,
 }: IconProps): React.ReactNode {
-  const Comp = (Lucide as Record<string, React.ComponentType<LucideProps>>)[name];
+  const Comp = (Lucide as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
   if (!Comp) return null;
   return (
     <Comp
