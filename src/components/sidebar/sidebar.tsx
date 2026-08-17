@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -14,13 +13,24 @@ import {
   VANTABUDDY_LOOK_RIGHT_EVENT,
   VANTABUDDY_LOOK_DOWN_EVENT,
 } from './vantabuddy-trigger';
+import { SidebarNavItem } from '@/components/medvanta';
 import { UserAvatar } from '../header/user-avatar';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
 
 const LOOK_DOWN_COOLDOWN_MS = 5000;
 
+const NAV_ICON_NAMES: Record<string, string> = {
+  '/': 'LayoutDashboard',
+  '/groups': 'Building2',
+  '/users': 'Users',
+  '/builder': 'Dumbbell',
+  '/messages': 'MessageSquare',
+  '/exercises': 'Activity',
+};
+
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const vantabuddyX = VANTABUDDY_CONFIG.left;
   const vantabuddyY = VANTABUDDY_CONFIG.top;
   const lastLookDownAt = useRef<number>(0);
@@ -35,11 +45,11 @@ export function Sidebar() {
     initialData: false,
   });
 
-  const triggerLookRight = () => {
+  const triggerLookRight = (): void => {
     window.dispatchEvent(new CustomEvent(VANTABUDDY_LOOK_RIGHT_EVENT));
   };
 
-  const triggerLookDown = () => {
+  const triggerLookDown = (): void => {
     const now = Date.now();
     if (now - lastLookDownAt.current >= LOOK_DOWN_COOLDOWN_MS) {
       lastLookDownAt.current = now;
@@ -49,7 +59,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="fixed shadow-xl z-10 rounded-lg overflow-hidden"
+      className="fixed z-10 overflow-hidden border-r border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]"
       style={{
         top: vantabuddyY,
         left: vantabuddyX,
@@ -58,45 +68,35 @@ export function Sidebar() {
       }}
     >
       <div
-        className="pr-6 pb-6 h-full flex flex-col overflow-y-auto slim-scrollbar"
+        className="flex h-full flex-col overflow-y-auto slim-scrollbar pb-6 pr-3"
         style={{
           paddingTop: `${VANTABUDDY_CONFIG.height}px`,
         }}
       >
-        <nav className="space-y-2">
+        <nav className="flex flex-col gap-1 px-2">
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
-            const Icon = link.icon;
-
             const showUnreadBadge = !!(
               link.supportsUnreadBadge && hasUnreadMessages
             );
 
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={triggerLookRight}
-                onMouseEnter={triggerLookDown}
-                className={`content-link flex items-center gap-3 px-4 rounded-r-lg py-3 transition-colors text-white ${
-                  isActive ? 'bg-[#2454FF]/70' : 'hover:bg-[#2454FF]/40'
-                }`}
-              >
-                <span className="relative inline-flex">
-                  <Icon className="w-5 h-5" />
-                  {showUnreadBadge && (
-                    <span
-                      className="absolute -right-1 -top-1 inline-flex h-2.5 w-2.5 rounded-full bg-red-500"
-                      aria-label="Unread messages"
-                    />
-                  )}
-                </span>
-                <span className="font-medium">{link.label}</span>
-              </Link>
+              <div key={link.href} onMouseEnter={triggerLookDown}>
+                <SidebarNavItem
+                  icon={NAV_ICON_NAMES[link.href] ?? 'Circle'}
+                  label={link.label}
+                  active={isActive}
+                  badge={showUnreadBadge}
+                  onClick={() => {
+                    triggerLookRight();
+                    router.push(link.href);
+                  }}
+                />
+              </div>
             );
           })}
         </nav>
-        <div className="flex items-center gap-2 glass-background rounded-r-lg p-2 mt-auto">
+        <div className="mt-auto border-t border-[var(--border-subtle)] px-2 pt-3">
           <UserAvatar showName={true} />
         </div>
       </div>

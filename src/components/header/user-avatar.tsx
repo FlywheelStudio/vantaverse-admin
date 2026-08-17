@@ -60,7 +60,9 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
           />
         </motion.span>
         {showName && !isMobile && (
-          <span className="text-sm font-medium">User</span>
+          <span className="text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-strong)]">
+            User
+          </span>
         )}
       </motion.button>
     );
@@ -95,7 +97,7 @@ export function UserAvatar({ showName = true }: UserAvatarProps) {
       </motion.span>
       {showName && !isMobile && (
         <motion.span
-          className="text-sm font-medium text-white"
+          className="text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-strong)]"
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}

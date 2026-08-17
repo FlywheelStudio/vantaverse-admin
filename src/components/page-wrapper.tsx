@@ -9,10 +9,9 @@ interface PageWrapperProps {
   children: ReactNode;
 }
 
-const HEADER_PADDING_LEFT = 10;
+const HEADER_PADDING_LEFT = 16;
 
 export function PageWrapper({ subheader, children }: PageWrapperProps) {
-
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef<number>(0);
 
@@ -24,8 +23,9 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
 
     const currentScrollTop = element.scrollTop;
     const lastScrollTop = lastScrollTopRef.current;
-    const direction = currentScrollTop > lastScrollTop ? 1 : currentScrollTop < lastScrollTop ? -1 : 0;
-    
+    const direction =
+      currentScrollTop > lastScrollTop ? 1 : currentScrollTop < lastScrollTop ? -1 : 0;
+
     lastScrollTopRef.current = currentScrollTop;
     setScrollPosition([direction, currentScrollTop]);
   }, []);
@@ -34,7 +34,6 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
     const element = containerRef.current;
     if (element) {
       element.addEventListener('scroll', handleScroll, { passive: true });
-      // Initialize scroll position
       lastScrollTopRef.current = element.scrollTop;
       handleScroll();
     }
@@ -47,10 +46,10 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
   }, [handleScroll]);
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col">
+    <div className="flex h-full min-h-0 w-full flex-col bg-[var(--bg-app)]">
       <header
         suppressHydrationWarning
-        className="text-white flex items-center justify-between shrink-0 content-title"
+        className="content-title flex shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-strong)]"
         style={{
           paddingLeft: `${HEADER_PADDING_LEFT}px`,
           height: `${VANTABUDDY_CONFIG.height}px`,
@@ -61,13 +60,13 @@ export function PageWrapper({ subheader, children }: PageWrapperProps) {
       </header>
       <div
         suppressHydrationWarning
-        className="p-4 flex flex-col flex-1 min-h-0 overflow-y-auto slim-scrollbar"
+        className="slim-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-[var(--bg-app)] p-4"
         ref={containerRef}
         style={{
           scrollBehavior: 'smooth',
         }}
       >
-        <Suspense fallback={<div className="h-12 mb-4" />}>
+        <Suspense fallback={<div className="mb-4 h-12" />}>
           <BreadcrumbNavigator scrollPosition={scrollPosition} />
         </Suspense>
         {children}
