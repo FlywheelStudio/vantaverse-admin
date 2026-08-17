@@ -1,0 +1,192 @@
+/* MedVanta tokens — sourced from MedVanta Design System/tokens */
+/* Webfonts via Google Fonts CDN.
+   NOTE: the MEDVANTA wordmark uses an unknown wide geometric sans; we have
+   NOT matched it for UI type. Plus Jakarta Sans is the substitute (modern,
+   friendly, healthcare-appropriate). IBM Plex Mono for tabular data. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* MedVanta color system — derived from the MEDVANTA wordmark
+   (deep navy → cyan gradient). Navy = brand/structure, Cyan = interactive. */
+:root {
+  /* Brand navy scale */
+  --navy-950: #0b1830;
+  --navy-900: #10233f;
+  --navy-800: #17325a;
+  --navy-700: #1e3f72;
+  --navy-600: #274d89;
+  --navy-500: #35619f;
+  --navy-400: #5a80b6;
+  --navy-300: #90a8ce;
+  --navy-200: #c3d0e5;
+  --navy-100: #e3eaf4;
+  --navy-50:  #f2f6fb;
+
+  /* Brand cyan / interactive scale */
+  --cyan-900: #0f4d75;
+  --cyan-800: #14618f;
+  --cyan-700: #1b7fbf;
+  --cyan-600: #2490cf;
+  --cyan-500: #2f9fdb;
+  --cyan-400: #55b2e4;
+  --cyan-300: #86cbee;
+  --cyan-200: #bce1f6;
+  --cyan-100: #e0f1fb;
+  --cyan-50:  #f0f8fd;
+
+  /* Neutral / slate scale (cool gray, tuned to navy) */
+  --slate-950: #0c1220;
+  --slate-900: #151c2b;
+  --slate-800: #24303f; /* deprecated dup guard */
+  --slate-700: #3a4658;
+  --slate-600: #556170;
+  --slate-500: #71808f;
+  --slate-400: #9aa6b4;
+  --slate-300: #c4ccd6;
+  --slate-200: #e0e5ec;
+  --slate-100: #eef1f5;
+  --slate-50:  #f6f8fa;
+  --white: #ffffff;
+
+  /* Status */
+  --green-600: #1f9d6b;
+  --green-500: #23b37a;
+  --green-100: #dcf5ea;
+  --amber-600: #d08706;
+  --amber-500: #f0a615;
+  --amber-100: #fcf1d6;
+  --red-600:   #d64545;
+  --red-500:   #e85d5d;
+  --red-100:   #fbe0e0;
+  --info-500:  var(--cyan-500);
+
+  /* ---- Semantic aliases ---- */
+  --bg-app: var(--slate-50);
+  --bg-subtle: var(--slate-100);
+  --surface-card: var(--white);
+  --surface-raised: var(--white);
+  --surface-sunken: var(--slate-50);
+  --surface-inverse: var(--navy-900);
+
+  --border-subtle: var(--slate-200);
+  --border-default: var(--slate-300);
+  --border-strong: var(--slate-400);
+  --border-focus: var(--cyan-500);
+
+  --text-strong: var(--navy-900);
+  --text-body: var(--slate-700);
+  --text-muted: var(--slate-500);
+  --text-faint: var(--slate-400);
+  --text-inverse: var(--white);
+  --text-link: var(--cyan-700);
+  --text-brand: var(--navy-700);
+
+  --accent: var(--cyan-500);
+  --accent-hover: var(--cyan-600);
+  --accent-press: var(--cyan-700);
+  --accent-soft: var(--cyan-100);
+
+  --primary: var(--navy-700);
+  --primary-hover: var(--navy-800);
+  --primary-press: var(--navy-900);
+  --primary-soft: var(--navy-100);
+
+  --success: var(--green-600);
+  --success-soft: var(--green-100);
+  --warning: var(--amber-600);
+  --warning-soft: var(--amber-100);
+  --danger: var(--red-600);
+  --danger-soft: var(--red-100);
+
+  --focus-ring: color-mix(in oklch, var(--cyan-500) 40%, transparent);
+  --brand-gradient: linear-gradient(90deg, var(--navy-800) 0%, var(--navy-600) 45%, var(--cyan-500) 100%);
+}
+:root {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Type scale (1.20 minor-third-ish, admin-density tuned) */
+  --text-2xs: 0.6875rem; /* 11 */
+  --text-xs:  0.75rem;   /* 12 */
+  --text-sm:  0.8125rem; /* 13 */
+  --text-md:  0.875rem;  /* 14 — default UI body */
+  --text-base:0.9375rem; /* 15 */
+  --text-lg:  1.0625rem; /* 17 */
+  --text-xl:  1.25rem;   /* 20 */
+  --text-2xl: 1.5rem;    /* 24 */
+  --text-3xl: 1.875rem;  /* 30 */
+  --text-4xl: 2.375rem;  /* 38 */
+
+  --fw-regular: 400;   /* @kind font */
+  --fw-medium: 500;    /* @kind font */
+  --fw-semibold: 600;  /* @kind font */
+  --fw-bold: 700;      /* @kind font */
+  --fw-extrabold: 800; /* @kind font */
+
+  --lh-tight: 1.15;   /* @kind font */
+  --lh-snug: 1.3;     /* @kind font */
+  --lh-normal: 1.5;   /* @kind font */
+  --lh-relaxed: 1.65; /* @kind font */
+
+  --tracking-tight: -0.02em;  /* @kind font */
+  --tracking-normal: 0;       /* @kind font */
+  --tracking-wide: 0.04em;    /* @kind font */
+  --tracking-wider: 0.12em;   /* @kind font */
+}
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-12: 80px;
+
+  /* Radii — heavily rounded per brand direction */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* Elevation — soft, cool-tinted shadows */
+  --shadow-xs: 0 1px 2px rgba(16, 35, 63, 0.06);
+  --shadow-sm: 0 1px 3px rgba(16, 35, 63, 0.08), 0 1px 2px rgba(16, 35, 63, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 35, 63, 0.08), 0 2px 4px rgba(16, 35, 63, 0.04);
+  --shadow-lg: 0 12px 28px rgba(16, 35, 63, 0.12), 0 4px 8px rgba(16, 35, 63, 0.05);
+  --shadow-xl: 0 24px 56px rgba(16, 35, 63, 0.16);
+  --shadow-focus: 0 0 0 3px var(--focus-ring);
+
+  --dur-fast: 120ms; /* @kind other */
+  --dur-base: 180ms; /* @kind other */
+  --dur-slow: 280ms; /* @kind other */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */
+}
+/* Minimal element defaults so specimen cards + kits inherit brand type/color. */
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--lh-normal);
+  color: var(--text-body);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-sans);
+  color: var(--text-strong);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+a { color: var(--text-link); text-decoration: none; }
+a:hover { color: var(--accent-press); text-decoration: underline; }
+* { box-sizing: border-box; }
+@keyframes mv-spin { to { transform: rotate(360deg); } }
