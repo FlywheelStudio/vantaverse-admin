@@ -1,74 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Button,
-  Card,
-  Checkbox,
-  Icon,
-  Input,
-} from '@/components/medvanta';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Icon } from '@/components/medvanta';
 import {
   useProgramAssignments,
-  useDeleteProgramAssignment,
-  useCloneProgramAssignment,
   programAssignmentsInfiniteQueryOptions,
 } from '@/hooks/use-passignments';
-import { ProgramTemplateCard } from './card';
 import { CreateTemplateForm } from './form';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
+import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
+import { HtmlFiltersButton, HtmlRowMenu } from '../partials/html-toolbar';
+import { formatRelativeEdited } from '../partials/html-utils';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-
-const contentVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    y: 20,
-    transition: {
-      duration: 0.3,
-    },
-  },
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.95,
-    transition: {
-      duration: 0.2,
-    },
-  },
-};
 
 interface ProgramBuilderProps {
   onTemplateSelect?: (assignment: ProgramAssignmentWithTemplate) => void;
@@ -82,123 +28,193 @@ interface ProgramBuilderProps {
     }>;
     pageParams: number[];
   };
+  showCreateForm?: boolean;
+  onCreateFormClose?: () => void;
 }
 
-export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilderProps) {
+function ProgramTableRow({
+  assignment,
+  onClick,
+}: {
+  assignment: ProgramAssignmentWithTemplate;
+  onClick: () => void;
+}): React.ReactElement | null {
+  const template = assignment.program_template;
+  if (!template) return null;
+
+  const weeksLabel = `${template.weeks} week${template.weeks === 1 ? '' : 's'}`;
+  const edited = formatRelativeEdited(template.updated_at);
+
+  return (
+    <tr onClick={onClick} style={{ cursor: 'pointer' }}>
+      <td>
+        <div className="cellp">
+          <span
+            className="thmb"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 'var(--radius-sm)',
+              background: 'linear-gradient(140deg, var(--navy-800), var(--navy-600))',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="Dumbbell" size={18} style={{ color: 'rgba(255,255,255,.9)' }} />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span className="nm" style={{ display: 'block' }}>
+              {template.name}
+            </span>
+            {template.goals ? (
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                {template.goals}
+              </span>
+            ) : null}
+          </span>
+        </div>
+      </td>
+      <td>
+        <span className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-body)' }}>
+          {weeksLabel}
+        </span>
+      </td>
+      <td>
+        <span className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+          —
+        </span>
+      </td>
+      <td>
+        <div className="pbw" style={{ maxWidth: 110 }}>
+          <span className="pb pb-6 pb-n">
+            <i style={{ width: '0%' }} />
+          </span>
+          <span className="v">—</span>
+        </div>
+      </td>
+      <td>
+        <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+          {edited}
+        </span>
+      </td>
+      <td style={{ textAlign: 'right', width: 52 }}>
+        <HtmlRowMenu tooltip="Edit template · Edit workout schedule · Duplicate · Assign to members · Archive · Delete" />
+      </td>
+    </tr>
+  );
+}
+
+export function ProgramBuilder({
+  onTemplateSelect,
+  initialData,
+  showCreateForm: showCreateFormProp = false,
+  onCreateFormClose,
+}: ProgramBuilderProps): React.ReactElement {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const isMobile = useIsMobile();
   const [searchValue, setSearchValue] = useState('');
-  const [weeksFilter, setWeeksFilter] = useState<string>('');
-  const [showAssigned, setShowAssigned] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateFormLocal, setShowCreateFormLocal] = useState(false);
+  const showCreateForm = showCreateFormProp || showCreateFormLocal;
+  const [listPage, setListPage] = useState(1);
   const pageSize = 21;
 
-  // Debounce search and weeks filter
   const debouncedSearch = useDebounce(searchValue, 300);
-  const debouncedWeeksFilter = useDebounce(weeksFilter, 300);
+  const shouldUseInitialData = !debouncedSearch;
 
-  // Parse weeks filter to number
-  const weeksFilterNumber =
-    debouncedWeeksFilter && !Number.isNaN(Number.parseInt(debouncedWeeksFilter, 10))
-      ? Number.parseInt(debouncedWeeksFilter, 10)
-      : undefined;
-
-  // Use initialData only when filters match (no search, no weeks filter, no showAssigned)
-  const shouldUseInitialData = !debouncedSearch && !weeksFilterNumber && !showAssigned;
-
-  // Use infinite query with server-side filtering
   const {
     assignments,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
+    data,
   } = useProgramAssignments(
     debouncedSearch,
-    weeksFilterNumber,
+    undefined,
     pageSize,
-    showAssigned,
+    false,
     shouldUseInitialData ? initialData : undefined,
   );
 
+  const totalCount = data?.pages[0]?.total ?? assignments.length;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeListPage = Math.min(listPage, pageCount);
   const prefetchTriggeredRef = useRef(false);
 
-  // Delete mutation hook
-  const deleteMutation = useDeleteProgramAssignment(
-    debouncedSearch,
-    weeksFilterNumber,
-    pageSize,
-    showAssigned,
-  );
+  const visibleAssignments = useMemo(() => {
+    const start = (safeListPage - 1) * pageSize;
+    return assignments.slice(start, start + pageSize);
+  }, [assignments, safeListPage, pageSize]);
 
-  const cloneMutation = useCloneProgramAssignment(
-    debouncedSearch,
-    weeksFilterNumber,
-    pageSize,
-    showAssigned,
-  );
+  const visibleRangeStart = totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(safeListPage * pageSize, totalCount);
 
-  const handleCardClick = (assignment: ProgramAssignmentWithTemplate) => {
+  const handleRowClick = (assignment: ProgramAssignmentWithTemplate): void => {
     if (assignment.id) {
       router.push(`/builder/${assignment.id}`);
       onTemplateSelect?.(assignment);
     }
   };
 
-  const handleCreateSuccess = () => {
-    setShowCreateForm(false);
+  const closeCreateForm = (): void => {
+    setShowCreateFormLocal(false);
+    onCreateFormClose?.();
   };
 
-  const handleCreateCancel = () => {
-    setShowCreateForm(false);
+  const handleCreateSuccess = (): void => {
+    closeCreateForm();
   };
 
-  const handleDelete = useCallback(
-    (assignmentId: string) => {
-      deleteMutation.mutate(assignmentId);
-    },
-    [deleteMutation],
-  );
+  const handleCreateCancel = (): void => {
+    closeCreateForm();
+  };
 
-  const handleClone = useCallback(
-    (assignmentId: string) => {
-      cloneMutation.mutate(assignmentId);
-    },
-    [cloneMutation],
-  );
-
-  // Reset prefetch trigger when filters change
-  useEffect(() => {
+  const handleSearchChange = useCallback((value: string): void => {
+    setSearchValue(value);
+    setListPage(1);
     prefetchTriggeredRef.current = false;
-  }, [debouncedSearch, weeksFilterNumber, showAssigned]);
+  }, []);
 
-  // Infinite scroll with prefetching using scroll position
+  const handlePageChange = useCallback((nextPage: number): void => {
+    setListPage(nextPage);
+  }, []);
+
+  useEffect(() => {
+    const neededCount = safeListPage * pageSize;
+    if (assignments.length < neededCount && hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [
+    safeListPage,
+    pageSize,
+    assignments.length,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  ]);
+
   useEffect(() => {
     if (!hasNextPage || isFetchingNextPage) return;
 
     const queryOptions = programAssignmentsInfiniteQueryOptions(
       debouncedSearch,
-      weeksFilterNumber,
+      undefined,
       pageSize,
-      showAssigned,
+      false,
     );
 
-    const handleScroll = () => {
+    const handleScroll = (): void => {
       const scrollProgress =
-        (window.scrollY + window.innerHeight) /
-        document.documentElement.scrollHeight;
+        (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
 
-      // Prefetch at 80% scroll
       if (scrollProgress > 0.8 && !prefetchTriggeredRef.current) {
         prefetchTriggeredRef.current = true;
         queryClient.prefetchInfiniteQuery(queryOptions);
       }
 
-      // Actually fetch at 90% scroll
       if (scrollProgress > 0.9) {
         fetchNextPage().then(() => {
-          // Reset prefetch trigger after fetching so we can prefetch next page
           prefetchTriggeredRef.current = false;
         });
       }
@@ -212,112 +228,97 @@ export function ProgramBuilder({ onTemplateSelect, initialData }: ProgramBuilder
     fetchNextPage,
     queryClient,
     debouncedSearch,
-    weeksFilterNumber,
-    showAssigned,
     pageSize,
   ]);
 
   return (
     <>
-      {/* Create Form */}
-          {showCreateForm && (
-            <CreateTemplateForm
-              onSuccess={handleCreateSuccess}
-              onCancel={handleCreateCancel}
-              showDates={false}
-            />
-          )}
+      {showCreateForm ? (
+        <CreateTemplateForm
+          onSuccess={handleCreateSuccess}
+          onCancel={handleCreateCancel}
+          showDates={false}
+        />
+      ) : null}
 
-          <Card padding={0} className="flex flex-col gap-6">
-            <div className="flex flex-col p-5 sm:p-6">
-              <div className="mb-6 flex flex-wrap items-center gap-3">
-                <Button
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                  disabled={showCreateForm}
-                  iconLeft="Plus"
-                  className="shrink-0"
-                >
-                  {isMobile ? null : 'Create New Template'}
-                </Button>
-                <Input
-                  type="text"
-                  placeholder="Search by name, description, or goals..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  className="min-w-[200px] flex-1"
-                />
-                <Input
-                  type="number"
-                  placeholder="Filter by weeks..."
-                  value={weeksFilter}
-                  onChange={(e) => setWeeksFilter(e.target.value)}
-                  className="w-40 shrink-0"
-                />
-                <Checkbox
-                  checked={showAssigned}
-                  label="Show assigned"
-                  onChange={(checked) => setShowAssigned(checked)}
-                />
-              </div>
+      <div className="tbar">
+        <HtmlSearchField
+          placeholder="Search by name, goal or description…"
+          value={searchValue}
+          onChange={handleSearchChange}
+        />
+        <HtmlFiltersButton activeCount={0} />
+      </div>
 
-              {/* Templates Grid */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key="grid"
-                  variants={contentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  {assignments.length === 0 && !isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-[var(--text-muted)]">
-                        {debouncedSearch || debouncedWeeksFilter
-                          ? 'No programs found matching your filters.'
-                          : 'No programs available.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <motion.div
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                      >
-                        <AnimatePresence mode="popLayout">
-                          {assignments.map((assignment) => (
-                            <motion.div
-                              key={assignment.id}
-                              variants={cardVariants}
-                              exit="exit"
-                              layout
-                              className="h-full"
-                            >
-                              <ProgramTemplateCard
-                                assignment={assignment}
-                                onClick={() => handleCardClick(assignment)}
-                                onDelete={() => handleDelete(assignment.id)}
-                                onClone={() => handleClone(assignment.id)}
-                              />
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </motion.div>
+      <div className="tw">
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th className="srt">Template</th>
+              <th className="srt">Length</th>
+              <th className="srt">Members on it</th>
+              <th className="srt">Avg. completion</th>
+              <th className="srt">Last edited</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <span className="row" style={{ gap: 8, justifyContent: 'center' }}>
+                    <Icon name="LoaderCircle" size={18} className="animate-spin" />
+                    Loading programs…
+                  </span>
+                </td>
+              </tr>
+            ) : assignments.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                    {debouncedSearch ? 'No programs found matching your search.' : 'No programs available.'}
+                  </span>
+                </td>
+              </tr>
+            ) : (
+              visibleAssignments.map((assignment) => (
+                <ProgramTableRow
+                  key={assignment.id}
+                  assignment={assignment}
+                  onClick={() => handleRowClick(assignment)}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+        <HtmlTableFooter
+          summary={
+            <>
+              Showing{' '}
+              <b className="mono" style={{ color: 'var(--text-body)' }}>
+                {visibleRangeStart}-{visibleRangeEnd}
+              </b>{' '}
+              of{' '}
+              <b className="mono" style={{ color: 'var(--text-body)' }}>
+                {totalCount}
+              </b>{' '}
+              templates
+            </>
+          }
+          page={safeListPage}
+          pageCount={pageCount}
+          onPageChange={handlePageChange}
+        />
+      </div>
 
-                      {/* Loading indicator */}
-                      {isFetchingNextPage && (
-                        <div className="flex items-center justify-center gap-2 py-8">
-                          <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
-                          <p className="text-[var(--text-muted)]">Loading more programs...</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </Card>
+      {isFetchingNextPage ? (
+        <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}>
+          <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            Loading more programs…
+          </span>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
-import { Button } from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
 import { useBuilder } from '@/context/builder-context';
 import {
   useUpsertWorkoutSchedule,
@@ -34,14 +34,20 @@ interface BuildWorkoutSectionProps {
   initialWeeks: number;
   template: ProgramTemplate;
   assignmentStatus?: BuilderAssignmentStatus;
+  saveTrigger?: number;
+  onSaveStateChange?: (state: { disabled: boolean; loading: boolean }) => void;
+  onStepActive?: () => void;
 }
 
 export function BuildWorkoutSection({
   initialWeeks,
   template,
   assignmentStatus = 'template',
+  saveTrigger = 0,
+  onSaveStateChange,
+  onStepActive,
 }: BuildWorkoutSectionProps) {
-  const { schedule, programAssignmentId } = useBuilder();
+  const { schedule, programAssignmentId, currentWeek } = useBuilder();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
@@ -265,27 +271,122 @@ export function BuildWorkoutSection({
     updateProgramTemplateMutation.isPending;
   const isDisabled = !programAssignmentId || isSaving;
 
+  useEffect(() => {
+    onSaveStateChange?.({ disabled: isDisabled, loading: isSaving });
+  }, [isDisabled, isSaving, onSaveStateChange]);
+
+  useEffect(() => {
+    if (saveTrigger > 0) {
+      void handleSave();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- saveTrigger is external pulse
+  }, [saveTrigger]);
+
+  useEffect(() => {
+    onStepActive?.();
+  }, [onStepActive]);
+
+  const weekStats = useMemo(() => {
+    const week = schedule[currentWeek] ?? [];
+    let workoutDays = 0;
+    let exerciseCount = 0;
+    week.forEach((day) => {
+      if (day.length > 0) {
+        workoutDays += 1;
+        exerciseCount += day.length;
+      }
+    });
+    return { workoutDays, exerciseCount };
+  }, [schedule, currentWeek]);
+
   return (
     <>
-      <div className="w-full">
-        <div className="flex w-full items-center justify-between px-5 py-4">
-          <span className="text-[length:var(--text-lg)] font-[var(--fw-semibold)] text-[var(--text-strong)]">
-            Build Workout
-          </span>
-          <Button onClick={handleSave} disabled={isDisabled} size="sm" loading={isSaving}>
-            Save
-          </Button>
-        </div>
-        <div
-          className={cn(
-            'border-t border-[var(--border-subtle)] px-5 pb-5 pt-4',
-            isDisabled && 'disabled-div',
-          )}
-        >
-          <div className="space-y-6">
-            <WeekNavigation initialWeeks={initialWeeks} />
-            <DayBoxesGrid />
+      <div
+        className="card"
+        style={{ marginBottom: 16, padding: '16px 18px' }}
+      >
+        <div className="row" style={{ gap: 26, flexWrap: 'wrap' }}>
+          <div>
+            <label className="lbl">Duration</label>
+            <div className="row" style={{ gap: 7 }}>
+              <button type="button" className="ib ib-sec ib-sq ib-sm" disabled aria-label="Decrease">
+                <Icon name="Minus" size={15} />
+              </button>
+              <span className="fld fld-sm" style={{ width: 66, justifyContent: 'center' }}>
+                <input
+                  value={String(programForm.watch('weeks') ?? initialWeeks)}
+                  readOnly
+                  className="mono"
+                  style={{ textAlign: 'center', fontWeight: 600 }}
+                />
+              </span>
+              <button type="button" className="ib ib-sec ib-sq ib-sm" disabled aria-label="Increase">
+                <Icon name="Plus" size={15} />
+              </button>
+              <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                weeks
+              </span>
+            </div>
           </div>
+          <div>
+            <label className="lbl">Sessions per week</label>
+            <span className="sel">
+              <select disabled defaultValue="3 days" aria-label="Sessions per week">
+                <option>3 days</option>
+              </select>
+              <span className="ci">
+                <Icon name="ChevronDown" size={16} />
+              </span>
+            </span>
+          </div>
+          <span className="sp" style={{ alignSelf: 'flex-end', paddingBottom: 6 }}>
+            <div className="tip">
+              <button type="button" className="btn btn-sec btn-sm" disabled>
+                <Icon name="Ellipsis" size={16} />
+                Week actions
+              </button>
+              <span className="tt">Copy week · Paste into week · Duplicate to all weeks · Clear week</span>
+            </div>
+          </span>
+        </div>
+      </div>
+
+      <div className={cn('card card-flush', isDisabled && 'disabled-div')}>
+        <div style={{ padding: '16px 18px 6px' }}>
+          <WeekNavigation initialWeeks={initialWeeks} />
+
+          <div
+            className="row"
+            style={{
+              gap: 16,
+              padding: '11px 14px',
+              background: 'var(--slate-50)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 14,
+              marginTop: 16,
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            <span
+              className="row"
+              style={{ gap: 7, fontWeight: 'var(--fw-bold)', color: 'var(--text-strong)' }}
+            >
+              <Icon name="CalendarDays" size={16} style={{ color: 'var(--navy-600)' }} />
+              Week {currentWeek + 1}
+            </span>
+            <span className="mut">
+              {weekStats.workoutDays} workout day{weekStats.workoutDays === 1 ? '' : 's'} ·{' '}
+              {weekStats.exerciseCount} exercise{weekStats.exerciseCount === 1 ? '' : 's'}
+            </span>
+            <span className="sp mut row" style={{ gap: 6, fontSize: 'var(--text-xs)' }}>
+              <Icon name="GripVertical" size={14} />
+              Drag exercises between days, or click a day to edit it
+            </span>
+          </div>
+
+          <DayBoxesGrid />
+          <div style={{ height: 16 }} />
         </div>
       </div>
 
