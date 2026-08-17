@@ -19,7 +19,7 @@ export function GroupDetailsSubheader({
     <EditableTitle
       value={organization.name}
       onSave={handleSaveName}
-      className="text-2xl font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
+      className="cursor-pointer text-[length:var(--text-xl)] font-[var(--fw-bold)] text-[var(--text-strong)] transition-opacity hover:opacity-90"
     />
   );
 }

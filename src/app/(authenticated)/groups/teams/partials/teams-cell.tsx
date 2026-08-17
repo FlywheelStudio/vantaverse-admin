@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Badge, IconButton } from '@/components/medvanta';
 import { useOrganizationsTable } from '@/context/organizations';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
@@ -20,11 +19,11 @@ export function TeamsCell({ organization }: TeamsCellProps) {
   const isExpanded = expandedOrganizationId === organization.id;
   const teamsCount = organization.teams_count || 0;
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     handleExpandToggle(organization.id);
   };
 
-  const handleCreateClick = (e: React.MouseEvent) => {
+  const handleCreateClick = (e: React.MouseEvent): void => {
     e.stopPropagation();
     if (!isExpanded) {
       handleExpandToggle(organization.id);
@@ -34,34 +33,26 @@ export function TeamsCell({ organization }: TeamsCellProps) {
 
   return (
     <div className="flex items-center gap-2">
-      {teamsCount > 0 && (
-        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-[var(--radius-pill)] bg-secondary px-2 text-xs font-semibold text-foreground">
-          {teamsCount}
-        </span>
-      )}
-      {teamsCount > 0 && (
-        <Button
+      {teamsCount > 0 ? (
+        <Badge tone="brand">{teamsCount}</Badge>
+      ) : null}
+      {teamsCount > 0 ? (
+        <IconButton
+          icon={isExpanded ? 'ChevronUp' : 'ChevronDown'}
+          label={isExpanded ? 'Collapse teams' : 'Expand teams'}
           variant="ghost"
           size="sm"
           onClick={handleClick}
-          className="cursor-pointer h-8 w-8 p-0 rounded-[var(--radius-md)] text-primary hover:bg-primary/10"
-        >
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-        </Button>
-      )}
-      <Button
+        />
+      ) : null}
+      <IconButton
+        icon="Plus"
+        label="Create team"
         variant="ghost"
         size="sm"
         onClick={handleCreateClick}
         disabled={creatingTeam}
-        className="cursor-pointer h-8 w-8 p-0 rounded-[var(--radius-md)] text-primary hover:bg-primary/10 disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
+      />
     </div>
   );
 }
