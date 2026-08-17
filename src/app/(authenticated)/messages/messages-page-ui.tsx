@@ -2,33 +2,55 @@
 
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import {
-  Avatar,
-  Card,
-  Icon,
-  Input,
-} from '@/components/medvanta';
-import { ChatInterface } from '@/app/(authenticated)/users/[id]/partials/chat-interface';
+import { Loader2 } from 'lucide-react';
+import { AppBar } from '@/components/medvanta/shell';
+import { Icon } from '@/components/medvanta';
+import { HtmlAvatar } from '../users/html-helpers';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
 import { getConversationsForAdmin } from './actions';
+import { MessagesChatThread } from './messages-chat-thread';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
-import { cn } from '@/lib/utils';
-import NextLink from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
-function formatMessageTime(dateStr: string | null): string {
+type ConvFilter = 'all' | 'unread' | 'groups';
+
+function formatConvTime(dateStr: string | null): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isToday(d)) return format(d, 'h:mm a');
-  if (isYesterday(d)) return 'Yesterday';
-  if (isThisWeek(d)) return format(d, 'EEEE');
-  return format(d, 'MMM d');
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h a').toLowerCase().replace(' ', '');
+  if (isYesterday(date)) return 'Yesterday';
+  if (isThisWeek(date)) return format(date, 'EEE');
+  return format(date, 'd MMM');
 }
 
-type FilterType = 'all' | { type: 'org'; orgId: string };
+function buildSubtitle(conversations: ConversationItem[]): string {
+  const unreadTotal = conversations.reduce(
+    (sum, conversation) => sum + (conversation.unread_count ?? 0),
+    0,
+  );
+  const waiting = conversations.filter((conversation) => {
+    if (!conversation.last_message_at || conversation.unread_count === 0) {
+      return false;
+    }
+    const hours =
+      (Date.now() - new Date(conversation.last_message_at).getTime()) /
+      (1000 * 60 * 60);
+    return hours >= 24;
+  }).length;
+
+  const parts: string[] = [];
+  if (unreadTotal > 0) {
+    parts.push(`${unreadTotal} unread`);
+  }
+  if (waiting > 0) {
+    parts.push(
+      `${waiting} member${waiting !== 1 ? 's' : ''} waiting more than 24 hours`,
+    );
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'All caught up';
+}
 
 interface MessagesPageUIProps {
   organizations: Array<{ id: string; name: string }>;
@@ -38,18 +60,16 @@ interface MessagesPageUIProps {
 export function MessagesPageUI({
   organizations,
   conversations,
-}: MessagesPageUIProps) {
+}: MessagesPageUIProps): React.ReactElement {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [selected, setSelected] = useState<{
-    chatId: string;
-    patientName: string;
-    organizationId: string;
-    userId: string;
-  } | null>(null);
+  const [convFilter, setConvFilter] = useState<ConvFilter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [orgFilter, setOrgFilter] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [openingUserId, setOpeningUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
   const { data: conversationsData } = useQuery({
     queryKey: ['messages', 'conversations'],
     queryFn: async () => {
@@ -59,266 +79,320 @@ export function MessagesPageUI({
     },
     initialData: conversations,
   });
+
   const conversationsList = conversationsData ?? conversations;
+  const subtitle = useMemo(
+    () => buildSubtitle(conversationsList),
+    [conversationsList],
+  );
+  const unreadCount = useMemo(
+    () =>
+      conversationsList.filter((conversation) => conversation.unread_count > 0)
+        .length,
+    [conversationsList],
+  );
 
   const q = debouncedSearch.trim().toLowerCase();
 
   const filteredConversations = useMemo(() => {
     let list = conversationsList;
 
-    if (filter !== 'all' && filter.type === 'org') {
-      list = list.filter((c) => c.organization_id === filter.orgId);
+    if (convFilter === 'unread') {
+      list = list.filter((conversation) => conversation.unread_count > 0);
+    }
+
+    if (orgFilter) {
+      list = list.filter(
+        (conversation) => conversation.organization_id === orgFilter,
+      );
     }
 
     if (q) {
-      list = list.filter((c) => {
-        const fn = (c.first_name ?? '').toLowerCase();
-        const ln = (c.last_name ?? '').toLowerCase();
-        const fullName = `${fn} ${ln}`.trim();
-        const em = (c.email ?? '').toLowerCase();
-        const org = (c.organization_name ?? '').toLowerCase();
+      list = list.filter((conversation) => {
+        const firstName = (conversation.first_name ?? '').toLowerCase();
+        const lastName = (conversation.last_name ?? '').toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        const email = (conversation.email ?? '').toLowerCase();
+        const org = (conversation.organization_name ?? '').toLowerCase();
         return (
-          fn.includes(q) ||
-          ln.includes(q) ||
+          firstName.includes(q) ||
+          lastName.includes(q) ||
           fullName.includes(q) ||
-          em.includes(q) ||
+          email.includes(q) ||
           org.includes(q)
         );
       });
     }
 
     return list;
-  }, [conversationsList, filter, q]);
+  }, [conversationsList, convFilter, orgFilter, q]);
 
-  const orgCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of conversationsList) {
-      counts.set(c.organization_id, (counts.get(c.organization_id) ?? 0) + 1);
-    }
-    return counts;
-  }, [conversationsList]);
+  const activeFilterCount = orgFilter ? 1 : 0;
 
-  const handleSelectConversation = async (c: ConversationItem) => {
+  const handleSelectConversation = async (
+    conversation: ConversationItem,
+  ): Promise<void> => {
     if (openingUserId) return;
 
-    const patientName =
-      c.first_name && c.last_name
-        ? `${c.first_name} ${c.last_name}`
-        : c.first_name || c.last_name || 'Patient';
-
-    if (c.chat_id) {
-      setSelected({
-        chatId: c.chat_id,
-        patientName,
-        organizationId: c.organization_id,
-        userId: c.user_id,
-      });
+    if (conversation.chat_id) {
+      setSelected(conversation);
       return;
     }
 
-    setOpeningUserId(c.user_id);
+    setOpeningUserId(conversation.user_id);
     try {
       const result = await getOrCreateChatForPatient(
-        c.organization_id,
-        c.user_id,
+        conversation.organization_id,
+        conversation.user_id,
       );
       if (!result.success) {
-        toast(result.error || 'Failed to open chat');
+        toast.error(result.error || 'Failed to open chat');
         return;
       }
-      setSelected({
-        chatId: result.data.chatId,
-        patientName,
-        organizationId: c.organization_id,
-        userId: c.user_id,
-      });
-    } catch (e) {
-      console.error(e);
-      toast('Failed to open chat');
+      setSelected({ ...conversation, chat_id: result.data.chatId });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to open chat');
     } finally {
       setOpeningUserId(null);
     }
   };
 
-  const handleCloseChat = () => {
-    if (openingUserId) return;
-    setSelected(null);
-  };
-
-  const isFilterActive = (f: FilterType) => {
-    if (f === 'all' && filter === 'all') return true;
-    if (f !== 'all' && filter !== 'all' && f.type === 'org' && filter.type === 'org')
-      return f.orgId === filter.orgId;
-    return false;
-  };
-
   return (
-    <Card padding={0} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1">
-        <div
-          className={cn(
-            'flex min-w-0 shrink-0 flex-col overflow-hidden border-r border-[var(--border-subtle)]',
-            'w-[320px] max-w-[320px]',
-          )}
-        >
-          <div className="shrink-0 space-y-2 p-4">
-            <Input
-              type="search"
-              placeholder="Search conversations..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              iconLeft="Search"
-            />
+    <>
+      <AppBar
+        crumbs={[{ label: 'Messages' }]}
+        title="Messages"
+        subtitle={subtitle}
+        actions={
+          <>
+            <button
+              type="button"
+              className="btn btn-pri"
+              disabled
+              title="Placeholder"
+            >
+              <Icon name="Send" size={17} />
+              New message
+            </button>
+            <div className="tip">
+              <button
+                type="button"
+                className="ib ib-sec"
+                aria-label="More actions"
+                disabled
+                title="Placeholder"
+              >
+                <Icon name="Ellipsis" size={18} />
+              </button>
+              <span className="tt">
+                Message a group · Saved replies · Mark all read
+              </span>
+            </div>
+          </>
+        }
+      />
 
-            <div className="slim-scrollbar -mx-1 w-full overflow-x-auto overflow-y-hidden px-1 pb-2">
-              <div className="flex w-max min-w-0 gap-2">
+      <div className="body-flush">
+        <div className="msg-wrap">
+          <div className="conv-list">
+            <div className="conv-hd">
+              <div className="row" style={{ gap: 7 }}>
+                <span className="fld fld-sm" style={{ flex: 1 }}>
+                  <Icon name="Search" size={15} />
+                  <input
+                    value={search}
+                    placeholder="Search conversations…"
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </span>
                 <button
                   type="button"
-                  onClick={() => setFilter('all')}
-                  className={cn(
-                    'shrink-0 cursor-pointer rounded-[var(--radius-pill)] border px-3 py-1 text-[length:var(--text-sm)] font-[var(--fw-medium)] transition-colors',
-                    isFilterActive('all')
-                      ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--text-inverse)]'
-                      : 'border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-body)] hover:bg-[var(--bg-subtle)]',
-                  )}
+                  className="btn btn-sec btn-sm"
+                  style={{ padding: '0 10px' }}
+                  onClick={() => setFiltersOpen((open) => !open)}
                 >
-                  All
+                  <Icon name="Funnel" size={15} />
+                  {activeFilterCount > 0 ? (
+                    <span
+                      className="bdg bdg-b"
+                      style={{ padding: '0 5px', fontSize: 10 }}
+                    >
+                      {activeFilterCount}
+                    </span>
+                  ) : null}
                 </button>
-                {organizations.length > 0 ? (
-                  organizations.map((org) => (
+              </div>
+
+              {filtersOpen && organizations.length > 0 ? (
+                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${orgFilter === null ? 'btn-pri' : 'btn-sec'}`}
+                    onClick={() => setOrgFilter(null)}
+                  >
+                    All groups
+                  </button>
+                  {organizations.map((org) => (
                     <button
                       key={org.id}
                       type="button"
-                      onClick={() => setFilter({ type: 'org', orgId: org.id })}
-                      className={cn(
-                        'shrink-0 cursor-pointer whitespace-nowrap rounded-[var(--radius-pill)] border px-3 py-1 text-[length:var(--text-sm)] font-[var(--fw-medium)] transition-colors',
-                        isFilterActive({ type: 'org', orgId: org.id })
-                          ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--text-inverse)]'
-                          : 'border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--text-body)] hover:bg-[var(--bg-subtle)]',
-                      )}
+                      className={`btn btn-sm ${orgFilter === org.id ? 'btn-pri' : 'btn-sec'}`}
+                      onClick={() => setOrgFilter(org.id)}
                     >
-                      {org.name} ({orgCounts.get(org.id) ?? 0})
+                      {org.name}
                     </button>
-                  ))
-                ) : (
-                  <span className="flex h-7 shrink-0 items-center justify-center px-3 text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-muted)]">
-                    No groups assigned
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+                  ))}
+                </div>
+              ) : null}
 
-          <div className="messages-conversations-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <ScrollArea className="slim-scrollbar min-h-0 min-w-0 flex-1">
-              <div className="w-full min-w-0 space-y-1 px-2 pb-2 pt-2.5">
-                {filteredConversations.length === 0 ? (
-                  <div className="py-8 text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+              <span className="seg" style={{ width: '100%' }}>
+                <button
+                  type="button"
+                  className={convFilter === 'all' ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  onClick={() => setConvFilter('all')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={convFilter === 'unread' ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  onClick={() => setConvFilter('unread')}
+                >
+                  Unread
+                  {unreadCount > 0 ? (
+                    <span
+                      className="bdg bdg-b"
+                      style={{ padding: '0 5px', fontSize: 10 }}
+                    >
+                      {unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className={convFilter === 'groups' ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  disabled
+                  title="Group threads coming soon"
+                >
+                  Groups
+                </button>
+              </span>
+            </div>
+
+            <div className="conv-scroll">
+              {filteredConversations.length === 0 ? (
+                <div className="empty" style={{ padding: '32px 16px' }}>
+                  <div className="es">
                     {conversationsList.length === 0
                       ? 'No conversations yet'
                       : q
                         ? `No matches for "${debouncedSearch.trim()}"`
                         : 'No conversations in this filter'}
                   </div>
-                ) : (
-                  filteredConversations.map((c) => {
-                    const isOpening = openingUserId === c.user_id;
-                    const isSelected = selected?.userId === c.user_id;
-                    const fullName =
-                      c.first_name && c.last_name
-                        ? `${c.first_name} ${c.last_name}`
-                        : c.first_name || c.last_name || 'Unknown';
+                </div>
+              ) : (
+                filteredConversations.map((conversation) => {
+                  const isOpening = openingUserId === conversation.user_id;
+                  const isActive = selected?.user_id === conversation.user_id;
+                  const fullName =
+                    conversation.first_name && conversation.last_name
+                      ? `${conversation.first_name} ${conversation.last_name}`
+                      : conversation.first_name ||
+                        conversation.last_name ||
+                        'Unknown';
 
-                    return (
-                      <button
-                        key={c.user_id}
-                        type="button"
-                        onClick={() => handleSelectConversation(c)}
-                        disabled={!!openingUserId}
-                        className={cn(
-                          'w-full min-w-0 cursor-pointer rounded-[var(--radius-sm)] p-3 text-left transition-colors',
-                          'hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-50',
-                          isSelected && 'bg-[var(--navy-50)] ring-1 ring-[var(--border-default)]',
-                        )}
-                      >
-                        <div className="flex min-w-0 gap-3">
-                          <div className="relative flex size-10 shrink-0 items-center justify-center overflow-visible">
-                            {isOpening ? (
-                              <Icon
-                                name="LoaderCircle"
-                                size={20}
-                                className="animate-spin text-[var(--text-muted)]"
-                              />
-                            ) : (
-                              <>
-                                <Avatar
-                                  name={fullName}
-                                  src={c.avatar_url ?? undefined}
-                                  size="md"
-                                />
-                                {c.unread_count > 0 ? (
-                                  <span
-                                    aria-hidden
-                                    className="absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-[var(--danger)] bg-[var(--surface-card)] px-1 text-[10px] font-[var(--fw-semibold)] leading-none text-[var(--danger)] shadow-[var(--shadow-sm)]"
-                                  >
-                                    {c.unread_count}
-                                  </span>
-                                ) : null}
-                              </>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <div className="truncate text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-strong)]">
-                              {fullName}
-                            </div>
-                            <div className="mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                              {c.last_message_content ?? 'No messages yet'}
-                            </div>
-                            <div className="mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden">
-                              <span className="shrink-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                                {formatMessageTime(c.last_message_at)}
-                              </span>
-                              {c.program_name && c.program_assignment_id ? (
-                                <NextLink
-                                  href={`/builder/${c.program_assignment_id}?from=messages`}
-                                  className="block min-w-0 flex-1 cursor-pointer truncate text-[length:var(--text-xs)] text-[var(--text-body)] no-underline hover:text-[var(--primary)] hover:underline"
-                                >
-                                  {c.program_name}
-                                </NextLink>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
+                  return (
+                    <button
+                      key={conversation.user_id}
+                      type="button"
+                      className={`conv${isActive ? ' on' : ''}`}
+                      onClick={() => void handleSelectConversation(conversation)}
+                      disabled={!!openingUserId}
+                      style={{
+                        width: '100%',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {isOpening ? (
+                        <span
+                          className="av av-36 av-t1"
+                          style={{ width: 36, height: 36 }}
+                        >
+                          <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />
+                        </span>
+                      ) : (
+                        <HtmlAvatar
+                          name={fullName}
+                          src={conversation.avatar_url}
+                          size={36}
+                        />
+                      )}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span className="row" style={{ gap: 8 }}>
+                          <span className="cn">{fullName}</span>
+                          <span className="sp ct2">
+                            {formatConvTime(conversation.last_message_at)}
+                          </span>
+                        </span>
+                        <span
+                          className="cp"
+                          style={{
+                            display: 'block',
+                            color: 'var(--text-faint)',
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            letterSpacing: '.03em',
+                            textTransform: 'uppercase',
+                            marginTop: 1,
+                          }}
+                        >
+                          {conversation.organization_name}
+                        </span>
+                        <span className="cp" style={{ display: 'block' }}>
+                          {conversation.last_message_content ?? 'No messages yet'}
+                        </span>
+                      </span>
+                      {conversation.unread_count > 0 ? (
+                        <span className="ub" aria-hidden />
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {selected ? (
-            <div className="mv-messages-plain-compose flex min-h-0 flex-1 p-4 [&_.border-t>div.flex>button.self-end:first-of-type]:hidden [&_input[type=file]]:hidden">
-              <ChatInterface
-                chatId={selected.chatId}
-                patientName={selected.patientName}
-                onClose={handleCloseChat}
+          <div className="thread">
+            {selected?.chat_id ? (
+              <MessagesChatThread
+                chatId={selected.chat_id}
+                conversation={selected}
                 onMarkedAsSeen={() =>
                   queryClient.invalidateQueries({
                     queryKey: ['messages', 'conversations'],
                   })
                 }
               />
-            </div>
-          ) : (
-            <div className="flex flex-1 items-center justify-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-              Select a conversation
-            </div>
-          )}
+            ) : (
+              <div className="empty" style={{ flex: 1 }}>
+                <div className="ei">
+                  <Icon name="MessageSquare" size={24} />
+                </div>
+                <div className="et">Select a conversation</div>
+                <div className="es">
+                  Choose a member from the list to view and reply.
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </Card>
+    </>
   );
 }
