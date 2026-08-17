@@ -115,6 +115,9 @@ export function WorkoutBuilder({
       <BuilderSaveBar
         activeStep={activeStep}
         onStepClick={handleStepClick}
+        reviewAssignHref={
+          assignmentId ? `/builder/review-assign?id=${assignmentId}` : undefined
+        }
         onSave={() => setSaveTrigger((value) => value + 1)}
         saveDisabled={saveState.disabled}
         saveLoading={saveState.loading}
