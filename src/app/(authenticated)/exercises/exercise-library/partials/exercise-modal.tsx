@@ -3,12 +3,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
 import {
-  Dialog,
-  FormField,
   Icon,
   Input,
   Textarea,
 } from '@/components/medvanta';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
@@ -133,17 +132,77 @@ export function ExerciseModal({
     );
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
-      title={titleContent}
+      title={exercise.exercise_name}
+      subtitle="Library exercise details"
       onClose={() => onOpenChange(false)}
-      width={896}
-      className="max-h-[90vh] overflow-y-auto"
+      width={760}
+      style={{ maxHeight: 'min(90vh, 720px)' }}
+      bodyClassName="overflow-y-auto"
+      footerInfo="Last edited from library record"
+      footer={
+        <button type="button" className="btn btn-pri" onClick={() => onOpenChange(false)}>
+          Close
+        </button>
+      }
     >
-      {videoUrl ? (
-        <div className="relative mx-auto mb-6 aspect-video w-full max-w-2xl overflow-hidden rounded-[var(--radius-lg)] bg-[var(--slate-100)]">
-          {!showVideo ? (
-            <>
+      <div className="g" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 20 }}>
+        <div>
+          {videoUrl ? (
+            <div
+              className="thmb gr"
+              style={{ aspectRatio: '16/10', width: '100%', position: 'relative', borderRadius: 'var(--radius-sm)' }}
+            >
+              {!showVideo ? (
+                <>
+                  <ExerciseThumbnail
+                    blurhash={thumb?.blurhash ?? null}
+                    imageUrl={thumb?.image_url ?? null}
+                    videoUrl={null}
+                    videoType={exercise.video_type}
+                    alt={exercise.exercise_name}
+                    className="h-full w-full"
+                    fill
+                    aspectVideo={false}
+                    showVideoFallback={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowVideo(true)}
+                    className="pl"
+                    style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                    aria-label="Play video"
+                  >
+                    <i>
+                      <Icon name="Play" size={18} style={{ fill: 'currentColor' }} />
+                    </i>
+                  </button>
+                </>
+              ) : exercise.video_type === 'youtube' ? (
+                <iframe
+                  src={videoUrl}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={exercise.exercise_name}
+                />
+              ) : (
+                <video
+                  src={videoUrl}
+                  controls
+                  className="h-full w-full"
+                  preload="metadata"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )}
+            </div>
+          ) : (
+            <div
+              className="thmb gr"
+              style={{ aspectRatio: '16/10', width: '100%', position: 'relative', borderRadius: 'var(--radius-sm)' }}
+            >
               <ExerciseThumbnail
                 blurhash={thumb?.blurhash ?? null}
                 imageUrl={thumb?.image_url ?? null}
@@ -153,82 +212,64 @@ export function ExerciseModal({
                 className="h-full w-full"
                 fill
                 aspectVideo={false}
-                showVideoFallback={false}
+                showVideoFallback={true}
               />
-              <button
-                type="button"
-                onClick={() => setShowVideo(true)}
-                className="absolute inset-0 flex items-center justify-center bg-[color-mix(in_oklch,var(--navy-950)_30%,transparent)] transition-colors hover:bg-[color-mix(in_oklch,var(--navy-950)_40%,transparent)]"
-                aria-label="Play video"
-              >
-                <span className="rounded-[var(--radius-pill)] bg-[var(--primary)] p-4 text-[var(--text-inverse)] shadow-[var(--shadow-md)]">
-                  <Icon name="Play" size={32} className="fill-current" />
-                </span>
-              </button>
-            </>
-          ) : exercise.video_type === 'youtube' ? (
-            <iframe
-              src={videoUrl}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={exercise.exercise_name}
-            />
-          ) : (
-            <video
-              src={videoUrl}
-              controls
-              className="h-full w-full"
-              preload="metadata"
-            >
-              Your browser does not support the video tag.
-            </video>
+            </div>
           )}
         </div>
-      ) : null}
 
-      <FormField label="Instructions">
-        {editingField === 'library_tip' ? (
-          <div ref={instructionsRef}>
-            <Textarea
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSave('library_tip')}
-              rows={4}
-            />
+        <div>
+          <div className="ff">
+            <label className="lbl">Exercise name</label>
+            {titleContent}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleEdit('library_tip')}
-            className="w-full cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-left text-[length:var(--text-sm)] text-[var(--text-body)] transition-colors hover:bg-[var(--slate-50)] hover:text-[var(--primary)]"
-          >
-            {exercise.library_tip || 'Click to add instructions'}
-          </button>
-        )}
-      </FormField>
 
-      <FormField label="Check-in Questions" className="mt-4">
-        {editingField === 'library_check_in_question' ? (
-          <div ref={checkInRef}>
-            <Textarea
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSave('library_check_in_question')}
-              rows={4}
-            />
+          <div className="ff">
+            <label className="lbl">Instructions</label>
+            {editingField === 'library_tip' ? (
+              <div ref={instructionsRef}>
+                <Textarea
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={() => handleSave('library_tip')}
+                  rows={4}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleEdit('library_tip')}
+                className="w-full cursor-pointer whitespace-pre-wrap rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-3 py-2 text-left text-[length:var(--text-sm)] text-[var(--text-body)] transition-colors hover:bg-[var(--slate-50)]"
+              >
+                {exercise.library_tip || 'Click to add instructions'}
+              </button>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleEdit('library_check_in_question')}
-            className="w-full cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-left text-[length:var(--text-sm)] text-[var(--text-body)] transition-colors hover:bg-[var(--slate-50)] hover:text-[var(--primary)]"
-          >
-            {exercise.library_check_in_question ||
-              'Click to add check-in questions'}
-          </button>
-        )}
-      </FormField>
-    </Dialog>
+
+          <div className="ff">
+            <label className="lbl">Check-in questions</label>
+            {editingField === 'library_check_in_question' ? (
+              <div ref={checkInRef}>
+                <Textarea
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={() => handleSave('library_check_in_question')}
+                  rows={4}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleEdit('library_check_in_question')}
+                className="w-full cursor-pointer whitespace-pre-wrap rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-3 py-2 text-left text-[length:var(--text-sm)] text-[var(--text-body)] transition-colors hover:bg-[var(--slate-50)]"
+              >
+                {exercise.library_check_in_question ||
+                  'Click to add check-in questions'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </HtmlModal>
   );
 }

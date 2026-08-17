@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Button, Dialog, IconButton, Input } from '@/components/medvanta';
+import { Button, Icon, IconButton, Input } from '@/components/medvanta';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import {
   useExercisesInfinite,
   useExerciseTemplatesInfinite,
@@ -290,26 +291,34 @@ export function ExerciseBuilderModal({
   };
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
-      title={getHeaderTitle()}
+      title="Day editor"
+      subtitle={getHeaderTitle()}
       onClose={() => onOpenChange(false)}
-      className="flex max-h-[90vh] max-w-[90vw] flex-col overflow-hidden"
-      style={{ maxWidth: '90vw', height: '90vh' }}
-      width={2000}
+      width={1060}
+      style={{
+        maxWidth: 1060,
+        maxHeight: 'min(660px, calc(100vh - 56px))',
+        height: 'min(660px, calc(100vh - 56px))',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       footer={
         <>
-          <Button variant="secondary" onClick={handleCancel}>
+          <button type="button" className="btn btn-sec" onClick={handleCancel}>
             Cancel
-          </Button>
-          <Button onClick={handleDone}>Done</Button>
+          </button>
+          <button type="button" className="btn btn-pri" onClick={handleDone}>
+            <Icon name="Check" size={17} />
+            Done
+          </button>
         </>
       }
     >
-      <div className="-mx-6 -mt-3.5 -mb-5 flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {/* Left Panel */}
-          <div className="flex w-2/3 flex-col overflow-hidden border-r border-[var(--border-subtle)] px-6">
+      <div className="dual flex min-h-0 flex-1 overflow-hidden">
+          <div className="dual-l flex flex-col overflow-hidden">
             {/* Tabs and Controls */}
             <ExerciseTabSwitcher
               activeTab={activeTab}
@@ -445,10 +454,9 @@ export function ExerciseBuilderModal({
             </div>
           </div>
 
-          {/* Right Panel - Selected Items */}
-          <div className="slim-scrollbar flex w-1/3 flex-col overflow-y-auto px-6">
+          <div className="dual-r slim-scrollbar flex flex-col overflow-y-auto">
             <h4 className="mb-4 font-[var(--fw-semibold)] text-[var(--text-strong)]">
-              Selected Items
+              Selected items
             </h4>
             {!showGroupInput ? (
               <button
@@ -502,8 +510,7 @@ export function ExerciseBuilderModal({
               onToggleSuperset={handleToggleSuperset}
             />
           </div>
-        </div>
       </div>
-    </Dialog>
+    </HtmlModal>
   );
 }

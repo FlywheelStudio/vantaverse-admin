@@ -6,13 +6,12 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
-  Alert,
-  Button,
-  Dialog,
   FormField,
+  Icon,
   Input,
   Tabs,
 } from '@/components/medvanta';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 
 import { type ImportUsersResult } from '../../actions';
 import { FileUploadTab } from './file-upload-tab';
@@ -175,29 +174,33 @@ function AddUserModalInner({
 
   if (mode === 'pending') {
     return (
-      <Dialog
+      <HtmlModal
         open={open}
         onClose={handleClose}
         title={modalTitle}
-        width={760}
-        className="flex max-h-[85vh] flex-col overflow-hidden"
+        subtitle="Review pending invites before sending."
+        width={920}
+        style={{ maxHeight: 'min(85vh, 720px)', display: 'flex', flexDirection: 'column' }}
+        bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         <PendingUsersView
           onClose={handleClose}
           onAddMore={() => setMode('upload')}
           role={role}
         />
-      </Dialog>
+      </HtmlModal>
     );
   }
 
   return (
-    <Dialog
+    <HtmlModal
       open={open}
       onClose={handleClose}
       title={modalTitle}
-      width={760}
-      className="flex max-h-[85vh] flex-col overflow-hidden"
+      subtitle="Add users to your platform. Invitations will be sent separately."
+      width={920}
+      style={{ maxHeight: 'min(85vh, 720px)', display: 'flex', flexDirection: 'column' }}
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -209,10 +212,6 @@ function AddUserModalInner({
         transition={{ duration: 0.2, ease: 'easeOut' }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <p className="mb-4 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          Add users to your platform. Invitations will be sent separately.
-        </p>
-
         <Tabs
           tabs={[
             { id: 'individual', label: 'Individual' },
@@ -235,60 +234,79 @@ function AddUserModalInner({
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
                 className="flex flex-col"
               >
-                <div className="flex min-h-0 w-full flex-col">
-                  <div className="w-full flex-1 space-y-4">
-                    <FormField label="Email Address" required>
-                      <Input
-                        value={individualEmail}
-                        onChange={(e) => setIndividualEmail(e.target.value)}
-                        placeholder="user@example.com"
-                        type="email"
-                      />
-                    </FormField>
+                <div className="dual">
+                  <div className="dual-l">
+                    <div className="space-y-4">
+                      <FormField label="Email Address" required>
+                        <Input
+                          value={individualEmail}
+                          onChange={(e) => setIndividualEmail(e.target.value)}
+                          placeholder="user@example.com"
+                          type="email"
+                        />
+                      </FormField>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <FormField label="First Name (Optional)">
-                        <Input
-                          value={individualFirstName}
-                          onChange={(e) =>
-                            setIndividualFirstName(e.target.value)
-                          }
-                          placeholder="Enter their first name"
-                        />
-                      </FormField>
-                      <FormField label="Last Name (Optional)">
-                        <Input
-                          value={individualLastName}
-                          onChange={(e) => setIndividualLastName(e.target.value)}
-                          placeholder="Enter their last name"
-                        />
-                      </FormField>
+                      <div className="g g2">
+                        <FormField label="First Name (Optional)">
+                          <Input
+                            value={individualFirstName}
+                            onChange={(e) =>
+                              setIndividualFirstName(e.target.value)
+                            }
+                            placeholder="Enter their first name"
+                          />
+                        </FormField>
+                        <FormField label="Last Name (Optional)">
+                          <Input
+                            value={individualLastName}
+                            onChange={(e) => setIndividualLastName(e.target.value)}
+                            placeholder="Enter their last name"
+                          />
+                        </FormField>
+                      </div>
                     </div>
-
-                    <Alert kind="info" title="Pending status">
-                      Users will be added as Pending. Review the list before
-                      sending invitations.
-                    </Alert>
                   </div>
+                  <div className="dual-r">
+                    <div className="alert alert-i">
+                      <Icon name="Info" size={19} />
+                      <div>
+                        <div className="at">Pending status</div>
+                        <div>
+                          Users will be added as Pending. Review the list before sending
+                          invitations.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="mt-auto flex justify-end gap-2 pt-4">
-                    <Button
-                      variant="secondary"
+                <div className="mf" style={{ marginTop: 16, padding: 0, border: 'none' }}>
+                  <span className="sp" />
+                  <span className="r">
+                    <button
+                      type="button"
+                      className="btn btn-sec"
                       onClick={handleCancel}
                       disabled={createUserMutation.isPending}
                     >
                       Cancel
-                    </Button>
-                    <Button
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-pri"
                       onClick={handleAddToList}
                       disabled={
                         !canSubmitIndividual || createUserMutation.isPending
                       }
-                      loading={createUserMutation.isPending}
                     >
-                      Add to List
-                    </Button>
-                  </div>
+                      {createUserMutation.isPending ? (
+                        <Icon name="LoaderCircle" size={17} className="animate-spin" />
+                      ) : (
+                        <Icon name="UserPlus" size={17} />
+                      )}
+                      Add to list
+                    </button>
+                  </span>
                 </div>
               </motion.div>
             )}
@@ -331,6 +349,6 @@ function AddUserModalInner({
           </AnimatePresence>
         </div>
       </motion.div>
-    </Dialog>
+    </HtmlModal>
   );
 }

@@ -18,6 +18,7 @@ import { ProgramAssignmentCard } from './partials/program-assignment-card';
 import { ProgramStatusCard } from './program-status/card';
 import { ComplianceChartCard } from './partials/compliance-chart-card';
 import { ChangeOnboardingDialog } from './partials/change-onboarding-dialog';
+import { IntakeSurveyPlaceholderModal } from './partials/intake-survey-placeholder-modal';
 import { MemberDetailHeader } from './partials/member-detail-header';
 import { MemberNotesTab } from './partials/member-notes-tab';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
@@ -98,6 +99,7 @@ export function UserProfilePageUI({
 }): React.ReactElement {
   const [activeTab, setActiveTab] = useState<MemberTab>('onb');
   const [changeOnboardingOpen, setChangeOnboardingOpen] = useState(false);
+  const [intakeSurveyOpen, setIntakeSurveyOpen] = useState(false);
 
   const screeningAppointments = appointments.filter(
     (appointment) => appointment.type === 'onboarding_screening',
@@ -262,6 +264,18 @@ export function UserProfilePageUI({
                     stepType="screening"
                   />
                   <McIntakeCard survey={mcIntakeSurvey} />
+                  {mcIntakeSurvey ? (
+                    <div className="row" style={{ marginTop: -8, marginBottom: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setIntakeSurveyOpen(true)}
+                      >
+                        <Icon name="ClipboardList" size={15} />
+                        View intake survey
+                      </button>
+                    </div>
+                  ) : null}
                   <AppointmentCard
                     title="3. Virtual Consultation"
                     appointments={consultationAppointments}
@@ -359,6 +373,14 @@ export function UserProfilePageUI({
             status: user.status,
           }}
         />
+        {mcIntakeSurvey ? (
+          <IntakeSurveyPlaceholderModal
+            open={intakeSurveyOpen}
+            onOpenChange={setIntakeSurveyOpen}
+            survey={mcIntakeSurvey}
+            memberName={displayName}
+          />
+        ) : null}
       </div>
     </>
   );
