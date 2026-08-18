@@ -1,11 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Avatar, Icon } from '@/components/medvanta';
 import { HtmlModal } from './intake-survey-placeholder-modal';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
 import { useRouter } from 'next/navigation';
+import {
+  DEFAULT_ONBOARDING_GATE_INDEX,
+  formatClearedGatesAlertTitle,
+  formatGateBadge,
+} from './change-onboarding-mock-data';
 
 type OnboardingOverride = 'full' | SetOnboardingStateTarget;
 
@@ -19,6 +25,10 @@ interface ChangeOnboardingDialogProps {
     email: string | null;
     status?: string | null;
   };
+  /** Preselect path when parent knows the current override. */
+  currentPath?: OnboardingOverride;
+  /** 0-based gate index for badge + cleared-gates copy (mock default 2). */
+  gateIndex?: number;
 }
 
 /** Copy + structure match HTML `mdChangeOnboarding`. */
@@ -43,19 +53,24 @@ const onboardingOptions = [
   },
 ] as const;
 
-export function ChangeOnboardingDialog({
-  open,
+function ChangeOnboardingDialogBody({
   onOpenChange,
   user,
-}: ChangeOnboardingDialogProps): React.ReactElement {
+  currentPath,
+  gateIndex = DEFAULT_ONBOARDING_GATE_INDEX,
+}: Omit<ChangeOnboardingDialogProps, 'open'>): React.ReactElement {
   const router = useRouter();
-  const [override, setOverride] = useState<OnboardingOverride>('full');
+  const [override, setOverride] = useState<OnboardingOverride>(
+    currentPath ?? 'full',
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
   const displayEmail = user.email ?? '';
+  const firstName =
+    user.first_name?.trim() || displayName.split(' ')[0] || 'Member';
 
   const handleClose = (): void => {
     onOpenChange(false);
@@ -63,6 +78,8 @@ export function ChangeOnboardingDialog({
 
   const handleSave = async (): Promise<void> => {
     if (override === 'full') {
+      toast.success('Restored full onboarding (preview)');
+      router.refresh();
       onOpenChange(false);
       return;
     }
@@ -80,7 +97,7 @@ export function ChangeOnboardingDialog({
 
   return (
     <HtmlModal
-      open={open}
+      open
       onClose={handleClose}
       title="Change onboarding path"
       subtitle="Controls which gates this member has to clear."
@@ -129,7 +146,7 @@ export function ChangeOnboardingDialog({
             {displayEmail || '—'}
           </span>
         </span>
-        <span className="bdg bdg-b">Onboarding</span>
+        <span className="bdg bdg-b">{formatGateBadge(gateIndex)}</span>
       </div>
 
       <label className="lbl" style={{ marginBottom: 9, display: 'block' }}>
@@ -156,17 +173,14 @@ export function ChangeOnboardingDialog({
         })}
       </div>
 
-      {override !== 'full' ? (
-        <div className="alert alert-w" style={{ marginTop: 16 }}>
-          <Icon name="TriangleAlert" size={19} />
-          <div>
-            <div className="at">
-              Skipping a completed gate hides it from their path but keeps the record
-            </div>
-            Restoring it later requires resetting onboarding.
-          </div>
+      <div className="alert alert-w" style={{ marginTop: 16 }}>
+        <Icon name="TriangleAlert" size={19} />
+        <div>
+          <div className="at">{formatClearedGatesAlertTitle(firstName, gateIndex)}</div>
+          Skipping a completed gate hides it from their path but keeps the record.
+          Restoring it later requires resetting onboarding.
         </div>
-      ) : null}
+      </div>
 
       {error ? (
         <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--danger)' }}>
@@ -174,5 +188,22 @@ export function ChangeOnboardingDialog({
         </p>
       ) : null}
     </HtmlModal>
+  );
+}
+
+/**
+ * Change onboarding path dialog (HTML `mdChangeOnboarding`).
+ * Remounts on open so path/gate state resets without effect setState.
+ */
+export function ChangeOnboardingDialog({
+  open,
+  ...props
+}: ChangeOnboardingDialogProps): React.ReactElement | null {
+  if (!open) return null;
+  return (
+    <ChangeOnboardingDialogBody
+      key={`onboarding-${props.currentPath ?? 'full'}-${props.gateIndex ?? DEFAULT_ONBOARDING_GATE_INDEX}`}
+      {...props}
+    />
   );
 }
