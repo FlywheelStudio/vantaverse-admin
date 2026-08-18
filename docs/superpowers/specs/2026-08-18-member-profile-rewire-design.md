@@ -53,7 +53,7 @@ Replace current thin InsightCards with HTML-aligned cards. Pass data from `ui.ts
 
 ### VantaPoints
 
-- Navy/cyan gradient card matching HTML.
+- Solid `var(--navy-900)` card with cyan radial accent and cyan progress bar (HTML `scMemberDetail` + design-system audit: **no** purple/violet gradient; **no** `--brand-gradient` on body content).
 - Level from `user.current_level`.
 - Points from `user.hp_points`; progress toward next from `user.points_for_next_level` and/or `pointsMissingForNextLevel` / `hpLevelThreshold` as already fetched.
 - Empty: "—" / 0% progress.
