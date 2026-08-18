@@ -182,6 +182,16 @@ export function AddMembersModal({
     initialPhysiologistId,
   });
 
+  const resetModalState = (): void => {
+    resetSelection();
+    setSearchQuery('');
+    setViewUnassigned(true);
+    setSelectedRole(initialRole ?? 'patient');
+    setInviteEmail('');
+    setPendingInvites([]);
+    setInviteAlert(null);
+  };
+
   const { handleSave, isPending } = useSaveMembers({
     type,
     id,
@@ -192,7 +202,10 @@ export function AddMembersModal({
     selectedPhysiologistId,
     hasChanges: hasChanges(selectedRole),
     profilesData,
-    onSuccess: () => onOpenChange(false),
+    onSuccess: () => {
+      resetModalState();
+      onOpenChange(false);
+    },
   });
 
   const allProfiles = useMemo((): ProfileWithMemberships[] => {
@@ -288,13 +301,7 @@ export function AddMembersModal({
   };
 
   const handleCancel = (): void => {
-    resetSelection();
-    setSearchQuery('');
-    setViewUnassigned(true);
-    setSelectedRole(initialRole ?? 'patient');
-    setInviteEmail('');
-    setPendingInvites([]);
-    setInviteAlert(null);
+    resetModalState();
     onOpenChange(false);
   };
 
@@ -470,11 +477,8 @@ export function AddMembersModal({
         </div>
       ) : null}
 
-      <div className="ff" style={{ marginBottom: 12 }}>
-        <label className="lbl" htmlFor="add-members-search">
-          Search
-        </label>
-        <div className="fld">
+      <div className="row" style={{ gap: 9, marginBottom: 12 }}>
+        <div className="fld" style={{ flex: 1 }}>
           <Icon name="Search" size={16} />
           <input
             id="add-members-search"
@@ -483,13 +487,21 @@ export function AddMembersModal({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        {selectedRole === 'patient' ? (
+          <Switch
+            style={{ margin: 0, flexShrink: 0, whiteSpace: 'nowrap' }}
+            checked={viewUnassigned}
+            onChange={setViewUnassigned}
+            label="Only people with no group"
+          />
+        ) : null}
       </div>
 
       {selectedRole === 'patient' ? (
         <div
           className="row"
           style={{
-            marginBottom: 12,
+            marginBottom: 8,
             gap: 8,
             justifyContent: 'space-between',
           }}
@@ -508,20 +520,6 @@ export function AddMembersModal({
           >
             Select all {filteredProfiles.length}
           </button>
-          <Switch
-            style={{ margin: 0 }}
-            checked={viewUnassigned}
-            onChange={setViewUnassigned}
-            label="Only people with no group"
-          />
-        </div>
-      ) : null}
-
-      {selectedRole === 'patient' ? (
-        <div
-          className="row"
-          style={{ justifyContent: 'flex-end', marginBottom: 8 }}
-        >
           <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
             Showing {filteredProfiles.length} of {roleFilteredProfiles.length}{' '}
             {viewUnassigned ? 'unassigned members' : 'members'}
