@@ -94,6 +94,7 @@ export function DragContent({
           onRemoveGroup={onRemoveGroup}
           onToggleSuperset={onToggleSuperset}
           onItemsReorder={onItemsReorder}
+          onUpdate={onUpdate}
           onGroupItemClick={(groupItem, groupIdx, itemIdx, event) => {
             if (groupItem.type === 'template') {
               setModalState({

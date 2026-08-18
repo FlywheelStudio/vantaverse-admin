@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { ExerciseBuilderModal } from './exercise-builder-modal';
+import {
+  ExerciseBuilderModal,
+  type ExerciseBuilderDonePayload,
+} from './exercise-builder-modal';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
+import type { DayScheduleMeta } from './exercise-builder-mock-data';
+import { EMPTY_DAY_SCHEDULE_META } from './exercise-builder-mock-data';
 import { useBuilder } from '@/context/builder-context';
 import {
   upsertWorkoutSchedule,
@@ -19,6 +24,9 @@ export function DayBoxesGrid() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
+  const [pendingDayMeta, setPendingDayMeta] = useState<DayScheduleMeta>(
+    EMPTY_DAY_SCHEDULE_META,
+  );
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [animatingDay, setAnimatingDay] = useState<{
     weekIndex: number;
@@ -34,6 +42,8 @@ export function DayBoxesGrid() {
     resetProgramAssignmentId,
     setScheduleItem,
     getDayItems,
+    getDayMeta,
+    setDayMeta,
     schedule,
     copiedDayIndex,
     copiedDayData,
@@ -45,6 +55,7 @@ export function DayBoxesGrid() {
 
   const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
   const initialItemsRef = useRef<SelectedItem[] | null>(null);
+  const initialDayMetaRef = useRef<DayScheduleMeta>(EMPTY_DAY_SCHEDULE_META);
 
   // Parse date string to local date (avoiding timezone issues)
   const parseLocalDate = useCallback((dateString: string): Date => {
@@ -122,14 +133,61 @@ export function DayBoxesGrid() {
 
     setSelectedDay(day);
     previousWeekDayRef.current = { week: currentWeek, day: dayIndex };
-    // Load existing items for this day
+    // Load existing items and metadata for this day
     const initialItems = getDayItems(currentWeek, dayIndex);
+    const initialMeta = getDayMeta(currentWeek, dayIndex);
 
-    // Store initial items (deep copy to prevent mutation)
+    // Store initial state (deep copy to prevent mutation)
     initialItemsRef.current = JSON.parse(JSON.stringify(initialItems));
+    initialDayMetaRef.current = { ...initialMeta };
     setPendingItems(initialItems);
+    setPendingDayMeta(initialMeta);
     setModalOpen(true);
   };
+
+  const navigateToDay = useCallback(
+    (newDay: number): void => {
+      if (selectedDay === null) return;
+
+      const currentDayIndex = selectedDay - 1;
+      const targetDayIndex = newDay - 1;
+      const targetItems = getDayItems(currentWeek, targetDayIndex);
+      const targetMeta = getDayMeta(currentWeek, targetDayIndex);
+
+      setScheduleItem(currentWeek, currentDayIndex, pendingItems);
+      setDayMeta(currentWeek, currentDayIndex, pendingDayMeta);
+
+      setSelectedDay(newDay);
+      previousWeekDayRef.current = { week: currentWeek, day: targetDayIndex };
+
+      initialItemsRef.current = JSON.parse(JSON.stringify(targetItems));
+      initialDayMetaRef.current = { ...targetMeta };
+      setPendingItems(JSON.parse(JSON.stringify(targetItems)));
+      setPendingDayMeta({ ...targetMeta });
+    },
+    [
+      selectedDay,
+      currentWeek,
+      pendingItems,
+      pendingDayMeta,
+      getDayItems,
+      getDayMeta,
+      setScheduleItem,
+      setDayMeta,
+    ],
+  );
+
+  const handlePrevDay = useCallback((): void => {
+    if (selectedDay === null) return;
+    const newDay = selectedDay === 1 ? 7 : selectedDay - 1;
+    navigateToDay(newDay);
+  }, [selectedDay, navigateToDay]);
+
+  const handleNextDay = useCallback((): void => {
+    if (selectedDay === null) return;
+    const newDay = selectedDay === 7 ? 1 : selectedDay + 1;
+    navigateToDay(newDay);
+  }, [selectedDay, navigateToDay]);
 
   const saveDraft = async (
     items: SelectedItem[],
@@ -207,43 +265,58 @@ export function DayBoxesGrid() {
     }
   };
 
-  const handleModalDone = async (selectedItems: SelectedItem[]) => {
+  const handleModalDone = async (payload: ExerciseBuilderDonePayload): Promise<void> => {
     if (selectedDay === null) return;
 
     const dayIndex = selectedDay - 1;
     const previousItems = getDayItems(currentWeek, dayIndex);
-    const hasChanges =
-      JSON.stringify(previousItems) !== JSON.stringify(selectedItems);
+    const hasItemChanges =
+      JSON.stringify(previousItems) !== JSON.stringify(payload.items);
 
-    if (hasChanges) {
-      await saveDraft(selectedItems, currentWeek, dayIndex);
+    setDayMeta(currentWeek, dayIndex, {
+      isRestDay: payload.isRestDay,
+      sessionNote: payload.sessionNote,
+    });
+    setScheduleItem(currentWeek, dayIndex, payload.items);
+
+    if (hasItemChanges) {
+      await saveDraft(payload.items, currentWeek, dayIndex);
     }
 
     setModalOpen(false);
     setSelectedDay(null);
     previousWeekDayRef.current = null;
     setPendingItems([]);
+    setPendingDayMeta(EMPTY_DAY_SCHEDULE_META);
     initialItemsRef.current = null;
+    initialDayMetaRef.current = EMPTY_DAY_SCHEDULE_META;
   };
 
-  const handleItemsChange = (items: SelectedItem[]) => {
+  const handleItemsChange = (items: SelectedItem[]): void => {
     setPendingItems(items);
+  };
+
+  const handleDayMetaChange = (meta: DayScheduleMeta): void => {
+    setPendingDayMeta(meta);
   };
 
   const handleModalCancel = useCallback(() => {
     if (selectedDay === null || initialItemsRef.current === null) return;
 
     const dayIndex = selectedDay - 1;
-    // Revert schedule state to initial items
+    // Revert schedule state to initial items and metadata
     setScheduleItem(currentWeek, dayIndex, initialItemsRef.current);
-    
+    setDayMeta(currentWeek, dayIndex, initialDayMetaRef.current);
+
     // Clear state
     setSelectedDay(null);
     previousWeekDayRef.current = null;
     setPendingItems([]);
+    setPendingDayMeta(EMPTY_DAY_SCHEDULE_META);
     initialItemsRef.current = null;
+    initialDayMetaRef.current = EMPTY_DAY_SCHEDULE_META;
     setModalOpen(false);
-  }, [selectedDay, currentWeek, setScheduleItem]);
+  }, [selectedDay, currentWeek, setScheduleItem, setDayMeta]);
 
   const handleModalClose = async (open: boolean) => {
     if (!open && selectedDay !== null) {
@@ -432,10 +505,15 @@ export function DayBoxesGrid() {
         onDone={handleModalDone}
         onCancel={handleModalCancel}
         initialItems={pendingItems}
+        initialIsRestDay={pendingDayMeta.isRestDay ?? false}
+        initialSessionNote={pendingDayMeta.sessionNote ?? ''}
         onItemsChange={handleItemsChange}
+        onDayMetaChange={handleDayMetaChange}
         weekIndex={selectedDay !== null ? currentWeek : undefined}
         dayIndex={selectedDay !== null ? selectedDay - 1 : undefined}
         date={selectedDayDate}
+        onPrevDay={handlePrevDay}
+        onNextDay={handleNextDay}
       />
     </>
   );

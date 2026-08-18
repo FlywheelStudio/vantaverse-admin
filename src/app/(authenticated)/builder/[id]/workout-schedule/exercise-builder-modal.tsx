@@ -27,18 +27,27 @@ import { GroupCard } from './partials/group-card';
 import { SelectedItemsList } from './selected-items-list';
 import { DefaultValues } from '../default-values/default-values';
 import {
-  DEFAULT_SESSION_NOTE,
   formatVolumeFooter,
   getDayName,
+  type DayScheduleMeta,
 } from './exercise-builder-mock-data';
+
+export interface ExerciseBuilderDonePayload {
+  items: SelectedItem[];
+  isRestDay: boolean;
+  sessionNote: string;
+}
 
 interface ExerciseBuilderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDone?: (selectedItems: SelectedItem[]) => void;
+  onDone?: (payload: ExerciseBuilderDonePayload) => void;
   onCancel?: () => void;
   initialItems?: SelectedItem[];
+  initialIsRestDay?: boolean;
+  initialSessionNote?: string;
   onItemsChange?: (selectedItems: SelectedItem[]) => void;
+  onDayMetaChange?: (meta: DayScheduleMeta) => void;
   weekIndex?: number;
   dayIndex?: number;
   date?: Date | null;
@@ -63,7 +72,10 @@ export function ExerciseBuilderModal({
   onDone,
   onCancel,
   initialItems = [],
+  initialIsRestDay = false,
+  initialSessionNote = '',
   onItemsChange,
+  onDayMetaChange,
   weekIndex,
   dayIndex,
   date,
@@ -79,8 +91,8 @@ export function ExerciseBuilderModal({
     useState<SelectedItem[]>(initialItems);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
-  const [isRestDay, setIsRestDay] = useState(false);
-  const [sessionNote, setSessionNote] = useState(DEFAULT_SESSION_NOTE);
+  const [isRestDay, setIsRestDay] = useState(initialIsRestDay);
+  const [sessionNote, setSessionNote] = useState(initialSessionNote);
   const [mockDayIndex, setMockDayIndex] = useState(dayIndex ?? 0);
 
   const debouncedSearch = useDebounce(search, 300);
@@ -155,6 +167,16 @@ export function ExerciseBuilderModal({
   const updateSelectedItems = (newItems: SelectedItem[]): void => {
     setSelectedItems(newItems);
     onItemsChange?.(newItems);
+  };
+
+  const updateDayMeta = (next: Partial<DayScheduleMeta>): void => {
+    const meta: DayScheduleMeta = {
+      isRestDay: next.isRestDay ?? isRestDay,
+      sessionNote: next.sessionNote ?? sessionNote,
+    };
+    if (next.isRestDay !== undefined) setIsRestDay(next.isRestDay);
+    if (next.sessionNote !== undefined) setSessionNote(next.sessionNote);
+    onDayMetaChange?.(meta);
   };
 
   const handleAddExercise = (exercise: Exercise): void => {
@@ -238,7 +260,11 @@ export function ExerciseBuilderModal({
       return true;
     });
 
-    onDone?.(filteredItems);
+    onDone?.({
+      items: filteredItems,
+      isRestDay,
+      sessionNote,
+    });
     onOpenChange(false);
     setSearch('');
     setShowGroupInput(false);
@@ -372,7 +398,7 @@ export function ExerciseBuilderModal({
           </button>
         </>
       }
-      footerInfo={`${dayName} · ${volumeLabel}`}
+      footerInfo={volumeLabel}
       footer={
         <>
           <button type="button" className="btn btn-sec" onClick={handleCancel}>
@@ -562,7 +588,7 @@ export function ExerciseBuilderModal({
                 className={isRestDay ? 'sw on' : 'sw'}
                 aria-pressed={isRestDay}
                 aria-label={`Mark ${dayName} as a rest day`}
-                onClick={() => setIsRestDay((prev) => !prev)}
+                onClick={() => updateDayMeta({ isRestDay: !isRestDay })}
               >
                 <i />
               </button>
@@ -579,7 +605,7 @@ export function ExerciseBuilderModal({
                 rows={2}
                 placeholder="Optional — shown at the top of the workout"
                 value={sessionNote}
-                onChange={(e) => setSessionNote(e.target.value)}
+                onChange={(e) => updateDayMeta({ sessionNote: e.target.value })}
                 disabled={isRestDay}
               />
             </div>

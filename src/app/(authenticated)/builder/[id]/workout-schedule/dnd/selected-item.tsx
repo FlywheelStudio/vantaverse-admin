@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { generateExerciseTemplateDescription, generateDefaultValuesDescription } from '@/lib/utils/exercise-template-description';
 import { PlayButton } from '@/components/ui/play-button';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
@@ -15,15 +14,20 @@ interface SelectedItemProps {
   item: SelectedItem;
   onRemove: () => void;
   onClick: (event: React.MouseEvent) => void;
+  onPrescriptionChange?: (prescription: DayPrescription) => void;
 }
 
 export function SelectedItemComponent({
   item,
   onRemove,
   onClick,
+  onPrescriptionChange,
 }: SelectedItemProps): React.ReactElement | null {
   const { values: defaultValues } = useDefaultValues();
-  const [rx, setRx] = useState<DayPrescription>(DEFAULT_DAY_PRESCRIPTION);
+  const rx =
+    item.type !== 'group'
+      ? (item.prescription ?? DEFAULT_DAY_PRESCRIPTION)
+      : DEFAULT_DAY_PRESCRIPTION;
 
   if (item.type === 'group') {
     return null;
@@ -50,7 +54,8 @@ export function SelectedItemComponent({
     field: keyof DayPrescription,
     value: string,
   ): void => {
-    setRx((prev) => ({ ...prev, [field]: value }));
+    const next = { ...rx, [field]: value };
+    onPrescriptionChange?.(next);
   };
 
   return (

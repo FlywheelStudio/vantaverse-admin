@@ -18,6 +18,17 @@ export interface DayPrescription {
   rest: string;
 }
 
+/** Client-only metadata for a schedule day (no RPC persistence). */
+export interface DayScheduleMeta {
+  isRestDay?: boolean;
+  sessionNote?: string;
+}
+
+export const EMPTY_DAY_SCHEDULE_META: DayScheduleMeta = {
+  isRestDay: false,
+  sessionNote: '',
+};
+
 /** Mock default Rx shown on selected rows: 3×10 · 60s */
 export const DEFAULT_DAY_PRESCRIPTION: DayPrescription = {
   sets: '3',
