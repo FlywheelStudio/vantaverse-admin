@@ -6,11 +6,13 @@ import { useExercises } from '@/hooks/use-exercises';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
-import { HtmlFiltersButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-
-type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  ExercisesFilterPanel,
+  type AssignmentFilter,
+} from './partials/exercises-filter-panel';
 
 function formatTypeLabel(type: string): string {
   return type
@@ -28,6 +30,8 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const [searchValue, setSearchValue] = useState('');
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(16);
   const pageSize = 16;
 
@@ -39,8 +43,39 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const allExercises = useMemo(
+    () => exercises ?? [],
+    [exercises],
+  );
+
+  const assignmentCounts = useMemo(() => {
+    let unassigned = 0;
+    let assigned = 0;
+    for (const exercise of allExercises) {
+      if ((exercise.assigned_count ?? 0) > 0) assigned += 1;
+      else unassigned += 1;
+    }
+    return { all: allExercises.length, unassigned, assigned };
+  }, [allExercises]);
+
+  const typeOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const exercise of allExercises) {
+      const key = (exercise.type ?? '').trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([value, count]) => ({
+        value,
+        label: formatTypeLabel(value),
+        count,
+      }));
+  }, [allExercises]);
+
   const filteredExercises = useMemo(() => {
-    return (exercises ?? []).filter((exercise) => {
+    return allExercises.filter((exercise) => {
       if (debouncedSearch) {
         const matchesSearch = exercise.exercise_name
           .toLowerCase()
@@ -58,21 +93,42 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
 
       return true;
     });
-  }, [exercises, debouncedSearch, typeFilter, assignmentFilter]);
+  }, [allExercises, debouncedSearch, typeFilter, assignmentFilter]);
 
   const visibleExercises = filteredExercises.slice(0, visibleCount);
   const totalCount = filteredExercises.length;
   const hasMore = visibleCount < totalCount;
 
   const activeFilterTags = useMemo(() => {
-    const tags: string[] = [];
+    const tags: string[] = [...selectedTags];
     if (assignmentFilter !== 'all') {
       tags.push(assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned');
     }
     if (typeFilter !== 'all') tags.push(formatTypeLabel(typeFilter));
     if (debouncedSearch.trim()) tags.push(`"${debouncedSearch.trim()}"`);
     return tags;
-  }, [assignmentFilter, typeFilter, debouncedSearch]);
+  }, [assignmentFilter, typeFilter, debouncedSearch, selectedTags]);
+
+  const panelActiveCount = useMemo(() => {
+    let count = selectedTags.length;
+    if (assignmentFilter !== 'all') count += 1;
+    if (typeFilter !== 'all') count += 1;
+    return count;
+  }, [assignmentFilter, typeFilter, selectedTags]);
+
+  const handleClearFilters = (): void => {
+    setAssignmentFilter('all');
+    setTypeFilter('all');
+    setSelectedTags([]);
+    setVisibleCount(pageSize);
+  };
+
+  const handleTagToggle = (tag: string): void => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+    setVisibleCount(pageSize);
+  };
 
   const handleCardClick = (exercise: Exercise): void => {
     setSelectedExercise(exercise);
@@ -92,12 +148,49 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           value={searchValue}
           onChange={setSearchValue}
         />
-        <HtmlFiltersButton activeCount={activeFilterTags.length} />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <Icon name="Funnel" size={15} />
+            Filters
+            {panelActiveCount > 0 ? (
+              <span className="bdg bdg-b">{panelActiveCount}</span>
+            ) : null}
+          </button>
+          <ExercisesFilterPanel
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            activeCount={panelActiveCount}
+            assignmentFilter={assignmentFilter}
+            onAssignmentFilterChange={(value) => {
+              setAssignmentFilter(value);
+              setVisibleCount(pageSize);
+            }}
+            assignmentCounts={assignmentCounts}
+            typeFilter={typeFilter}
+            onTypeFilterChange={(value) => {
+              setTypeFilter(value);
+              setVisibleCount(pageSize);
+            }}
+            typeOptions={typeOptions}
+            selectedTags={selectedTags}
+            onTagToggle={handleTagToggle}
+            onClear={handleClearFilters}
+            onApply={() => setFiltersOpen(false)}
+          />
+        </div>
         <span className="sp seg">
           <button type="button" className="on" aria-label="Grid view">
             <Icon name="LayoutGrid" size={16} />
           </button>
-          <button type="button" disabled aria-label="List view placeholder">
+          <button
+            type="button"
+            aria-label="List view"
+            onClick={() => toastUnavailable('List view')}
+          >
             <Icon name="List" size={16} />
           </button>
         </span>
@@ -108,6 +201,24 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           {activeFilterTags.map((tag) => (
             <span key={tag} className="tag tag-b">
               {tag}
+              <button
+                type="button"
+                aria-label={`Remove ${tag}`}
+                onClick={() => {
+                  if (tag === 'Unassigned' || tag === 'Assigned') {
+                    setAssignmentFilter('all');
+                  } else if (tag.startsWith('"')) {
+                    setSearchValue('');
+                  } else if (selectedTags.includes(tag)) {
+                    setSelectedTags((prev) => prev.filter((t) => t !== tag));
+                  } else {
+                    setTypeFilter('all');
+                  }
+                  setVisibleCount(pageSize);
+                }}
+              >
+                <Icon name="X" size={13} style={{ strokeWidth: 2.5 }} />
+              </button>
             </span>
           ))}
           <button
@@ -115,9 +226,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
             className="btn btn-ghost btn-sm"
             onClick={() => {
               setSearchValue('');
-              setAssignmentFilter('all');
-              setTypeFilter('all');
-              setVisibleCount(pageSize);
+              handleClearFilters();
             }}
           >
             Clear all

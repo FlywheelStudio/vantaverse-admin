@@ -16,7 +16,7 @@ export const EXERCISE_SOURCE_OPTIONS = [
 export type ExerciseCategory = (typeof EXERCISE_CATEGORY_OPTIONS)[number];
 export type ExerciseSource = (typeof EXERCISE_SOURCE_OPTIONS)[number];
 
-export type TagGroupId =
+type TagGroupId =
   | 'equipment'
   | 'body_region'
   | 'muscle'
@@ -40,7 +40,7 @@ export interface MockCheckInQuestion {
   text: string;
 }
 
-export interface ExerciseModalMocks {
+interface ExerciseModalMocks {
   category: ExerciseCategory;
   source: ExerciseSource;
   prescription: MockPrescription;
@@ -49,13 +49,13 @@ export interface ExerciseModalMocks {
   lastEditedBy: string;
 }
 
-export const DEFAULT_PRESCRIPTION: MockPrescription = {
+const DEFAULT_PRESCRIPTION: MockPrescription = {
   sets: '2',
   reps: '8',
   rest: '45s',
 };
 
-export const DEFAULT_TAG_GROUPS: TagGroup[] = [
+const DEFAULT_TAG_GROUPS: TagGroup[] = [
   { id: 'equipment', label: 'Equipment', tags: ['Foam roller', 'Mat'] },
   { id: 'body_region', label: 'Body region', tags: ['Core', 'Upper body'] },
   {
@@ -70,7 +70,7 @@ export const DEFAULT_TAG_GROUPS: TagGroup[] = [
   },
 ];
 
-export const DEFAULT_CHECK_IN_QUESTIONS: MockCheckInQuestion[] = [
+const DEFAULT_CHECK_IN_QUESTIONS: MockCheckInQuestion[] = [
   {
     id: 'ci-pain',
     typeBadge: 'Scale 0–10',
@@ -83,7 +83,7 @@ export const DEFAULT_CHECK_IN_QUESTIONS: MockCheckInQuestion[] = [
   },
 ];
 
-export const DEFAULT_LAST_EDITED_BY = 'Marcus Ellery';
+const DEFAULT_LAST_EDITED_BY = 'Marcus Ellery';
 
 export const MEDIA_OVERFLOW_ACTIONS = [
   { id: 'set-thumbnail', label: 'Set thumbnail frame' },
@@ -95,7 +95,7 @@ export const MEDIA_OVERFLOW_ACTIONS = [
 /**
  * Builds structured check-in rows, preferring existing library text as the first row.
  */
-export function buildCheckInQuestions(
+function buildCheckInQuestions(
   existingText: string | null | undefined,
 ): MockCheckInQuestion[] {
   const trimmed = existingText?.trim();

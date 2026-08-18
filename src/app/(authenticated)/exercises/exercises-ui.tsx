@@ -4,6 +4,7 @@ import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
 import { ExerciseLibrary } from './exercise-library/ui';
 import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
 interface ExercisesUIProps {
@@ -23,15 +24,31 @@ export function ExercisesUI({ initialExercises }: ExercisesUIProps): React.React
         subtitle={`${total} exercises · ${sources} source${sources === 1 ? '' : 's'} · ${unassigned} unassigned`}
         actions={
           <>
-            <button type="button" className="btn btn-pri" disabled title="New exercise placeholder">
+            <button
+              type="button"
+              className="btn btn-pri"
+              onClick={() => toastUnavailable('New exercise')}
+            >
               <Icon name="Plus" size={17} />
               New exercise
             </button>
             <HtmlMoreButton
               items={[
-                { id: 'import', label: 'Import from a partner library' },
-                { id: 'bulk', label: 'Bulk edit categories' },
-                { id: 'export', label: 'Export' },
+                {
+                  id: 'import',
+                  label: 'Import from a partner library',
+                  onSelect: () => toastUnavailable('Import from a partner library'),
+                },
+                {
+                  id: 'bulk',
+                  label: 'Bulk edit categories',
+                  onSelect: () => toastUnavailable('Bulk edit categories'),
+                },
+                {
+                  id: 'export',
+                  label: 'Export',
+                  onSelect: () => toastUnavailable('Export exercises'),
+                },
               ]}
             />
           </>
