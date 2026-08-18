@@ -3,37 +3,104 @@
 import { useState, useMemo } from 'react';
 import {
   Avatar,
-  Checkbox,
   Icon,
-  Input,
+  Switch,
   Tooltip,
 } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
+import { cn } from '@/lib/utils';
 import { useMemberData } from './hooks/use-member-data';
 import { useMemberSelection } from './hooks/use-member-selection';
 import { useSaveMembers } from './hooks/use-save-members';
 import { filterProfiles } from './utils/filter-profiles';
+import {
+  createPendingInviteRow,
+  type PendingInviteRow,
+} from './add-members-mock-data';
 import type { AddMembersModalProps } from './types';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
+
+interface MemberSelectRowProps {
+  profile: ProfileWithMemberships;
+  isSelected: boolean;
+  isCurrentMember: boolean;
+  groupLabel: string | null;
+  onToggle: () => void;
+  disabled?: boolean;
+}
+
+function getProfileGroupLabel(
+  profile: ProfileWithMemberships,
+  type: 'organization' | 'team',
+  currentId: string,
+): string | null {
+  if (type === 'team') {
+    const current = (profile.teamMemberships ?? []).find(
+      (tm) => tm.teamId === currentId,
+    );
+    if (current) return current.teamName;
+    const other = (profile.teamMemberships ?? [])[0];
+    if (other) return other.teamName;
+    const org = (profile.orgMemberships ?? [])[0];
+    return org?.orgName ?? null;
+  }
+
+  const currentOrg = (profile.orgMemberships ?? []).find(
+    (om) => om.orgId === currentId,
+  );
+  if (currentOrg) return currentOrg.orgName;
+  const otherOrg = (profile.orgMemberships ?? [])[0];
+  if (otherOrg) return otherOrg.orgName;
+  const team = (profile.teamMemberships ?? [])[0];
+  return team?.teamName ?? null;
+}
+
+/**
+ * Returns another-group name when the profile belongs elsewhere (move warning).
+ */
+function getConflictGroupName(
+  profile: ProfileWithMemberships,
+  type: 'organization' | 'team',
+  currentId: string,
+): string | null {
+  if (type === 'team') {
+    const otherTeam = (profile.teamMemberships ?? []).find(
+      (tm) => tm.teamId !== currentId,
+    );
+    return otherTeam?.teamName ?? null;
+  }
+
+  const otherOrg = (profile.orgMemberships ?? []).find(
+    (om) => om.orgId !== currentId,
+  );
+  if (otherOrg) return otherOrg.orgName;
+
+  const otherTeam = (profile.teamMemberships ?? []).find(
+    (tm) => tm.orgId !== currentId,
+  );
+  return otherTeam?.teamName ?? otherTeam?.orgName ?? null;
+}
 
 function MemberSelectRow({
   profile,
   isSelected,
   isCurrentMember,
+  groupLabel,
   onToggle,
   disabled,
-}: {
-  profile: ProfileWithMemberships;
-  isSelected: boolean;
-  isCurrentMember: boolean;
-  onToggle: () => void;
-  disabled?: boolean;
-}): React.ReactElement {
+}: MemberSelectRowProps): React.ReactElement {
   const name =
     [profile.first_name, profile.last_name].filter(Boolean).join(' ') ||
     profile.email ||
     'Unknown';
+
+  const badgeLabel = isCurrentMember
+    ? 'Member'
+    : groupLabel
+      ? groupLabel
+      : 'No group';
+  const isNoGroup = !isCurrentMember && !groupLabel;
 
   return (
     <button
@@ -50,7 +117,7 @@ function MemberSelectRow({
         <span className="nm">{name}</span>
         <span className="em">{profile.email ?? '—'}</span>
       </span>
-      {isCurrentMember ? <span className="bdg">Member</span> : null}
+      <span className={cn('bdg', isNoGroup && 'bdg-o')}>{badgeLabel}</span>
     </button>
   );
 }
@@ -90,6 +157,9 @@ export function AddMembersModal({
     initialRole ?? 'patient',
   );
   const [viewUnassigned, setViewUnassigned] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([]);
+  const [inviteAlert, setInviteAlert] = useState<string | null>(null);
 
   const {
     profilesData,
@@ -106,9 +176,6 @@ export function AddMembersModal({
     handleToggleUser,
     handleToggleGroup,
     hasChanges,
-    initialCount,
-    newMemberCount,
-    countChange,
     resetSelection,
   } = useMemberSelection({
     initialMemberIds,
@@ -128,11 +195,18 @@ export function AddMembersModal({
     onSuccess: () => onOpenChange(false),
   });
 
-  const filteredProfiles = useMemo(() => {
+  const allProfiles = useMemo((): ProfileWithMemberships[] => {
     if (!profilesData?.success || !profilesData.data) return [];
+    return profilesData.data;
+  }, [profilesData]);
 
-    let filtered = filterByRole(profilesData.data, selectedRole);
-    filtered = filterProfiles(filtered, searchQuery);
+  const roleFilteredProfiles = useMemo(
+    () => filterByRole(allProfiles, selectedRole),
+    [allProfiles, selectedRole],
+  );
+
+  const filteredProfiles = useMemo(() => {
+    let filtered = filterProfiles(roleFilteredProfiles, searchQuery);
 
     if (selectedRole === 'patient' && viewUnassigned) {
       filtered = filtered.filter(
@@ -143,7 +217,7 @@ export function AddMembersModal({
     }
 
     return filtered;
-  }, [profilesData, selectedRole, searchQuery, viewUnassigned]);
+  }, [roleFilteredProfiles, selectedRole, searchQuery, viewUnassigned]);
 
   const allUserIds = useMemo(
     () => filteredProfiles.map((p) => p.id),
@@ -154,13 +228,38 @@ export function AddMembersModal({
     if (
       selectedRole === 'admin' &&
       currentPhysiologist &&
-      profilesData?.success &&
-      profilesData.data
+      allProfiles.length > 0
     ) {
-      return profilesData.data.find((p) => p.id === currentPhysiologist.userId);
+      return allProfiles.find((p) => p.id === currentPhysiologist.userId);
     }
     return null;
-  }, [selectedRole, currentPhysiologist, profilesData]);
+  }, [selectedRole, currentPhysiologist, allProfiles]);
+
+  const selectedCount =
+    selectedRole === 'patient'
+      ? selectedMemberIds.size
+      : selectedPhysiologistId
+        ? 1
+        : 0;
+
+  let moveWarning: { personName: string; groupName: string } | null = null;
+  if (selectedRole === 'patient') {
+    for (const profile of allProfiles) {
+      if (!selectedMemberIds.has(profile.id)) continue;
+      if (initialMemberIds.has(profile.id)) continue;
+
+      const conflictGroup = getConflictGroupName(profile, type, id);
+      if (!conflictGroup) continue;
+
+      const personName =
+        [profile.first_name, profile.last_name].filter(Boolean).join(' ') ||
+        profile.email ||
+        'This member';
+
+      moveWarning = { personName, groupName: conflictGroup };
+      break;
+    }
+  }
 
   const handleSelectAll = (): void => {
     if (selectedRole === 'patient') {
@@ -168,11 +267,34 @@ export function AddMembersModal({
     }
   };
 
+  const handleInviteByEmail = (): void => {
+    const trimmed = inviteEmail.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setInviteAlert('Enter a valid email address to invite.');
+      return;
+    }
+
+    const alreadyPending = pendingInvites.some(
+      (row) => row.email.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (alreadyPending) {
+      setInviteAlert(`${trimmed} is already on the invite list.`);
+      return;
+    }
+
+    setPendingInvites((prev) => [...prev, createPendingInviteRow(trimmed)]);
+    setInviteEmail('');
+    setInviteAlert(`Invite queued for ${trimmed} (mock — no email sent).`);
+  };
+
   const handleCancel = (): void => {
     resetSelection();
     setSearchQuery('');
     setViewUnassigned(true);
-    setSelectedRole('patient');
+    setSelectedRole(initialRole ?? 'patient');
+    setInviteEmail('');
+    setPendingInvites([]);
+    setInviteAlert(null);
     onOpenChange(false);
   };
 
@@ -196,25 +318,32 @@ export function AddMembersModal({
     isPending || membersLoading
       ? 'Saving...'
       : selectedRole === 'patient'
-        ? countChange === 0
-          ? `Add ${initialCount} Member${initialCount !== 1 ? 's' : ''}`
-          : `Add ${initialCount} → ${newMemberCount} Member${newMemberCount !== 1 ? 's' : ''}`
-        : hasPhysiologistSelected
-          ? currentPhysiologistName
-            ? 'Replace Physiologist'
-            : 'Assign Physiologist'
-          : 'Assign Physiologist';
+        ? `Add ${selectedCount} member${selectedCount !== 1 ? 's' : ''}`
+        : hasPhysiologistSelected &&
+            currentPhysiologistName &&
+            selectedPhysiologistId !== initialPhysiologistId
+          ? 'Replace physiologist'
+          : 'Assign physiologist';
+
+  const isMemberRole = selectedRole === 'patient';
+  const isPhysiologistRole = selectedRole === 'admin';
 
   return (
     <HtmlModal
       open={open}
       title={inviteTitle}
-      subtitle="Choose people already in VantaThrive, or invite someone new by email."
+      subtitle="They inherit the group's physiologist and can be assigned its programs."
       onClose={handleCancel}
-      width={560}
+      width={620}
+      footerInfo={`${selectedCount} selected`}
       footer={
         <>
-          <button type="button" className="btn btn-sec" onClick={handleCancel} disabled={isPending}>
+          <button
+            type="button"
+            className="btn btn-sec"
+            onClick={handleCancel}
+            disabled={isPending}
+          >
             Cancel
           </button>
           <button
@@ -233,16 +362,23 @@ export function AddMembersModal({
         </>
       }
     >
-      <div className="g g2" style={{ marginBottom: 16 }}>
+      <label className="lbl" style={{ marginBottom: 9 }}>
+        Add them as
+      </label>
+      <div className="g g2" style={{ gap: 11, marginBottom: 18 }}>
         <button
           type="button"
-          className={`choice${selectedRole === 'patient' ? ' on' : ''}`}
+          className={cn('choice', isMemberRole && 'on')}
           onClick={() => setSelectedRole('patient')}
         >
-          <span className="rd" />
+          <span className={cn('rd', isMemberRole && 'on')}>
+            {isMemberRole ? <i /> : null}
+          </span>
           <span>
             <span className="ct">Member</span>
-            <span className="cd">Participates in the program</span>
+            <span className="cd">
+              Follows a program, appears in completion metrics.
+            </span>
           </span>
         </button>
 
@@ -250,42 +386,129 @@ export function AddMembersModal({
           label={
             isPhysiologistDisabled
               ? 'Physiologist is managed at organization level and applies to all teams in the organization'
-              : 'Co-manages the group'
+              : 'Co-manages the group and can edit programs.'
           }
         >
           <button
             type="button"
-            className={`choice${selectedRole === 'admin' ? ' on' : ''}`}
+            className={cn('choice', isPhysiologistRole && 'on')}
             onClick={() => !isPhysiologistDisabled && setSelectedRole('admin')}
             disabled={isPhysiologistDisabled}
-            style={isPhysiologistDisabled ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+            style={
+              isPhysiologistDisabled
+                ? { opacity: 0.6, cursor: 'not-allowed' }
+                : undefined
+            }
           >
-            <span className="rd" />
+            <span className={cn('rd', isPhysiologistRole && 'on')}>
+              {isPhysiologistRole ? <i /> : null}
+            </span>
             <span>
               <span className="ct">Physiologist</span>
-              <span className="cd">Co-manages the group</span>
+              <span className="cd">
+                Co-manages the group and can edit programs.
+              </span>
             </span>
           </button>
         </Tooltip>
       </div>
 
-      <label className="fld" style={{ marginBottom: 12 }}>
-        <span className="lb">Search</span>
-        <Input
-          placeholder="Name or email"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          iconLeft="Search"
-        />
-      </label>
+      <div className="ff" style={{ marginBottom: 12 }}>
+        <label className="lbl" htmlFor="add-members-invite-email">
+          Invite by email
+        </label>
+        <div className="row" style={{ gap: 9 }}>
+          <div className="fld" style={{ flex: 1 }}>
+            <Icon name="Mail" size={16} />
+            <input
+              id="add-members-invite-email"
+              type="email"
+              placeholder="name@example.com"
+              value={inviteEmail}
+              onChange={(e) => {
+                setInviteEmail(e.target.value);
+                if (inviteAlert) setInviteAlert(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleInviteByEmail();
+                }
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-sec"
+            onClick={handleInviteByEmail}
+          >
+            Invite
+          </button>
+        </div>
+      </div>
+
+      {inviteAlert ? (
+        <div className="alert alert-i" style={{ marginBottom: 12 }}>
+          <Icon name="Info" size={18} />
+          <div>{inviteAlert}</div>
+        </div>
+      ) : null}
+
+      {pendingInvites.length > 0 ? (
+        <div className="list-rows" style={{ marginBottom: 12 }}>
+          {pendingInvites.map((row) => (
+            <div key={row.id} className="lrow">
+              <span className="cb" />
+              <Avatar name={row.email} size="sm" />
+              <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <span className="nm">{row.email}</span>
+                <span className="em">Pending invite</span>
+              </span>
+              <span className="bdg bdg-o">Invited</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="ff" style={{ marginBottom: 12 }}>
+        <label className="lbl" htmlFor="add-members-search">
+          Search
+        </label>
+        <div className="fld">
+          <Icon name="Search" size={16} />
+          <input
+            id="add-members-search"
+            placeholder="Search by name or email…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
       {selectedRole === 'patient' ? (
-        <div className="row" style={{ marginBottom: 12, gap: 8, justifyContent: 'space-between' }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleSelectAll}>
-            Select all
+        <div
+          className="row"
+          style={{
+            marginBottom: 12,
+            gap: 8,
+            justifyContent: 'space-between',
+          }}
+        >
+          <button
+            type="button"
+            className="lnk"
+            style={{
+              fontSize: 'var(--text-sm)',
+              fontWeight: 'var(--fw-semibold)',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+            }}
+            onClick={handleSelectAll}
+          >
+            Select all {filteredProfiles.length}
           </button>
-          <Checkbox
-            className="sw"
+          <Switch
             style={{ margin: 0 }}
             checked={viewUnassigned}
             onChange={setViewUnassigned}
@@ -294,15 +517,50 @@ export function AddMembersModal({
         </div>
       ) : null}
 
-      <div className="list-rows slim-scrollbar" style={{ maxHeight: 320, overflowY: 'auto' }}>
+      {selectedRole === 'patient' ? (
+        <div
+          className="row"
+          style={{ justifyContent: 'flex-end', marginBottom: 8 }}
+        >
+          <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
+            Showing {filteredProfiles.length} of {roleFilteredProfiles.length}{' '}
+            {viewUnassigned ? 'unassigned members' : 'members'}
+          </span>
+        </div>
+      ) : null}
+
+      <div
+        className="list-rows slim-scrollbar"
+        style={{ maxHeight: 320, overflowY: 'auto' }}
+      >
         {isLoading ? (
-          <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}>
+          <div
+            className="row"
+            style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}
+          >
             <Icon name="LoaderCircle" size={18} className="animate-spin" />
-            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</span>
+            <span
+              style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              Loading…
+            </span>
           </div>
         ) : filteredProfiles.length === 0 &&
-          !(selectedRole === 'admin' && currentPhysiologistProfile && initialPhysiologistId) ? (
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: '12px 0' }}>
+          !(
+            selectedRole === 'admin' &&
+            currentPhysiologistProfile &&
+            initialPhysiologistId
+          ) ? (
+          <p
+            style={{
+              fontSize: 'var(--text-sm)',
+              color: 'var(--text-muted)',
+              padding: '12px 0',
+            }}
+          >
             No users found
           </p>
         ) : (
@@ -316,6 +574,11 @@ export function AddMembersModal({
                 profile={currentPhysiologistProfile}
                 isSelected={selectedPhysiologistId === initialPhysiologistId}
                 isCurrentMember={false}
+                groupLabel={getProfileGroupLabel(
+                  currentPhysiologistProfile,
+                  type,
+                  id,
+                )}
                 onToggle={() => {
                   if (isPhysiologistDisabled) return;
                   handleToggleUser(currentPhysiologist.userId, 'admin');
@@ -343,8 +606,10 @@ export function AddMembersModal({
                   profile={profile}
                   isSelected={isSelected}
                   isCurrentMember={initialMemberIds.has(profile.id)}
+                  groupLabel={getProfileGroupLabel(profile, type, id)}
                   onToggle={() => {
-                    if (selectedRole === 'admin' && isPhysiologistDisabled) return;
+                    if (selectedRole === 'admin' && isPhysiologistDisabled)
+                      return;
                     handleToggleUser(profile.id, selectedRole);
                   }}
                   disabled={selectedRole === 'admin' && isPhysiologistDisabled}
@@ -354,6 +619,17 @@ export function AddMembersModal({
           </>
         )}
       </div>
+
+      {moveWarning ? (
+        <div className="alert alert-i" style={{ marginTop: 16 }}>
+          <Icon name="Info" size={18} />
+          <div>
+            {moveWarning.personName} is already in{' '}
+            <b>{moveWarning.groupName}</b>. Adding them here moves them — a
+            member belongs to one group at a time.
+          </div>
+        </div>
+      ) : null}
     </HtmlModal>
   );
 }
