@@ -2,6 +2,10 @@
 
 import Image from 'next/image';
 import { Icon } from '@/components/medvanta';
+import {
+  HtmlActionsMenu,
+  type HtmlActionsMenuItem,
+} from '@/components/medvanta/shell/HtmlActionsMenu';
 
 /** HTML `.av` avatar with optional image. */
 export function HtmlAvatar({
@@ -131,16 +135,27 @@ export function HtmlStatusBadge({
   return <span className="bdg">{label}</span>;
 }
 
-/** HTML row overflow menu (tooltip placeholder). */
-export function HtmlRowMenu({ label }: { label: string }): React.ReactElement {
-  return (
-    <div className="tip">
-      <button type="button" className="ib ib-sm" aria-label="More actions">
-        <Icon name="Ellipsis" size={17} />
-      </button>
-      <span className="tt">{label}</span>
-    </div>
-  );
+export interface HtmlRowMenuProps {
+  label?: string;
+  items?: HtmlActionsMenuItem[];
+}
+
+function parseLegacyMenuItems(text: string): HtmlActionsMenuItem[] {
+  return text
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, index) => ({
+      id: `legacy-${index}`,
+      label: part,
+      disabled: true,
+    }));
+}
+
+/** HTML row overflow menu — delegates to {@link HtmlActionsMenu}. */
+export function HtmlRowMenu({ label, items }: HtmlRowMenuProps): React.ReactElement {
+  const menuItems = items ?? (label ? parseLegacyMenuItems(label) : []);
+  return <HtmlActionsMenu items={menuItems} size="sm" />;
 }
 
 /** HTML search field matching `.fld.grow`. */

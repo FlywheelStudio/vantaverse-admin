@@ -1,3 +1,5 @@
+export { HtmlActionsMenu } from './HtmlActionsMenu';
+export type { HtmlActionsMenuItem, HtmlActionsMenuProps } from './HtmlActionsMenu';
 export { AppBar } from './AppBar';
 export type { AppBarCrumb, AppBarProps } from './AppBar';
 export { AppShell } from './AppShell';

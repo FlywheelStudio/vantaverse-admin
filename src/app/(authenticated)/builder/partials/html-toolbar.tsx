@@ -1,6 +1,10 @@
 'use client';
 
 import { Icon } from '@/components/medvanta';
+import {
+  HtmlActionsMenu,
+  type HtmlActionsMenuItem,
+} from '@/components/medvanta/shell/HtmlActionsMenu';
 
 export interface HtmlFiltersButtonProps {
   activeCount?: number;
@@ -23,34 +27,36 @@ export function HtmlFiltersButton({
   );
 }
 
-export interface HtmlMoreButtonProps {
-  tooltip: string;
+function parseLegacyMenuItems(text: string): HtmlActionsMenuItem[] {
+  return text
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, index) => ({
+      id: `legacy-${index}`,
+      label: part,
+      disabled: true,
+    }));
 }
 
-/** Disabled HTML `moreBtn()` overflow menu placeholder. */
-export function HtmlMoreButton({ tooltip }: HtmlMoreButtonProps): React.ReactElement {
-  return (
-    <div className="tip">
-      <button type="button" className="ib ib-sec" disabled aria-label="More actions">
-        <Icon name="Ellipsis" size={18} />
-      </button>
-      <span className="tt">{tooltip}</span>
-    </div>
-  );
+export interface HtmlMoreButtonProps {
+  items?: HtmlActionsMenuItem[];
+  tooltip?: string;
+}
+
+/** HTML `moreBtn()` overflow menu — delegates to {@link HtmlActionsMenu}. */
+export function HtmlMoreButton({ items, tooltip }: HtmlMoreButtonProps): React.ReactElement {
+  const menuItems = items ?? (tooltip ? parseLegacyMenuItems(tooltip) : []);
+  return <HtmlActionsMenu items={menuItems} size="md" variant="icon" />;
 }
 
 export interface HtmlRowMenuProps {
-  tooltip: string;
+  items?: HtmlActionsMenuItem[];
+  tooltip?: string;
 }
 
-/** Disabled HTML `rowMenu()` for table row overflow actions. */
-export function HtmlRowMenu({ tooltip }: HtmlRowMenuProps): React.ReactElement {
-  return (
-    <div className="tip">
-      <button type="button" className="ib ib-sm" disabled aria-label="More actions">
-        <Icon name="Ellipsis" size={17} />
-      </button>
-      <span className="tt">{tooltip}</span>
-    </div>
-  );
+/** HTML `rowMenu()` for table row overflow actions — delegates to {@link HtmlActionsMenu}. */
+export function HtmlRowMenu({ items, tooltip }: HtmlRowMenuProps): React.ReactElement {
+  const menuItems = items ?? (tooltip ? parseLegacyMenuItems(tooltip) : []);
+  return <HtmlActionsMenu items={menuItems} size="sm" />;
 }
