@@ -100,7 +100,6 @@ export function createInviteeFromEmail(
   const normalized = email.trim().toLowerCase();
   return {
     id: `invite-${normalized}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    email: normalized,
     firstName: '',
     lastName: '',
     role: 'member',

@@ -102,7 +102,6 @@ export function TopLevelDroppable({
                     onRemove={() => onRemove(index)}
                     onClick={(e) => handleItemClick(index, e)}
                     onPrescriptionChange={(prescription) => {
-                      if (item.type === 'group') return;
                       onUpdate(index, { ...item, prescription });
                     }}
                   />
