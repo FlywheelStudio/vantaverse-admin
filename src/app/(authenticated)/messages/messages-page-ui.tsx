@@ -1,19 +1,45 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 import { AppBar } from '@/components/medvanta/shell';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../users/html-helpers';
 import { HtmlMoreButton } from '../builder/partials/html-toolbar';
-import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  getMessagesByChatId,
+  getOrCreateChatForPatient,
+} from '@/app/(authenticated)/users/[id]/chat-actions';
+import { chatKeys } from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
 import { getConversationsForAdmin } from './actions';
 import { MessagesChatThread } from './messages-chat-thread';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
+
+const MESSAGES_STALE_MS = 60_000;
+
+/**
+ * Update ?userId= without App Router navigation (avoids RSC refetch of conversations).
+ */
+function syncUserIdInUrl(userId: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  const current = url.searchParams.get('userId');
+  if (userId) {
+    if (current === userId) return;
+    url.searchParams.set('userId', userId);
+  } else {
+    if (!current) return;
+    url.searchParams.delete('userId');
+  }
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, '', next);
+}
 
 type ConvFilter = 'all' | 'unread' | 'groups';
 
@@ -62,6 +88,8 @@ export function MessagesPageUI({
   organizations,
   conversations,
 }: MessagesPageUIProps): React.ReactElement {
+  const searchParams = useSearchParams();
+  const deepLinkUserId = searchParams.get('userId');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [convFilter, setConvFilter] = useState<ConvFilter>('all');
@@ -69,6 +97,8 @@ export function MessagesPageUI({
   const [orgFilter, setOrgFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [openingUserId, setOpeningUserId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef<string | null>(null);
+  const missingUserToastRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: conversationsData } = useQuery({
@@ -79,6 +109,7 @@ export function MessagesPageUI({
       return result.data;
     },
     initialData: conversations,
+    staleTime: MESSAGES_STALE_MS,
   });
 
   const conversationsList = conversationsData ?? conversations;
@@ -130,34 +161,96 @@ export function MessagesPageUI({
 
   const activeFilterCount = orgFilter ? 1 : 0;
 
-  const handleSelectConversation = async (
-    conversation: ConversationItem,
-  ): Promise<void> => {
-    if (openingUserId) return;
+  const prefetchMessages = useCallback(
+    (chatId: string | null): void => {
+      if (!chatId) return;
+      void queryClient.prefetchQuery({
+        queryKey: chatKeys.messages(chatId),
+        queryFn: async () => {
+          const result = await getMessagesByChatId(chatId);
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to load messages');
+          }
+          return result.data;
+        },
+        staleTime: MESSAGES_STALE_MS,
+      });
+    },
+    [queryClient],
+  );
 
-    if (conversation.chat_id) {
+  const handleSelectConversation = useCallback(
+    async (conversation: ConversationItem): Promise<void> => {
+      if (openingUserId && openingUserId !== conversation.user_id) return;
+
+      // Optimistic: select immediately, shallow URL (no RSC refetch).
+      syncUserIdInUrl(conversation.user_id);
+
+      if (conversation.chat_id) {
+        setSelected(conversation);
+        prefetchMessages(conversation.chat_id);
+        return;
+      }
+
+      setOpeningUserId(conversation.user_id);
       setSelected(conversation);
+      try {
+        const result = await getOrCreateChatForPatient(
+          conversation.organization_id,
+          conversation.user_id,
+        );
+        if (!result.success) {
+          toast.error(result.error || 'Failed to open chat');
+          return;
+        }
+        const withChat: ConversationItem = {
+          ...conversation,
+          chat_id: result.data.chatId,
+        };
+        setSelected(withChat);
+        queryClient.setQueryData<ConversationItem[]>(
+          ['messages', 'conversations'],
+          (prev) =>
+            (prev ?? []).map((item) =>
+              item.user_id === conversation.user_id ? withChat : item,
+            ),
+        );
+        prefetchMessages(result.data.chatId);
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to open chat');
+      } finally {
+        setOpeningUserId(null);
+      }
+    },
+    [openingUserId, prefetchMessages, queryClient],
+  );
+
+  // Deep-link from ?userId= (Message button / hard navigation) — once per id.
+  useEffect(() => {
+    if (!deepLinkUserId) return;
+    if (deepLinkHandledRef.current === deepLinkUserId) return;
+    if (selected?.user_id === deepLinkUserId) {
+      deepLinkHandledRef.current = deepLinkUserId;
       return;
     }
 
-    setOpeningUserId(conversation.user_id);
-    try {
-      const result = await getOrCreateChatForPatient(
-        conversation.organization_id,
-        conversation.user_id,
-      );
-      if (!result.success) {
-        toast.error(result.error || 'Failed to open chat');
-        return;
+    const match = conversationsList.find(
+      (conversation) => conversation.user_id === deepLinkUserId,
+    );
+    if (!match) {
+      if (missingUserToastRef.current !== deepLinkUserId) {
+        toast.error('No conversation found for this member');
+        missingUserToastRef.current = deepLinkUserId;
       }
-      setSelected({ ...conversation, chat_id: result.data.chatId });
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to open chat');
-    } finally {
-      setOpeningUserId(null);
+      deepLinkHandledRef.current = deepLinkUserId;
+      return;
     }
-  };
+
+    deepLinkHandledRef.current = deepLinkUserId;
+    missingUserToastRef.current = null;
+    void handleSelectConversation(match);
+  }, [deepLinkUserId, conversationsList, selected?.user_id, handleSelectConversation]);
 
   return (
     <>
@@ -170,17 +263,28 @@ export function MessagesPageUI({
             <button
               type="button"
               className="btn btn-pri"
-              disabled
-              title="Placeholder"
+              onClick={() => toastUnavailable('New message')}
             >
               <Icon name="Send" size={17} />
               New message
             </button>
             <HtmlMoreButton
               items={[
-                { id: 'group', label: 'Message a group' },
-                { id: 'replies', label: 'Saved replies' },
-                { id: 'read', label: 'Mark all read' },
+                {
+                  id: 'group',
+                  label: 'Message a group',
+                  onSelect: () => toastUnavailable('Message a group'),
+                },
+                {
+                  id: 'replies',
+                  label: 'Saved replies',
+                  onSelect: () => toastUnavailable('Saved replies'),
+                },
+                {
+                  id: 'read',
+                  label: 'Mark all read',
+                  onSelect: () => toastUnavailable('Mark all read'),
+                },
               ]}
             />
           </>
@@ -305,7 +409,9 @@ export function MessagesPageUI({
                       type="button"
                       className={`conv${isActive ? ' on' : ''}`}
                       onClick={() => void handleSelectConversation(conversation)}
-                      disabled={!!openingUserId}
+                      onMouseEnter={() => prefetchMessages(conversation.chat_id)}
+                      onFocus={() => prefetchMessages(conversation.chat_id)}
+                      disabled={isOpening}
                       style={{
                         width: '100%',
                         border: 'none',
@@ -367,12 +473,25 @@ export function MessagesPageUI({
               <MessagesChatThread
                 chatId={selected.chat_id}
                 conversation={selected}
-                onMarkedAsSeen={() =>
-                  queryClient.invalidateQueries({
-                    queryKey: ['messages', 'conversations'],
-                  })
-                }
+                onMarkedAsSeen={() => {
+                  queryClient.setQueryData<ConversationItem[]>(
+                    ['messages', 'conversations'],
+                    (prev) =>
+                      (prev ?? []).map((item) =>
+                        item.user_id === selected.user_id
+                          ? { ...item, unread_count: 0 }
+                          : item,
+                      ),
+                  );
+                }}
               />
+            ) : openingUserId ? (
+              <div className="empty" style={{ flex: 1 }}>
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
+                <div className="es" style={{ marginTop: 12 }}>
+                  Opening chat…
+                </div>
+              </div>
             ) : (
               <div className="empty" style={{ flex: 1 }}>
                 <div className="ei">

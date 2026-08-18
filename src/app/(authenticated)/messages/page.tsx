@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
@@ -30,9 +31,11 @@ export default async function MessagesPage(): Promise<React.ReactElement> {
   });
 
   return (
-    <MessagesPageUI
-      organizations={data.adminOrgs}
-      conversations={data.conversations}
-    />
+    <Suspense fallback={null}>
+      <MessagesPageUI
+        organizations={data.adminOrgs}
+        conversations={data.conversations}
+      />
+    </Suspense>
   );
 }

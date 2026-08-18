@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar, HtmlRowMenu } from '../users/html-helpers';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { MessagesRealtime } from '@/lib/supabase/realtime/messages';
 import type { Message } from '@/lib/supabase/schemas/messages';
 import {
@@ -47,7 +48,6 @@ export function MessagesChatThread({
   onMarkedAsSeen,
 }: MessagesChatThreadProps): React.ReactElement {
   const [messageContent, setMessageContent] = useState('');
-  const [isConnecting, setIsConnecting] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const realtimeRef = useRef<MessagesRealtime | null>(null);
@@ -74,7 +74,11 @@ export function MessagesChatThread({
       return result.data;
     },
     enabled: !!chatId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
+
+  const showMessagesSpinner = isLoading && messages.length === 0;
 
   const markLastUserMessageAsSeen = useCallback(async (): Promise<void> => {
     if (!chatId) return;
@@ -99,11 +103,11 @@ export function MessagesChatThread({
   }, [markLastUserMessageAsSeen]);
 
   useEffect(() => {
-    if (!chatId || isLoading) return;
+    if (!chatId || showMessagesSpinner) return;
     if (markedSeenForChatIdRef.current === chatId) return;
     markedSeenForChatIdRef.current = chatId;
     void markLastUserMessageAsSeen();
-  }, [chatId, isLoading, markLastUserMessageAsSeen]);
+  }, [chatId, showMessagesSpinner, markLastUserMessageAsSeen]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -132,7 +136,7 @@ export function MessagesChatThread({
   }, [chatId, scheduleDebouncedMarkAsSeen]);
 
   useEffect(() => {
-    if (!chatId || isLoading) return;
+    if (!chatId || showMessagesSpinner) return;
 
     let isMounted = true;
     const realtime = new MessagesRealtime();
@@ -155,17 +159,13 @@ export function MessagesChatThread({
     });
 
     realtimeRef.current = realtime;
-    queueMicrotask(() => {
-      if (isMounted) setIsConnecting(false);
-    });
 
     return () => {
       isMounted = false;
       realtime.cleanup();
       realtimeRef.current = null;
-      setIsConnecting(false);
     };
-  }, [chatId, isLoading, messagesKey, queryClient]);
+  }, [chatId, showMessagesSpinner, messagesKey, queryClient]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -174,7 +174,7 @@ export function MessagesChatThread({
   }, [messages]);
 
   const handleSend = async (): Promise<void> => {
-    if (!messageContent.trim() || sendMessage.isPending || isConnecting || !currentUser) {
+    if (!messageContent.trim() || sendMessage.isPending || !currentUser) {
       return;
     }
 
@@ -231,7 +231,7 @@ export function MessagesChatThread({
   };
 
   const isSending = sendMessage.isPending;
-  const isComposerBusy = isSending || isConnecting;
+  const isComposerBusy = isSending;
 
   return (
     <>
@@ -281,16 +281,32 @@ export function MessagesChatThread({
         </Link>
         <HtmlRowMenu
           items={[
-            { id: 'view-program', label: 'View program' },
-            { id: 'assign', label: 'Assign program' },
-            { id: 'unread', label: 'Mark unread' },
-            { id: 'mute', label: 'Mute' },
+            {
+              id: 'view-program',
+              label: 'View program',
+              onSelect: () => toastUnavailable('View program'),
+            },
+            {
+              id: 'assign',
+              label: 'Assign program',
+              onSelect: () => toastUnavailable('Assign program'),
+            },
+            {
+              id: 'unread',
+              label: 'Mark unread',
+              onSelect: () => toastUnavailable('Mark unread'),
+            },
+            {
+              id: 'mute',
+              label: 'Mute',
+              onSelect: () => toastUnavailable('Mute'),
+            },
           ]}
         />
       </div>
 
       <div ref={scrollRef} className="th-body">
-        {isLoading ? (
+        {showMessagesSpinner ? (
           <div className="empty">
             <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
             <span className="es">Loading messages…</span>

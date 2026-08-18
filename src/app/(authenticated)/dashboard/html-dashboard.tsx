@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import type {
-  DashboardNeedingAttentionItem,
   DashboardStatusCounts,
+  UserNeedingAttention,
 } from '@/lib/supabase/queries/dashboard';
+import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import { HtmlAvatar } from './html-avatar';
 import { HtmlStatTile } from './html-stat-tile';
 import { HtmlDonut } from './html-donut';
@@ -33,9 +35,32 @@ const MOCK_ACTIVITY = [
   { name: 'Kiyoko Mori', text: 'opened the app', when: '6h ago' },
 ] as const;
 
+/** Proxy for HTML "overdue" when due-date data is not available. */
+const URGENT_COMPLIANCE_LT = 30;
+
+type HtmlDashboardStatusCounts = DashboardStatusCounts & {
+  programCompleted?: number;
+};
+
 function pct(n: number, d: number): number {
   if (d <= 0) return 0;
   return Math.round((n / d) * 100);
+}
+
+function isUrgentAttention(item: UserNeedingAttention): boolean {
+  return item.compliance < URGENT_COMPLIANCE_LT;
+}
+
+function attentionReason(item: UserNeedingAttention): string {
+  const compliance = Math.round(item.compliance);
+  if (isUrgentAttention(item)) {
+    return item.program_name
+      ? `Very low compliance (${compliance}%) · ${item.program_name}`
+      : `Very low compliance (${compliance}%)`;
+  }
+  return item.program_name
+    ? `Low compliance (${compliance}%) · ${item.program_name}`
+    : `Low compliance (${compliance}%)`;
 }
 
 export function HtmlDashboard({
@@ -43,21 +68,30 @@ export function HtmlDashboard({
   needingAttention,
   compliancePct,
 }: {
-  statusCounts: DashboardStatusCounts;
-  needingAttention: DashboardNeedingAttentionItem[];
+  statusCounts: HtmlDashboardStatusCounts;
+  needingAttention: UserNeedingAttention[];
   compliancePct: number;
 }): React.ReactElement {
-  const overdue = needingAttention.filter((item) => item.severity === 'overdue');
-  const rows = needingAttention.slice(0, 7);
+  const router = useRouter();
+  const [assignProgramUser, setAssignProgramUser] =
+    useState<UserNeedingAttention | null>(null);
+  const overdue = needingAttention.filter(isUrgentAttention);
+  const rows = needingAttention;
 
   const legend = useMemo(() => {
-    const inProgram = statusCounts.assigned ?? 0;
+    const inProgram = statusCounts.inProgram ?? 0;
     const invited = statusCounts.invited ?? 0;
     const active = statusCounts.active ?? 0;
-    const noProgram = Math.max(active - inProgram, 0);
+    const noProgram =
+      statusCounts.noProgram ?? Math.max(active - inProgram, 0);
+    const programCompleted = statusCounts.programCompleted ?? 0;
     return [
       { label: 'In a program', value: inProgram, color: 'var(--cyan-500)' },
-      { label: 'Program completed', value: 0, color: 'var(--navy-700)' },
+      {
+        label: 'Program completed',
+        value: programCompleted,
+        color: 'var(--navy-700)',
+      },
       { label: 'No program yet', value: noProgram, color: 'var(--slate-300)' },
       { label: 'Invited, not started', value: invited, color: 'var(--slate-200)' },
     ];
@@ -76,7 +110,7 @@ export function HtmlDashboard({
         />
         <HtmlStatTile
           label="In a program"
-          value={statusCounts.assigned}
+          value={statusCounts.inProgram}
           delta="+2 WoW"
           trend="up"
           icon="ClipboardList"
@@ -116,91 +150,144 @@ export function HtmlDashboard({
               <span className="bdg bdg-d">{overdue.length} overdue</span>
             ) : null}
             <span className="sp">
-              <button type="button" className="btn btn-ghost btn-sm">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => router.push('/users')}
+              >
                 View all
                 <Icon name="ArrowRight" size={15} />
               </button>
             </span>
           </div>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Issue</th>
-                <th>Completion</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
+          <div
+            style={{
+              maxHeight: 360,
+              overflow: 'auto',
+              minHeight: 0,
+            }}
+          >
+            <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '38%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '22%' }} />
+              </colgroup>
+              <thead>
                 <tr>
-                  <td colSpan={4} style={{ padding: 24, color: 'var(--text-muted)' }}>
-                    No members need attention right now.
-                  </td>
+                  <th>Member</th>
+                  <th>Issue</th>
+                  <th>Completion</th>
+                  <th />
                 </tr>
-              ) : (
-                rows.map((item) => {
-                  const name =
-                    [item.first_name, item.last_name].filter(Boolean).join(' ') ||
-                    item.email ||
-                    'Member';
-                  const isOverdue = item.severity === 'overdue';
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ width: '34%' }}>
-                        <div className="cellp">
-                          <HtmlAvatar name={name} size={32} />
-                          <span style={{ minWidth: 0 }}>
-                            <span className="nm" style={{ display: 'block' }}>
-                              {name}
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      style={{ padding: 24, color: 'var(--text-muted)' }}
+                    >
+                      No members need attention right now.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((item) => {
+                    const name =
+                      [item.first_name, item.last_name]
+                        .filter(Boolean)
+                        .join(' ') ||
+                      item.email ||
+                      'Member';
+                    const isOverdue = isUrgentAttention(item);
+                    return (
+                      <tr key={item.user_id}>
+                        <td>
+                          <div className="cellp">
+                            <HtmlAvatar name={name} size={32} />
+                            <span style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                              <span className="nm" style={{ display: 'block' }}>
+                                {name}
+                              </span>
+                              <span className="em">{item.email ?? '—'}</span>
                             </span>
-                            <span className="em">{item.email ?? '—'}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: 'var(--text-sm)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              ...(isOverdue
+                                ? {
+                                    color: 'var(--danger)',
+                                    fontWeight: 'var(--fw-semibold)' as const,
+                                  }
+                                : {}),
+                            }}
+                            title={attentionReason(item)}
+                          >
+                            {isOverdue ? (
+                              <Icon
+                                name="CircleAlert"
+                                size={13}
+                                style={{
+                                  display: 'inline',
+                                  verticalAlign: '-2px',
+                                  marginRight: 5,
+                                }}
+                              />
+                            ) : null}
+                            {attentionReason(item)}
                           </span>
-                        </div>
-                      </td>
-                      <td style={{ width: '30%' }}>
-                        <span
-                          style={{
-                            fontSize: 'var(--text-sm)',
-                            ...(isOverdue
-                              ? {
-                                  color: 'var(--danger)',
-                                  fontWeight: 'var(--fw-semibold)' as const,
-                                }
-                              : {}),
-                          }}
-                        >
-                          {isOverdue ? (
-                            <Icon
-                              name="CircleAlert"
-                              size={13}
-                              style={{
-                                display: 'inline',
-                                verticalAlign: '-2px',
-                                marginRight: 5,
-                              }}
-                            />
-                          ) : null}
-                          {item.reason}
-                        </span>
-                      </td>
-                      <td style={{ width: '20%' }}>
-                        <HtmlProgressBar value={0} />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${isOverdue ? 'btn-pri' : 'btn-sec'}`}
-                        >
-                          {isOverdue ? 'Assign program' : 'Message'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                        <td>
+                          <HtmlProgressBar pct={Math.round(item.compliance)} />
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${isOverdue ? 'btn-pri' : 'btn-sec'}`}
+                            onClick={() => {
+                              if (isOverdue) {
+                                setAssignProgramUser(item);
+                                return;
+                              }
+                              router.push(
+                                `/messages?userId=${encodeURIComponent(item.user_id)}`,
+                              );
+                            }}
+                          >
+                            {isOverdue ? 'Assign program' : 'Message'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {assignProgramUser ? (
+            <AssignProgramModal
+              open={assignProgramUser !== null}
+              onOpenChange={(open) => {
+                if (!open) setAssignProgramUser(null);
+              }}
+              userId={assignProgramUser.user_id}
+              userFirstName={assignProgramUser.first_name ?? undefined}
+              userLastName={assignProgramUser.last_name ?? undefined}
+              fromPath="/"
+              onAssignSuccess={() => {
+                router.refresh();
+                setAssignProgramUser(null);
+              }}
+            />
+          ) : null}
         </div>
 
         <div className="card">
@@ -212,9 +299,9 @@ export function HtmlDashboard({
           </div>
           <div className="row" style={{ justifyContent: 'center', marginBottom: 16 }}>
             <HtmlDonut
-              value={Math.round(compliancePct)}
+              pct={Math.round(compliancePct)}
               size={158}
-              center={`${Math.round(compliancePct)}%`}
+              label={`${Math.round(compliancePct)}%`}
               sub="aggregate"
             />
           </div>
@@ -294,7 +381,7 @@ export function HtmlDashboard({
                     {step.count} / {step.total}
                   </span>
                 </div>
-                <HtmlProgressBar value={share} />
+                <HtmlProgressBar pct={share} />
               </div>
             );
           })}
