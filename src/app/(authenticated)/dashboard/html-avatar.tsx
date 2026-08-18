@@ -1,6 +1,6 @@
 import { avatarTone, initialsFromName } from './html-utils';
 
-export interface HtmlAvatarProps {
+interface HtmlAvatarProps {
   name: string;
   size?: 24 | 28 | 32 | 36 | 44 | 56 | 72;
   title?: string;

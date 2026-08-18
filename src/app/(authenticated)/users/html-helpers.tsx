@@ -6,8 +6,9 @@ import {
   HtmlActionsMenu,
   type HtmlActionsMenuItem,
 } from '@/components/medvanta/shell/HtmlActionsMenu';
+import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
 
-/** HTML `.av` avatar with optional image. */
+/** HTML `.av` avatar with optional image — tones via design-system `av-t1`…`av-t4`. */
 export function HtmlAvatar({
   name,
   src,
@@ -26,9 +27,13 @@ export function HtmlAvatar({
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
   const sizeClass = `av-${size}`;
+  const toneClass = avatarTone(name);
 
   return (
-    <span className={`av ${sizeClass} av-t1`} style={{ width: size, height: size }}>
+    <span
+      className={`av ${sizeClass} ${toneClass}`}
+      style={{ width: size, height: size }}
+    >
       {src ? (
         <Image
           src={src}
@@ -135,7 +140,7 @@ export function HtmlStatusBadge({
   return <span className="bdg">{label}</span>;
 }
 
-export interface HtmlRowMenuProps {
+interface HtmlRowMenuProps {
   label?: string;
   items?: HtmlActionsMenuItem[];
 }

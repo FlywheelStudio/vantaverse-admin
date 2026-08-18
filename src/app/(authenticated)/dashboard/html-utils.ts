@@ -39,7 +39,7 @@ export function formatDashboardSubtitle(
 }
 
 /** Issue label derived from available user fields (no invented SLA backend). */
-export function attentionIssueLabel(
+function attentionIssueLabel(
   compliance: number,
   lastSignIn: string | null,
 ): string {

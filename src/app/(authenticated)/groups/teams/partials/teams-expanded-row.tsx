@@ -210,11 +210,7 @@ export function TeamsExpandedRow({
               }`}
               style={
                 rowZIndex === team.id
-                  ? {
-                      position: 'relative',
-                      zIndex: 9999,
-                      backgroundColor: 'var(--surface-card)',
-                    }
+                  ? { backgroundColor: 'var(--surface-card)' }
                   : undefined
               }
             >

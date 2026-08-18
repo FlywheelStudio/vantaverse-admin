@@ -10,6 +10,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
+import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
 
 function groupInitials(name: string): string {
   return name
@@ -94,6 +95,7 @@ function GroupLogo({ org }: { org: Organization }): React.ReactElement {
           />
         ) : (
           <span
+            className={`av ${avatarTone(org.name)}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -102,6 +104,7 @@ function GroupLogo({ org }: { org: Organization }): React.ReactElement {
               height: '100%',
               fontSize: 12,
               fontWeight: 'var(--fw-bold)',
+              borderRadius: 'var(--radius-sm)',
             }}
           >
             {groupInitials(org.name)}
@@ -159,7 +162,7 @@ function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
   return (
     <div className="row" style={{ gap: 9 }}>
       <span
-        className="av av-t1 av-28"
+        className={`av ${avatarTone(name || 'A')} av-28`}
         style={{ width: 28, height: 28, fontSize: 11 }}
       >
         {admin.avatar_url ? (

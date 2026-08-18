@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { Dialog } from '@/components/medvanta';
+import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
 
 export type GroupMemberRow = {
   user_id: string;
@@ -55,7 +56,10 @@ function NameEmailCell({
       style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }}
       onClick={handleClick}
     >
-      <span className="av av-t1 av-32" style={{ width: 34, height: 34, fontSize: 12 }}>
+      <span
+        className={`av ${avatarTone(fullName)} av-32`}
+        style={{ width: 34, height: 34, fontSize: 12 }}
+      >
         {member.avatar_url ? (
           <img src={member.avatar_url} alt={fullName} className="size-full object-cover" />
         ) : (

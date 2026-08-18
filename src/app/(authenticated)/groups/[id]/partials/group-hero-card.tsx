@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { PhysicianInfo } from '../hooks/use-groups';
+import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
 
 function groupInitials(name: string): string {
   return name
@@ -24,7 +25,7 @@ function physicianName(physician: PhysicianInfo | null): string | null {
   return physician.firstName || physician.lastName || null;
 }
 
-export interface GroupHeroCardProps {
+interface GroupHeroCardProps {
   organization: Pick<Organization, 'id' | 'name' | 'description' | 'picture_url' | 'created_at'>;
   memberCount: number;
   programCount: number;
@@ -243,7 +244,7 @@ function MemberAvatar({
   const initials = groupInitials(name);
   return (
     <span
-      className="av av-t1"
+      className={`av ${avatarTone(name)}`}
       style={{ width: size, height: size, fontSize: size * 0.38 }}
     >
       {src ? (

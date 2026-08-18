@@ -2,7 +2,7 @@
 
 import { Icon } from '@/components/medvanta';
 
-export interface HtmlTableFooterProps {
+interface HtmlTableFooterProps {
   summary: React.ReactNode;
   page: number;
   pageCount: number;

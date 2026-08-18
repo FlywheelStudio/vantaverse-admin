@@ -12,7 +12,7 @@ export interface AddMembersModalProps {
   initialRole?: MemberRole;
 }
 
-export type GroupedProfile = {
+type GroupedProfile = {
   profile: ProfileWithMemberships;
   isCurrentMember: boolean;
 };

@@ -2,7 +2,7 @@
 
 import { Icon } from '@/components/medvanta';
 
-export interface HtmlSearchFieldProps {
+interface HtmlSearchFieldProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;

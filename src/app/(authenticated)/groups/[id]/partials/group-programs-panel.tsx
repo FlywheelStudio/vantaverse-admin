@@ -5,12 +5,12 @@ import { HtmlTableFooter } from '../../partials/html-table-footer';
 import { Icon } from '@/components/medvanta';
 import { useMemo, useState } from 'react';
 
-export interface GroupProgramRow {
+interface GroupProgramRow {
   name: string;
   memberCount: number;
 }
 
-export interface GroupProgramsPanelProps {
+interface GroupProgramsPanelProps {
   programs: GroupProgramRow[];
   groupName: string;
 }

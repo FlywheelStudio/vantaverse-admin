@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -20,6 +20,50 @@ import { HtmlSearchField } from '../../partials/html-search-field';
 import { HtmlTableFooter } from '../../partials/html-table-footer';
 import { CreateRowImageCell } from './create-row-image-cell';
 import { TeamsExpandedRow } from '../../teams/partials/teams-expanded-row';
+import {
+  DEFAULT_GROUPS_FILTERS,
+  GroupsFilterPanel,
+  type GroupsFilterState,
+} from './groups-filter-panel';
+
+function physiologistName(org: Organization): string | null {
+  const admin = (org.members || []).find((m) => m.role === 'admin')?.profile;
+  if (!admin) return null;
+  const name = [admin.first_name, admin.last_name].filter(Boolean).join(' ').trim();
+  return name || admin.email || null;
+}
+
+function orgMembersCount(org: Organization): number {
+  return (
+    org.members_count ??
+    (org.members || []).filter((m) => m.role !== 'admin').length
+  );
+}
+
+function matchesCreatedFilter(
+  createdAt: string | null | undefined,
+  filter: GroupsFilterState['created'],
+): boolean {
+  if (filter === 'any') return true;
+  if (!createdAt) return false;
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  const now = Date.now();
+  if (filter === '30d') return now - created <= 30 * 24 * 60 * 60 * 1000;
+  if (filter === 'quarter') {
+    const d = new Date();
+    const quarterStart = new Date(
+      d.getFullYear(),
+      Math.floor(d.getMonth() / 3) * 3,
+      1,
+    );
+    return created >= quarterStart.getTime();
+  }
+  if (filter === 'year') {
+    return new Date(createdAt).getFullYear() === new Date().getFullYear();
+  }
+  return true;
+}
 
 function DeleteOrganizationButton({
   organization,
@@ -109,6 +153,11 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [panelFilters, setPanelFilters] =
+    useState<GroupsFilterState>(DEFAULT_GROUPS_FILTERS);
+  const [appliedFilters, setAppliedFilters] =
+    useState<GroupsFilterState>(DEFAULT_GROUPS_FILTERS);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,8 +171,44 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
     });
   }, [debouncedSearch]);
 
+  const physiologistOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const org of data) {
+      const name = physiologistName(org);
+      if (!name) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [data]);
+
+  const filteredData = useMemo(() => {
+    return data.filter((org) => {
+      const count = orgMembersCount(org);
+      if (count < appliedFilters.membersMin || count > appliedFilters.membersMax) {
+        return false;
+      }
+      if (appliedFilters.physiologistNames.length > 0) {
+        const name = physiologistName(org);
+        if (!name || !appliedFilters.physiologistNames.includes(name)) return false;
+      }
+      if (!matchesCreatedFilter(org.created_at, appliedFilters.created)) return false;
+      return true;
+    });
+  }, [data, appliedFilters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (appliedFilters.physiologistNames.length > 0) count += 1;
+    if (appliedFilters.membersMin > 0 || appliedFilters.membersMax < 50) count += 1;
+    if (appliedFilters.programsChips.length > 0) count += 1;
+    if (appliedFilters.created !== 'any') count += 1;
+    return count;
+  }, [appliedFilters]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -132,7 +217,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     state: { sorting, columnFilters },
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 25 } },
   });
 
   useEffect(() => {
@@ -166,10 +251,39 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
           value={searchValue}
           onChange={setSearchValue}
         />
-        <button type="button" className="btn btn-sec" disabled title="Filters not available">
-          <Icon name="Funnel" size={16} />
-          Filters
-        </button>
+        <span className="sp" />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec${filtersOpen ? ' btn-pri' : ''}`}
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <Icon name="Funnel" size={16} />
+            Filters
+            {activeFilterCount > 0 ? (
+              <span className="bdg bdg-b">{activeFilterCount}</span>
+            ) : null}
+          </button>
+          <GroupsFilterPanel
+            open={filtersOpen}
+            onClose={() => {
+              setPanelFilters(appliedFilters);
+              setFiltersOpen(false);
+            }}
+            activeCount={activeFilterCount}
+            physiologistOptions={physiologistOptions}
+            filters={panelFilters}
+            onChange={setPanelFilters}
+            onClear={() => {
+              setPanelFilters(DEFAULT_GROUPS_FILTERS);
+              setAppliedFilters(DEFAULT_GROUPS_FILTERS);
+            }}
+            onApply={() => {
+              setAppliedFilters(panelFilters);
+              setFiltersOpen(false);
+            }}
+          />
+        </div>
       </div>
 
       <div className="tw" ref={tableContainerRef}>
@@ -244,14 +358,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
 
                 return (
                   <React.Fragment key={row.id}>
-                    <tr
-                      className={rowZIndex === org.id ? 'sel-row' : undefined}
-                      style={
-                        rowZIndex === org.id
-                          ? { position: 'relative', zIndex: 9999 }
-                          : undefined
-                      }
-                    >
+                    <tr className={rowZIndex === org.id ? 'sel-row' : undefined}>
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
