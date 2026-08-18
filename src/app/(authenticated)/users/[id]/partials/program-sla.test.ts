@@ -48,6 +48,39 @@ describe('getProgramSlaMode', () => {
       'none',
     );
   });
+
+  it('returns none when due date is empty string and no assignment', () => {
+    assert.equal(
+      getProgramSlaMode({
+        programDueDate: '',
+        hasAssignment: false,
+        now,
+      }),
+      'none',
+    );
+  });
+
+  it('returns none when due date is invalid and no assignment', () => {
+    assert.equal(
+      getProgramSlaMode({
+        programDueDate: '2026-13-01',
+        hasAssignment: false,
+        now,
+      }),
+      'none',
+    );
+  });
+
+  it('returns none when due date is whitespace-only and no assignment', () => {
+    assert.equal(
+      getProgramSlaMode({
+        programDueDate: '   ',
+        hasAssignment: false,
+        now,
+      }),
+      'none',
+    );
+  });
 });
 
 describe('formatDueLabel', () => {
@@ -59,5 +92,15 @@ describe('formatDueLabel', () => {
     });
     assert.match(r.label.toLowerCase(), /overdue|past/);
     assert.ok(r.pct > 0);
+  });
+
+  it('includes days-left wording when mode due', () => {
+    const r = formatDueLabel({
+      programDueDate: '2026-08-25',
+      mode: 'due',
+      now: new Date('2026-08-18T12:00:00'),
+    });
+    assert.match(r.label.toLowerCase(), /left|today/);
+    assert.ok(r.pct >= 0 && r.pct <= 100);
   });
 });
