@@ -18,19 +18,21 @@ interface AdherenceCardPropsPreprogram {
 
 type AdherenceCardProps = AdherenceCardPropsAssigned | AdherenceCardPropsPreprogram;
 
+function clampPct(pct: number): number {
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
 function formatPeriodValue(period: AdherencePeriod): string {
   if (period.expectedSessions > 0) {
     return `${period.doneSessions} of ${period.expectedSessions} sessions`;
   }
-  if (period.label === '4-week average' && period.pct > 0) {
-    const avgSessions = ((period.pct / 100) * 4).toFixed(1);
-    return `${avgSessions} of 4`;
+  if (period.doneSessions > 0) {
+    return `${period.doneSessions} sessions`;
+  }
+  if (period.pct > 0) {
+    return `${clampPct(period.pct)}%`;
   }
   return '—';
-}
-
-function clampPct(pct: number): number {
-  return Math.max(0, Math.min(100, Math.round(pct)));
 }
 
 function AdherenceRow({
