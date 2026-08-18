@@ -81,6 +81,8 @@ export function UserProfilePageUI({
   compliance,
   schedule,
   completion,
+  exerciseNamesMap,
+  groupsMap,
   pointsMissingForNextLevel,
 }: UserProfilePageUIProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<MemberTab>('onb');
@@ -223,6 +225,12 @@ export function UserProfilePageUI({
           <HtmlProgramTab
             user={user}
             hasAssignment={Boolean(programAssignment)}
+            schedule={schedule}
+            completion={completion}
+            exerciseNamesMap={exerciseNamesMap}
+            groupsMap={groupsMap}
+            programAssignment={programAssignment}
+            compliance={compliance}
             onAssignProgram={() => setAssignOpen(true)}
           />
         ) : null}
