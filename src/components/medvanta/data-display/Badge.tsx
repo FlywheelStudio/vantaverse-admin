@@ -9,7 +9,7 @@ const toneStyles = {
   danger: 'bg-[var(--danger-soft)] text-[var(--danger)]',
 } as const;
 
-export interface BadgeProps {
+interface BadgeProps {
   children?: React.ReactNode;
   tone?: keyof typeof toneStyles;
   dot?: boolean;

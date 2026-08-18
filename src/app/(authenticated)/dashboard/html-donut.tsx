@@ -1,4 +1,4 @@
-export interface HtmlDonutProps {
+interface HtmlDonutProps {
   pct: number;
   size?: number;
   label: string;

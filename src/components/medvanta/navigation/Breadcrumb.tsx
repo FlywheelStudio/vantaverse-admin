@@ -1,12 +1,12 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface Crumb {
+interface Crumb {
   label: React.ReactNode;
   href?: string;
 }
 
-export interface BreadcrumbProps {
+interface BreadcrumbProps {
   items?: Crumb[];
   className?: string;
   style?: React.CSSProperties;

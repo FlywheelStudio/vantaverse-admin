@@ -8,7 +8,7 @@ const toneStyles = {
   accent: 'bg-[var(--cyan-100)] text-[var(--cyan-800)]',
 } as const;
 
-export interface TagProps {
+interface TagProps {
   children?: React.ReactNode;
   onRemove?: () => void;
   tone?: keyof typeof toneStyles;

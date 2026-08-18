@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn } from '../utils/cn';
 
-export interface RadioProps {
+interface RadioProps {
   checked?: boolean;
   defaultChecked?: boolean;
   label?: string;

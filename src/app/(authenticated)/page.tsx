@@ -66,8 +66,8 @@ export default async function HomePage(): Promise<React.ReactElement> {
           }),
           programCompleted: data.programCompleted?.total ?? 0,
         }}
-        compliance={data.compliance?.compliance ?? 0}
-        needingAttention={data.needingAttention ?? { users: [], total: 0 }}
+        compliancePct={data.compliance?.compliance ?? 0}
+        needingAttention={data.needingAttention?.users ?? []}
       />
     </>
   );

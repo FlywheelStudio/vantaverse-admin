@@ -3,7 +3,7 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface AlertProps {
+interface AlertProps {
   kind?: 'info' | 'success' | 'warning' | 'danger';
   title?: React.ReactNode;
   children?: React.ReactNode;

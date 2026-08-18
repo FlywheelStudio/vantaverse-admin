@@ -3,12 +3,12 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
 }
 
-export interface SelectProps {
+interface SelectProps {
   value?: string;
   defaultValue?: string;
   options?: (string | SelectOption)[];

@@ -1,7 +1,7 @@
 import { Icon } from '../actions/Icon';
 import { cn } from '../utils/cn';
 
-export interface StatCardProps {
+interface StatCardProps {
   label: string;
   value: React.ReactNode;
   delta?: string;

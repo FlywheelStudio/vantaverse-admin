@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
@@ -9,7 +10,7 @@ import { Icon } from '../actions/Icon';
 import { Avatar } from '../data-display/Avatar';
 import { SHELL_NAV, isShellNavSection, type ShellNavId } from './nav';
 
-export interface SideNavProps {
+interface SideNavProps {
   active: ShellNavId;
 }
 
@@ -60,10 +61,18 @@ export function SideNav({ active }: SideNavProps): React.ReactElement {
   return (
     <aside className="side">
       <div className="side-brand">
-        <div className="side-mark" aria-hidden>
-          <Icon name="Activity" size={18} />
+        <div>
+          <Image
+            src="/medvanta-text.png"
+            alt="MedVanta"
+            width={140}
+            height={42}
+            className="h-auto w-auto max-w-[140px] object-contain"
+            style={{ filter: 'brightness(0) invert(1)' }}
+            priority
+          />
+          <span className="side-pl">VantaThrive admin</span>
         </div>
-        <span className="side-pl">VantaThrive</span>
       </div>
 
       {SHELL_NAV.map((entry) => {

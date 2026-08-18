@@ -8,7 +8,7 @@ export interface TableColumn<T extends Record<string, unknown> = Record<string, 
   render?: (row: T) => React.ReactNode;
 }
 
-export interface TableProps<T extends Record<string, unknown> = Record<string, unknown>> {
+interface TableProps<T extends Record<string, unknown> = Record<string, unknown>> {
   columns?: TableColumn<T>[];
   rows?: T[];
   onRowClick?: (row: T) => void;

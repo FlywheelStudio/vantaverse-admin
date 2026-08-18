@@ -2,7 +2,7 @@
 
 import { cn } from '../utils/cn';
 
-export interface TextareaProps {
+interface TextareaProps {
   value?: string;
   defaultValue?: string;
   placeholder?: string;

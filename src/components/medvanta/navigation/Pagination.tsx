@@ -3,7 +3,7 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface PaginationProps {
+interface PaginationProps {
   page?: number;
   pageCount?: number;
   onChange?: (page: number) => void;

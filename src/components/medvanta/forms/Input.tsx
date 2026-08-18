@@ -3,7 +3,7 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface InputProps {
+interface InputProps {
   value?: string;
   defaultValue?: string;
   placeholder?: string;

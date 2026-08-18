@@ -32,7 +32,7 @@ const iconButtonVariants = cva(
   },
 );
 
-export type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof iconButtonVariants> & {
     icon: string;
     label: string;

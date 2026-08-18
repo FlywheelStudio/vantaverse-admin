@@ -2,7 +2,7 @@
 
 import { cn } from '../utils/cn';
 
-export interface FormFieldProps {
+interface FormFieldProps {
   label?: string;
   htmlFor?: string;
   hint?: string;

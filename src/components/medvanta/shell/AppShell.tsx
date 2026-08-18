@@ -1,7 +1,7 @@
 import type { ShellNavId } from './nav';
 import { SideNav } from './SideNav';
 
-export interface AppShellProps {
+interface AppShellProps {
   active: ShellNavId;
   children: React.ReactNode;
 }

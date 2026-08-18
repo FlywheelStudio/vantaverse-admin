@@ -6,7 +6,7 @@ export type ShellNavId =
   | 'programs'
   | 'exercises';
 
-export type ShellNavItem = {
+type ShellNavItem = {
   id: ShellNavId;
   icon: string;
   label: string;
@@ -14,9 +14,9 @@ export type ShellNavItem = {
   badge?: boolean;
 };
 
-export type ShellNavSection = { section: string };
+type ShellNavSection = { section: string };
 
-export type ShellNavEntry = ShellNavSection | ShellNavItem;
+type ShellNavEntry = ShellNavSection | ShellNavItem;
 
 export const SHELL_NAV: ShellNavEntry[] = [
   { section: 'Monitor' },

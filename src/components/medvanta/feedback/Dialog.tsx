@@ -4,7 +4,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface DialogProps {
+interface DialogProps {
   open?: boolean;
   title?: React.ReactNode;
   children?: React.ReactNode;

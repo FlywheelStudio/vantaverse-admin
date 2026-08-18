@@ -8,7 +8,7 @@ const statusColors = {
   offline: 'var(--slate-400)',
 } as const;
 
-export interface AvatarProps {
+interface AvatarProps {
   name?: string;
   src?: string;
   size?: 'sm' | 'md' | 'lg';

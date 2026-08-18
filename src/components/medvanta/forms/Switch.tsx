@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn } from '../utils/cn';
 
-export interface SwitchProps {
+interface SwitchProps {
   checked?: boolean;
   defaultChecked?: boolean;
   label?: string;

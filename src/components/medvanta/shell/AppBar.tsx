@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { Icon } from '../actions/Icon';
 
-export interface AppBarCrumb {
+interface AppBarCrumb {
   label: string;
   href?: string;
 }
 
-export interface AppBarProps {
+interface AppBarProps {
   crumbs: AppBarCrumb[];
   title: string;
   subtitle?: React.ReactNode;

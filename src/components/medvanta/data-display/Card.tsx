@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn } from '../utils/cn';
 
-export interface CardProps {
+interface CardProps {
   children?: React.ReactNode;
   padding?: number;
   interactive?: boolean;
@@ -41,7 +41,7 @@ export function Card({
   );
 }
 
-export interface CardHeaderProps {
+interface CardHeaderProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   action?: React.ReactNode;

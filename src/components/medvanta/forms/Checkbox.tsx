@@ -4,7 +4,7 @@ import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface CheckboxProps {
+interface CheckboxProps {
   checked?: boolean;
   defaultChecked?: boolean;
   label?: string;

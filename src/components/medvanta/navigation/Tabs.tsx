@@ -3,12 +3,12 @@
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { cn } from '../utils/cn';
 
-export interface TabItem {
+interface TabItem {
   id: string;
   label: React.ReactNode;
 }
 
-export interface TabsProps {
+interface TabsProps {
   tabs?: TabItem[];
   value?: string;
   defaultValue?: string;

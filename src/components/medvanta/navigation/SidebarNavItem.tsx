@@ -3,7 +3,7 @@
 import { cn } from '../utils/cn';
 import { Icon } from '../actions/Icon';
 
-export interface SidebarNavItemProps {
+interface SidebarNavItemProps {
   icon: string;
   label: React.ReactNode;
   active?: boolean;

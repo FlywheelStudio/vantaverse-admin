@@ -10,8 +10,8 @@ export default function LoginPage(): React.ReactElement {
       <div className="login-r">
         <Suspense fallback={null}>
           <ToastHandler />
+          <LoginForm />
         </Suspense>
-        <LoginForm />
       </div>
     </div>
   );

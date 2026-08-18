@@ -17,7 +17,7 @@ export interface HtmlActionsMenuItem {
   onSelect?: () => void;
 }
 
-export interface HtmlActionsMenuProps {
+interface HtmlActionsMenuProps {
   items: HtmlActionsMenuItem[];
   size?: 'sm' | 'md';
   variant?: 'icon' | 'button';

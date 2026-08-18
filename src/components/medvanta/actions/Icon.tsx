@@ -4,7 +4,7 @@ import * as Lucide from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 import { cn } from '../utils/cn';
 
-export interface IconProps {
+interface IconProps {
   name: string;
   size?: number;
   strokeWidth?: number;

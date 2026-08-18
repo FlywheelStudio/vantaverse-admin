@@ -3,7 +3,7 @@
 import * as ProgressPrimitive from '@radix-ui/react-progress';
 import { cn } from '../utils/cn';
 
-export interface ProgressBarProps {
+interface ProgressBarProps {
   value?: number;
   max?: number;
   tone?: 'accent' | 'brand' | 'success' | 'warning';

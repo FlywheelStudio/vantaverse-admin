@@ -1,4 +1,4 @@
-export interface PlaceholderBlockProps {
+interface PlaceholderBlockProps {
   title: string;
   className?: string;
   children?: React.ReactNode;

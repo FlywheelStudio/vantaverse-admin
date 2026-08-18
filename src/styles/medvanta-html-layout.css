@@ -5,7 +5,7 @@
   width:246px;flex:0 0 auto;background:var(--navy-900);display:flex;flex-direction:column;
   padding:16px 14px 14px;gap:2px;overflow:hidden;
 }
-.side-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 20px}
+.side-brand{display:flex;align-items:flex-start;gap:10px;padding:6px 8px 20px}
 .side-mark{width:34px;height:34px;border-radius:var(--radius-md);background:var(--brand-gradient);display:flex;align-items:center;justify-content:center;color:var(--white);flex:0 0 auto}
 .side-wm{display:block;font-size:15px;font-weight:var(--fw-extrabold);letter-spacing:var(--tracking-wider);color:var(--white);line-height:1.1}
 .side-pl{display:block;font-size:11.5px;font-weight:var(--fw-semibold);letter-spacing:.02em;color:var(--cyan-300);margin-top:5px}
@@ -302,9 +302,9 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .empty .et{font-size:var(--text-base);font-weight:var(--fw-bold);color:var(--text-strong)}
 .empty .es{font-size:var(--text-sm);color:var(--text-muted);max-width:340px}
 
-/* Modal */
-.scrim{position:absolute;inset:0;background:rgba(11,24,48,.45);backdrop-filter:blur(2px);z-index:100}
-.mwrap{position:absolute;inset:0;z-index:101;display:flex;align-items:center;justify-content:center;padding:28px;overflow:auto}
+/* Modal — fixed + high z so portal overlays always beat table row stacking */
+.scrim{position:fixed;inset:0;background:rgba(11,24,48,.45);backdrop-filter:blur(2px);z-index:1000}
+.mwrap{position:fixed;inset:0;z-index:1001;display:flex;align-items:center;justify-content:center;padding:28px;overflow:auto}
 .modal{
   position:relative;width:100%;background:var(--surface-card);border-radius:var(--radius-xl);
   box-shadow:var(--shadow-xl);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100% - 8px);
@@ -481,9 +481,9 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .wk.on .wm{color:var(--navy-200)}
 .wk.mt .wn{color:var(--text-muted);font-weight:var(--fw-semibold)}
 
-/* Day grid */
-.dgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
-.day{display:flex;flex-direction:column;border-radius:var(--radius-sm);background:var(--surface-card);border:1px solid var(--border-subtle);min-height:212px;box-shadow:var(--shadow-xs);overflow:hidden}
+/* Day grid — equal-height columns */
+.dgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:stretch}
+.day{display:flex;flex-direction:column;height:100%;border-radius:var(--radius-sm);background:var(--surface-card);border:1px solid var(--border-subtle);min-height:212px;box-shadow:var(--shadow-xs);overflow:hidden}
 .day.rest{background:var(--slate-50);border-style:dashed;border-color:var(--border-default);box-shadow:none}
 .day .dh{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;padding:9px 11px;border-bottom:1px solid var(--border-subtle)}
 .day.rest .dh{border-bottom-color:transparent;padding-bottom:0}
@@ -530,16 +530,17 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .th-comp{padding:12px 18px;border-top:1px solid var(--border-subtle);display:flex;align-items:flex-end;gap:9px;flex:0 0 auto;background:var(--surface-card)}
 
 /* Login */
-.login{display:flex;height:100%;min-height:760px}
+.login{display:flex;height:100dvh;min-height:0;overflow:hidden}
 .login-l{flex:1 1 46%;background:var(--navy-900);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:44px}
 .login-l .glow{position:absolute;inset:0;background:radial-gradient(120% 90% at 100% 0%,rgba(47,159,219,.42),transparent 60%)}
 .login-l .glow2{position:absolute;left:-10%;bottom:-20%;width:70%;height:60%;background:radial-gradient(circle,rgba(30,63,114,.6),transparent 65%)}
-.login-r{flex:1 1 54%;display:flex;align-items:center;justify-content:center;padding:40px;background:var(--bg-app)}
+.login-r{flex:1 1 54%;display:flex;align-items:center;justify-content:center;padding:40px;background:var(--bg-app);overflow:auto;min-height:0}
 .otp{display:flex;gap:9px}
 .otp .o{
   width:52px;height:60px;border:1px solid var(--border-default);border-radius:var(--radius-md);
   background:var(--surface-card);display:flex;align-items:center;justify-content:center;
   font-family:var(--font-mono);font-size:24px;font-weight:var(--fw-semibold);color:var(--text-strong);
+  text-align:center;padding:0;outline:none;caret-color:var(--accent);
 }
 .otp .o.act{border-color:var(--accent);box-shadow:var(--shadow-focus)}
 .otp .o.fill{border-color:var(--navy-300)}
