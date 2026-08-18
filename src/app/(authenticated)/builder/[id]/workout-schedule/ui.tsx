@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
 import { Icon } from '@/components/medvanta';
+import { HtmlActionsMenu } from '@/components/medvanta/shell/HtmlActionsMenu';
 import { useBuilder } from '@/context/builder-context';
 import {
   useUpsertWorkoutSchedule,
@@ -340,13 +341,16 @@ export function BuildWorkoutSection({
             </span>
           </div>
           <span className="sp" style={{ alignSelf: 'flex-end', paddingBottom: 6 }}>
-            <div className="tip">
-              <button type="button" className="btn btn-sec btn-sm" disabled>
-                <Icon name="Ellipsis" size={16} />
-                Week actions
-              </button>
-              <span className="tt">Copy week · Paste into week · Duplicate to all weeks · Clear week</span>
-            </div>
+            <HtmlActionsMenu
+              variant="button"
+              label="Week actions"
+              items={[
+                { id: 'copy', label: 'Copy week' },
+                { id: 'paste', label: 'Paste into week' },
+                { id: 'duplicate', label: 'Duplicate to all weeks' },
+                { id: 'clear', label: 'Clear week' },
+              ]}
+            />
           </span>
         </div>
       </div>

@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { AppBar } from '@/components/medvanta/shell';
-import { Icon } from '@/components/medvanta';
 import { useUsers } from '@/hooks/use-users';
 import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
 import { AddUserMenu } from './users-table/components/add-user-menu';
+import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
@@ -69,20 +69,14 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
         actions={
           <>
             <AddUserMenu role={filters.role} />
-            <div className="tip">
-              <button
-                type="button"
-                className="ib ib-sec"
-                aria-label="More actions"
-                disabled
-                title="Placeholder"
-              >
-                <Icon name="Ellipsis" size={18} />
-              </button>
-              <span className="tt">
-                Import from CSV · Export all · Choose columns · Manage admins
-              </span>
-            </div>
+            <HtmlMoreButton
+              items={[
+                { id: 'import', label: 'Import from CSV' },
+                { id: 'export', label: 'Export all' },
+                { id: 'columns', label: 'Choose columns' },
+                { id: 'admins', label: 'Manage admins' },
+              ]}
+            />
           </>
         }
       />

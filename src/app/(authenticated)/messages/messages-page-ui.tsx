@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { AppBar } from '@/components/medvanta/shell';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../users/html-helpers';
+import { HtmlMoreButton } from '../builder/partials/html-toolbar';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
 import { getConversationsForAdmin } from './actions';
 import { MessagesChatThread } from './messages-chat-thread';
@@ -175,20 +176,13 @@ export function MessagesPageUI({
               <Icon name="Send" size={17} />
               New message
             </button>
-            <div className="tip">
-              <button
-                type="button"
-                className="ib ib-sec"
-                aria-label="More actions"
-                disabled
-                title="Placeholder"
-              >
-                <Icon name="Ellipsis" size={18} />
-              </button>
-              <span className="tt">
-                Message a group · Saved replies · Mark all read
-              </span>
-            </div>
+            <HtmlMoreButton
+              items={[
+                { id: 'group', label: 'Message a group' },
+                { id: 'replies', label: 'Saved replies' },
+                { id: 'read', label: 'Mark all read' },
+              ]}
+            />
           </>
         }
       />

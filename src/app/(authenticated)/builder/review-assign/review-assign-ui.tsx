@@ -280,7 +280,11 @@ export function ReviewAssignUI({
                       </td>
                       <td style={{ textAlign: 'right', width: 52 }}>
                         <HtmlRowMenu
-                          tooltip={`Open week ${index + 1} · Copy week · Clear week`}
+                          items={[
+                            { id: 'open', label: `Open week ${index + 1}` },
+                            { id: 'copy', label: 'Copy week' },
+                            { id: 'clear', label: 'Clear week' },
+                          ]}
                         />
                       </td>
                     </tr>

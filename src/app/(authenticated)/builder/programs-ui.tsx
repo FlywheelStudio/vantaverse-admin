@@ -46,7 +46,14 @@ export function ProgramsUI({
               <Icon name="Plus" size={17} />
               New template
             </button>
-            <HtmlMoreButton tooltip="Manage default values · Saved exercise blocks · Export · Show archived" />
+            <HtmlMoreButton
+              items={[
+                { id: 'defaults', label: 'Manage default values' },
+                { id: 'blocks', label: 'Saved exercise blocks' },
+                { id: 'export', label: 'Export' },
+                { id: 'archived', label: 'Show archived' },
+              ]}
+            />
           </>
         }
       />

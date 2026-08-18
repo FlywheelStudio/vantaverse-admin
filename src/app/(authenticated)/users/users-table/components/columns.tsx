@@ -287,9 +287,24 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function ActionsCell(): React.ReactElement {
+function ActionsCell({ userId }: { userId: string }): React.ReactElement {
+  const router = useRouter();
   return (
-    <HtmlRowMenu label="View profile · Assign program · Add to group · Make admin · Remove" />
+    <HtmlRowMenu
+      items={[
+        {
+          id: 'view',
+          label: 'View profile',
+          onSelect: () => {
+            router.push(`/users/${userId}`);
+          },
+        },
+        { id: 'assign', label: 'Assign program' },
+        { id: 'group', label: 'Add to group' },
+        { id: 'admin', label: 'Make admin' },
+        { id: 'remove', label: 'Remove', danger: true },
+      ]}
+    />
   );
 }
 
@@ -449,7 +464,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     id: 'actions',
     header: () => null,
-    cell: () => <ActionsCell />,
+    cell: ({ row }) => <ActionsCell userId={row.original.id} />,
     enableSorting: false,
     enableColumnFilter: false,
   },

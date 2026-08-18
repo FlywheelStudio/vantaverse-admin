@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../../html-helpers';
+import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { AssignProgramModal } from './assign-program-modal';
@@ -156,20 +157,19 @@ export function MemberDetailHeader({
               <Icon name="ClipboardList" size={17} />
               Assign program
             </button>
-            <div className="tip">
-              <button
-                type="button"
-                className="ib ib-sec"
-                aria-label="More actions"
-                onClick={onChangeOnboarding}
-              >
-                <Icon name="Ellipsis" size={18} />
-              </button>
-              <span className="tt">
-                Change onboarding · Move to another group · Swap program · Reset
-                progress · Deactivate
-              </span>
-            </div>
+            <HtmlMoreButton
+              items={[
+                {
+                  id: 'onboarding',
+                  label: 'Change onboarding',
+                  onSelect: onChangeOnboarding,
+                },
+                { id: 'move', label: 'Move to another group' },
+                { id: 'swap', label: 'Swap program' },
+                { id: 'reset', label: 'Reset progress' },
+                { id: 'deactivate', label: 'Deactivate', danger: true },
+              ]}
+            />
           </div>
         </div>
       </div>

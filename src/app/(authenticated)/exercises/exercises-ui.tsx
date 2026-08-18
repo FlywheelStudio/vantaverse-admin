@@ -27,7 +27,13 @@ export function ExercisesUI({ initialExercises }: ExercisesUIProps): React.React
               <Icon name="Plus" size={17} />
               New exercise
             </button>
-            <HtmlMoreButton tooltip="Import from a partner library · Bulk edit categories · Export" />
+            <HtmlMoreButton
+              items={[
+                { id: 'import', label: 'Import from a partner library' },
+                { id: 'bulk', label: 'Bulk edit categories' },
+                { id: 'export', label: 'Export' },
+              ]}
+            />
           </>
         }
       />

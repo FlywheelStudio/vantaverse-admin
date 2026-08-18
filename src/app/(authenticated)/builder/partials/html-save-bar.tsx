@@ -140,7 +140,14 @@ export function BuilderSaveBar({
           )}
           Save template
         </button>
-        <HtmlMoreButton tooltip="Discard changes · Duplicate template · Archive · Delete" />
+        <HtmlMoreButton
+          items={[
+            { id: 'discard', label: 'Discard changes' },
+            { id: 'duplicate', label: 'Duplicate template' },
+            { id: 'archive', label: 'Archive' },
+            { id: 'delete', label: 'Delete', danger: true },
+          ]}
+        />
       </span>
     </div>
   );

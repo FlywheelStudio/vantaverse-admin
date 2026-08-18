@@ -279,7 +279,14 @@ export function MessagesChatThread({
           <Icon name="CircleUser" size={15} />
           Open profile
         </Link>
-        <HtmlRowMenu label="View program · Assign program · Mark unread · Mute" />
+        <HtmlRowMenu
+          items={[
+            { id: 'view-program', label: 'View program' },
+            { id: 'assign', label: 'Assign program' },
+            { id: 'unread', label: 'Mark unread' },
+            { id: 'mute', label: 'Mute' },
+          ]}
+        />
       </div>
 
       <div ref={scrollRef} className="th-body">

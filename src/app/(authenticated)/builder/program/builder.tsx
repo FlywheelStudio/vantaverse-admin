@@ -39,11 +39,13 @@ function ProgramTableRow({
   assignment: ProgramAssignmentWithTemplate;
   onClick: () => void;
 }): React.ReactElement | null {
+  const router = useRouter();
   const template = assignment.program_template;
   if (!template) return null;
 
   const weeksLabel = `${template.weeks} week${template.weeks === 1 ? '' : 's'}`;
   const edited = formatRelativeEdited(template.updated_at);
+  const assignmentId = assignment.id;
 
   return (
     <tr onClick={onClick} style={{ cursor: 'pointer' }}>
@@ -98,8 +100,38 @@ function ProgramTableRow({
           {edited}
         </span>
       </td>
-      <td style={{ textAlign: 'right', width: 52 }}>
-        <HtmlRowMenu tooltip="Edit template · Edit workout schedule · Duplicate · Assign to members · Archive · Delete" />
+      <td
+        style={{ textAlign: 'right', width: 52 }}
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        <HtmlRowMenu
+          items={[
+            {
+              id: 'edit-template',
+              label: 'Edit template',
+              onSelect: assignmentId
+                ? () => {
+                    router.push(`/builder/${assignmentId}`);
+                  }
+                : undefined,
+            },
+            {
+              id: 'edit-workout',
+              label: 'Edit workout schedule',
+              onSelect: assignmentId
+                ? () => {
+                    router.push(`/builder/${assignmentId}#build-workout`);
+                  }
+                : undefined,
+            },
+            { id: 'duplicate', label: 'Duplicate' },
+            { id: 'assign', label: 'Assign to members' },
+            { id: 'archive', label: 'Archive' },
+            { id: 'delete', label: 'Delete', danger: true },
+          ]}
+        />
       </td>
     </tr>
   );
