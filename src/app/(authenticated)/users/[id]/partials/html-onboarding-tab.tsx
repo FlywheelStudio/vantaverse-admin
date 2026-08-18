@@ -1,10 +1,24 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Icon } from '@/components/medvanta';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { HtmlAvatar } from '@/app/(authenticated)/dashboard/html-avatar';
-import { HtmlProgressBar } from '@/app/(authenticated)/dashboard/html-progress-bar';
 import { HtmlStepList, type HtmlStepItem, type HtmlStepTone } from './html-step-list';
+import { AdherenceCard } from './insights/adherence-card';
+import type { PreprogramEngagementRow } from './insights/adherence-card';
+import { EmpowermentCard } from './insights/empowerment-card';
+import { PledgeCard } from './insights/pledge-card';
+import { VantapointsCard } from './insights/vantapoints-card';
+import { getProgramSlaMode } from './program-sla';
+import {
+  buildAdherencePeriods,
+  getCurrentWeekIndex,
+  parseCompletion,
+} from './program-week';
 
 function gateTone(
   done: boolean,
@@ -154,6 +168,23 @@ function buildOnboardingSteps(
   ];
 }
 
+function buildPreprogramRows(
+  user: ProfileWithStats,
+): PreprogramEngagementRow[] {
+  const rows: PreprogramEngagementRow[] = [];
+
+  if (user.program_completion_percentage != null) {
+    const pct = Math.round(user.program_completion_percentage);
+    rows.push({
+      label: 'Program completion',
+      value: `${pct}%`,
+      pct,
+    });
+  }
+
+  return rows;
+}
+
 function InsightCard({
   title,
   subtitle,
@@ -180,11 +211,21 @@ function InsightCard({
 
 export function HtmlOnboardingTab({
   user,
+  habitPledge,
+  programAssignment,
+  schedule,
+  completion,
+  pointsMissingForNextLevel,
   onChangePath,
   onAssignProgram,
   onOpenIntake,
 }: {
   user: ProfileWithStats;
+  habitPledge: HabitPledge | null;
+  programAssignment: ProgramAssignmentWithTemplate | null;
+  schedule: DatabaseSchedule | null;
+  completion: Array<Array<unknown>> | null | undefined;
+  pointsMissingForNextLevel: number | null;
   onChangePath: () => void;
   onAssignProgram: () => void;
   onOpenIntake: () => void;
@@ -203,9 +244,39 @@ export function HtmlOnboardingTab({
     user.program_assigned,
   ].filter(Boolean).length;
 
-  const compliance = Math.round(user.program_completion_percentage ?? 0);
-  const hp = user.hp_points ?? null;
-  const empowerment = user.empowerment ?? null;
+  const slaMode = getProgramSlaMode({
+    programDueDate: user.program_due_date,
+    hasAssignment: Boolean(programAssignment),
+  });
+
+  const adherenceCard = useMemo(() => {
+    if (slaMode === 'assigned') {
+      const parsedCompletion = parseCompletion(completion);
+      const weekCount =
+        programAssignment?.program_template?.weeks ??
+        schedule?.length ??
+        0;
+      const weekIndex = getCurrentWeekIndex({
+        startDate: programAssignment?.start_date ?? null,
+        weekCount,
+      });
+
+      return (
+        <AdherenceCard
+          variant="assigned"
+          periods={buildAdherencePeriods({
+            schedule,
+            completion: parsedCompletion,
+            weekIndex,
+          })}
+        />
+      );
+    }
+
+    return (
+      <AdherenceCard variant="preprogram" rows={buildPreprogramRows(user)} />
+    );
+  }, [completion, programAssignment, schedule, slaMode, user]);
 
   return (
     <>
@@ -234,49 +305,22 @@ export function HtmlOnboardingTab({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <InsightCard title="Program compliance" subtitle="Sets and exercises finished vs. assigned">
-            <div className="row" style={{ justifyContent: 'center', marginBottom: 12 }}>
-              <div
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: '50%',
-                  background: `conic-gradient(var(--navy-700) ${compliance}%, var(--slate-200) 0)`,
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
-                <span
-                  style={{
-                    width: 68,
-                    height: 68,
-                    borderRadius: '50%',
-                    background: 'var(--surface-card)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontWeight: 'var(--fw-bold)',
-                    color: 'var(--text-strong)',
-                  }}
-                >
-                  {compliance}%
-                </span>
-              </div>
-            </div>
-            <HtmlProgressBar pct={compliance} tone="navy" />
-          </InsightCard>
+          <VantapointsCard
+            level={user.current_level}
+            hpPoints={user.hp_points}
+            pointsForNextLevel={user.points_for_next_level}
+            pointsMissingForNextLevel={pointsMissingForNextLevel}
+          />
 
-          <InsightCard title="Health points" subtitle="From member stats when available">
-            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--fw-bold)' }}>
-                {hp ?? '—'}
-              </span>
-              <span className="bdg">Level {user.current_level ?? '—'}</span>
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-              Empowerment score: {empowerment ?? '—'}
-              {user.empowerment_title ? ` · ${user.empowerment_title}` : ''}
-            </div>
-          </InsightCard>
+          <div className="g g2" style={{ gap: 12 }}>
+            <EmpowermentCard
+              empowerment={user.empowerment}
+              title={user.empowerment_title}
+            />
+            <PledgeCard habitPledge={habitPledge} />
+          </div>
+
+          {adherenceCard}
 
           <InsightCard title="Care team" subtitle="Assignments on this profile">
             <div className="row" style={{ gap: 10, marginBottom: 10 }}>

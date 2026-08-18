@@ -76,8 +76,12 @@ export function UserProfilePageUI({
   organizations,
   physiologistsByOrgId,
   mcIntakeSurvey,
+  habitPledge,
   programAssignment,
   compliance,
+  schedule,
+  completion,
+  pointsMissingForNextLevel,
 }: UserProfilePageUIProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<MemberTab>('onb');
   const [changeOnboardingOpen, setChangeOnboardingOpen] = useState(false);
@@ -204,6 +208,11 @@ export function UserProfilePageUI({
         {activeTab === 'onb' ? (
           <HtmlOnboardingTab
             user={user}
+            habitPledge={habitPledge}
+            programAssignment={programAssignment}
+            schedule={schedule}
+            completion={completion}
+            pointsMissingForNextLevel={pointsMissingForNextLevel}
             onChangePath={() => setChangeOnboardingOpen(true)}
             onAssignProgram={() => setAssignOpen(true)}
             onOpenIntake={() => setIntakeSurveyOpen(true)}
