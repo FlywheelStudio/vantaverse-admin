@@ -30,6 +30,8 @@ export function UsersTable({
   filters = { role: 'patient' },
   onFiltersChange,
   isLoading = false,
+  memberCount,
+  adminCount,
 }: UsersTableProps): React.ReactElement {
   const { data: organizations } = useOrganizations();
   const [selectedTeamName, setSelectedTeamName] = useState<
@@ -79,7 +81,8 @@ export function UsersTable({
         selectedTeamName={selectedTeamName}
         onFiltersChange={onFiltersChange}
         onTeamNameChange={handleTeamNameChange}
-        data={data}
+        memberCount={memberCount}
+        adminCount={adminCount}
         dueFilter={dueFilter}
         onDueFilterChange={setDueFilter}
       />

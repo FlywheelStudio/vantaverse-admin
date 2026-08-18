@@ -9,7 +9,7 @@ export interface MockInvitee {
   onboarding: 'full' | 'screening' | 'consultation';
 }
 
-export interface MockInviteGroup {
+interface MockInviteGroup {
   id: string;
   name: string;
 }

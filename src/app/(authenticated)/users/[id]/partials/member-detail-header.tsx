@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../../html-helpers';
 import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { AssignProgramModal } from './assign-program-modal';
@@ -51,6 +53,7 @@ export function MemberDetailHeader({
   assignOpen: assignOpenProp,
   onAssignOpenChange,
 }: MemberDetailHeaderProps): React.ReactElement {
+  const router = useRouter();
   const [assignOpenInternal, setAssignOpenInternal] = useState(false);
   const assignOpen = assignOpenProp ?? assignOpenInternal;
   const setAssignOpen = onAssignOpenChange ?? setAssignOpenInternal;
@@ -67,6 +70,10 @@ export function MemberDetailHeader({
   const lastActive = user.last_sign_in
     ? formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true })
     : '—';
+
+  const handleMessage = (): void => {
+    router.push(`/messages?userId=${encodeURIComponent(user.id)}`);
+  };
 
   return (
     <>
@@ -145,7 +152,7 @@ export function MemberDetailHeader({
             </div>
           </div>
           <div className="row" style={{ gap: 8, flex: '0 0 auto' }}>
-            <button type="button" className="btn btn-sec" disabled title="Placeholder">
+            <button type="button" className="btn btn-sec" onClick={handleMessage}>
               <Icon name="MessageSquare" size={17} />
               Message
             </button>
@@ -164,10 +171,27 @@ export function MemberDetailHeader({
                   label: 'Change onboarding',
                   onSelect: onChangeOnboarding,
                 },
-                { id: 'move', label: 'Move to another group' },
-                { id: 'swap', label: 'Swap program' },
-                { id: 'reset', label: 'Reset progress' },
-                { id: 'deactivate', label: 'Deactivate', danger: true },
+                {
+                  id: 'move',
+                  label: 'Move to another group',
+                  onSelect: () => toastUnavailable('Move to another group'),
+                },
+                {
+                  id: 'swap',
+                  label: 'Swap program',
+                  onSelect: () => toastUnavailable('Swap program'),
+                },
+                {
+                  id: 'reset',
+                  label: 'Reset progress',
+                  onSelect: () => toastUnavailable('Reset progress'),
+                },
+                {
+                  id: 'deactivate',
+                  label: 'Deactivate',
+                  danger: true,
+                  onSelect: () => toastUnavailable('Deactivate'),
+                },
               ]}
             />
           </div>

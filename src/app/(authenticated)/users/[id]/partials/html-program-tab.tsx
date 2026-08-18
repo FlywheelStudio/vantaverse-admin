@@ -181,7 +181,7 @@ function ProgramActivePane({
             </button>
           </div>
         </div>
-        <HtmlProgressBar value={compliance} label={`${compliance}% complete`} tone="cyan" />
+        <HtmlProgressBar pct={compliance} tone="cyan" />
       </div>
 
       <div className="card">

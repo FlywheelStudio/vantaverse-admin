@@ -92,7 +92,7 @@ export function useAssignProgramToUser(userId: string) {
  * Mutation hook for deleting a program assignment
  * Includes optimistic updates and error rollback
  */
-export function useDeleteProgram(userId: string) {
+function useDeleteProgram(userId: string) {
   const queryClient = useQueryClient();
   const detailKey = userProgramKeys.detail(userId);
   const assignmentsKey = ['program-assignments'];

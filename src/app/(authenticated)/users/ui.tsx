@@ -8,6 +8,7 @@ import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
 import { AddUserMenu } from './users-table/components/add-user-menu';
 import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
@@ -36,20 +37,31 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
     team_id?: string;
     role: MemberRole;
   }>({ role: 'patient' });
-  const { data: users, isLoading } = useUsers(
-    {
-      organization_id: filters.organization_id,
-      team_id: filters.team_id,
-      role: filters.role,
-    },
-    filters.role === 'patient' &&
-      !filters.organization_id &&
-      !filters.team_id
-      ? initialUsers
-      : undefined,
-  );
 
-  const displayUsers = users || [];
+  const sharedFilters = {
+    organization_id: filters.organization_id,
+    team_id: filters.team_id,
+  };
+  const hasOrgOrTeam = Boolean(filters.organization_id || filters.team_id);
+
+  // Fetch both roles so Members/Admins tab counts stay correct regardless of active tab.
+  const { data: members, isLoading: membersLoading } = useUsers(
+    { ...sharedFilters, role: 'patient' },
+    !hasOrgOrTeam ? initialUsers : undefined,
+  );
+  const { data: admins, isLoading: adminsLoading } = useUsers({
+    ...sharedFilters,
+    role: 'admin',
+  });
+
+  const memberCount = members?.length ?? 0;
+  const adminCount = admins?.length ?? 0;
+  const displayUsers = useMemo(
+    () => (filters.role === 'admin' ? admins : members) ?? [],
+    [filters.role, members, admins],
+  );
+  const isLoading =
+    filters.role === 'admin' ? adminsLoading : membersLoading;
   const subtitle = useMemo(() => buildSubtitle(displayUsers), [displayUsers]);
 
   const tableColumns = useMemo(
@@ -71,10 +83,26 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
             <AddUserMenu role={filters.role} />
             <HtmlMoreButton
               items={[
-                { id: 'import', label: 'Import from CSV' },
-                { id: 'export', label: 'Export all' },
-                { id: 'columns', label: 'Choose columns' },
-                { id: 'admins', label: 'Manage admins' },
+                {
+                  id: 'import',
+                  label: 'Import from CSV',
+                  onSelect: () => toastUnavailable('Import from CSV'),
+                },
+                {
+                  id: 'export',
+                  label: 'Export all',
+                  onSelect: () => toastUnavailable('Export all'),
+                },
+                {
+                  id: 'columns',
+                  label: 'Choose columns',
+                  onSelect: () => toastUnavailable('Choose columns'),
+                },
+                {
+                  id: 'admins',
+                  label: 'Manage admins',
+                  onSelect: () => toastUnavailable('Manage admins'),
+                },
               ]}
             />
           </>
@@ -92,6 +120,8 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
             data={displayUsers}
             filters={filters}
             onFiltersChange={setFilters}
+            memberCount={memberCount}
+            adminCount={adminCount}
           />
         )}
       </div>

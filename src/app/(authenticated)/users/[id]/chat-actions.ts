@@ -170,7 +170,7 @@ export async function sendMessage(
   };
 }
 
-export async function uploadChatFile(
+async function uploadChatFile(
   chatId: string,
   fileBase64: string,
   fileName: string,

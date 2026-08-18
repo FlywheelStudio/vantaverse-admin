@@ -262,7 +262,7 @@ export function HtmlOnboardingTab({
                 </span>
               </div>
             </div>
-            <HtmlProgressBar value={compliance} tone="navy" />
+            <HtmlProgressBar pct={compliance} tone="navy" />
           </InsightCard>
 
           <InsightCard title="Health points" subtitle="From member stats when available">

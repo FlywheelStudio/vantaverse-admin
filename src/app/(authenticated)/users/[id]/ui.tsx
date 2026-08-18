@@ -213,16 +213,13 @@ export function UserProfilePageUI({
         {activeTab === 'prog' ? (
           <HtmlProgramTab
             user={user}
-            programAssignment={programAssignment}
-            compliance={compliance}
+            hasAssignment={Boolean(programAssignment)}
             onAssignProgram={() => setAssignOpen(true)}
           />
         ) : null}
 
         {activeTab === 'notes' ? (
           <MemberNotesTab
-            user={user}
-            mcIntakeSurvey={mcIntakeSurvey}
             onOpenIntake={() => setIntakeSurveyOpen(true)}
           />
         ) : null}

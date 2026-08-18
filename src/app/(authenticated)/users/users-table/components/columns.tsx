@@ -28,6 +28,7 @@ import Link from 'next/link';
 import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
 import toast from 'react-hot-toast';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -287,24 +288,78 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function ActionsCell({ userId }: { userId: string }): React.ReactElement {
+function ActionsCell({
+  profile,
+}: {
+  profile: ProfileWithStats;
+}): React.ReactElement {
   const router = useRouter();
+  const [assignOpen, setAssignOpen] = React.useState(false);
+  const [groupOpen, setGroupOpen] = React.useState(false);
+  const hasOrganization = (profile.orgMemberships?.length ?? 0) > 0;
+
   return (
-    <HtmlRowMenu
-      items={[
-        {
-          id: 'view',
-          label: 'View profile',
-          onSelect: () => {
-            router.push(`/users/${userId}`);
+    <>
+      <HtmlRowMenu
+        items={[
+          {
+            id: 'view',
+            label: 'View profile',
+            onSelect: () => {
+              router.push(`/users/${profile.id}`);
+            },
           },
-        },
-        { id: 'assign', label: 'Assign program' },
-        { id: 'group', label: 'Add to group' },
-        { id: 'admin', label: 'Make admin' },
-        { id: 'remove', label: 'Remove', danger: true },
-      ]}
-    />
+          {
+            id: 'message',
+            label: 'Message',
+            onSelect: () => {
+              router.push(`/messages?userId=${encodeURIComponent(profile.id)}`);
+            },
+          },
+          {
+            id: 'assign',
+            label: 'Assign program',
+            onSelect: () => {
+              if (!hasOrganization) {
+                toast.error('Assign a group before assigning a program');
+                return;
+              }
+              setAssignOpen(true);
+            },
+          },
+          {
+            id: 'group',
+            label: 'Add to group',
+            onSelect: () => setGroupOpen(true),
+          },
+          {
+            id: 'admin',
+            label: 'Make admin',
+            onSelect: () => toastUnavailable('Make admin'),
+          },
+          {
+            id: 'remove',
+            label: 'Remove',
+            danger: true,
+            onSelect: () => toastUnavailable('Remove member'),
+          },
+        ]}
+      />
+      {hasOrganization ? (
+        <AssignProgramModal
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          userId={profile.id}
+          userFirstName={profile.first_name}
+          userLastName={profile.last_name}
+        />
+      ) : null}
+      <AssignGroupModal
+        open={groupOpen}
+        onOpenChange={setGroupOpen}
+        userId={profile.id}
+      />
+    </>
   );
 }
 
@@ -464,7 +519,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     id: 'actions',
     header: () => null,
-    cell: ({ row }) => <ActionsCell userId={row.original.id} />,
+    cell: ({ row }) => <ActionsCell profile={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
   },

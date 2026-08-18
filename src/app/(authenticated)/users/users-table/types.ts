@@ -14,4 +14,7 @@ export interface UsersTableProps {
   filters: UsersTableFilters;
   onFiltersChange: (filters: UsersTableFilters) => void;
   isLoading?: boolean;
+  /** Totals for role tabs — not derived from the active-role `data` list. */
+  memberCount?: number;
+  adminCount?: number;
 }

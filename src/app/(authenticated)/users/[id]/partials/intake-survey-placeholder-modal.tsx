@@ -6,7 +6,7 @@ import { Avatar } from '@/components/medvanta/data-display/Avatar';
 import { cn } from '@/lib/utils';
 import type { McIntakeSurvey } from '@/lib/supabase/queries/mc-intake';
 
-export interface HtmlModalProps {
+interface HtmlModalProps {
   open?: boolean;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -57,7 +57,7 @@ export function HtmlModal({
         <div className="mwrap fixed inset-0 z-[1001] flex items-center justify-center overflow-auto p-7 pointer-events-none">
           <DialogPrimitive.Content
             className={cn('modal pointer-events-auto outline-none', className)}
-            style={{ maxWidth: width, ...style }}
+            style={{ width: '100%', maxWidth: width, ...style }}
           >
             <div className={cn('mh', headerClassName)}>
               <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Icon } from '@/components/medvanta';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
 type FilterOpt = { label: string; count?: number | null; on?: boolean; disabled?: boolean };
 
@@ -21,7 +22,7 @@ type FilterGroup =
     };
 
 /** HTML `FILTERS.members` shape — non-wired groups are placeholders (disabled). */
-export const MEMBERS_FILTER_GROUPS: FilterGroup[] = [
+const MEMBERS_FILTER_GROUPS: FilterGroup[] = [
   {
     title: 'Group',
     opts: [
@@ -98,6 +99,15 @@ export const MEMBERS_FILTER_GROUPS: FilterGroup[] = [
     ],
   },
   {
+    title: 'Physiologist',
+    opts: [
+      { label: 'Dana Reyes', count: 14, disabled: true },
+      { label: 'Marcus Ellery', count: 9, disabled: true },
+      { label: 'Priya Raghunathan', count: 11, disabled: true },
+      { label: 'Unassigned', count: 41, disabled: true },
+    ],
+  },
+  {
     title: 'Last active',
     type: 'date',
     opts: [
@@ -108,15 +118,36 @@ export const MEMBERS_FILTER_GROUPS: FilterGroup[] = [
       { label: 'Never', disabled: true },
     ],
   },
+  {
+    title: 'Joined',
+    type: 'date',
+    opts: [
+      { label: 'Any time', on: true, disabled: true },
+      { label: 'This month', disabled: true },
+      { label: 'This quarter', disabled: true },
+      { label: 'This year', disabled: true },
+    ],
+  },
+  {
+    title: 'Flags',
+    opts: [
+      { label: 'Has unread messages', count: 3, disabled: true },
+      { label: 'Invite never opened', count: 11, disabled: true },
+      { label: 'Missing a group', count: 41, disabled: true },
+      { label: 'No activity since joining', count: 17, disabled: true },
+    ],
+  },
 ];
 
-export interface MembersFilterPanelProps {
+interface MembersFilterPanelProps {
   open: boolean;
   onClose: () => void;
   activeCount: number;
   /** Role chip selection (wired). */
   role: 'patient' | 'admin' | null;
   onRoleChange: (role: 'patient' | 'admin' | null) => void;
+  memberCount?: number;
+  adminCount?: number;
   /** Program deadline (wired). */
   dueFilter: 'all' | 'overdue' | 'due_soon';
   onDueFilterChange: (v: 'all' | 'overdue' | 'due_soon') => void;
@@ -148,6 +179,8 @@ export function MembersFilterPanel({
   activeCount,
   role,
   onRoleChange,
+  memberCount = 0,
+  adminCount = 0,
   dueFilter,
   onDueFilterChange,
   onClear,
@@ -158,13 +191,13 @@ export function MembersFilterPanel({
 
   return (
     <div
-      className="pop pop-full"
+      className="pop"
       style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: '100%',
-        marginTop: 10,
-        zIndex: 20,
+        position: 'absolute',
+        top: 'calc(100% + 8px)',
+        right: 0,
+        width: 340,
+        zIndex: 120,
       }}
     >
       <div className="pop-h">
@@ -186,7 +219,7 @@ export function MembersFilterPanel({
         </span>
       </div>
 
-      <div className="pop-b" style={{ maxHeight: 430 }}>
+      <div className="pop-b">
         {MEMBERS_FILTER_GROUPS.map((g) => {
           if (g.title === 'Group' && groupSlot) {
             return (
@@ -204,12 +237,12 @@ export function MembersFilterPanel({
           if (g.title === 'Role' && g.type === 'chips') {
             const chips: Array<{
               label: string;
-              value: 'patient' | 'admin' | null;
-              count?: number;
+              value: 'patient' | 'admin' | 'physiologist';
+              count: number;
             }> = [
-              { label: 'Member', value: 'patient', count: 129 },
-              { label: 'Physiologist', value: 'admin', count: 4 },
-              { label: 'Admin', value: null, count: 6 },
+              { label: 'Member', value: 'patient', count: memberCount },
+              { label: 'Physiologist', value: 'physiologist', count: 0 },
+              { label: 'Admin', value: 'admin', count: adminCount },
             ];
             return (
               <div key={g.title} className="fgrp">
@@ -220,8 +253,24 @@ export function MembersFilterPanel({
                 </div>
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                   {chips.map((c) => {
+                    if (c.value === 'physiologist') {
+                      return (
+                        <button
+                          key={c.label}
+                          type="button"
+                          className="btn btn-sm btn-sec"
+                          style={{
+                            height: 28,
+                            padding: '0 11px',
+                            fontSize: 'var(--text-xs)',
+                          }}
+                          onClick={() => toastUnavailable('Physiologist role filter')}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    }
                     const on = role === c.value;
-                    const disabled = c.label === 'Admin';
                     return (
                       <button
                         key={c.label}
@@ -231,22 +280,21 @@ export function MembersFilterPanel({
                           height: 28,
                           padding: '0 11px',
                           fontSize: 'var(--text-xs)',
-                          opacity: disabled ? 0.55 : 1,
                         }}
-                        disabled={disabled}
-                        title={disabled ? 'Placeholder — Admin filter not available' : undefined}
                         onClick={() => {
-                          if (disabled) return;
-                          onRoleChange(on ? null : c.value);
+                          const nextRole: 'patient' | 'admin' | null = on
+                            ? null
+                            : c.value === 'admin'
+                              ? 'admin'
+                              : 'patient';
+                          onRoleChange(nextRole);
                         }}
                       >
                         {on ? <Icon name="Check" size={13} /> : null}
                         {c.label}
-                        {c.count != null ? (
-                          <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
-                            {c.count}
-                          </span>
-                        ) : null}
+                        <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
+                          {c.count}
+                        </span>
                       </button>
                     );
                   })}
@@ -306,79 +354,33 @@ export function MembersFilterPanel({
 
           if (g.type === 'range') {
             return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.7 }}>
+              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
                 <div className="row" style={{ marginBottom: 10 }}>
                   <span className="fgrp-t" style={{ margin: 0 }}>
                     {g.title}
                   </span>
                   {g.hint ? (
                     <span className="sp mut" style={{ fontSize: 10 }}>
-                      {g.hint} · Placeholder
+                      {g.hint}
                     </span>
                   ) : null}
                 </div>
-                <div className="row" style={{ gap: 8 }}>
-                  <span className="fld fld-sm" style={{ flex: 1, padding: '0 10px', gap: 4 }}>
-                    <input
-                      className="mono"
-                      style={{ textAlign: 'center', fontSize: 'var(--text-sm)' }}
-                      value={g.min}
-                      readOnly
-                      disabled
-                    />
-                    <span className="mut" style={{ fontSize: 10 }}>
-                      min
-                    </span>
-                  </span>
-                  <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-                    to
-                  </span>
-                  <span className="fld fld-sm" style={{ flex: 1, padding: '0 10px', gap: 4 }}>
-                    <input
-                      className="mono"
-                      style={{ textAlign: 'center', fontSize: 'var(--text-sm)' }}
-                      value={g.max}
-                      readOnly
-                      disabled
-                    />
-                    <span className="mut" style={{ fontSize: 10 }}>
-                      max
-                    </span>
-                  </span>
-                  {g.unit ? (
-                    <span className="mut" style={{ fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
-                      {g.unit}
-                    </span>
-                  ) : null}
-                </div>
-                <div
-                  style={{
-                    position: 'relative',
-                    height: 4,
-                    borderRadius: 99,
-                    background: 'var(--slate-200)',
-                    margin: '13px 4px 2px',
-                  }}
+                <button
+                  type="button"
+                  className="btn btn-sec btn-sm"
+                  style={{ width: '100%' }}
+                  onClick={() => toastUnavailable(`${g.title} range filter`)}
                 >
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: `${g.from}%`,
-                      right: `${100 - g.to}%`,
-                      top: 0,
-                      bottom: 0,
-                      background: 'var(--navy-600)',
-                      borderRadius: 99,
-                    }}
-                  />
-                </div>
+                  {g.from}–{g.to}
+                  {g.unit ? ` ${g.unit}` : ''} · not wired
+                </button>
               </div>
             );
           }
 
           if (g.type === 'chips') {
             return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.7 }}>
+              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
                 <div className="row" style={{ marginBottom: 10 }}>
                   <span className="fgrp-t" style={{ margin: 0 }}>
                     {g.title}
@@ -394,7 +396,7 @@ export function MembersFilterPanel({
                       type="button"
                       className={`btn btn-sm ${o.on ? 'btn-pri' : 'btn-sec'}`}
                       style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                      disabled
+                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
                     >
                       {o.on ? <Icon name="Check" size={13} /> : null}
                       {o.label}
@@ -412,7 +414,7 @@ export function MembersFilterPanel({
 
           if (g.type === 'date') {
             return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.7 }}>
+              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
                 <div className="row" style={{ marginBottom: 10 }}>
                   <span className="fgrp-t" style={{ margin: 0 }}>
                     {g.title}
@@ -428,7 +430,7 @@ export function MembersFilterPanel({
                       type="button"
                       className={`btn btn-sm ${o.on ? 'btn-pri' : 'btn-sec'}`}
                       style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                      disabled
+                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
                     >
                       {o.label}
                     </button>
@@ -437,7 +439,7 @@ export function MembersFilterPanel({
                     type="button"
                     className="btn btn-ghost btn-sm"
                     style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
-                    disabled
+                    onClick={() => toastUnavailable(`${g.title}: Custom date`)}
                   >
                     <Icon name="Calendar" size={13} /> Custom…
                   </button>
@@ -448,7 +450,7 @@ export function MembersFilterPanel({
 
           // check / radio placeholder groups
           return (
-            <div key={g.title} className="fgrp" style={{ opacity: 0.75 }}>
+            <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
               <div className="row" style={{ marginBottom: 10 }}>
                 <span className="fgrp-t" style={{ margin: 0 }}>
                   {g.title}
@@ -465,14 +467,16 @@ export function MembersFilterPanel({
               </div>
               <div>
                 {g.opts.map((o) => (
-                  <label
-                    key={o.label}
-                    className="fopt"
-                    style={{ opacity: o.disabled === false ? 1 : 0.85, cursor: 'not-allowed' }}
-                  >
-                    {g.type === 'radio' ? <RadioMark on={o.on} /> : <CheckMark on={o.on} />}
-                    <span>{o.label}</span>
-                    {o.count != null ? <span className="n">{o.count}</span> : null}
+                  <label key={o.label} className="fopt">
+                    <button
+                      type="button"
+                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
+                      style={{ display: 'contents', cursor: 'pointer' }}
+                    >
+                      {g.type === 'radio' ? <RadioMark on={o.on} /> : <CheckMark on={o.on} />}
+                      <span>{o.label}</span>
+                      {o.count != null ? <span className="n">{o.count}</span> : null}
+                    </button>
                   </label>
                 ))}
               </div>

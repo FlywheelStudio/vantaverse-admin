@@ -1,12 +1,12 @@
 /** Mock defaults for Change Onboarding modal (HTML `mdChangeOnboarding` parity). */
 
-export const ONBOARDING_GATE_COUNT = 4;
+const ONBOARDING_GATE_COUNT = 4;
 
 /** 0-based current gate; default 2 → badge "Gate 3 of 4". */
 export const DEFAULT_ONBOARDING_GATE_INDEX = 2;
 
 /** Cleared-gate labels used in the personalized alert (HTML order). */
-export const ONBOARDING_CLEARED_GATE_LABELS = [
+const ONBOARDING_CLEARED_GATE_LABELS = [
   'intake',
   'screening',
   'consultation',
