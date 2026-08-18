@@ -6,6 +6,7 @@ import { AppBar } from '@/components/medvanta/shell';
 import { HtmlAvatar } from '../../users/html-helpers';
 import { BuilderSaveBar } from '../partials/html-save-bar';
 import { HtmlRowMenu } from '../partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
 interface ReviewAssignUIProps {
   assignmentId?: string;
@@ -281,9 +282,22 @@ export function ReviewAssignUI({
                       <td style={{ textAlign: 'right', width: 52 }}>
                         <HtmlRowMenu
                           items={[
-                            { id: 'open', label: `Open week ${index + 1}` },
-                            { id: 'copy', label: 'Copy week' },
-                            { id: 'clear', label: 'Clear week' },
+                            {
+                              id: 'open',
+                              label: `Open week ${index + 1}`,
+                              onSelect: () =>
+                                toastUnavailable(`Open week ${index + 1}`),
+                            },
+                            {
+                              id: 'copy',
+                              label: 'Copy week',
+                              onSelect: () => toastUnavailable('Copy week'),
+                            },
+                            {
+                              id: 'clear',
+                              label: 'Clear week',
+                              onSelect: () => toastUnavailable('Clear week'),
+                            },
                           ]}
                         />
                       </td>

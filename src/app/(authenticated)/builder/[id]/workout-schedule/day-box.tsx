@@ -1,15 +1,14 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
-import { motion } from 'framer-motion';
+import { Icon } from '@/components/medvanta';
 import { getDayOfWeek } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import { ExerciseDetailsPopover } from './partials/exercise-details-popover';
+
+const MAX_VISIBLE_ITEMS = 4;
 
 interface DayBoxProps {
   day: number;
@@ -30,6 +29,21 @@ interface DayBoxProps {
   defaultValues?: DefaultValuesData;
 }
 
+function formatExerciseParams(template: ExerciseTemplate): string {
+  const parts: string[] = [];
+  if (template.sets != null) parts.push(`${template.sets}×`);
+  if (template.rep != null) parts.push(`${template.rep}`);
+  else if (template.time != null) parts.push(`${template.time}s`);
+  else if (template.distance != null) parts.push(`${template.distance}`);
+  if (template.weight != null && template.weight !== '') {
+    parts.push(`@ ${template.weight}`);
+  }
+  return parts.join(' ').trim();
+}
+
+/**
+ * HTML `.day` card — equal-height week column with copy/paste in `.df` footer.
+ */
 export function DayBox({
   day,
   weekIndex,
@@ -40,43 +54,26 @@ export function DayBox({
   isDayCopied,
   isDayPasteDisabled,
   isPasteAnimating = false,
-  index,
   onAddExercise,
   onCopyDay,
   onPasteDay,
   onMouseEnter,
   onMouseLeave,
   defaultValues,
-}: DayBoxProps) {
+}: DayBoxProps): React.ReactElement {
   const hasItems = items.length > 0;
+  const isRest = !hasItems;
   const isWarning = isBeforeStart || isPastDate;
+  const dayLabel = getDayOfWeek(day)?.slice(0, 3).toUpperCase() ?? `D${day}`;
   const warningLabel = isBeforeStart
-    ? ' (Before Start)'
+    ? 'Before start'
     : isPastDate
-      ? ' (Past Date)'
-      : '';
+      ? 'Past'
+      : null;
 
-  const copyPasteButtons = (
-    <CopyPasteButtons
-      size="sm"
-      onCopy={onCopyDay}
-      onPaste={onPasteDay}
-      isCopied={isDayCopied}
-      isPasteDisabled={isDayPasteDisabled}
-      pasteJustTriggered={isPasteAnimating}
-      copyTooltip="Copy Day"
-      pasteTooltip="Paste Day"
-      copiedTooltip="Day already copied"
-      showCopy={hasItems}
-      showPaste={true}
-    />
-  );
-
-  // Helper to create a synthetic template from exercise + default values
   const getTemplateFromExercise = (
     item: Extract<SelectedItem, { type: 'exercise' }>,
   ): ExerciseTemplate => {
-    // If we have default values, use them to populate the synthetic template
     const base: Partial<ExerciseTemplate> = defaultValues
       ? {
           sets: defaultValues.sets,
@@ -107,7 +104,6 @@ export function DayBox({
       video_type: item.data.video_type,
       video_url: item.data.video_url,
       thumbnail_url: item.data.thumbnail_url ?? undefined,
-      // Default to null if not provided by defaultValues
       sets: base.sets ?? null,
       time: base.time ?? null,
       rep: base.rep ?? null,
@@ -118,126 +114,176 @@ export function DayBox({
     };
   };
 
-  const renderItem = (
+  const flattenLeaves = (list: SelectedItem[]): SelectedItem[] => {
+    const out: SelectedItem[] = [];
+    for (const item of list) {
+      if (item.type === 'group') {
+        out.push(...flattenLeaves(item.data.items));
+      } else {
+        out.push(item);
+      }
+    }
+    return out;
+  };
+
+  const leafItems = flattenLeaves(items);
+  const visibleItems = leafItems.slice(0, MAX_VISIBLE_ITEMS);
+  const hiddenCount = Math.max(0, leafItems.length - MAX_VISIBLE_ITEMS);
+
+  const renderExerciseRow = (
     item: SelectedItem,
     itemIndex: number,
-    inGroup = false,
-  ) => {
-    if (item.type === 'group') {
-      return (
-        <div key={`group-${itemIndex}`} className="flex flex-col gap-1 mb-2">
-          <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground pl-1">
-            {item.data.name}
-          </div>
-          <div className="pl-2 border-l-2 border-border/60 flex flex-col gap-1">
-            {item.data.items.map((subItem, subIdx) =>
-              renderItem(subItem, subIdx, true),
-            )}
-          </div>
-        </div>
-      );
-    }
+  ): React.ReactElement | null => {
+    if (item.type === 'group') return null;
 
     const template =
       item.type === 'template'
         ? item.data
-        : getTemplateFromExercise(item as Extract<SelectedItem, { type: 'exercise' }>);
+        : getTemplateFromExercise(
+            item as Extract<SelectedItem, { type: 'exercise' }>,
+          );
     const displayName = template.exercise_name || 'Unnamed Exercise';
+    const params = formatExerciseParams(template);
+    const thumb = template.thumbnail_url;
 
     return (
-      <ExerciseDetailsPopover key={`${inGroup ? 'sub' : 'item'}-${itemIndex}`} template={template} className="w-full">
-        <div
-          className={cn(
-            'text-xs py-1 px-2 rounded-md truncate cursor-pointer transition-colors text-left w-full',
-            'hover:bg-primary/10 hover:text-primary text-foreground/80',
-          )}
-        >
-          {displayName}
+      <ExerciseDetailsPopover
+        key={`item-${itemIndex}`}
+        template={template}
+        className="w-full"
+      >
+        <div className="ex-r" role="button" tabIndex={0}>
+          <span
+            className="et thmb"
+            style={
+              thumb
+                ? {
+                    backgroundImage: `url(${thumb})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : undefined
+            }
+            aria-hidden
+          >
+            {!thumb ? <Icon name="Dumbbell" size={12} /> : null}
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span className="en">{displayName}</span>
+            {params ? <span className="ep">{params}</span> : null}
+          </span>
+          <Icon name="GripVertical" size={12} className="gh" />
         </div>
       </ExerciseDetailsPopover>
     );
   };
 
   return (
-    <div className="flex flex-col flex-1 min-w-[220px]">
-      <div className="relative mb-1">
-        <h3
-          className={cn(
-            'text-base font-semibold text-center',
-            isWarning ? 'text-destructive' : 'text-foreground',
-          )}
+    <div
+      className={cn('day', isRest && 'rest', isWarning && 'day-warn')}
+      style={
+        isWarning
+          ? {
+              borderColor: 'color-mix(in oklch, var(--danger) 40%, var(--border-default))',
+            }
+          : undefined
+      }
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      data-week={weekIndex}
+      data-day={day}
+    >
+      <div className="dh">
+        <span
+          className="dn"
+          style={isWarning ? { color: 'var(--danger)' } : undefined}
         >
-          {getDayOfWeek(day)}
-        </h3>
-      </div>
-      {formattedDate && (
-        <p
-          className={cn(
-            'text-xs mb-3 text-center',
-            isWarning ? 'text-destructive/70' : 'text-muted-foreground',
-          )}
-        >
-          {formattedDate}{warningLabel}
-        </p>
-      )}
-      <div
-        className={cn(
-          'group relative border-2 rounded-xl p-4 min-h-[280px] flex flex-col items-center gap-3 transition-colors duration-200',
-          isWarning
-            ? 'border-dashed border-destructive/40 bg-destructive/5 justify-center'
-            : hasItems
-              ? 'border-primary bg-muted/30 justify-start' // Blue border for non-rest
-              : 'border-dashed border-border bg-muted/30 justify-center', // Dashed for rest
-        )}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        {hasItems ? (
-          <>
-             <motion.div
-              className="w-full flex-1 flex flex-col gap-1 overflow-y-auto max-h-[240px] min-h-[240px] slim-scrollbar"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 * index }}
-            >
-              {items.map((item, idx) => renderItem(item, idx))}
-            </motion.div>
-          </>
-        ) : (
-          <>
-            <motion.p
-              key={`week-${weekIndex}-day-${day}-rest`}
-              className={cn(
-                'h-full max-h-[240px] min-h-[240px] flex flex-col items-center justify-center text-sm cursor-default',
-                isWarning ? 'text-destructive/70' : 'text-muted-foreground',
-              )}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 * index }}
-            >
-              Rest Day
-            </motion.p>
-          </>
-        )}
-        <div className="w-full mt-auto flex items-center gap-2">
-          {copyPasteButtons}
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'border-dashed flex-1',
-              isWarning
-                ? 'border-destructive/40 text-destructive cursor-not-allowed bg-destructive/5'
-                : hasItems 
-                  ? 'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary cursor-pointer'
-                  : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground cursor-pointer',
-            )}
-            onClick={() => onAddExercise(day)}
+          {dayLabel}
+        </span>
+        {formattedDate ? (
+          <span
+            className="dd"
+            style={isWarning ? { color: 'var(--danger)' } : undefined}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            {hasItems ? 'Edit' : 'Add Exercise'}
-          </Button>
+            {formattedDate}
+            {warningLabel ? ` · ${warningLabel}` : ''}
+          </span>
+        ) : null}
+        <span className="sp" />
+        <button
+          type="button"
+          className="ib ib-sm"
+          aria-label={isDayCopied ? 'Day copied' : 'Copy day'}
+          title={isDayCopied ? 'Copied — Ctrl/⌘+C' : 'Copy day — Ctrl/⌘+C'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopyDay();
+          }}
+          style={
+            isDayCopied
+              ? { color: 'var(--success, var(--cyan-600))' }
+              : undefined
+          }
+        >
+          <Icon name={isDayCopied ? 'Check' : 'Copy'} size={14} />
+        </button>
+        <button
+          type="button"
+          className="ib ib-sm"
+          aria-label="Paste day"
+          title={
+            isDayPasteDisabled
+              ? isDayCopied
+                ? 'Already the copied day'
+                : 'Nothing to paste'
+              : 'Paste day — Ctrl/⌘+V'
+          }
+          disabled={isDayPasteDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPasteDay();
+          }}
+          style={{
+            opacity: isDayPasteDisabled ? 0.4 : 1,
+            color: isPasteAnimating
+              ? 'var(--success, var(--cyan-600))'
+              : undefined,
+          }}
+        >
+          <Icon name="ClipboardPaste" size={14} />
+        </button>
+      </div>
+
+      {hasItems ? (
+        <div className="dbody">
+          {visibleItems.map((item, idx) => renderExerciseRow(item, idx))}
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              className="dmore"
+              onClick={() => onAddExercise(day)}
+            >
+              +{hiddenCount} more
+            </button>
+          ) : null}
         </div>
+      ) : (
+        <div className="rest-m">
+          <Icon name="Moon" size={18} />
+          <span className="rl">Rest day</span>
+        </div>
+      )}
+
+      <div className="df">
+        <button
+          type="button"
+          className={cn('btn btn-sm', hasItems ? 'btn-sec' : 'btn-ghost')}
+          disabled={isWarning}
+          onClick={() => onAddExercise(day)}
+        >
+          <Icon name="Plus" size={14} />
+          {hasItems ? 'Edit' : 'Add'}
+        </button>
       </div>
     </div>
   );

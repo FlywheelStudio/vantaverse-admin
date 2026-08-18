@@ -1,6 +1,6 @@
 /** Mock defaults for Edit Workout Day modal (HTML `mdDayEditor` parity). */
 
-export const DAY_NAMES = [
+const DAY_NAMES = [
   'Monday',
   'Tuesday',
   'Wednesday',
@@ -10,7 +10,7 @@ export const DAY_NAMES = [
   'Sunday',
 ] as const;
 
-export type DayName = (typeof DAY_NAMES)[number];
+type DayName = (typeof DAY_NAMES)[number];
 
 export interface DayPrescription {
   sets: string;
@@ -36,10 +36,10 @@ export const DEFAULT_DAY_PRESCRIPTION: DayPrescription = {
   rest: '60s',
 };
 
-export const DEFAULT_SESSION_NOTE =
+const DEFAULT_SESSION_NOTE =
   'Warm up with 5 minutes of easy walking before you start.';
 
-export const MINUTES_PER_EXERCISE = 5;
+const MINUTES_PER_EXERCISE = 5;
 
 /**
  * Resolves weekday label from a 0-based day index (Mon=0).

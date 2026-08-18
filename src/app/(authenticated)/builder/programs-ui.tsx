@@ -6,6 +6,7 @@ import { AppBar } from '@/components/medvanta/shell';
 import { ProgramBuilder } from './program/builder';
 import { PreProgramCard } from './program/pre-program-card';
 import { HtmlMoreButton } from './partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface ProgramsUIProps {
@@ -48,10 +49,26 @@ export function ProgramsUI({
             </button>
             <HtmlMoreButton
               items={[
-                { id: 'defaults', label: 'Manage default values' },
-                { id: 'blocks', label: 'Saved exercise blocks' },
-                { id: 'export', label: 'Export' },
-                { id: 'archived', label: 'Show archived' },
+                {
+                  id: 'defaults',
+                  label: 'Manage default values',
+                  onSelect: () => toastUnavailable('Manage default values'),
+                },
+                {
+                  id: 'blocks',
+                  label: 'Saved exercise blocks',
+                  onSelect: () => toastUnavailable('Saved exercise blocks'),
+                },
+                {
+                  id: 'export',
+                  label: 'Export',
+                  onSelect: () => toastUnavailable('Export programs'),
+                },
+                {
+                  id: 'archived',
+                  label: 'Show archived',
+                  onSelect: () => toastUnavailable('Show archived'),
+                },
               ]}
             />
           </>

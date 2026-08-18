@@ -36,6 +36,8 @@ interface BuilderContextValue {
   copiedWeekData: SelectedItem[][] | null;
   copyWeek: (weekIndex: number) => void;
   pasteWeek: (targetWeekIndex: number) => void;
+  clearWeek: (weekIndex: number) => void;
+  duplicateWeekToAll: (weekIndex: number) => void;
   copiedDayIndex: { week: number; day: number } | null;
   copiedDayData: SelectedItem[] | null;
   copyDay: (weekIndex: number, dayIndex: number) => void;
@@ -403,6 +405,58 @@ export function BuilderContextProvider({
     [copiedWeekData, copiedWeekIndex],
   );
 
+  const clearWeek = useCallback((weekIndex: number) => {
+    if (weekIndex < 0) return;
+
+    setScheduleState((prev) => {
+      if (weekIndex >= prev.length) return prev;
+      const updated = [...prev];
+      updated[weekIndex] = Array.from({ length: 7 }, () => []);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setDayMetaState((prev) => {
+      if (weekIndex >= prev.length) return prev;
+      const updated = [...prev];
+      updated[weekIndex] = Array.from({ length: 7 }, () => ({
+        ...EMPTY_DAY_SCHEDULE_META,
+      }));
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const duplicateWeekToAll = useCallback(
+    (weekIndex: number) => {
+      if (weekIndex < 0 || weekIndex >= schedule.length) return;
+
+      const source = schedule[weekIndex];
+      if (!source) return;
+
+      const sourceCopy: SelectedItem[][] = source.map((day) =>
+        day.map((item) => ({ ...item })),
+      );
+
+      setScheduleState((prev) => {
+        const updated = prev.map((week, index) =>
+          index === weekIndex
+            ? week
+            : sourceCopy.map((day) => day.map((item) => ({ ...item }))),
+        );
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
+        }
+        return updated;
+      });
+    },
+    [schedule],
+  );
+
   const copyDay = useCallback(
     (weekIndex: number, dayIndex: number) => {
       if (
@@ -492,6 +546,8 @@ export function BuilderContextProvider({
         copiedWeekData,
         copyWeek,
         pasteWeek,
+        clearWeek,
+        duplicateWeekToAll,
         copiedDayIndex,
         copiedDayData,
         copyDay,

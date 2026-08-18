@@ -6,7 +6,7 @@ import {
   type HtmlActionsMenuItem,
 } from '@/components/medvanta/shell/HtmlActionsMenu';
 
-export interface HtmlFiltersButtonProps {
+interface HtmlFiltersButtonProps {
   activeCount?: number;
 }
 
@@ -39,7 +39,7 @@ function parseLegacyMenuItems(text: string): HtmlActionsMenuItem[] {
     }));
 }
 
-export interface HtmlMoreButtonProps {
+interface HtmlMoreButtonProps {
   items?: HtmlActionsMenuItem[];
   tooltip?: string;
 }
@@ -50,7 +50,7 @@ export function HtmlMoreButton({ items, tooltip }: HtmlMoreButtonProps): React.R
   return <HtmlActionsMenu items={menuItems} size="md" variant="icon" />;
 }
 
-export interface HtmlRowMenuProps {
+interface HtmlRowMenuProps {
   items?: HtmlActionsMenuItem[];
   tooltip?: string;
 }

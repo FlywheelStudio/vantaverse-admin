@@ -865,6 +865,86 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Aggregate member counts + avg completion per program template (active member programs).
+   */
+  public async getMemberStatsByTemplateIds(
+    templateIds: string[],
+  ): Promise<
+    | SupabaseSuccess<
+        Record<string, { members: number; avgCompletion: number | null }>
+      >
+    | SupabaseError
+  > {
+    const empty: Record<
+      string,
+      { members: number; avgCompletion: number | null }
+    > = {};
+    if (templateIds.length === 0) {
+      return { success: true, data: empty };
+    }
+
+    const supabase = await this.getClient('authenticated_user');
+    const { data, error } = await supabase
+      .from('program_with_stats')
+      .select(
+        'program_template_id, program_completion_percentage, compliance, user_id',
+      )
+      .in('program_template_id', templateIds)
+      .not('user_id', 'is', null);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to fetch template member stats',
+      );
+    }
+
+    const aggregates = new Map<
+      string,
+      { members: number; sum: number; withPct: number }
+    >();
+
+    for (const raw of data ?? []) {
+      const row = raw as {
+        program_template_id: string | null;
+        program_completion_percentage?: number | null;
+        compliance?: number | null;
+        user_id: string | null;
+      };
+      if (!row.program_template_id || !row.user_id) continue;
+      const current = aggregates.get(row.program_template_id) ?? {
+        members: 0,
+        sum: 0,
+        withPct: 0,
+      };
+      current.members += 1;
+      const pct = row.program_completion_percentage ?? row.compliance;
+      if (typeof pct === 'number' && !Number.isNaN(pct)) {
+        current.sum += pct;
+        current.withPct += 1;
+      }
+      aggregates.set(row.program_template_id, current);
+    }
+
+    const result: Record<
+      string,
+      { members: number; avgCompletion: number | null }
+    > = {};
+    for (const id of templateIds) {
+      const agg = aggregates.get(id);
+      result[id] = {
+        members: agg?.members ?? 0,
+        avgCompletion:
+          agg && agg.withPct > 0
+            ? Math.round(agg.sum / agg.withPct)
+            : null,
+      };
+    }
+
+    return { success: true, data: result };
+  }
+
+  /**
    * Get active program assignment by user ID (joined with program_template and workout_schedule)
    * @param userId - The user ID
    * @returns Success with program assignment, exercise names map, and groups map, or null if not found, or error

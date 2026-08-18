@@ -45,6 +45,14 @@ export async function getProgramAssignmentById(id: string) {
 }
 
 /**
+ * Member counts + avg completion for program templates (Members on it / Avg. completion columns).
+ */
+export async function getTemplateMemberStats(templateIds: string[]) {
+  const query = new ProgramAssignmentsQuery();
+  return query.getMemberStatsByTemplateIds(templateIds);
+}
+
+/**
  * Get the global pre-program template assignment for the pinned builder card.
  */
 export async function getPreProgramTemplate() {

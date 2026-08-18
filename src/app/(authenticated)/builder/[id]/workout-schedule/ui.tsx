@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
 import { Icon } from '@/components/medvanta';
@@ -25,6 +25,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
 import { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+import { estimateSessionMinutes } from './exercise-builder-mock-data';
+
+const SESSION_OPTIONS = ['2 days', '3 days', '4 days', '5 days'] as const;
 
 type BuilderAssignmentStatus =
   | typeof PROGRAM_ASSIGNMENT_STATUS.ACTIVE
@@ -38,6 +41,8 @@ interface BuildWorkoutSectionProps {
   saveTrigger?: number;
   onSaveStateChange?: (state: { disabled: boolean; loading: boolean }) => void;
   onStepActive?: () => void;
+  onScheduleDirtyChange?: (dirty: boolean) => void;
+  onSaved?: () => void;
 }
 
 export function BuildWorkoutSection({
@@ -47,12 +52,34 @@ export function BuildWorkoutSection({
   saveTrigger = 0,
   onSaveStateChange,
   onStepActive,
+  onScheduleDirtyChange,
+  onSaved,
 }: BuildWorkoutSectionProps) {
-  const { schedule, programAssignmentId, currentWeek } = useBuilder();
+  const {
+    schedule,
+    programAssignmentId,
+    currentWeek,
+    copyWeek,
+    pasteWeek,
+    clearWeek,
+    duplicateWeekToAll,
+    copiedWeekData,
+    resizeSchedule,
+  } = useBuilder();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
   const queryClient = useQueryClient();
+  const scheduleBaselineRef = useRef<string | null>(null);
+
+  const weeksValue = programForm.watch('weeks') ?? initialWeeks;
+
+  const [sessionsPerWeek, setSessionsPerWeek] = useState<string>(() => {
+    const week = schedule[0] ?? [];
+    const filled = week.filter((day) => day.length > 0).length;
+    const clamped = Math.min(5, Math.max(2, filled || 3));
+    return `${clamped} days`;
+  });
 
   const updateProgramTemplateMutation = useUpdateProgramTemplate({
     suppressToast: true,
@@ -66,7 +93,18 @@ export function BuildWorkoutSection({
     suppressToast: true,
   });
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (scheduleBaselineRef.current === null && schedule.length > 0) {
+      scheduleBaselineRef.current = JSON.stringify(schedule);
+      onScheduleDirtyChange?.(false);
+      return;
+    }
+    if (scheduleBaselineRef.current === null) return;
+    const dirty = JSON.stringify(schedule) !== scheduleBaselineRef.current;
+    onScheduleDirtyChange?.(dirty);
+  }, [schedule, onScheduleDirtyChange]);
+
+  const handleSave = async (): Promise<void> => {
     if (!programAssignmentId) {
       toast.error('No program assignment found');
       return;
@@ -78,7 +116,6 @@ export function BuildWorkoutSection({
       return;
     }
 
-    // Check if schedule has any content
     const hasContent = schedule.some((week) =>
       week.some((day) => day.length > 0),
     );
@@ -88,23 +125,20 @@ export function BuildWorkoutSection({
       return;
     }
 
-    // Pre-program template: always propagate, no confirmation dialog
     if (assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE) {
       await performSave(true);
       return;
     }
 
-    // If editing a template, show confirmation dialog
     if (assignmentStatus === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE) {
       setShowDerivedDialog(true);
       return;
     }
 
-    // If editing active assignment, proceed directly
     await performSave(false);
   };
 
-  const performSave = async (updateDerived: boolean) => {
+  const performSave = async (updateDerived: boolean): Promise<void> => {
     if (!programAssignmentId) return;
 
     const values = programForm.getValues();
@@ -240,8 +274,7 @@ export function BuildWorkoutSection({
 
         if (derivedResult.success) {
           const count = derivedResult.data;
-          
-          // Invalidate all program assignment queries to refresh UI
+
           await queryClient.invalidateQueries({
             queryKey: programAssignmentsKeys.all,
           });
@@ -258,6 +291,9 @@ export function BuildWorkoutSection({
         toast.success('Saved');
       }
 
+      scheduleBaselineRef.current = JSON.stringify(schedule);
+      onScheduleDirtyChange?.(false);
+      onSaved?.();
       setShowDerivedDialog(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Save failed';
@@ -297,8 +333,23 @@ export function BuildWorkoutSection({
         exerciseCount += day.length;
       }
     });
-    return { workoutDays, exerciseCount };
+    const avgPerSession =
+      workoutDays > 0 ? Math.round(exerciseCount / workoutDays) : 0;
+    const minutesPerSession = estimateSessionMinutes(avgPerSession);
+    return { workoutDays, exerciseCount, minutesPerSession };
   }, [schedule, currentWeek]);
+
+  const handleDecreaseWeeks = (): void => {
+    const next = Math.max(1, Number(weeksValue) - 1);
+    programForm.setValue('weeks', next, { shouldDirty: true, shouldValidate: true });
+    resizeSchedule(next);
+  };
+
+  const handleIncreaseWeeks = (): void => {
+    const next = Math.min(52, Number(weeksValue) + 1);
+    programForm.setValue('weeks', next, { shouldDirty: true, shouldValidate: true });
+    resizeSchedule(next);
+  };
 
   return (
     <>
@@ -310,18 +361,30 @@ export function BuildWorkoutSection({
           <div>
             <label className="lbl">Duration</label>
             <div className="row" style={{ gap: 7 }}>
-              <button type="button" className="ib ib-sec ib-sq ib-sm" disabled aria-label="Decrease">
+              <button
+                type="button"
+                className="ib ib-sec ib-sq ib-sm"
+                aria-label="Decrease"
+                disabled={Number(weeksValue) <= 1}
+                onClick={handleDecreaseWeeks}
+              >
                 <Icon name="Minus" size={15} />
               </button>
               <span className="fld fld-sm" style={{ width: 66, justifyContent: 'center' }}>
                 <input
-                  value={String(programForm.watch('weeks') ?? initialWeeks)}
+                  value={String(weeksValue)}
                   readOnly
                   className="mono"
                   style={{ textAlign: 'center', fontWeight: 600 }}
                 />
               </span>
-              <button type="button" className="ib ib-sec ib-sq ib-sm" disabled aria-label="Increase">
+              <button
+                type="button"
+                className="ib ib-sec ib-sq ib-sm"
+                aria-label="Increase"
+                disabled={Number(weeksValue) >= 52}
+                onClick={handleIncreaseWeeks}
+              >
                 <Icon name="Plus" size={15} />
               </button>
               <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
@@ -331,9 +394,21 @@ export function BuildWorkoutSection({
           </div>
           <div>
             <label className="lbl">Sessions per week</label>
-            <span className="sel">
-              <select disabled defaultValue="3 days" aria-label="Sessions per week">
-                <option>3 days</option>
+            <span className="sel" style={{ minWidth: 140 }}>
+              <select
+                value={sessionsPerWeek}
+                aria-label="Sessions per week"
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSessionsPerWeek(next);
+                  onScheduleDirtyChange?.(true);
+                }}
+              >
+                {SESSION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </select>
               <span className="ci">
                 <Icon name="ChevronDown" size={16} />
@@ -345,10 +420,42 @@ export function BuildWorkoutSection({
               variant="button"
               label="Week actions"
               items={[
-                { id: 'copy', label: 'Copy week' },
-                { id: 'paste', label: 'Paste into week' },
-                { id: 'duplicate', label: 'Duplicate to all weeks' },
-                { id: 'clear', label: 'Clear week' },
+                {
+                  id: 'copy',
+                  label: 'Copy week',
+                  onSelect: () => {
+                    copyWeek(currentWeek);
+                    toast.success(`Week ${currentWeek + 1} copied`);
+                  },
+                },
+                {
+                  id: 'paste',
+                  label: 'Paste into week',
+                  onSelect: () => {
+                    if (!copiedWeekData) {
+                      toast.error('Nothing to paste — copy a week first');
+                      return;
+                    }
+                    pasteWeek(currentWeek);
+                    toast.success(`Pasted into week ${currentWeek + 1}`);
+                  },
+                },
+                {
+                  id: 'duplicate',
+                  label: 'Duplicate to all weeks',
+                  onSelect: () => {
+                    duplicateWeekToAll(currentWeek);
+                    toast.success(`Week ${currentWeek + 1} duplicated to all weeks`);
+                  },
+                },
+                {
+                  id: 'clear',
+                  label: 'Clear week',
+                  onSelect: () => {
+                    clearWeek(currentWeek);
+                    toast.success(`Week ${currentWeek + 1} cleared`);
+                  },
+                },
               ]}
             />
           </span>
@@ -381,7 +488,12 @@ export function BuildWorkoutSection({
             </span>
             <span className="mut">
               {weekStats.workoutDays} workout day{weekStats.workoutDays === 1 ? '' : 's'} ·{' '}
-              {weekStats.exerciseCount} exercise{weekStats.exerciseCount === 1 ? '' : 's'}
+              {weekStats.exerciseCount} exercise
+              {weekStats.exerciseCount === 1 ? '' : 's'}
+              {weekStats.workoutDays > 0
+                ? ` · ~${weekStats.minutesPerSession} min per session`
+                : ''}
+              {` · target ${sessionsPerWeek}`}
             </span>
             <span className="sp mut row" style={{ gap: 6, fontSize: 'var(--text-xs)' }}>
               <Icon name="GripVertical" size={14} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -163,12 +163,23 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     [programStartDate, parseLocalDate],
   );
 
-  const [weeks, setWeeks] = useState<Week[]>(() =>
-    Array.from({ length: initialWeeks }, (_, i) => ({
-      id: `week-${i + 1}`,
-      number: i + 1,
-    })),
+  const weekCount = Math.max(1, schedule.length || initialWeeks);
+
+  const baseWeeks = useMemo(
+    () =>
+      Array.from({ length: weekCount }, (_, i) => ({
+        id: `week-${i + 1}`,
+        number: i + 1,
+      })),
+    [weekCount],
   );
+
+  // Drag order only — reset when Duration +/- changes weekCount.
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+  const weeks =
+    dragOrder && dragOrder.length === weekCount
+      ? dragOrder.map((id, index) => ({ id, number: index + 1 }))
+      : baseWeeks;
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -315,19 +326,10 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
       // Apply the same move operation to get the new order
       const newOrder = arrayMove(originalIndices, oldIndex, newIndex);
 
-      // Call reorderWeeks once, before state update
       reorderWeeks(newOrder);
 
-      // Update weeks state
-      setWeeks((items) => {
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        const reorderedWithNewNumbers = reordered.map((week, index) => ({
-          ...week,
-          number: index + 1,
-        }));
-
-        return reorderedWithNewNumbers;
-      });
+      const reordered = arrayMove(weeks, oldIndex, newIndex);
+      setDragOrder(reordered.map((week) => week.id));
     }
   };
 

@@ -1,6 +1,6 @@
 /** Mock impact counts for Save Template modal (HTML `mdUpdateDerived` parity). */
 
-export interface UpdateDerivedImpactCounts {
+interface UpdateDerivedImpactCounts {
   activePrograms: number;
   members: number;
   groups: number;

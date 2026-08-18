@@ -8,12 +8,14 @@ import {
 } from '@/hooks/use-passignments';
 import { CreateTemplateForm } from './form';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
 import { HtmlFiltersButton, HtmlRowMenu } from '../partials/html-toolbar';
 import { formatRelativeEdited } from '../partials/html-utils';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import { getTemplateMemberStats } from '@/app/(authenticated)/builder/actions';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface ProgramBuilderProps {
@@ -35,9 +37,11 @@ interface ProgramBuilderProps {
 function ProgramTableRow({
   assignment,
   onClick,
+  memberStats,
 }: {
   assignment: ProgramAssignmentWithTemplate;
   onClick: () => void;
+  memberStats?: { members: number; avgCompletion: number | null };
 }): React.ReactElement | null {
   const router = useRouter();
   const template = assignment.program_template;
@@ -46,6 +50,8 @@ function ProgramTableRow({
   const weeksLabel = `${template.weeks} week${template.weeks === 1 ? '' : 's'}`;
   const edited = formatRelativeEdited(template.updated_at);
   const assignmentId = assignment.id;
+  const membersOnIt = memberStats?.members ?? 0;
+  const avgCompletion = memberStats?.avgCompletion;
 
   return (
     <tr onClick={onClick} style={{ cursor: 'pointer' }}>
@@ -83,16 +89,24 @@ function ProgramTableRow({
         </span>
       </td>
       <td>
-        <span className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-          —
+        <span
+          className="mono"
+          style={{
+            fontSize: 'var(--text-sm)',
+            color: membersOnIt > 0 ? 'var(--text-body)' : 'var(--text-muted)',
+          }}
+        >
+          {membersOnIt}
         </span>
       </td>
       <td>
         <div className="pbw" style={{ maxWidth: 110 }}>
           <span className="pb pb-6 pb-n">
-            <i style={{ width: '0%' }} />
+            <i style={{ width: `${Math.max(avgCompletion ?? 0, avgCompletion ? 2 : 0)}%` }} />
           </span>
-          <span className="v">—</span>
+          <span className="v">
+            {avgCompletion != null ? `${avgCompletion}%` : '—'}
+          </span>
         </div>
       </td>
       <td>
@@ -126,10 +140,19 @@ function ProgramTableRow({
                   }
                 : undefined,
             },
-            { id: 'duplicate', label: 'Duplicate' },
-            { id: 'assign', label: 'Assign to members' },
-            { id: 'archive', label: 'Archive' },
-            { id: 'delete', label: 'Delete', danger: true },
+            { id: 'duplicate', label: 'Duplicate', onSelect: () => toastUnavailable('Duplicate') },
+            {
+              id: 'assign',
+              label: 'Assign to members',
+              onSelect: () => toastUnavailable('Assign to members'),
+            },
+            { id: 'archive', label: 'Archive', onSelect: () => toastUnavailable('Archive') },
+            {
+              id: 'delete',
+              label: 'Delete',
+              danger: true,
+              onSelect: () => toastUnavailable('Delete'),
+            },
           ]}
         />
       </td>
@@ -178,6 +201,24 @@ export function ProgramBuilder({
     const start = (safeListPage - 1) * pageSize;
     return assignments.slice(start, start + pageSize);
   }, [assignments, safeListPage, pageSize]);
+
+  const templateIds = useMemo(
+    () =>
+      visibleAssignments
+        .map((a) => a.program_template?.id)
+        .filter((id): id is string => Boolean(id)),
+    [visibleAssignments],
+  );
+
+  const { data: memberStatsByTemplate = {} } = useQuery({
+    queryKey: ['program-template-member-stats', templateIds],
+    queryFn: async () => {
+      const result = await getTemplateMemberStats(templateIds);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: templateIds.length > 0,
+  });
 
   const visibleRangeStart = totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
   const visibleRangeEnd = Math.min(safeListPage * pageSize, totalCount);
@@ -318,6 +359,11 @@ export function ProgramBuilder({
                   key={assignment.id}
                   assignment={assignment}
                   onClick={() => handleRowClick(assignment)}
+                  memberStats={
+                    assignment.program_template?.id
+                      ? memberStatsByTemplate[assignment.program_template.id]
+                      : undefined
+                  }
                 />
               ))
             )}

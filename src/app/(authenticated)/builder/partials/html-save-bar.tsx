@@ -2,9 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { HtmlMoreButton } from './html-toolbar';
 
-export interface BuilderSaveBarProps {
+interface BuilderSaveBarProps {
   activeStep: 1 | 2 | 3;
   onStepClick?: (step: 1 | 2) => void;
   detailsHref?: string;
@@ -122,7 +123,12 @@ export function BuilderSaveBar({
           </span>
         ) : null}
         <div className="tip">
-          <button type="button" className="ib ib-sec" disabled aria-label="Preview as member">
+          <button
+            type="button"
+            className="ib ib-sec"
+            aria-label="Preview as member"
+            onClick={() => toastUnavailable('Preview as member')}
+          >
             <Icon name="Eye" size={18} />
           </button>
           <span className="tt">Preview as a member sees it</span>
@@ -142,10 +148,27 @@ export function BuilderSaveBar({
         </button>
         <HtmlMoreButton
           items={[
-            { id: 'discard', label: 'Discard changes' },
-            { id: 'duplicate', label: 'Duplicate template' },
-            { id: 'archive', label: 'Archive' },
-            { id: 'delete', label: 'Delete', danger: true },
+            {
+              id: 'discard',
+              label: 'Discard changes',
+              onSelect: () => toastUnavailable('Discard changes'),
+            },
+            {
+              id: 'duplicate',
+              label: 'Duplicate template',
+              onSelect: () => toastUnavailable('Duplicate template'),
+            },
+            {
+              id: 'archive',
+              label: 'Archive',
+              onSelect: () => toastUnavailable('Archive'),
+            },
+            {
+              id: 'delete',
+              label: 'Delete',
+              danger: true,
+              onSelect: () => toastUnavailable('Delete template'),
+            },
           ]}
         />
       </span>
