@@ -11,6 +11,8 @@ export interface HtmlModalProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   headerExtra?: React.ReactNode;
+  /** Rendered in the header trailing cluster before the close button (e.g. day nav). */
+  headerTrailing?: React.ReactNode;
   children?: React.ReactNode;
   footer?: React.ReactNode;
   footerInfo?: React.ReactNode;
@@ -31,6 +33,7 @@ export function HtmlModal({
   title,
   subtitle,
   headerExtra,
+  headerTrailing,
   children,
   footer,
   footerInfo,
@@ -68,15 +71,20 @@ export function HtmlModal({
                 {subtitle ? <div className="ms">{subtitle}</div> : null}
                 {headerExtra}
               </div>
-              {onClose ? (
-                <DialogPrimitive.Close
-                  type="button"
-                  className="ib ib-sm"
-                  aria-label="Close"
-                  style={{ margin: '-2px -6px 0 0' }}
-                >
-                  <Icon name="X" size={19} />
-                </DialogPrimitive.Close>
+              {(headerTrailing || onClose) ? (
+                <div className="row" style={{ gap: 7, flex: '0 0 auto' }}>
+                  {headerTrailing}
+                  {onClose ? (
+                    <DialogPrimitive.Close
+                      type="button"
+                      className="ib ib-sm"
+                      aria-label="Close"
+                      style={{ marginLeft: headerTrailing ? 4 : -6 }}
+                    >
+                      <Icon name="X" size={19} />
+                    </DialogPrimitive.Close>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             {children ? (

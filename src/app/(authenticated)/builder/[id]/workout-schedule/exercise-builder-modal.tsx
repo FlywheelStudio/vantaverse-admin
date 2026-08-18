@@ -26,6 +26,11 @@ import { ExerciseTemplateCard } from './partials/exercise-template-card';
 import { GroupCard } from './partials/group-card';
 import { SelectedItemsList } from './selected-items-list';
 import { DefaultValues } from '../default-values/default-values';
+import {
+  DEFAULT_SESSION_NOTE,
+  formatVolumeFooter,
+  getDayName,
+} from './exercise-builder-mock-data';
 
 interface ExerciseBuilderModalProps {
   open: boolean;
@@ -37,6 +42,19 @@ interface ExerciseBuilderModalProps {
   weekIndex?: number;
   dayIndex?: number;
   date?: Date | null;
+  /** Optional parent day navigation; falls back to local mock index. */
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
+}
+
+/**
+ * Counts leaf exercises in the selection (group children included).
+ */
+function countSelectedExercises(items: SelectedItem[]): number {
+  return items.reduce((total, item) => {
+    if (item.type === 'group') return total + item.data.items.length;
+    return total + 1;
+  }, 0);
 }
 
 export function ExerciseBuilderModal({
@@ -49,7 +67,9 @@ export function ExerciseBuilderModal({
   weekIndex,
   dayIndex,
   date,
-}: ExerciseBuilderModalProps) {
+  onPrevDay,
+  onNextDay,
+}: ExerciseBuilderModalProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<TabType>('library');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('updated_at');
@@ -59,6 +79,9 @@ export function ExerciseBuilderModal({
     useState<SelectedItem[]>(initialItems);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
+  const [isRestDay, setIsRestDay] = useState(false);
+  const [sessionNote, setSessionNote] = useState(DEFAULT_SESSION_NOTE);
+  const [mockDayIndex, setMockDayIndex] = useState(dayIndex ?? 0);
 
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
@@ -95,7 +118,6 @@ export function ExerciseBuilderModal({
           ? groupsQuery
           : null;
 
-  // Infinite scroll observer
   useEffect(() => {
     if (!currentQuery || activeTab === 'default-values') return;
 
@@ -130,19 +152,19 @@ export function ExerciseBuilderModal({
     activeTab,
   ]);
 
-  const updateSelectedItems = (newItems: SelectedItem[]) => {
+  const updateSelectedItems = (newItems: SelectedItem[]): void => {
     setSelectedItems(newItems);
     onItemsChange?.(newItems);
   };
 
-  const handleAddExercise = (exercise: Exercise) => {
+  const handleAddExercise = (exercise: Exercise): void => {
     updateSelectedItems([
       ...selectedItems,
       { type: 'exercise', data: exercise },
     ]);
   };
 
-  const handleAddTemplate = (template: ExerciseTemplate) => {
+  const handleAddTemplate = (template: ExerciseTemplate): void => {
     updateSelectedItems([
       ...selectedItems,
       { type: 'template', data: template },
@@ -176,7 +198,7 @@ export function ExerciseBuilderModal({
     return map;
   }, [groupTemplatesQuery.data]);
 
-  const handleAddDatabaseGroup = (group: DbGroup) => {
+  const handleAddDatabaseGroup = (group: DbGroup): void => {
     const items: SelectedItem[] = (group.exercise_template_ids ?? [])
       .map((id) => groupTemplatesById[id])
       .filter(Boolean)
@@ -198,25 +220,24 @@ export function ExerciseBuilderModal({
     updateSelectedItems([...selectedItems, newGroup]);
   };
 
-  const handleRemoveItem = (index: number) => {
+  const handleRemoveItem = (index: number): void => {
     updateSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
-  const handleUpdateItem = (index: number, item: SelectedItem) => {
+  const handleUpdateItem = (index: number, item: SelectedItem): void => {
     const updated = [...selectedItems];
     updated[index] = item;
     updateSelectedItems(updated);
   };
 
-  const handleDone = () => {
-    // Filter out empty groups before saving
+  const handleDone = (): void => {
     const filteredItems = selectedItems.filter((item) => {
       if (item.type === 'group') {
         return item.data.items.length > 0;
       }
       return true;
     });
-    
+
     onDone?.(filteredItems);
     onOpenChange(false);
     setSearch('');
@@ -224,19 +245,19 @@ export function ExerciseBuilderModal({
     setGroupNameInput('');
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     onCancel?.();
     setSearch('');
     setShowGroupInput(false);
     setGroupNameInput('');
   };
 
-  const handleSortChange = (by: string, order: 'asc' | 'desc') => {
+  const handleSortChange = (by: string, order: 'asc' | 'desc'): void => {
     setSortBy(by);
     setSortOrder(order);
   };
 
-  const handleAddGroup = () => {
+  const handleAddGroup = (): void => {
     if (groupNameInput.trim()) {
       const newGroup: SelectedItem = {
         type: 'group',
@@ -252,11 +273,11 @@ export function ExerciseBuilderModal({
     }
   };
 
-  const handleRemoveGroup = (index: number) => {
+  const handleRemoveGroup = (index: number): void => {
     updateSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
-  const handleToggleSuperset = (index: number) => {
+  const handleToggleSuperset = (index: number): void => {
     const updated = [...selectedItems];
     const item = updated[index];
     if (item && item.type === 'group') {
@@ -271,30 +292,56 @@ export function ExerciseBuilderModal({
     }
   };
 
-  const handleCancelGroupInput = () => {
+  const handleCancelGroupInput = (): void => {
     setGroupNameInput('');
     setShowGroupInput(false);
   };
 
-  // Format header title with week, day, and date
-  const getHeaderTitle = () => {
+  const effectiveDayIndex = onPrevDay || onNextDay ? (dayIndex ?? 0) : mockDayIndex;
+  const dayName = getDayName(effectiveDayIndex);
+  const exerciseCount = countSelectedExercises(selectedItems);
+  const volumeLabel = formatVolumeFooter(exerciseCount);
+
+  const handlePrevDay = (): void => {
+    if (onPrevDay) {
+      onPrevDay();
+      return;
+    }
+    setMockDayIndex((prev) => (prev + 6) % 7);
+  };
+
+  const handleNextDay = (): void => {
+    if (onNextDay) {
+      onNextDay();
+      return;
+    }
+    setMockDayIndex((prev) => (prev + 1) % 7);
+  };
+
+  const getHeaderTitle = (): string => {
+    return `Edit ${dayName}`;
+  };
+
+  const getSubtitle = (): string => {
     if (
       weekIndex !== undefined &&
-      dayIndex !== undefined &&
       date !== null &&
       date !== undefined
     ) {
       const formattedDate = format(date, 'MM-dd-yyyy');
-      return `Add Exercises or Groups - Week ${weekIndex + 1}, Day ${dayIndex + 1} (${formattedDate})`;
+      return `Week ${weekIndex + 1} · Day ${effectiveDayIndex + 1} (${formattedDate})`;
     }
-    return 'Add Exercises or Groups';
+    if (weekIndex !== undefined) {
+      return `Week ${weekIndex + 1}`;
+    }
+    return 'Add exercises or groups for this day';
   };
 
   return (
     <HtmlModal
       open={open}
-      title="Day editor"
-      subtitle={getHeaderTitle()}
+      title={getHeaderTitle()}
+      subtitle={getSubtitle()}
       onClose={() => onOpenChange(false)}
       width={1060}
       style={{
@@ -305,6 +352,27 @@ export function ExerciseBuilderModal({
         flexDirection: 'column',
       }}
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      headerTrailing={
+        <>
+          <button
+            type="button"
+            className="ib ib-sec ib-sq"
+            aria-label="Previous day"
+            onClick={handlePrevDay}
+          >
+            <Icon name="ChevronLeft" size={17} />
+          </button>
+          <button
+            type="button"
+            className="ib ib-sec ib-sq"
+            aria-label="Next day"
+            onClick={handleNextDay}
+          >
+            <Icon name="ChevronRight" size={17} />
+          </button>
+        </>
+      }
+      footerInfo={`${dayName} · ${volumeLabel}`}
       footer={
         <>
           <button type="button" className="btn btn-sec" onClick={handleCancel}>
@@ -312,14 +380,13 @@ export function ExerciseBuilderModal({
           </button>
           <button type="button" className="btn btn-pri" onClick={handleDone}>
             <Icon name="Check" size={17} />
-            Done
+            Save day
           </button>
         </>
       }
     >
       <div className="dual flex min-h-0 flex-1 overflow-hidden">
           <div className="dual-l flex flex-col overflow-hidden">
-            {/* Tabs and Controls */}
             <ExerciseTabSwitcher
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -336,7 +403,6 @@ export function ExerciseBuilderModal({
               />
             )}
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto">
               {activeTab === 'default-values' ? (
                   <DefaultValues />
@@ -429,7 +495,6 @@ export function ExerciseBuilderModal({
                 </div>
               )}
 
-              {/* Infinite scroll trigger */}
               {activeTab !== 'default-values' && (
                 <>
                   <div ref={observerTargetRef} className="h-4" />
@@ -455,14 +520,90 @@ export function ExerciseBuilderModal({
           </div>
 
           <div className="dual-r slim-scrollbar flex flex-col overflow-y-auto">
-            <h4 className="mb-4 font-[var(--fw-semibold)] text-[var(--text-strong)]">
-              Selected items
-            </h4>
+            <div
+              className="row"
+              style={{ gap: 9, marginBottom: 3 }}
+            >
+              <Icon name="CalendarDays" size={16} style={{ color: 'var(--navy-600)' }} />
+              <span
+                style={{
+                  fontSize: 'var(--text-md)',
+                  fontWeight: 'var(--fw-bold)',
+                  color: 'var(--text-strong)',
+                }}
+              >
+                {dayName}
+                {weekIndex !== undefined ? ` · Week ${weekIndex + 1}` : ''}
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text-muted)',
+                marginBottom: 13,
+              }}
+            >
+              {volumeLabel}
+            </div>
+
+            <label
+              className="cbl"
+              style={{
+                fontSize: 'var(--text-sm)',
+                marginBottom: 13,
+                padding: '9px 11px',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--surface-card)',
+              }}
+            >
+              <button
+                type="button"
+                className={isRestDay ? 'sw on' : 'sw'}
+                aria-pressed={isRestDay}
+                aria-label={`Mark ${dayName} as a rest day`}
+                onClick={() => setIsRestDay((prev) => !prev)}
+              >
+                <i />
+              </button>
+              Mark {dayName} as a rest day
+            </label>
+
+            <div style={{ marginBottom: 13 }}>
+              <label className="lbl" htmlFor="day-session-note">
+                Session note
+              </label>
+              <textarea
+                id="day-session-note"
+                className="ta"
+                rows={2}
+                placeholder="Optional — shown at the top of the workout"
+                value={sessionNote}
+                onChange={(e) => setSessionNote(e.target.value)}
+                disabled={isRestDay}
+              />
+            </div>
+
+            <div
+              className="row"
+              style={{ justifyContent: 'space-between', marginBottom: 8 }}
+            >
+              <span className="ovl">Exercises ({exerciseCount})</span>
+              <span
+                className="mut row"
+                style={{ gap: 5, fontSize: 'var(--text-xs)' }}
+              >
+                <Icon name="GripVertical" size={13} />
+                Drag to reorder
+              </span>
+            </div>
+
             {!showGroupInput ? (
               <button
                 type="button"
                 onClick={() => setShowGroupInput(true)}
                 className="mb-4 w-full cursor-pointer rounded-[var(--radius-md)] border-2 border-dashed border-[var(--border-default)] px-4 py-3 text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-muted)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--slate-50)] hover:text-[var(--text-strong)]"
+                disabled={isRestDay}
               >
                 + Add Group
               </button>
@@ -501,14 +642,16 @@ export function ExerciseBuilderModal({
                 />
               </div>
             )}
-            <SelectedItemsList
-              items={selectedItems}
-              onRemove={handleRemoveItem}
-              onUpdate={handleUpdateItem}
-              onItemsReorder={updateSelectedItems}
-              onRemoveGroup={handleRemoveGroup}
-              onToggleSuperset={handleToggleSuperset}
-            />
+            <div style={{ opacity: isRestDay ? 0.45 : 1, pointerEvents: isRestDay ? 'none' : undefined }}>
+              <SelectedItemsList
+                items={selectedItems}
+                onRemove={handleRemoveItem}
+                onUpdate={handleUpdateItem}
+                onItemsReorder={updateSelectedItems}
+                onRemoveGroup={handleRemoveGroup}
+                onToggleSuperset={handleToggleSuperset}
+              />
+            </div>
           </div>
       </div>
     </HtmlModal>
