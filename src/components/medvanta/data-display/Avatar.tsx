@@ -1,4 +1,5 @@
 import { cn } from '../utils/cn';
+import Image from 'next/image';
 
 const sizeDims = { sm: 28, md: 36, lg: 44 } as const;
 
@@ -50,9 +51,12 @@ export function Avatar({
         style={{ width: dimension, height: dimension, fontSize: dimension * 0.38 }}
       >
         {src ? (
-          <img
+          <Image
             src={src}
             alt={name}
+            width={dimension}
+            height={dimension}
+            unoptimized
             className="h-full w-full object-cover"
           />
         ) : (

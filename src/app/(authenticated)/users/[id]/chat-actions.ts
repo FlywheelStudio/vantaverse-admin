@@ -170,12 +170,11 @@ export async function sendMessage(
   };
 }
 
-async function uploadChatFile(
+export async function uploadChatFile(
   chatId: string,
   fileBase64: string,
   fileName: string,
   contentType: string,
-  _userId: string,
 ): Promise<
   { success: true; data: MessageAttachment } | { success: false; error: string }
 > {

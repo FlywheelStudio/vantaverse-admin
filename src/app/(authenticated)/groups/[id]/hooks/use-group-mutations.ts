@@ -37,7 +37,7 @@ export const groupsKeys = {
  * Mutation hook for updating organization (name/description)
  * Includes optimistic updates and error rollback
  */
-function useUpdateOrganization(organizationId: string) {
+export function useUpdateOrganization(organizationId: string) {
   const queryClient = useQueryClient();
   const organizationKey = ['organization', organizationId];
   const detailKey = groupsKeys.detail(organizationId);
@@ -107,7 +107,7 @@ interface UpdateOrganizationPictureData {
  * Mutation hook for updating organization picture
  * Handles upload and update in sequence
  */
-function useUpdateOrganizationPicture(organizationId: string) {
+export function useUpdateOrganizationPicture(organizationId: string) {
   const queryClient = useQueryClient();
   const organizationKey = ['organization', organizationId];
   const detailKey = groupsKeys.detail(organizationId);

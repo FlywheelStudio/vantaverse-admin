@@ -36,8 +36,6 @@ export const DEFAULT_DAY_PRESCRIPTION: DayPrescription = {
   rest: '60s',
 };
 
-const DEFAULT_SESSION_NOTE =
-  'Warm up with 5 minutes of easy walking before you start.';
 
 const MINUTES_PER_EXERCISE = 5;
 

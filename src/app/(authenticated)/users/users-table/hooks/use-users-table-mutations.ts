@@ -203,7 +203,7 @@ export function useImportUsersExcel() {
  * Mutation hook for deleting a user
  * Includes optimistic updates
  */
-function useDeleteUser() {
+export function useDeleteUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -275,7 +275,7 @@ function useDeleteUser() {
  * Mutation hook for toggling super admin status
  * Includes optimistic updates
  */
-function useToggleSuperAdmin() {
+export function useToggleSuperAdmin() {
   const queryClient = useQueryClient();
 
   return useMutation({

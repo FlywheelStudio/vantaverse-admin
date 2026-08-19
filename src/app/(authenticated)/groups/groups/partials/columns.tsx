@@ -166,7 +166,7 @@ function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
         style={{ width: 28, height: 28, fontSize: 11 }}
       >
         {admin.avatar_url ? (
-          <img src={admin.avatar_url} alt={name || ''} className="size-full object-cover" />
+          <Image src={admin.avatar_url} alt={name || ''} width={28} height={28} unoptimized className="size-full object-cover" />
         ) : (
           groupInitials(name || 'A')
         )}

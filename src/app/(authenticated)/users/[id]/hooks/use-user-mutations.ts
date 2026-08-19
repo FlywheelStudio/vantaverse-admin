@@ -45,7 +45,7 @@ export function useAssignProgramToUser(userId: string) {
 
       return result.data;
     },
-    onMutate: async (_variables) => {
+    onMutate: async () => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: detailKey });
       await queryClient.cancelQueries({ queryKey: assignmentKey });
@@ -92,7 +92,7 @@ export function useAssignProgramToUser(userId: string) {
  * Mutation hook for deleting a program assignment
  * Includes optimistic updates and error rollback
  */
-function useDeleteProgram(userId: string) {
+export function useDeleteProgram(userId: string) {
   const queryClient = useQueryClient();
   const detailKey = userProgramKeys.detail(userId);
   const assignmentsKey = ['program-assignments'];
@@ -108,7 +108,7 @@ function useDeleteProgram(userId: string) {
 
       return programAssignmentId;
     },
-    onMutate: async (_programAssignmentId) => {
+    onMutate: async () => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: detailKey });
       await queryClient.cancelQueries({ queryKey: assignmentKey });

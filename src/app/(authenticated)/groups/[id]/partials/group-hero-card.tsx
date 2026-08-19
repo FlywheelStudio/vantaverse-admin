@@ -248,7 +248,7 @@ function MemberAvatar({
       style={{ width: size, height: size, fontSize: size * 0.38 }}
     >
       {src ? (
-        <img src={src} alt={name} className="size-full object-cover" />
+        <Image src={src} alt={name} width={size} height={size} unoptimized className="size-full object-cover" />
       ) : (
         initials
       )}

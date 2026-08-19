@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
@@ -61,7 +63,7 @@ function NameEmailCell({
         style={{ width: 34, height: 34, fontSize: 12 }}
       >
         {member.avatar_url ? (
-          <img src={member.avatar_url} alt={fullName} className="size-full object-cover" />
+          <Image src={member.avatar_url} alt={fullName} width={34} height={34} unoptimized className="size-full object-cover" />
         ) : (
           memberInitials(fullName)
         )}
