@@ -1,4 +1,4 @@
-export type ProgramSlaMode = 'assigned' | 'due' | 'overdue' | 'none';
+type ProgramSlaMode = 'assigned' | 'due' | 'overdue' | 'none';
 
 const SLA_WINDOW_DAYS = 5;
 const MS_PER_DAY = 86_400_000;

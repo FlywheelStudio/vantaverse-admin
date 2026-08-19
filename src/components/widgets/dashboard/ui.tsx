@@ -39,7 +39,7 @@ interface DashboardAttentionRow {
   reason: string;
 }
 
-export interface DashboardUiProps {
+ interface DashboardUiProps {
   statusCounts: DashboardStatusCountsProp;
   compliancePct: number;
   attentionCount: number;

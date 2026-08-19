@@ -1,6 +1,6 @@
 import { DonutUi } from './ui';
 
-export interface DonutProps {
+ interface DonutProps {
   pct: number;
   size?: number;
   label: string;

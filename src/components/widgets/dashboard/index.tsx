@@ -33,7 +33,7 @@ const MOCK_ACTIVITY = [
 /** Proxy for HTML "overdue" when due-date data is not available. */
 const URGENT_COMPLIANCE_LT = 30;
 
-export type DashboardStatusCountsProp = DashboardStatusCounts & {
+ type DashboardStatusCountsProp = DashboardStatusCounts & {
   programCompleted?: number;
 };
 

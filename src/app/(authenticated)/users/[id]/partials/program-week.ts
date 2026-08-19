@@ -1,6 +1,6 @@
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 
-export type CompletionDay = {
+ type CompletionDay = {
   status: 'complete' | 'incomplete';
   started_at: string;
   total_sets: number;
@@ -8,7 +8,7 @@ export type CompletionDay = {
   completed_at: string | null;
 } | null;
 
-export type WeekDayState = 'done' | 'today' | 'todo' | 'rest';
+ type WeekDayState = 'done' | 'today' | 'todo' | 'rest';
 
 export interface WeekStripDay {
   label: string;
@@ -19,7 +19,7 @@ export interface WeekStripDay {
   dayIndex: number;
 }
 
-export interface DayPlanBlock {
+ interface DayPlanBlock {
   title: string;
   items: string[];
 }
