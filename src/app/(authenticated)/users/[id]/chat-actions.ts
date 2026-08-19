@@ -1,51 +1,12 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
 import { ChatsQuery } from '@/lib/supabase/queries/chats';
 import { MessagesQuery } from '@/lib/supabase/queries/messages';
 import {
   type Message,
   type MessageAttachment,
 } from '@/lib/supabase/schemas/messages';
-import { SupabaseStorage } from '@/lib/supabase/storage';
 
-const CHAT_FILE_EXPIRATION = 1000 * 365 * 24 * 60 * 60;
-const MAX_CHAT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-
-const DOCUMENT_MIME_TYPES = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'text/plain',
-]);
-
-function sanitizeFileName(fileName: string): string {
-  const trimmed = fileName.trim();
-  const normalized = trimmed || 'file';
-  return normalized.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
-
-function resolveAttachmentType(
-  contentType: string,
-): MessageAttachment['type'] | null {
-  if (contentType.startsWith('image/')) return 'image';
-  if (contentType.startsWith('video/')) return 'video';
-  if (DOCUMENT_MIME_TYPES.has(contentType)) return 'document';
-  return null;
-}
-
-function getBase64PayloadSizeBytes(value: string): number {
-  const payload = value.includes(',') ? (value.split(',').pop() ?? '') : value;
-  const normalized = payload.trim();
-  if (!normalized) return 0;
-  const paddingMatch = normalized.match(/=+$/);
-  const padding = paddingMatch?.[0]?.length ?? 0;
-  return Math.floor((normalized.length * 3) / 4) - padding;
-}
 
 /**
  * Get or create a chat for a patient
@@ -170,72 +131,3 @@ export async function sendMessage(
   };
 }
 
-export async function uploadChatFile(
-  chatId: string,
-  fileBase64: string,
-  fileName: string,
-  contentType: string,
-): Promise<
-  { success: true; data: MessageAttachment } | { success: false; error: string }
-> {
-  const normalizedContentType = contentType.trim().toLowerCase();
-  const attachmentType = resolveAttachmentType(normalizedContentType);
-
-  if (!attachmentType) {
-    return {
-      success: false,
-      error:
-        'Invalid file type. Only video, image and document files are allowed.',
-    };
-  }
-
-  if (!fileBase64) {
-    return {
-      success: false,
-      error: 'File payload is required.',
-    };
-  }
-
-  const fileSizeBytes = getBase64PayloadSizeBytes(fileBase64);
-  if (fileSizeBytes > MAX_CHAT_FILE_SIZE_BYTES) {
-    return {
-      success: false,
-      error: 'File is too large. Maximum size is 5MB.',
-    };
-  }
-
-  const safeName = sanitizeFileName(fileName);
-  const filePath = `${chatId}/${randomUUID()}_${safeName}`;
-  const storage = new SupabaseStorage();
-
-  const uploadResult = await storage.upload({
-    bucket: 'chats',
-    path: filePath,
-    body: fileBase64,
-    contentType: normalizedContentType,
-    upsert: false,
-    getPublicUrl: false,
-  });
-
-  if (!uploadResult.success) {
-    return uploadResult;
-  }
-
-  const signedUrlResult = await storage.createSignedUrl(
-    'chats',
-    filePath,
-    CHAT_FILE_EXPIRATION,
-  );
-
-  if (!signedUrlResult.success) {
-    return signedUrlResult;
-  }
-
-  return {
-    success: true,
-    data: {
-      url: signedUrlResult.data,
-      type: attachmentType,
-    },
-  };
-}

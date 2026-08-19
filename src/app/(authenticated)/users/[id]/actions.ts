@@ -27,16 +27,3 @@ export async function assignProgramToUser(
   return query.assignToUser(templateAssignmentId, userId, startDate);
 }
 
-/**
- * Delete a program using the delete_program RPC function
- */
-export async function deleteProgram(programAssignmentId: string) {
-  const query = new ProgramAssignmentsQuery();
-  const result = await query.deleteProgramRPC(programAssignmentId);
-
-  if (!result.success) {
-    return { success: false as const, error: result.error };
-  }
-
-  return { success: true as const, data: undefined };
-}
