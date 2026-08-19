@@ -5,7 +5,6 @@ import { Icon } from '@/components/medvanta';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { HtmlProgressBar } from '@/app/(authenticated)/dashboard/html-progress-bar';
 import { formatDueLabel, getProgramSlaMode } from './program-sla';
 import {
@@ -125,9 +124,9 @@ function ProgramAwaitingPane({
   const title = overdue ? 'This program is overdue' : 'Waiting for a program';
   const subtitle =
     overdue && user.consultation_completed
-      ? 'Consultation is complete and the member has been on the shared Pre-program since. Programs are due within 5 working days of the consultation.'
+      ? 'Consultation is complete and the member has been on the shared Pre-program since. Programs are due within 5 days of the consultation.'
       : user.consultation_completed && dueLabel
-        ? `Consultation is complete on this profile. Programs are due within 5 working days, so hers is ${dueLabel.dueText}.`
+        ? `Consultation is complete on this profile. Programs are due within 5 days of consultation, so the target is ${dueLabel.dueText}.`
         : 'Member is cleared through onboarding gates but has no program assignment yet.';
 
   return (
@@ -264,7 +263,7 @@ function ProgramAwaitingPane({
                 style={{
                   color: row.done
                     ? 'var(--navy-600)'
-                    : row.title === 'Program not built yet' && overdue
+                    : overdue
                       ? 'var(--danger)'
                       : 'var(--slate-400)',
                 }}
@@ -300,7 +299,6 @@ function ProgramAwaitingPane({
             className="btn btn-ghost btn-sm"
             disabled
             title="Extend deadline isn't available yet — missing data or APIs for this action."
-            onClick={() => toastUnavailable('Extend deadline')}
           >
             Extend deadline
           </button>
@@ -309,7 +307,6 @@ function ProgramAwaitingPane({
             className="btn btn-ghost btn-sm"
             disabled
             title="Reassign owner isn't available yet — missing data or APIs for this action."
-            onClick={() => toastUnavailable('Reassign owner')}
           >
             Reassign owner
           </button>
@@ -333,7 +330,6 @@ function ProgramAwaitingPane({
             className="btn btn-sec"
             disabled
             title="Browse program library isn't available yet — missing data or APIs for this action."
-            onClick={() => toastUnavailable('Browse program library')}
           >
             Browse program library
           </button>
@@ -342,7 +338,6 @@ function ProgramAwaitingPane({
             className="btn btn-ghost"
             disabled
             title="Message member about delay isn't available yet — missing data or APIs for this action."
-            onClick={() => toastUnavailable('Message member about delay')}
           >
             Message member about delay
           </button>
@@ -394,9 +389,21 @@ function ProgramActivePane({
     [parsedCompletion, programAssignment.start_date, schedule, weekIndex],
   );
 
-  const [selectedDayIndex, setSelectedDayIndex] = useState(() =>
-    findDefaultDayIndex(weekStrip),
+  const defaultDayIndex = useMemo(
+    () => findDefaultDayIndex(weekStrip),
+    [weekStrip],
   );
+  const [manualDayIndex, setManualDayIndex] = useState<number | null>(null);
+  const [manualWeekIndex, setManualWeekIndex] = useState(weekIndex);
+  const selectedDayIndex =
+    manualWeekIndex === weekIndex && manualDayIndex != null
+      ? manualDayIndex
+      : defaultDayIndex;
+
+  const handleSelectDay = (dayIndex: number): void => {
+    setManualDayIndex(dayIndex);
+    setManualWeekIndex(weekIndex);
+  };
 
   const selectedDay = weekStrip[selectedDayIndex] ?? weekStrip[0];
   const dayPlan = useMemo(
@@ -451,7 +458,6 @@ function ProgramActivePane({
               className="btn btn-sec btn-sm"
               disabled
               title="Push schedule isn't available yet — missing data or APIs for this action."
-              onClick={() => toastUnavailable('Push schedule')}
             >
               Push schedule
             </button>
@@ -540,7 +546,7 @@ function ProgramActivePane({
                   key={day.label}
                   type="button"
                   className={className}
-                  onClick={() => setSelectedDayIndex(day.dayIndex)}
+                  onClick={() => handleSelectDay(day.dayIndex)}
                 >
                   <span className="wn">{day.label}</span>
                   <span className="wm">{formatWeekDaySets(day)}</span>
