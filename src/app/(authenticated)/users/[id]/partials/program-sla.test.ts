@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { getProgramSlaMode, formatDueLabel } from './program-sla.ts';
-
+import { formatDueLabel, getProgramSlaMode } from './program-sla';
 describe('getProgramSlaMode', () => {
   const now = new Date('2026-08-18T12:00:00');
 

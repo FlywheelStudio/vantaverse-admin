@@ -8,7 +8,7 @@ import {
   buildDayPlan,
   buildAdherencePeriods,
   type CompletionDay,
-} from './program-week.ts';
+} from './program-week';
 
 const exercise = (id: string) =>
   ({ id, type: 'exercise_template' as const });
