@@ -190,7 +190,7 @@ export function MemberDetailHeader({
             </button>
             <button
               type="button"
-              className="btn btn-pri"
+              className="btn btn-acc"
               onClick={() => setAssignOpen(true)}
             >
               <Icon name="ClipboardList" size={17} />

@@ -43,7 +43,7 @@ function GroupsListAppBar({
       title="Groups"
       subtitle={`${groupCount} partner group${groupCount === 1 ? '' : 's'} · ${memberCount} members`}
       actions={
-        <button type="button" className="btn btn-pri" onClick={handleCreate}>
+        <button type="button" className="btn btn-acc" onClick={handleCreate}>
           <Icon name="Plus" size={17} />
           New group
         </button>

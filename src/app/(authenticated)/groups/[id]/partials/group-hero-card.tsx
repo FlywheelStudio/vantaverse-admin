@@ -182,7 +182,7 @@ export function GroupHeroCard({
         </div>
 
         <div className="row" style={{ gap: 8, flex: '0 0 auto' }}>
-          <button type="button" className="btn btn-pri" onClick={onAddMembers}>
+          <button type="button" className="btn btn-acc" onClick={onAddMembers}>
             <Icon name="UserPlus" size={17} />
             Add members
           </button>

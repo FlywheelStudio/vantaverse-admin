@@ -226,7 +226,7 @@ export function DashboardUi({
                       <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
-                          className={`btn btn-sm ${isOverdue ? 'btn-pri' : 'btn-sec'}`}
+                          className={`btn btn-sm ${isOverdue ? 'btn-acc' : 'btn-sec'}`}
                           onClick={() => {
                             if (isOverdue) {
                               onAssignOpen(item);

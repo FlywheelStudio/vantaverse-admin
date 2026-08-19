@@ -355,7 +355,7 @@ export function AddMembersModal({
           </button>
           <button
             type="button"
-            className="btn btn-pri"
+            className="btn btn-acc"
             onClick={handleSave}
             disabled={!canSave || isPending}
           >

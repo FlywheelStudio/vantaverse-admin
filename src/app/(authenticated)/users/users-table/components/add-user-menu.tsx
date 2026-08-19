@@ -17,7 +17,7 @@ export function AddUserMenu({
 
   return (
     <>
-      <button type="button" className="btn btn-pri" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-acc" onClick={() => setOpen(true)}>
         <Icon name="UserRoundPlus" size={17} />
         {label}
       </button>

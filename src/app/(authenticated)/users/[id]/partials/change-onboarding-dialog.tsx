@@ -107,7 +107,7 @@ function ChangeOnboardingDialogBody({
           <button type="button" className="btn btn-ghost" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
-          <button type="button" className="btn btn-pri" onClick={handleSave} disabled={saving}>
+          <button type="button" className="btn btn-acc" onClick={handleSave} disabled={saving}>
             {saving ? (
               <Icon name="LoaderCircle" size={17} className="animate-spin" />
             ) : null}

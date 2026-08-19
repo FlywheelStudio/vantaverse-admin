@@ -262,7 +262,7 @@ export function MessagesPageUI({
           <>
             <button
               type="button"
-              className="btn btn-pri"
+              className="btn btn-acc"
               onClick={() => toastUnavailable('New message')}
             >
               <Icon name="Send" size={17} />

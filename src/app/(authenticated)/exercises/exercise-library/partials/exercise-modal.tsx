@@ -266,7 +266,7 @@ function ExerciseModalContent({
           </button>
           <button
             type="button"
-            className="btn btn-pri"
+            className="btn btn-acc"
             onClick={handleSaveExercise}
             disabled={updateExerciseMutation.isPending}
           >

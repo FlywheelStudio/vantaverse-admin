@@ -199,7 +199,7 @@ function ProgramAwaitingPane({
               {subtitle}
             </div>
           </div>
-          <button type="button" className="btn btn-pri" onClick={onAssignProgram}>
+          <button type="button" className="btn btn-acc" onClick={onAssignProgram}>
             <Icon name="Plus" size={17} />
             Assign program
           </button>
@@ -290,7 +290,7 @@ function ProgramAwaitingPane({
         </div>
 
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-pri btn-sm" onClick={onAssignProgram}>
+          <button type="button" className="btn btn-acc btn-sm" onClick={onAssignProgram}>
             <Icon name="Plus" size={15} />
             Assign program
           </button>
@@ -321,7 +321,7 @@ function ProgramAwaitingPane({
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" className="btn btn-pri" onClick={onAssignProgram}>
+          <button type="button" className="btn btn-acc" onClick={onAssignProgram}>
             <Icon name="Plus" size={16} />
             Assign program
           </button>

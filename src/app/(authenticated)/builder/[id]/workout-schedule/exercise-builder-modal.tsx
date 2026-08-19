@@ -404,7 +404,7 @@ export function ExerciseBuilderModal({
           <button type="button" className="btn btn-sec" onClick={handleCancel}>
             Cancel
           </button>
-          <button type="button" className="btn btn-pri" onClick={handleDone}>
+          <button type="button" className="btn btn-acc" onClick={handleDone}>
             <Icon name="Check" size={17} />
             Save day
           </button>

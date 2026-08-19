@@ -41,7 +41,7 @@ export function ProgramsUI({
           <>
             <button
               type="button"
-              className="btn btn-pri"
+              className="btn btn-acc"
               onClick={() => setCreateRequested(true)}
             >
               <Icon name="Plus" size={17} />

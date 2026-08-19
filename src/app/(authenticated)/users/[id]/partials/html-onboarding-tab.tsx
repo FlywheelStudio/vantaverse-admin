@@ -159,7 +159,7 @@ function buildOnboardingSteps(
           : 'Opens after the consultation.',
       actions:
         !programDone && current === 3 ? (
-          <button type="button" className="btn btn-pri btn-sm" onClick={onAssignProgram}>
+          <button type="button" className="btn btn-acc btn-sm" onClick={onAssignProgram}>
             <Icon name="ClipboardList" size={15} />
             Assign program
           </button>

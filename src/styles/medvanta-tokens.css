@@ -76,7 +76,7 @@
   --text-link: var(--cyan-700);
   --text-brand: var(--navy-700);
 
-  --accent: var(--cyan-500);
+  --accent: oklch(0.425 0.109 259.2);
   --accent-hover: var(--cyan-600);
   --accent-press: var(--cyan-700);
   --accent-soft: var(--cyan-100);

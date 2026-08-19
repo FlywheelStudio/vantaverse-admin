@@ -26,7 +26,7 @@ export function ExercisesUI({ initialExercises }: ExercisesUIProps): React.React
           <>
             <button
               type="button"
-              className="btn btn-pri"
+              className="btn btn-acc"
               onClick={() => toastUnavailable('New exercise')}
             >
               <Icon name="Plus" size={17} />

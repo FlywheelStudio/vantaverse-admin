@@ -381,7 +381,7 @@ export function MessagesChatThread({
         </div>
         <button
           type="button"
-          className="btn btn-pri"
+          className="btn btn-acc"
           onClick={() => void handleSend()}
           disabled={!messageContent.trim() || isComposerBusy}
         >

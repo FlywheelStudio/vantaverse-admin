@@ -1,6 +1,6 @@
 interface ProgressBarUiProps {
   clamped: number;
-  height: 4 | 6 | 8;
+  height?: number;
   barClass: string;
   showLabel: boolean;
 }
@@ -14,7 +14,7 @@ export function ProgressBarUi({
 }: ProgressBarUiProps): React.ReactElement {
   return (
     <div className="pbw">
-      <span className={barClass} style={{ height }}>
+      <span className={barClass} style={height ? { height } : undefined}>
         <i style={{ width: `${clamped}%` }} />
       </span>
       {showLabel ? <span className="v">{clamped}%</span> : null}

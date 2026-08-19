@@ -135,7 +135,7 @@ export function BuilderSaveBar({
         </div>
         <button
           type="button"
-          className="btn btn-pri"
+          className="btn btn-acc"
           disabled={saveDisabled || saveLoading}
           onClick={onSave}
         >

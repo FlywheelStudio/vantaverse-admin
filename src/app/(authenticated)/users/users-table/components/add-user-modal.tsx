@@ -513,7 +513,7 @@ function AddUserModalInner({
           </button>
           <button
             type="button"
-            className={cn('btn btn-pri', !canReview && 'dis')}
+            className={cn('btn btn-acc', !canReview && 'dis')}
             disabled={!canReview}
             onClick={() => setMode('pending')}
           >
@@ -953,7 +953,7 @@ function AddUserModalInner({
 
               <button
                 type="button"
-                className="btn btn-pri btn-full"
+                className="btn btn-acc btn-full"
                 style={{ marginTop: 18 }}
                 onClick={handleApplyBulk}
               >

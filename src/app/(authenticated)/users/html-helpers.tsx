@@ -110,7 +110,7 @@ export function HtmlCompletion({
   const width = Math.max(pct, pct > 0 ? 2 : 0);
   return (
     <div className="pbw" style={{ maxWidth: 104 }}>
-      <span className="pb pb-6 pb-n">
+      <span className="pb pb-c">
         <i style={{ width: `${width}%` }} />
       </span>
       <span className="v">{pct}%</span>

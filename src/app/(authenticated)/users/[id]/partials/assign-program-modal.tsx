@@ -11,7 +11,6 @@ import {
   Input,
 } from '@/components/medvanta';
 import { HtmlModal } from './intake-survey-placeholder-modal';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useProgramAssignmentsInfinite } from '@/hooks/use-passignments-for-user';
@@ -232,7 +231,7 @@ export function AssignProgramModal({
           </button>
           <button
             type="button"
-            className="btn btn-pri"
+            className="btn btn-acc"
             onClick={handleAssignClick}
             disabled={!selectedAssignmentId || !startDate || isAssigning}
           >
@@ -260,7 +259,7 @@ export function AssignProgramModal({
           />
         </div>
 
-        <ScrollArea className="list-rows mt-3 min-h-0 flex-1 pr-2" style={{ maxHeight: 280 }}>
+        <div className="list-rows slim-scrollbar mt-3 min-h-0 flex-1" style={{ maxHeight: 280, overflowY: 'auto' }}>
           {isLoading ? (
             <div className="py-8 text-center text-[var(--text-muted)]">
               Loading...
@@ -342,7 +341,7 @@ export function AssignProgramModal({
               ) : null}
             </>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="ff mt-3">
           <label className="lbl" htmlFor="assign-program-start">

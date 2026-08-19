@@ -41,7 +41,7 @@ export function GroupProgramsPanel({
           Filters
         </button>
         <span className="sp">
-          <button type="button" className="btn btn-pri" disabled title="Assign program not available">
+          <button type="button" className="btn btn-acc" disabled title="Assign program not available">
             <Icon name="Plus" size={17} />
             Assign a program
           </button>

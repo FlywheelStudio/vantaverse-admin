@@ -456,7 +456,7 @@ export function ReviewAssignUI({
               </div>
               <button
                 type="button"
-                className="btn btn-pri btn-full"
+                className="btn btn-acc btn-full"
                 disabled
                 title="Placeholder — assign flow not available"
               >

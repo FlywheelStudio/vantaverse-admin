@@ -62,7 +62,7 @@ function UpdateDerivedDialogBody({
           <button type="button" className="btn btn-ghost" onClick={handleCancel} disabled={loading}>
             Cancel
           </button>
-          <button type="button" className="btn btn-pri" onClick={handleConfirm} disabled={loading}>
+          <button type="button" className="btn btn-acc" onClick={handleConfirm} disabled={loading}>
             {loading ? (
               <Icon name="LoaderCircle" size={17} className="animate-spin" />
             ) : (

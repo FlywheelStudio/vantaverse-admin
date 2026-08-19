@@ -143,7 +143,7 @@ export function LoginForm(): React.ReactElement {
 
           <button
             type="submit"
-            className="btn btn-pri btn-lg btn-full"
+            className="btn btn-acc btn-lg btn-full"
             disabled={isPending || !email.trim()}
           >
             {isPending ? (
@@ -233,7 +233,7 @@ export function LoginForm(): React.ReactElement {
 
         <button
           type="submit"
-          className="btn btn-pri btn-lg btn-full"
+          className="btn btn-acc btn-lg btn-full"
           disabled={isVerifying || isPending || otp.join('').length !== 6}
         >
           {isVerifying || isPending ? (

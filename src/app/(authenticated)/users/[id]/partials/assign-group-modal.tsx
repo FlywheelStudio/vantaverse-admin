@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Icon, Input } from '@/components/medvanta';
 import { HtmlModal } from './intake-survey-placeholder-modal';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateColorFromSeed } from '@/components/ui/avatar';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -116,7 +115,7 @@ export function AssignGroupModal({
           </button>
           <button
             type="button"
-            className="btn btn-pri"
+            className="btn btn-acc"
             onClick={handleAssign}
             disabled={!selectedOrganizationId || isAssigning}
           >
@@ -144,7 +143,7 @@ export function AssignGroupModal({
         />
       </div>
 
-      <ScrollArea className="list-rows min-h-0 flex-1" style={{ maxHeight: 360 }}>
+      <div className="list-rows slim-scrollbar min-h-0 flex-1" style={{ maxHeight: 360, overflowY: 'auto' }}>
         {isLoading ? (
           <div className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>
             Loading…
@@ -184,7 +183,7 @@ export function AssignGroupModal({
             );
           })
         )}
-      </ScrollArea>
+      </div>
     </HtmlModal>
   );
 }
