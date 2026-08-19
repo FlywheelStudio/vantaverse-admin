@@ -10,6 +10,7 @@ import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { AssignProgramModal } from './assign-program-modal';
+import { formatDueLabel, getProgramSlaMode } from './program-sla';
 
 interface MemberDetailHeaderProps {
   user: ProfileWithStats;
@@ -44,6 +45,43 @@ function getStatusBadge(user: ProfileWithStats): React.ReactElement {
   return <span className="bdg bdg-o">{label}</span>;
 }
 
+function getProgramSlaBadge(
+  user: ProfileWithStats,
+  programAssignment: ProgramAssignmentWithTemplate | null,
+): React.ReactElement | null {
+  const slaMode = getProgramSlaMode({
+    programDueDate: user.program_due_date,
+    hasAssignment: Boolean(programAssignment),
+  });
+
+  if (slaMode === 'assigned' || slaMode === 'none') return null;
+
+  const dueLabel =
+    user.program_due_date != null && user.program_due_date !== ''
+      ? formatDueLabel({
+          programDueDate: user.program_due_date,
+          mode: slaMode,
+        })
+      : null;
+
+  if (slaMode === 'overdue') {
+    return (
+      <span className="bdg bdg-d">
+        <Icon name="CircleAlert" size={12} />
+        {dueLabel?.label ?? 'Program overdue'}
+      </span>
+    );
+  }
+
+  return (
+    <span className="bdg">
+      <Icon name="Hourglass" size={12} />
+      Program due
+      {dueLabel?.dueText ? ` · ${dueLabel.dueText}` : null}
+    </span>
+  );
+}
+
 export function MemberDetailHeader({
   user,
   organizations = [],
@@ -63,10 +101,7 @@ export function MemberDetailHeader({
     ? `${physiologist.firstName} ${physiologist.lastName}`.trim()
     : '—';
   const programName = programAssignment?.program_template?.name ?? 'Awaiting assignment';
-  const isOverdue =
-    user.program_due_date != null &&
-    new Date(user.program_due_date) < new Date() &&
-    !programAssignment;
+  const programSlaBadge = getProgramSlaBadge(user, programAssignment);
   const lastActive = user.last_sign_in
     ? formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true })
     : '—';
@@ -93,12 +128,7 @@ export function MemberDetailHeader({
               </h2>
               <span className="bdg bdg-b">Member</span>
               {getStatusBadge(user)}
-              {isOverdue ? (
-                <span className="bdg bdg-d">
-                  <Icon name="CircleAlert" size={12} />
-                  Program overdue
-                </span>
-              ) : null}
+              {programSlaBadge}
             </div>
             <div
               className="mono"

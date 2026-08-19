@@ -15,6 +15,7 @@ import { HtmlProgramTab } from './partials/html-program-tab';
 import { IntakeSurveyPlaceholderModal } from './partials/intake-survey-placeholder-modal';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import { getProgramSlaMode } from './partials/program-sla';
 
 type MemberTab = 'onb' | 'prog' | 'notes';
 
@@ -101,16 +102,17 @@ export function UserProfilePageUI({
       ? physiologistsByOrgId.get(organizations[0].id) ?? null
       : null;
 
-  const isProgramOverdue =
-    user.program_due_date != null &&
-    new Date(user.program_due_date) < new Date() &&
-    !programAssignment;
+  const programSlaMode = getProgramSlaMode({
+    programDueDate: user.program_due_date,
+    hasAssignment: Boolean(programAssignment),
+  });
 
-  const programTabBadge = programAssignment
-    ? `week ${Math.max(1, Math.ceil((compliance ?? 0) / 12.5))} of ${programAssignment.program_template?.weeks ?? 8}`
-    : isProgramOverdue
-      ? 'overdue'
-      : 'not assigned';
+  const programTabBadge =
+    programSlaMode === 'assigned'
+      ? `week ${Math.max(1, Math.ceil((compliance ?? 0) / 12.5))} of ${programAssignment?.program_template?.weeks ?? 8}`
+      : programSlaMode === 'overdue'
+        ? 'overdue'
+        : 'not assigned';
 
   const header = (
     <MemberDetailHeader
@@ -188,7 +190,7 @@ export function UserProfilePageUI({
             <span
               className="cnt"
               style={
-                isProgramOverdue
+                programSlaMode === 'overdue'
                   ? { background: 'var(--danger-soft)', color: 'var(--danger)' }
                   : undefined
               }
