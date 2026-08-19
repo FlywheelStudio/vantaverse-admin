@@ -77,7 +77,9 @@ function getProgramSlaBadge(
     <span className="bdg">
       <Icon name="Hourglass" size={12} />
       Program due
-      {dueLabel?.dueText ? ` · ${dueLabel.dueText}` : null}
+      {dueLabel?.dueText
+        ? ` · ${dueLabel.dueText.replace(/^due /, '')}`
+        : null}
     </span>
   );
 }

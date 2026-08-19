@@ -16,6 +16,7 @@ import { IntakeSurveyPlaceholderModal } from './partials/intake-survey-placehold
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { getProgramSlaMode } from './partials/program-sla';
+import { getCurrentWeekIndex } from './partials/program-week';
 
 type MemberTab = 'onb' | 'prog' | 'notes';
 
@@ -107,12 +108,21 @@ export function UserProfilePageUI({
     hasAssignment: Boolean(programAssignment),
   });
 
-  const programTabBadge =
-    programSlaMode === 'assigned'
-      ? `week ${Math.max(1, Math.ceil((compliance ?? 0) / 12.5))} of ${programAssignment?.program_template?.weeks ?? 8}`
-      : programSlaMode === 'overdue'
-        ? 'overdue'
-        : 'not assigned';
+  const programTabBadge = useMemo(() => {
+    if (programSlaMode === 'overdue') return 'overdue';
+    if (programSlaMode !== 'assigned' || programAssignment == null) {
+      return 'not assigned';
+    }
+
+    const weekCount =
+      programAssignment.program_template?.weeks ?? schedule?.length ?? 0;
+    const weekIndex = getCurrentWeekIndex({
+      startDate: programAssignment.start_date,
+      weekCount,
+    });
+
+    return `week ${weekIndex + 1} of ${weekCount || '—'}`;
+  }, [programAssignment, programSlaMode, schedule?.length]);
 
   const header = (
     <MemberDetailHeader
