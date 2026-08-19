@@ -2,12 +2,12 @@ import { AppBar } from '@/components/medvanta/shell';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
-import { DashboardAppBarActions } from '@/app/(authenticated)/dashboard/dashboard-app-bar-actions';
-import { HtmlDashboard } from '@/app/(authenticated)/dashboard/html-dashboard';
 import {
+  Dashboard,
+  DashboardAppBarActions,
   formatDashboardSubtitle,
   getGreeting,
-} from '@/components/widgets/utils';
+} from '@/components/widgets';
 
 export default async function HomePage(): Promise<React.ReactElement> {
   const profilesQuery = new ProfilesQuery();
@@ -55,7 +55,7 @@ export default async function HomePage(): Promise<React.ReactElement> {
         subtitle={formatDashboardSubtitle(needingTotal)}
         actions={<DashboardAppBarActions />}
       />
-      <HtmlDashboard
+      <Dashboard
         statusCounts={{
           ...(data.statusCounts ?? {
             pending: 0,

@@ -6,7 +6,7 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { HtmlAvatar } from '@/app/(authenticated)/dashboard/html-avatar';
+import { Avatar } from '@/components/widgets/avatar';
 import { HtmlStepList, type HtmlStepItem, type HtmlStepTone } from './html-step-list';
 import { AdherenceCard } from './insights/adherence-card';
 import type { PreprogramEngagementRow } from './insights/adherence-card';
@@ -324,7 +324,7 @@ export function HtmlOnboardingTab({
 
           <InsightCard title="Care team" subtitle="Assignments on this profile">
             <div className="row" style={{ gap: 10, marginBottom: 10 }}>
-              <HtmlAvatar name={user.first_name ?? user.email ?? 'M'} size={32} />
+              <Avatar name={user.first_name ?? user.email ?? 'M'} size={32} />
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                 Group / physician cards remain available via Assign actions in the header.
                 Detailed roster UI matches HTML when linked records exist.

@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon } from '@/components/medvanta';
-import { HtmlAvatar } from '@/app/(authenticated)/dashboard/html-avatar';
+import { Avatar } from '@/components/widgets/avatar';
 
 const MOCK_NOTES = [
   {
@@ -121,7 +121,7 @@ export function MemberNotesTab({
                   : undefined,
             }}
           >
-            <HtmlAvatar name={note.author} size={32} />
+            <Avatar name={note.author} size={32} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="row" style={{ gap: 8, marginBottom: 4 }}>
                 <span style={{ fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-sm)' }}>

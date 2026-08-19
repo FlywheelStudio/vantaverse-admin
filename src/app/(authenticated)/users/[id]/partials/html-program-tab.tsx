@@ -5,7 +5,7 @@ import { Icon } from '@/components/medvanta';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { HtmlProgressBar } from '@/app/(authenticated)/dashboard/html-progress-bar';
+import { ProgressBar } from '@/components/widgets/progress-bar';
 import { formatDueLabel, getProgramSlaMode } from './program-sla';
 import {
   buildAdherencePeriods,
@@ -528,7 +528,7 @@ function ProgramActivePane({
             </span>
           </div>
 
-          <HtmlProgressBar pct={completionPct} tone="cyan" />
+          <ProgressBar pct={completionPct} tone="cyan" />
 
           <div className="wstrip" style={{ marginTop: 18 }}>
             {weekStrip.map((day) => {
