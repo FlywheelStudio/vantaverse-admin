@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { PhysicianInfo } from '../hooks/use-groups';
-import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
+import { avatarTone } from '@/components/widgets/utils';
 
 function groupInitials(name: string): string {
   return name

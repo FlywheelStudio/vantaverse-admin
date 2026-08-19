@@ -10,7 +10,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
-import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
+import { avatarTone } from '@/components/widgets/utils';
 
 function groupInitials(name: string): string {
   return name

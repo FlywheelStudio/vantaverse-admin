@@ -1,4 +1,4 @@
-import { avatarTone, initialsFromName } from './html-utils';
+import { avatarTone, initialsFromName } from '@/components/widgets/utils';
 
 interface HtmlAvatarProps {
   name: string;

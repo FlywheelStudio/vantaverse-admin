@@ -7,7 +7,7 @@ import { HtmlDashboard } from '@/app/(authenticated)/dashboard/html-dashboard';
 import {
   formatDashboardSubtitle,
   getGreeting,
-} from '@/app/(authenticated)/dashboard/html-utils';
+} from '@/components/widgets/utils';
 
 export default async function HomePage(): Promise<React.ReactElement> {
   const profilesQuery = new ProfilesQuery();

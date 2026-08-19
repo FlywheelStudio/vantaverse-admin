@@ -6,7 +6,7 @@ import {
   HtmlActionsMenu,
   type HtmlActionsMenuItem,
 } from '@/components/medvanta/shell/HtmlActionsMenu';
-import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
+import { avatarTone } from '@/components/widgets/utils';
 
 /** HTML `.av` avatar with optional image — tones via design-system `av-t1`…`av-t4`. */
 export function HtmlAvatar({

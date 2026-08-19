@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
+import { avatarTone } from '@/components/widgets/utils';
 
 /**
  * Design-system avatar background from HTML `av-t1`…`av-t4` tones.

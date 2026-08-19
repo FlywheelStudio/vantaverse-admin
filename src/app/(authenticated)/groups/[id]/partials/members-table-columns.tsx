@@ -5,7 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { Dialog } from '@/components/medvanta';
-import { avatarTone } from '@/app/(authenticated)/dashboard/html-utils';
+import { avatarTone } from '@/components/widgets/utils';
 
 export type GroupMemberRow = {
   user_id: string;
