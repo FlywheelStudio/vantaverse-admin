@@ -39,7 +39,7 @@ function createOptimisticUser(
     intro_completed: null,
     consultation_completed: null,
     program_assigned: null,
-    program_started: null,
+    program_acknowledged: null,
     program_due_date: null,
     avatar_url: null,
     certificate_url: null,

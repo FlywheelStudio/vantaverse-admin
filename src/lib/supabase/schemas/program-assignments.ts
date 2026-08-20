@@ -10,6 +10,8 @@ export const programAssignmentSchema = z.object({
   start_date: z.string().nullable(),
   end_date: z.string().nullable(),
   status: z.string().nullable(),
+  /** Replaces profiles.program_started — per-assignment gate */
+  acknowledged: z.boolean(),
   completion: z.unknown().nullable(),
   patient_override: z.unknown().nullable(),
   created_at: z.string().nullable(),
