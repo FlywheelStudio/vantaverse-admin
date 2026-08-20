@@ -4,7 +4,8 @@ export type ShellNavId =
   | 'members'
   | 'groups'
   | 'programs'
-  | 'exercises';
+  | 'exercises'
+  | 'manage';
 
 type ShellNavItem = {
   id: ShellNavId;
@@ -30,8 +31,14 @@ export const SHELL_NAV: ShellNavEntry[] = [
   { id: 'exercises', icon: 'Dumbbell', label: 'Exercises', href: '/exercises' },
 ];
 
-/** Maps the current pathname to the active shell nav id. */
+/**
+ * Maps the current pathname to the active shell nav id.
+ *
+ * `manage` lives in the sidebar footer rather than in `SHELL_NAV`, so it has no
+ * entry above but still needs an active-state branch here.
+ */
 export function navIdFromPathname(pathname: string): ShellNavId {
+  if (pathname.startsWith('/manage')) return 'manage';
   if (pathname.startsWith('/messages')) return 'messages';
   if (pathname.startsWith('/users')) return 'members';
   if (pathname.startsWith('/groups')) return 'groups';

@@ -64,10 +64,11 @@ export function AdminProfileViewUI({
   return (
     <>
       <AppBar
-        crumbs={[
-          { label: 'Members', href: '/users' },
-          { label: displayName },
-        ]}
+        crumbs={
+          isYourself
+            ? [{ label: 'Your profile' }]
+            : [{ label: 'Manage', href: '/manage' }, { label: displayName }]
+        }
         title={isYourself ? 'Your profile' : `${displayName}'s profile`}
       />
       <div className="body">

@@ -4,10 +4,13 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
 interface UsersTablePaginationProps {
   table: Table<ProfileWithStats>;
+  /** Plural noun for the row count, e.g. "members" / "admins". */
+  noun?: string;
 }
 
 export function UsersTablePagination({
   table,
+  noun = 'members',
 }: UsersTablePaginationProps): React.ReactElement {
   const pageIndex = table.getState().pagination.pageIndex;
   const pageSize = table.getState().pagination.pageSize;
@@ -31,7 +34,7 @@ export function UsersTablePagination({
         <b className="mono" style={{ color: 'var(--text-body)' }}>
           {total}
         </b>{' '}
-        members
+        {noun}
       </span>
       <span className="sp row" style={{ gap: 14 }}>
         <span className="sel">

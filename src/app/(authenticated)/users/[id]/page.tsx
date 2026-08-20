@@ -50,7 +50,8 @@ export default async function UserProfilePage({
     },
     organizations: {
       condition: isTargetUserAdmin,
-      query: () => orgMembersQuery.getOrganizationsByUserId(id),
+      // Groups this admin *administers*, not merely belongs to.
+      query: () => orgMembersQuery.getOrganizationsWhereUserIsAdmin(id),
       defaultValue: [],
     },
   });

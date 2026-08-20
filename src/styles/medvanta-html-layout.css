@@ -22,7 +22,14 @@
 .nav-b{font-size:var(--text-2xs);font-weight:var(--fw-bold);background:var(--navy-500);color:var(--white);padding:1px 7px;border-radius:var(--radius-pill);font-variant-numeric:tabular-nums}
 .nav-i.on .nav-b{background:rgba(255,255,255,.24)}
 .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:10px}
-.side-user{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-md);background:rgba(255,255,255,.06);margin-top:6px}
+/* Rendered as a <button> (account menu trigger), so it carries the same resets as .nav-i. */
+.side-user{
+  display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;cursor:pointer;
+  border-radius:var(--radius-md);text-align:left;font-family:var(--font-sans);
+  background:rgba(255,255,255,.06);margin-top:6px;
+  transition:background var(--dur-fast);
+}
+.side-user:hover{background:rgba(255,255,255,.11)}
 .side-user .n{font-size:var(--text-sm);font-weight:var(--fw-semibold);color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-user .r{font-size:var(--text-2xs);color:var(--navy-300)}
 
