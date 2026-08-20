@@ -27,7 +27,6 @@ export const profileSchema = z.object({
   intro_completed: z.boolean().nullable(),
   consultation_completed: z.boolean().nullable(),
   program_assigned: z.boolean().nullable(),
-  program_started: z.boolean().nullable(),
   program_due_date: z.string().nullable(),
   avatar_url: z.string().nullable(),
   certificate_url: z.any().nullable(),
@@ -55,6 +54,8 @@ export const profileWithStatsSchema = profileSchema.extend({
   points_for_next_level: z.number().nullable(),
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
+  /** From active program_assignment.acknowledged via profiles_with_stats */
+  program_acknowledged: z.boolean().nullable(),
   program_assignment_id: z.uuid().nullable().optional(),
   program_assignment_name: z.string().nullable().optional(),
   is_super_admin: z.boolean().optional(),

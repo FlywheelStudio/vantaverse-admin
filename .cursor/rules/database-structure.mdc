@@ -30,12 +30,15 @@ phone TEXT UNIQUE
 journey_phase journey_phase DEFAULT 'discovery'
 screening_completed BOOLEAN DEFAULT false
 consultation_completed BOOLEAN DEFAULT false
-program_started BOOLEAN DEFAULT false
+program_assigned BOOLEAN DEFAULT false
 avatar_url TEXT
 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 ```
 **RLS**: Users can view their own profile, update/insert their own
+
+Program acknowledgment lives on `program_assignment.acknowledged` (NOT NULL DEFAULT false).
+`profiles_with_stats.program_acknowledged` is computed from the active assignment.
 
 ### **hp_transactions** (VP Transactions)
 ```sql
