@@ -18,6 +18,7 @@ interface TopLevelDroppableProps {
   onRemoveGroup?: (index: number) => void;
   onToggleSuperset?: (index: number) => void;
   onItemsReorder: (items: SelectedItem[]) => void;
+  onUpdate: (index: number, item: SelectedItem) => void;
   onGroupItemClick?: (
     groupItem: SelectedItem,
     groupIdx: number,
@@ -35,6 +36,7 @@ export function TopLevelDroppable({
   onRemoveGroup,
   onToggleSuperset,
   onItemsReorder,
+  onUpdate,
   onGroupItemClick,
   handleItemClick,
 }: TopLevelDroppableProps) {
@@ -99,6 +101,9 @@ export function TopLevelDroppable({
                     item={item}
                     onRemove={() => onRemove(index)}
                     onClick={(e) => handleItemClick(index, e)}
+                    onPrescriptionChange={(prescription) => {
+                      onUpdate(index, { ...item, prescription });
+                    }}
                   />
                 </SortableItem>
               );

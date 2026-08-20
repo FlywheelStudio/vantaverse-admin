@@ -1,79 +1,20 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/medvanta';
 import { useExercises } from '@/hooks/use-exercises';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  ExercisesFilterPanel,
+  type AssignmentFilter,
+} from './partials/exercises-filter-panel';
 
-const contentVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    y: 20,
-    transition: {
-      duration: 0.3,
-    },
-  },
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.95,
-    transition: {
-      duration: 0.2,
-    },
-  },
-};
-
-type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
-
-const ASSIGNMENT_FILTER_LABEL: Record<AssignmentFilter, string> = {
-  all: 'All',
-  unassigned: 'Unassigned',
-  assigned: 'Assigned',
-};
-
-function formatTypeLabel(type: string) {
+function formatTypeLabel(type: string): string {
   return type
     .replaceAll('_', ' ')
     .toLowerCase()
@@ -84,271 +25,248 @@ interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
 }
 
-export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps) {
+export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): React.ReactElement {
   const { data: exercises, isLoading } = useExercises(initialExercises);
   const [searchValue, setSearchValue] = useState('');
-  const [assignmentFilter, setAssignmentFilter] =
-    useState<AssignmentFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(16);
   const pageSize = 16;
 
-  // Reset to page 1 when search or filter changes
-  const handleSearchChange = useCallback(() => {
-    setCurrentPage(1);
-  }, []);
-
-  const handleFilterChange = useCallback(() => {
-    setCurrentPage(1);
+  const handleSearchChange = useCallback((): void => {
+    setVisibleCount(pageSize);
   }, []);
 
   const debouncedSearch = useDebounce(searchValue, 300, handleSearchChange);
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
-    null,
-  );
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const typeOptions = useMemo(
-    () =>
-      [...new Set(exercises?.map((exercise) => exercise.type).filter(Boolean))]
-        .map((type) => type as string)
-        .sort((a, b) => a.localeCompare(b)),
+
+  const allExercises = useMemo(
+    () => exercises ?? [],
     [exercises],
   );
 
-  // Filter exercises by search term, type and assignment filter
-  const filteredExercises = exercises?.filter((exercise) => {
-    // Search filter
-    if (debouncedSearch) {
-      const matchesSearch = exercise.exercise_name
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase());
-      if (!matchesSearch) return false;
+  const assignmentCounts = useMemo(() => {
+    let unassigned = 0;
+    let assigned = 0;
+    for (const exercise of allExercises) {
+      if ((exercise.assigned_count ?? 0) > 0) assigned += 1;
+      else unassigned += 1;
     }
+    return { all: allExercises.length, unassigned, assigned };
+  }, [allExercises]);
 
-    // Type filter
-    if (typeFilter && exercise.type !== typeFilter) {
-      return false;
+  const typeOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const exercise of allExercises) {
+      const key = (exercise.type ?? '').trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([value, count]) => ({
+        value,
+        label: formatTypeLabel(value),
+        count,
+      }));
+  }, [allExercises]);
 
-    // Assignment filter
-    const assignedCount = exercise.assigned_count ?? 0;
-    if (assignmentFilter === 'unassigned') {
-      return assignedCount === 0;
+  const filteredExercises = useMemo(() => {
+    return allExercises.filter((exercise) => {
+      if (debouncedSearch) {
+        const matchesSearch = exercise.exercise_name
+          .toLowerCase()
+          .includes(debouncedSearch.toLowerCase());
+        if (!matchesSearch) return false;
+      }
+
+      if (typeFilter !== 'all' && exercise.type !== typeFilter) {
+        return false;
+      }
+
+      const assignedCount = exercise.assigned_count ?? 0;
+      if (assignmentFilter === 'unassigned') return assignedCount === 0;
+      if (assignmentFilter === 'assigned') return assignedCount > 0;
+
+      return true;
+    });
+  }, [allExercises, debouncedSearch, typeFilter, assignmentFilter]);
+
+  const visibleExercises = filteredExercises.slice(0, visibleCount);
+  const totalCount = filteredExercises.length;
+  const hasMore = visibleCount < totalCount;
+
+  const activeFilterTags = useMemo(() => {
+    const tags: string[] = [];
+    if (assignmentFilter !== 'all') {
+      tags.push(assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned');
     }
-    if (assignmentFilter === 'assigned') {
-      return assignedCount > 0;
-    }
+    if (typeFilter !== 'all') tags.push(formatTypeLabel(typeFilter));
+    if (debouncedSearch.trim()) tags.push(`"${debouncedSearch.trim()}"`);
+    return tags;
+  }, [assignmentFilter, typeFilter, debouncedSearch]);
 
-    return true;
-  });
+  const panelActiveCount = useMemo(() => {
+    let count = 0;
+    if (assignmentFilter !== 'all') count += 1;
+    if (typeFilter !== 'all') count += 1;
+    return count;
+  }, [assignmentFilter, typeFilter]);
 
-  // Paginate filtered exercises
-  const { paginatedExercises, totalPages, totalCount } = useMemo(() => {
-    const allFiltered = filteredExercises || [];
-    const total = allFiltered.length;
-    const pages = Math.ceil(total / pageSize);
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginated = allFiltered.slice(startIndex, endIndex);
-    return {
-      paginatedExercises: paginated,
-      totalPages: pages,
-      totalCount: total,
-    };
-  }, [filteredExercises, currentPage, pageSize]);
+  const handleClearFilters = (): void => {
+    setAssignmentFilter('all');
+    setTypeFilter('all');
+    setVisibleCount(pageSize);
+  };
 
-  const displayExercises = paginatedExercises;
-
-  const handleCardClick = (exercise: Exercise) => {
+  const handleCardClick = (exercise: Exercise): void => {
     setSelectedExercise(exercise);
     setIsModalOpen(true);
   };
 
-  const handleModalClose = (open: boolean) => {
+  const handleModalClose = (open: boolean): void => {
     setIsModalOpen(open);
-    if (!open) {
-      setSelectedExercise(null);
-    }
+    if (!open) setSelectedExercise(null);
   };
 
   return (
     <>
-      <Card className="overflow-hidden">
-        <div className="px-6 py-6 overflow-y-auto max-h-[calc(100vh-8rem)] slim-scrollbar">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-24">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-muted-foreground">Loading exercises...</span>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Search and Filter */}
-              <div className="mb-6 flex max-w-2xl gap-3">
-                <Input
-                  type="text"
-                  placeholder="Search exercises..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  className="flex-1"
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="h-11 w-40 justify-between rounded-pill bg-background"
-                    >
-                      {ASSIGNMENT_FILTER_LABEL[assignmentFilter]}
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    {(
-                      ['all', 'unassigned', 'assigned'] as const
-                    ).map((value) => (
-                      <DropdownMenuItem
-                        key={value}
-                        onClick={() => {
-                          setAssignmentFilter(value);
-                          handleFilterChange();
-                        }}
-                        data-selected={assignmentFilter === value}
-                        className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
-                      >
-                        {ASSIGNMENT_FILTER_LABEL[value]}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="h-11 w-44 justify-between rounded-pill bg-background"
-                    >
-                      {typeFilter ? formatTypeLabel(typeFilter) : 'All sources'}
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setTypeFilter(null);
-                        handleFilterChange();
-                      }}
-                      data-selected={typeFilter === null}
-                      className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
-                    >
-                      All sources
-                    </DropdownMenuItem>
-                    {typeOptions.map((type) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          setTypeFilter(type);
-                          handleFilterChange();
-                        }}
-                        data-selected={typeFilter === type}
-                        className="cursor-pointer truncate data-[selected=true]:bg-primary/10! data-[selected=true]:focus:bg-primary/10!"
-                      >
-                        {formatTypeLabel(type)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Exercises Grid */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key="grid"
-                  variants={contentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  {displayExercises.length === 0 ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground text-sm">
-                        {debouncedSearch
-                          ? 'No exercises found matching your search.'
-                          : 'No exercises available.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <motion.div
-                        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                      >
-                        <AnimatePresence mode="popLayout">
-                          {displayExercises.map((exercise) => (
-                            <motion.div
-                              key={exercise.id}
-                              variants={cardVariants}
-                              exit="exit"
-                              layout
-                              className="h-full"
-                            >
-                              <ExerciseCard
-                                exercise={exercise}
-                                onClick={() => handleCardClick(exercise)}
-                              />
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </motion.div>
-
-                      {/* Pagination Controls */}
-                      {totalPages > 1 && (
-                        <div className="mt-8 flex items-center justify-between pt-6">
-                          <p className="text-muted-foreground text-sm">
-                            Showing {(currentPage - 1) * pageSize + 1}-
-                            {Math.min(currentPage * pageSize, totalCount)} of{' '}
-                            {totalCount} exercises
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((p) => Math.max(1, p - 1))
-                              }
-                              disabled={currentPage === 1}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
-                            <span className="text-muted-foreground px-3 text-sm">
-                              Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((p) => Math.min(totalPages, p + 1))
-                              }
-                              disabled={currentPage === totalPages}
-                            >
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </>
-          )}
+      <div className="tbar">
+        <HtmlSearchField
+          placeholder="Search exercises…"
+          value={searchValue}
+          onChange={setSearchValue}
+        />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <Icon name="Funnel" size={15} />
+            Filters
+            {panelActiveCount > 0 ? (
+              <span className="bdg bdg-b">{panelActiveCount}</span>
+            ) : null}
+          </button>
+          <ExercisesFilterPanel
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            activeCount={panelActiveCount}
+            assignmentFilter={assignmentFilter}
+            onAssignmentFilterChange={(value) => {
+              setAssignmentFilter(value);
+              setVisibleCount(pageSize);
+            }}
+            assignmentCounts={assignmentCounts}
+            typeFilter={typeFilter}
+            onTypeFilterChange={(value) => {
+              setTypeFilter(value);
+              setVisibleCount(pageSize);
+            }}
+            typeOptions={typeOptions}
+            onClear={handleClearFilters}
+            onApply={() => setFiltersOpen(false)}
+          />
         </div>
-      </Card>
+        <span className="sp seg">
+          <button type="button" className="on" aria-label="Grid view">
+            <Icon name="LayoutGrid" size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="List view"
+            onClick={() => toastUnavailable('List view')}
+          >
+            <Icon name="List" size={16} />
+          </button>
+        </span>
+      </div>
 
-      {/* Exercise Modal */}
+      {activeFilterTags.length > 0 ? (
+        <div className="row" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {activeFilterTags.map((tag) => (
+            <span key={tag} className="tag tag-b">
+              {tag}
+              <button
+                type="button"
+                aria-label={`Remove ${tag}`}
+                onClick={() => {
+                  if (tag === 'Unassigned' || tag === 'Assigned') {
+                    setAssignmentFilter('all');
+                  } else if (tag.startsWith('"')) {
+                    setSearchValue('');
+                  } else {
+                    setTypeFilter('all');
+                  }
+                  setVisibleCount(pageSize);
+                }}
+              >
+                <Icon name="X" size={13} style={{ strokeWidth: 2.5 }} />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setSearchValue('');
+              handleClearFilters();
+            }}
+          >
+            Clear all
+          </button>
+          <span className="sp mut" style={{ fontSize: 'var(--text-sm)' }}>
+            Showing{' '}
+            <b className="mono" style={{ color: 'var(--text-body)' }}>
+              {visibleExercises.length}
+            </b>{' '}
+            of{' '}
+            <b className="mono" style={{ color: 'var(--text-body)' }}>
+              {totalCount}
+            </b>
+          </span>
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}>
+          <Icon name="LoaderCircle" size={20} className="animate-spin text-[var(--primary)]" />
+          <span style={{ color: 'var(--text-muted)' }}>Loading exercises…</span>
+        </div>
+      ) : visibleExercises.length === 0 ? (
+        <div className="row" style={{ justifyContent: 'center', padding: '24px 0' }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            {debouncedSearch ? 'No exercises found matching your search.' : 'No exercises available.'}
+          </span>
+        </div>
+      ) : (
+        <>
+          <div className="g g4">{visibleExercises.map((exercise) => (
+            <ExerciseCard
+              key={exercise.id}
+              exercise={exercise}
+              onClick={() => handleCardClick(exercise)}
+            />
+          ))}</div>
+
+          {hasMore ? (
+            <div className="row" style={{ justifyContent: 'center', marginTop: 24 }}>
+              <button
+                type="button"
+                className="btn btn-sec"
+                onClick={() => setVisibleCount((count) => count + pageSize)}
+              >
+                Load more exercises
+                <Icon name="ChevronDown" size={17} />
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
+
       <ExerciseModal
         key={selectedExercise?.id}
         exercise={selectedExercise}

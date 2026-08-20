@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -19,8 +19,7 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/medvanta';
 import { useBuilder } from '@/context/builder-context';
 import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import { cn } from '@/lib/utils';
@@ -36,6 +35,7 @@ interface WeekNavigationProps {
 
 function DraggableWeekButton({
   week,
+  dayCount,
   isCurrent,
   isDisabled,
   onClick,
@@ -45,6 +45,7 @@ function DraggableWeekButton({
   animationType,
 }: {
   week: Week;
+  dayCount: number;
   isCurrent: boolean;
   isDisabled: boolean;
   onClick: () => void;
@@ -90,7 +91,8 @@ function DraggableWeekButton({
   };
 
   return (
-    <div
+    <button
+      type="button"
       ref={setNodeRef}
       style={style}
       {...attributes}
@@ -99,34 +101,21 @@ function DraggableWeekButton({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-pill)] text-sm font-medium transition-all min-w-[108px] h-10 px-4 select-none touch-none',
-        isDisabled
-          ? 'opacity-70 cursor-not-allowed border border-destructive/40 bg-destructive/5 text-destructive'
-          : isDragging
-            ? 'cursor-grabbing border border-border bg-background shadow-[var(--shadow-sm)]'
-            : 'cursor-pointer active:cursor-grabbing',
-        !isDisabled && !isDragging && isCurrent
-          ? 'bg-primary text-primary-foreground shadow-[var(--shadow-md)]'
-          : !isDisabled
-            ? 'border border-border bg-background shadow-[var(--shadow-sm)] hover:bg-muted/60 hover:text-foreground'
-            : '',
+        'wk select-none touch-none',
+        isCurrent && 'on',
+        isDisabled && 'mt',
+        isDragging && 'cursor-grabbing',
       )}
     >
-      <div className="relative overflow-hidden h-10 flex items-start">
-        <div
-          className={cn(
-            'flex flex-col transition-transform duration-300 ease-in-out',
-            isAnimating ? '-translate-y-10' : 'translate-y-0',
-          )}
-        >
-          <div className="h-10 flex items-center">Week {week.number}</div>
-          <div className="h-10 flex items-center">
-            {animationType === 'copy' && 'Copied!'}
-            {animationType === 'paste' && 'Pasted!'}
-          </div>
-        </div>
-      </div>
-    </div>
+      <span className="wn">
+        {isAnimating && animationType === 'copy'
+          ? 'Copied!'
+          : isAnimating && animationType === 'paste'
+            ? 'Pasted!'
+            : `Week ${week.number}`}
+      </span>
+      <span className="wm">{dayCount} day{dayCount === 1 ? '' : 's'}</span>
+    </button>
   );
 }
 
@@ -140,6 +129,7 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     copyWeek,
     pasteWeek,
     programStartDate,
+    schedule,
   } = useBuilder();
 
   // Parse date string to local date (avoiding timezone issues)
@@ -173,12 +163,23 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     [programStartDate, parseLocalDate],
   );
 
-  const [weeks, setWeeks] = useState<Week[]>(() =>
-    Array.from({ length: initialWeeks }, (_, i) => ({
-      id: `week-${i + 1}`,
-      number: i + 1,
-    })),
+  const weekCount = Math.max(1, schedule.length || initialWeeks);
+
+  const baseWeeks = useMemo(
+    () =>
+      Array.from({ length: weekCount }, (_, i) => ({
+        id: `week-${i + 1}`,
+        number: i + 1,
+      })),
+    [weekCount],
   );
+
+  // Drag order only — reset when Duration +/- changes weekCount.
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+  const weeks =
+    dragOrder && dragOrder.length === weekCount
+      ? dragOrder.map((id, index) => ({ id, number: index + 1 }))
+      : baseWeeks;
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -325,19 +326,10 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
       // Apply the same move operation to get the new order
       const newOrder = arrayMove(originalIndices, oldIndex, newIndex);
 
-      // Call reorderWeeks once, before state update
       reorderWeeks(newOrder);
 
-      // Update weeks state
-      setWeeks((items) => {
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        const reorderedWithNewNumbers = reordered.map((week, index) => ({
-          ...week,
-          number: index + 1,
-        }));
-
-        return reorderedWithNewNumbers;
-      });
+      const reordered = arrayMove(weeks, oldIndex, newIndex);
+      setDragOrder(reordered.map((week) => week.id));
     }
   };
 
@@ -353,21 +345,22 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
+    <div className="wrail" style={{ marginBottom: 16 }}>
+      <button
+        type="button"
+        className="ib ib-sec ib-sq"
+        aria-label="Previous weeks"
         onClick={() => handleScroll('left')}
         disabled={!canScrollLeft}
-        className="shrink-0"
+        style={{ opacity: canScrollLeft ? 1 : 0.45 }}
       >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
+        <Icon name="ChevronLeft" size={17} />
+      </button>
 
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-x-auto overflow-y-visible scrollbar-hide flex gap-2 px-2 relative"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="row"
+        style={{ gap: 7, overflowX: 'auto', flex: 1, padding: 2 }}
       >
         <DndContext
           sensors={sensors}
@@ -379,17 +372,21 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
             items={weeks.map((w) => w.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="flex gap-2 min-w-max">
+            <div className="row" style={{ gap: 7, minWidth: 'max-content' }}>
               {weeks.map((week, index) => {
                 const weekIndex = index;
                 const isDisabled = isWeekBeforeStart(weekIndex);
                 const isAnimating =
                   animatingWeek?.weekIndex === weekIndex && !!animatingWeek;
                 const animationType = isAnimating ? animatingWeek.type : null;
+                const dayCount =
+                  schedule[weekIndex]?.filter((day) => day.length > 0).length ?? 0;
+
                 return (
                   <DraggableWeekButton
                     key={week.id}
                     week={week}
+                    dayCount={dayCount}
                     isCurrent={weekIndex === currentWeek}
                     isDisabled={isDisabled}
                     onClick={() => {
@@ -407,15 +404,15 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
         </DndContext>
       </div>
 
-      <Button
-        variant="outline"
-        size="icon"
+      <button
+        type="button"
+        className="ib ib-sec ib-sq"
+        aria-label="Next weeks"
         onClick={() => handleScroll('right')}
         disabled={!canScrollRight}
-        className="shrink-0"
       >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+        <Icon name="ChevronRight" size={17} />
+      </button>
 
       <CopyPasteButtons
         size="md"

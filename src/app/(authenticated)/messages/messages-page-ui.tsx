@@ -1,32 +1,83 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, Search } from 'lucide-react';
-import NextLink from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
-import { Avatar } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChatInterface } from '@/app/(authenticated)/users/[id]/partials/chat-interface';
-import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
+import { Loader2 } from 'lucide-react';
+import { AppBar } from '@/components/medvanta/shell';
+import { Icon } from '@/components/medvanta';
+import { HtmlAvatar } from '../users/html-helpers';
+import { HtmlMoreButton } from '../builder/partials/html-toolbar';
+import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  getMessagesByChatId,
+  getOrCreateChatForPatient,
+} from '@/app/(authenticated)/users/[id]/chat-actions';
+import { chatKeys } from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
 import { getConversationsForAdmin } from './actions';
+import { MessagesChatThread } from './messages-chat-thread';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
-import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 
-function formatMessageTime(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isToday(d)) return format(d, 'h:mm a');
-  if (isYesterday(d)) return 'Yesterday';
-  if (isThisWeek(d)) return format(d, 'EEEE');
-  return format(d, 'MMM d');
+const MESSAGES_STALE_MS = 60_000;
+
+/**
+ * Update ?userId= without App Router navigation (avoids RSC refetch of conversations).
+ */
+function syncUserIdInUrl(userId: string | null): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  const current = url.searchParams.get('userId');
+  if (userId) {
+    if (current === userId) return;
+    url.searchParams.set('userId', userId);
+  } else {
+    if (!current) return;
+    url.searchParams.delete('userId');
+  }
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, '', next);
 }
 
-type FilterType = 'all' | { type: 'org'; orgId: string };
+type ConvFilter = 'all' | 'unread';
+
+function formatConvTime(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h a').toLowerCase().replace(' ', '');
+  if (isYesterday(date)) return 'Yesterday';
+  if (isThisWeek(date)) return format(date, 'EEE');
+  return format(date, 'd MMM');
+}
+
+function buildSubtitle(conversations: ConversationItem[]): string {
+  const unreadTotal = conversations.reduce(
+    (sum, conversation) => sum + (conversation.unread_count ?? 0),
+    0,
+  );
+  const waiting = conversations.filter((conversation) => {
+    if (!conversation.last_message_at || conversation.unread_count === 0) {
+      return false;
+    }
+    const hours =
+      (Date.now() - new Date(conversation.last_message_at).getTime()) /
+      (1000 * 60 * 60);
+    return hours >= 24;
+  }).length;
+
+  const parts: string[] = [];
+  if (unreadTotal > 0) {
+    parts.push(`${unreadTotal} unread`);
+  }
+  if (waiting > 0) {
+    parts.push(
+      `${waiting} member${waiting !== 1 ? 's' : ''} waiting more than 24 hours`,
+    );
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'All caught up';
+}
 
 interface MessagesPageUIProps {
   organizations: Array<{ id: string; name: string }>;
@@ -36,18 +87,20 @@ interface MessagesPageUIProps {
 export function MessagesPageUI({
   organizations,
   conversations,
-}: MessagesPageUIProps) {
+}: MessagesPageUIProps): React.ReactElement {
+  const searchParams = useSearchParams();
+  const deepLinkUserId = searchParams.get('userId');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [selected, setSelected] = useState<{
-    chatId: string;
-    patientName: string;
-    organizationId: string;
-    userId: string;
-  } | null>(null);
+  const [convFilter, setConvFilter] = useState<ConvFilter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [orgFilter, setOrgFilter] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [openingUserId, setOpeningUserId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef<string | null>(null);
+  const missingUserToastRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
+
   const { data: conversationsData } = useQuery({
     queryKey: ['messages', 'conversations'],
     queryFn: async () => {
@@ -56,272 +109,394 @@ export function MessagesPageUI({
       return result.data;
     },
     initialData: conversations,
+    staleTime: MESSAGES_STALE_MS,
   });
+
   const conversationsList = conversationsData ?? conversations;
+  const subtitle = useMemo(
+    () => buildSubtitle(conversationsList),
+    [conversationsList],
+  );
+  const unreadCount = useMemo(
+    () =>
+      conversationsList.filter((conversation) => conversation.unread_count > 0)
+        .length,
+    [conversationsList],
+  );
 
   const q = debouncedSearch.trim().toLowerCase();
 
   const filteredConversations = useMemo(() => {
     let list = conversationsList;
 
-    if (filter !== 'all' && filter.type === 'org') {
-      list = list.filter((c) => c.organization_id === filter.orgId);
+    if (convFilter === 'unread') {
+      list = list.filter((conversation) => conversation.unread_count > 0);
+    }
+
+    if (orgFilter) {
+      list = list.filter(
+        (conversation) => conversation.organization_id === orgFilter,
+      );
     }
 
     if (q) {
-      list = list.filter((c) => {
-        const fn = (c.first_name ?? '').toLowerCase();
-        const ln = (c.last_name ?? '').toLowerCase();
-        const fullName = `${fn} ${ln}`.trim();
-        const em = (c.email ?? '').toLowerCase();
-        const org = (c.organization_name ?? '').toLowerCase();
+      list = list.filter((conversation) => {
+        const firstName = (conversation.first_name ?? '').toLowerCase();
+        const lastName = (conversation.last_name ?? '').toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        const email = (conversation.email ?? '').toLowerCase();
+        const org = (conversation.organization_name ?? '').toLowerCase();
         return (
-          fn.includes(q) ||
-          ln.includes(q) ||
+          firstName.includes(q) ||
+          lastName.includes(q) ||
           fullName.includes(q) ||
-          em.includes(q) ||
+          email.includes(q) ||
           org.includes(q)
         );
       });
     }
 
     return list;
-  }, [conversationsList, filter, q]);
+  }, [conversationsList, convFilter, orgFilter, q]);
 
-  const orgCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of conversationsList) {
-      counts.set(c.organization_id, (counts.get(c.organization_id) ?? 0) + 1);
-    }
-    return counts;
-  }, [conversationsList]);
+  const activeFilterCount = orgFilter ? 1 : 0;
 
-  const handleSelectConversation = async (c: ConversationItem) => {
-    if (openingUserId) return;
-
-    const patientName =
-      c.first_name && c.last_name
-        ? `${c.first_name} ${c.last_name}`
-        : c.first_name || c.last_name || 'Patient';
-
-    if (c.chat_id) {
-      setSelected({
-        chatId: c.chat_id,
-        patientName,
-        organizationId: c.organization_id,
-        userId: c.user_id,
+  const prefetchMessages = useCallback(
+    (chatId: string | null): void => {
+      if (!chatId) return;
+      void queryClient.prefetchQuery({
+        queryKey: chatKeys.messages(chatId),
+        queryFn: async () => {
+          const result = await getMessagesByChatId(chatId);
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to load messages');
+          }
+          return result.data;
+        },
+        staleTime: MESSAGES_STALE_MS,
       });
+    },
+    [queryClient],
+  );
+
+  const handleSelectConversation = useCallback(
+    async (conversation: ConversationItem): Promise<void> => {
+      if (openingUserId && openingUserId !== conversation.user_id) return;
+
+      // Optimistic: select immediately, shallow URL (no RSC refetch).
+      syncUserIdInUrl(conversation.user_id);
+
+      if (conversation.chat_id) {
+        setSelected(conversation);
+        prefetchMessages(conversation.chat_id);
+        return;
+      }
+
+      setOpeningUserId(conversation.user_id);
+      setSelected(conversation);
+      try {
+        const result = await getOrCreateChatForPatient(
+          conversation.organization_id,
+          conversation.user_id,
+        );
+        if (!result.success) {
+          toast.error(result.error || 'Failed to open chat');
+          return;
+        }
+        const withChat: ConversationItem = {
+          ...conversation,
+          chat_id: result.data.chatId,
+        };
+        setSelected(withChat);
+        queryClient.setQueryData<ConversationItem[]>(
+          ['messages', 'conversations'],
+          (prev) =>
+            (prev ?? []).map((item) =>
+              item.user_id === conversation.user_id ? withChat : item,
+            ),
+        );
+        prefetchMessages(result.data.chatId);
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to open chat');
+      } finally {
+        setOpeningUserId(null);
+      }
+    },
+    [openingUserId, prefetchMessages, queryClient],
+  );
+
+  // Deep-link from ?userId= (Message button / hard navigation) — once per id.
+  useEffect(() => {
+    if (!deepLinkUserId) return;
+    if (deepLinkHandledRef.current === deepLinkUserId) return;
+    if (selected?.user_id === deepLinkUserId) {
+      deepLinkHandledRef.current = deepLinkUserId;
       return;
     }
 
-    setOpeningUserId(c.user_id);
-    try {
-      const result = await getOrCreateChatForPatient(
-        c.organization_id,
-        c.user_id,
-      );
-      if (!result.success) {
-        toast(result.error || 'Failed to open chat');
-        return;
+    const match = conversationsList.find(
+      (conversation) => conversation.user_id === deepLinkUserId,
+    );
+    if (!match) {
+      if (missingUserToastRef.current !== deepLinkUserId) {
+        toast.error('No conversation found for this member');
+        missingUserToastRef.current = deepLinkUserId;
       }
-      setSelected({
-        chatId: result.data.chatId,
-        patientName,
-        organizationId: c.organization_id,
-        userId: c.user_id,
-      });
-    } catch (e) {
-      console.error(e);
-      toast('Failed to open chat');
-    } finally {
-      setOpeningUserId(null);
+      deepLinkHandledRef.current = deepLinkUserId;
+      return;
     }
-  };
 
-  const handleCloseChat = () => {
-    if (openingUserId) return;
-    setSelected(null);
-  };
-
-  const isFilterActive = (f: FilterType) => {
-    if (f === 'all' && filter === 'all') return true;
-    if (f !== 'all' && filter !== 'all' && f.type === 'org' && filter.type === 'org')
-      return f.orgId === filter.orgId;
-    return false;
-  };
+    deepLinkHandledRef.current = deepLinkUserId;
+    missingUserToastRef.current = null;
+    void handleSelectConversation(match);
+  }, [deepLinkUserId, conversationsList, selected?.user_id, handleSelectConversation]);
 
   return (
-    <Card className="flex flex-1 min-h-0 flex-col overflow-hidden">
-      <CardContent className="p-0 flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-1 min-h-0">
-          <div
-            className={cn(
-              'flex flex-col border-r border-border shrink-0 min-w-0 overflow-hidden',
-              'w-[320px] max-w-[320px]',
-            )}
-          >
-        <div className="p-4 space-y-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search conversations..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 pl-10 rounded-md bg-background"
+    <>
+      <AppBar
+        crumbs={[{ label: 'Messages' }]}
+        title="Messages"
+        subtitle={subtitle}
+        actions={
+          <>
+            <button
+              type="button"
+              className="btn btn-acc"
+              onClick={() => toastUnavailable('New message')}
+            >
+              <Icon name="Send" size={17} />
+              New message
+            </button>
+            <HtmlMoreButton
+              items={[
+                {
+                  id: 'group',
+                  label: 'Message a group',
+                  onSelect: () => toastUnavailable('Message a group'),
+                },
+                {
+                  id: 'replies',
+                  label: 'Saved replies',
+                  onSelect: () => toastUnavailable('Saved replies'),
+                },
+                {
+                  id: 'read',
+                  label: 'Mark all read',
+                  onSelect: () => toastUnavailable('Mark all read'),
+                },
+              ]}
             />
-          </div>
+          </>
+        }
+      />
 
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-2 -mx-1 px-1 slim-scrollbar">
-            <div className="flex gap-2 min-w-0 w-max">
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className={cn(
-                  'shrink-0 h-7 px-3 rounded-full text-sm font-medium transition-colors cursor-pointer',
-                  'border',
-                  isFilterActive('all')
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-border hover:bg-muted/60',
-                )}
-              >
-                All
-              </button>
-              {organizations.length > 0 ? organizations.map((org) => (
+      <div className="body-flush">
+        <div className="msg-wrap">
+          <div className="conv-list">
+            <div className="conv-hd">
+              <div className="row" style={{ gap: 7 }}>
+                <span className="fld fld-sm" style={{ flex: 1 }}>
+                  <Icon name="Search" size={15} />
+                  <input
+                    value={search}
+                    placeholder="Search conversations…"
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </span>
                 <button
-                  key={org.id}
                   type="button"
-                  onClick={() => setFilter({ type: 'org', orgId: org.id })}
-                  className={cn(
-                    'shrink-0 h-7 px-3 rounded-full text-sm font-medium transition-colors cursor-pointer',
-                    'border',
-                    isFilterActive({ type: 'org', orgId: org.id })
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background border-border hover:bg-muted/60',
-                  )}
+                  className="btn btn-sec btn-sm"
+                  style={{ padding: '0 10px' }}
+                  onClick={() => setFiltersOpen((open) => !open)}
                 >
-                  {org.name} ({orgCounts.get(org.id) ?? 0})
+                  <Icon name="Funnel" size={15} />
+                  {activeFilterCount > 0 ? (
+                    <span
+                      className="bdg bdg-b"
+                      style={{ padding: '0 5px', fontSize: 10 }}
+                    >
+                      {activeFilterCount}
+                    </span>
+                  ) : null}
                 </button>
-              )) : (
-                <div className="flex shrink-0 h-7 px-3 text-sm font-medium text-muted-foreground text-center items-center justify-center">
-                  No groups assigned
+              </div>
+
+              {filtersOpen && organizations.length > 0 ? (
+                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${orgFilter === null ? 'btn-pri' : 'btn-sec'}`}
+                    onClick={() => setOrgFilter(null)}
+                  >
+                    All groups
+                  </button>
+                  {organizations.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      className={`btn btn-sm ${orgFilter === org.id ? 'btn-pri' : 'btn-sec'}`}
+                      onClick={() => setOrgFilter(org.id)}
+                    >
+                      {org.name}
+                    </button>
+                  ))}
                 </div>
+              ) : null}
+
+              <span className="seg" style={{ width: '100%' }}>
+                <button
+                  type="button"
+                  className={convFilter === 'unread' ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  onClick={() => setConvFilter('unread')}
+                >
+                  Unread
+                  {unreadCount > 0 ? (
+                    <span
+                      className="bdg bdg-b"
+                      style={{ padding: '0 5px', fontSize: 10 }}
+                    >
+                      {unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className={convFilter === 'all' ? 'on' : undefined}
+                  style={{ flex: 1, padding: '0 8px' }}
+                  onClick={() => setConvFilter('all')}
+                >
+                  All
+                </button>
+              </span>
+            </div>
+
+            <div className="conv-scroll">
+              {filteredConversations.length === 0 ? (
+                <div className="empty" style={{ padding: '32px 16px' }}>
+                  <div className="es">
+                    {conversationsList.length === 0
+                      ? 'No conversations yet'
+                      : q
+                        ? `No matches for "${debouncedSearch.trim()}"`
+                        : 'No conversations in this filter'}
+                  </div>
+                </div>
+              ) : (
+                filteredConversations.map((conversation) => {
+                  const isOpening = openingUserId === conversation.user_id;
+                  const isActive = selected?.user_id === conversation.user_id;
+                  const fullName =
+                    conversation.first_name && conversation.last_name
+                      ? `${conversation.first_name} ${conversation.last_name}`
+                      : conversation.first_name ||
+                        conversation.last_name ||
+                        'Unknown';
+
+                  return (
+                    <button
+                      key={conversation.user_id}
+                      type="button"
+                      className={`conv${isActive ? ' on' : ''}`}
+                      onClick={() => void handleSelectConversation(conversation)}
+                      onMouseEnter={() => prefetchMessages(conversation.chat_id)}
+                      onFocus={() => prefetchMessages(conversation.chat_id)}
+                      disabled={isOpening}
+                      style={{
+                        width: '100%',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {isOpening ? (
+                        <span
+                          className="av av-36 av-t1"
+                          style={{ width: 36, height: 36 }}
+                        >
+                          <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />
+                        </span>
+                      ) : (
+                        <HtmlAvatar
+                          name={fullName}
+                          src={conversation.avatar_url}
+                          size={36}
+                        />
+                      )}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span className="row" style={{ gap: 8 }}>
+                          <span className="cn">{fullName}</span>
+                          <span className="sp ct2">
+                            {formatConvTime(conversation.last_message_at)}
+                          </span>
+                        </span>
+                        <span
+                          className="cp"
+                          style={{
+                            display: 'block',
+                            color: 'var(--text-faint)',
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            letterSpacing: '.03em',
+                            textTransform: 'uppercase',
+                            marginTop: 1,
+                          }}
+                        >
+                          {conversation.organization_name}
+                        </span>
+                        <span className="cp" style={{ display: 'block' }}>
+                          {conversation.last_message_content ?? 'No messages yet'}
+                        </span>
+                      </span>
+                      {conversation.unread_count > 0 ? (
+                        <span className="ub" aria-hidden />
+                      ) : null}
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
-        </div>
 
-        <div className="messages-conversations-scroll flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 min-h-0 min-w-0 slim-scrollbar">
-            <div className="w-full min-w-0 space-y-1 px-2 pb-2 pt-2.5">
-            {filteredConversations.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                {conversationsList.length === 0
-                  ? 'No conversations yet'
-                  : q
-                    ? `No matches for "${debouncedSearch.trim()}"`
-                    : 'No conversations in this filter'}
+          <div className="thread">
+            {selected?.chat_id ? (
+              <MessagesChatThread
+                chatId={selected.chat_id}
+                conversation={selected}
+                onMarkedAsSeen={() => {
+                  queryClient.setQueryData<ConversationItem[]>(
+                    ['messages', 'conversations'],
+                    (prev) =>
+                      (prev ?? []).map((item) =>
+                        item.user_id === selected.user_id
+                          ? { ...item, unread_count: 0 }
+                          : item,
+                      ),
+                  );
+                }}
+              />
+            ) : openingUserId ? (
+              <div className="empty" style={{ flex: 1 }}>
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
+                <div className="es" style={{ marginTop: 12 }}>
+                  Opening chat…
+                </div>
               </div>
             ) : (
-              filteredConversations.map((c) => {
-                const isOpening = openingUserId === c.user_id;
-                const isSelected =
-                  selected?.userId === c.user_id;
-                const fullName =
-                  c.first_name && c.last_name
-                    ? `${c.first_name} ${c.last_name}`
-                    : c.first_name || c.last_name || 'Unknown';
-
-                return (
-                  <button
-                    key={c.user_id}
-                    type="button"
-                    onClick={() => handleSelectConversation(c)}
-                    disabled={!!openingUserId}
-                    className={cn(
-                      'w-full min-w-0 text-left rounded-lg p-3 transition-colors cursor-pointer',
-                      'hover:bg-primary/40 disabled:opacity-50 disabled:cursor-not-allowed',
-                      isSelected && 'bg-muted/80 ring-1 ring-border/60',
-                    )}
-                  >
-                    <div className="flex min-w-0 gap-3">
-                      <div className="relative size-10 shrink-0 overflow-visible flex items-center justify-center">
-                        {isOpening ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        ) : (
-                          <>
-                            <Avatar
-                              src={c.avatar_url}
-                              firstName={c.first_name ?? ''}
-                              lastName={c.last_name ?? ''}
-                              userId={c.user_id}
-                              size={40}
-                              disableNavigation
-                            />
-                            {c.unread_count > 0 && (
-                              <span
-                                aria-hidden
-                                className="absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-red-500 bg-background px-1 text-[10px] font-semibold leading-none text-red-500 shadow-sm"
-                              >
-                                {c.unread_count}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="text-sm font-medium text-highlighted truncate">
-                          {fullName}
-                        </div>
-                        <div className="text-xs text-dimmed mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {c.last_message_content ?? 'No messages yet'}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5 min-w-0 overflow-hidden">
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatMessageTime(c.last_message_at)}
-                          </span>
-                          {c.program_name && c.program_assignment_id && (
-                            <NextLink
-                              href={`/builder/${c.program_assignment_id}?from=messages`}
-                              className="text-xs text-foreground no-underline hover:underline hover:text-primary cursor-pointer truncate min-w-0 flex-1 block"
-                            >
-                              {c.program_name}
-                            </NextLink>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
-
-          <div className="flex-1 min-w-0 flex flex-col">
-            {selected ? (
-              <div className="flex-1 min-h-0 p-4">
-                <ChatInterface
-                  chatId={selected.chatId}
-                  patientName={selected.patientName}
-                  onClose={handleCloseChat}
-                  onMarkedAsSeen={() =>
-                  queryClient.invalidateQueries({
-                    queryKey: ['messages', 'conversations'],
-                  })
-                }
-                />
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                Select a conversation
+              <div className="empty" style={{ flex: 1 }}>
+                <div className="ei">
+                  <Icon name="MessageSquare" size={24} />
+                </div>
+                <div className="et">Select a conversation</div>
+                <div className="es">
+                  Choose a member from the list to view and reply.
+                </div>
               </div>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }

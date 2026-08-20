@@ -1,9 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { PageWrapper } from '@/components/page-wrapper';
-import { Card } from '@/components/ui/card';
+import { AppBar } from '@/components/medvanta/shell';
+import { Icon } from '@/components/medvanta';
 import { AddMembersModal } from '../add-members/add-members-modal';
 import { AddUserModal } from '@/app/(authenticated)/users/users-table/components/add-user-modal';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
@@ -20,12 +19,17 @@ import {
   useRemoveGroupAdmin,
   useRemoveGroupMember,
 } from './hooks/use-group-mutations';
-import { GroupDetailsSubheader } from './partials/subheader';
-import { PhysicianCard } from './partials/physician-card';
-import { OrganizationInfoCard } from './partials/organization-info-card';
+import { GroupHeroCard } from './partials/group-hero-card';
+import { GroupProgramsPanel } from './partials/group-programs-panel';
+import {
+  GroupSchedulingPlaceholder,
+  GroupSettingsPlaceholder,
+} from './partials/group-tab-placeholders';
 import { MembersTable } from './partials/members-table';
 import type { GroupMemberRow } from './partials/members-table-columns';
 import type { GroupMemberWithProgram, SuperAdminGroupUser } from './actions';
+
+type GroupDetailTab = 'members' | 'programs' | 'scheduling' | 'settings';
 
 export function GroupDetailsPageUI({
   organization,
@@ -35,11 +39,10 @@ export function GroupDetailsPageUI({
   organization: Organization;
   physician: PhysicianInfo | null;
   initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
-}) {
-  // Use React Query hooks instead of useState
+}): React.ReactElement | null {
   const { data: org } = useOrganization(organization.id, organization);
+  const [activeTab, setActiveTab] = useState<GroupDetailTab>('members');
 
-  // Ensure initialMembers is always an array
   const safeInitialMembers = useMemo(
     () => (Array.isArray(initialMembers) ? initialMembers : []),
     [initialMembers],
@@ -63,7 +66,7 @@ export function GroupDetailsPageUI({
       ),
     [safeInitialMembers],
   );
-  
+
   const { data: membersData } = useGroupMembers(
     isSuperAdminOrg ? null : organization.id,
     initialPatients,
@@ -78,17 +81,14 @@ export function GroupDetailsPageUI({
   );
 
   const members = useMemo(() => {
-    // Ensure result is always an array, even if membersData is null, undefined, or not an array
     const data = isSuperAdminOrg ? superAdminUsersData : membersData;
     return Array.isArray(data) ? data : [];
   }, [isSuperAdminOrg, membersData, superAdminUsersData]);
 
   const [membersModalOpen, setMembersModalOpen] = useState(false);
-  const [membersModalRole, setMembersModalRole] =
-    useState<MemberRole>('patient');
+  const [membersModalRole, setMembersModalRole] = useState<MemberRole>('patient');
   const [inviteUsersModalOpen, setInviteUsersModalOpen] = useState(false);
 
-  // Remove member mutation
   const removeMemberMutation = useRemoveGroupMember(organization.id);
   const addAdminMutation = useAddGroupAdmin(organization.id);
   const removeAdminMutation = useRemoveGroupAdmin(organization.id);
@@ -113,7 +113,19 @@ export function GroupDetailsPageUI({
     [members],
   );
 
-  const openAddUsers = () => {
+  const programRows = useMemo(() => {
+    const counts = new Map<string, number>();
+    memberRows.forEach((member) => {
+      if (!member.program_name) return;
+      counts.set(member.program_name, (counts.get(member.program_name) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([name, memberCount]) => ({
+      name,
+      memberCount,
+    }));
+  }, [memberRows]);
+
+  const openAddUsers = (): void => {
     if (isSuperAdminOrg) {
       setInviteUsersModalOpen(true);
       return;
@@ -122,7 +134,7 @@ export function GroupDetailsPageUI({
     setMembersModalOpen(true);
   };
 
-  const openAssignPhysician = () => {
+  const openAssignPhysician = (): void => {
     setMembersModalRole('admin');
     setMembersModalOpen(true);
   };
@@ -132,68 +144,91 @@ export function GroupDetailsPageUI({
   }
 
   return (
-    <PageWrapper
-      subheader={
-        <GroupDetailsSubheader organization={org} />
-      }
-    >
-      <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0 }}
-            className="h-full"
+    <>
+      <AppBar
+        crumbs={[
+          { label: 'Groups', href: '/groups' },
+          { label: org.name },
+        ]}
+        title={org.name}
+      />
+      <div className="body">
+        {isSuperAdminOrg ? (
+          <div className="alert alert-i" style={{ marginBottom: 16 }}>
+            <Icon name="Info" size={20} />
+            <div>
+              <div className="at">Administrator organization</div>
+              This organization is only for administrators and physicians.
+            </div>
+          </div>
+        ) : (
+          <GroupHeroCard
+            organization={org}
+            memberCount={members.length}
+            programCount={programRows.length}
+            physician={currentPhysician ?? null}
+            onAddMembers={openAddUsers}
+            onAssignPhysician={openAssignPhysician}
+          />
+        )}
+
+        <div className="tabs" style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            className={activeTab === 'members' ? 'on' : undefined}
+            onClick={() => setActiveTab('members')}
           >
-            {isSuperAdminOrg ? (
-              <Card className="p-6 border-2 border-blue-200 bg-blue-50 h-full flex items-center">
-                <div className="text-sm font-medium text-blue-900">
-                  This organization is only for administrators & physicians
-                </div>
-              </Card>
-            ) : (
-              <PhysicianCard
-                physician={currentPhysician ?? null}
-                onAssignClick={openAssignPhysician}
-                organizationId={org.id}
-              />
-            )}
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="h-full"
+            <Icon name="UsersRound" size={16} />
+            Members
+            <span className="cnt">{members.length}</span>
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'programs' ? 'on' : undefined}
+            onClick={() => setActiveTab('programs')}
           >
-            <OrganizationInfoCard
-              organization={org}
-              memberCount={Array.isArray(members) ? members.length : 0}
-            />
-          </motion.div>
+            <Icon name="ClipboardList" size={16} />
+            Programs
+            <span className="cnt">{programRows.length}</span>
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'scheduling' ? 'on' : undefined}
+            onClick={() => setActiveTab('scheduling')}
+          >
+            <Icon name="CalendarDays" size={16} />
+            Scheduling
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'settings' ? 'on' : undefined}
+            onClick={() => setActiveTab('settings')}
+          >
+            <Icon name="SlidersHorizontal" size={16} />
+            Settings
+          </button>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card className="text-card-foreground flex flex-col gap-6 bg-card/95 rounded-3xl border-2 border-border shadow-2xl overflow-hidden backdrop-blur-sm">
-            <div className="p-6 sm:p-8">
-              <MembersTable
-                data={memberRows}
-                onAddClick={openAddUsers}
-                removeMemberMutation={removeMemberMutation}
-                addAdminMutation={addAdminMutation}
-                removeAdminMutation={removeAdminMutation}
-                isSuperAdminOrg={isSuperAdminOrg}
-                organizationId={org.id}
-              />
-            </div>
-          </Card>
-        </motion.div>
+        {activeTab === 'members' ? (
+          <MembersTable
+            data={memberRows}
+            removeMemberMutation={removeMemberMutation}
+            addAdminMutation={addAdminMutation}
+            removeAdminMutation={removeAdminMutation}
+            isSuperAdminOrg={isSuperAdminOrg}
+            organizationId={org.id}
+          />
+        ) : null}
+        {activeTab === 'programs' ? (
+          <GroupProgramsPanel programs={programRows} groupName={org.name} />
+        ) : null}
+        {activeTab === 'scheduling' ? <GroupSchedulingPlaceholder /> : null}
+        {activeTab === 'settings' ? (
+          <GroupSettingsPlaceholder groupName={org.name} />
+        ) : null}
       </div>
 
-      {!isSuperAdminOrg && (
+      {!isSuperAdminOrg ? (
         <AddMembersModal
           open={membersModalOpen}
           onOpenChange={setMembersModalOpen}
@@ -202,15 +237,15 @@ export function GroupDetailsPageUI({
           name={org.name}
           initialRole={membersModalRole}
         />
-      )}
+      ) : null}
 
-      {isSuperAdminOrg && (
+      {isSuperAdminOrg ? (
         <AddUserModal
           open={inviteUsersModalOpen}
           onOpenChange={setInviteUsersModalOpen}
           role="admin"
         />
-      )}
-    </PageWrapper>
+      ) : null}
+    </>
   );
 }

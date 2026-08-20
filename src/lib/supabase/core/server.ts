@@ -25,7 +25,8 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            console.error('Error setting cookies');
+            // Called from a Server Component — safe to ignore when the proxy
+            // refreshes the session and writes cookies onto the response.
           }
         },
       },

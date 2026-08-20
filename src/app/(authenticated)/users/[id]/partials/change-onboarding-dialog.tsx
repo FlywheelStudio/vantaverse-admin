@@ -1,24 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import toast from 'react-hot-toast';
+import { Avatar, Icon } from '@/components/medvanta';
+import { HtmlModal } from './intake-survey-placeholder-modal';
 import { setOnboardingStateForUsers } from '../../actions';
 import type { SetOnboardingStateTarget } from '@/lib/supabase/queries/profiles';
-import { Loader2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import {
+  DEFAULT_ONBOARDING_GATE_INDEX,
+  formatClearedGatesAlertTitle,
+  formatGateBadge,
+} from './change-onboarding-mock-data';
 
 type OnboardingOverride = 'full' | SetOnboardingStateTarget;
 
-type ChangeOnboardingDialogProps = {
+interface ChangeOnboardingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: {
@@ -28,31 +25,61 @@ type ChangeOnboardingDialogProps = {
     email: string | null;
     status?: string | null;
   };
-};
+  /** Preselect path when parent knows the current override. */
+  currentPath?: OnboardingOverride;
+  /** 0-based gate index for badge + cleared-gates copy (mock default 2). */
+  gateIndex?: number;
+}
 
-const statusLabel: Record<string, string> = {
-  pending: 'pending',
-  invited: 'invited',
-  active: 'active',
-  assigned: 'assigned',
-};
+/** Copy + structure match HTML `mdChangeOnboarding`. */
+const onboardingOptions = [
+  {
+    value: 'full' as const,
+    label: 'Full onboarding',
+    description:
+      'All four gates: intake survey, screening appointment, virtual consultation, program assignment.',
+  },
+  {
+    value: 'screening' as const,
+    label: 'Skip the screening appointment',
+    description:
+      'Intake survey straight to the virtual consultation. Use when the member has already been screened in clinic.',
+  },
+  {
+    value: 'consultation' as const,
+    label: 'Skip screening and consultation',
+    description:
+      'Intake survey straight to program assignment. Use for members transferring in with a plan already agreed.',
+  },
+] as const;
 
-export function ChangeOnboardingDialog({
-  open,
+function ChangeOnboardingDialogBody({
   onOpenChange,
   user,
-}: ChangeOnboardingDialogProps) {
+  currentPath,
+  gateIndex = DEFAULT_ONBOARDING_GATE_INDEX,
+}: Omit<ChangeOnboardingDialogProps, 'open'>): React.ReactElement {
   const router = useRouter();
-  const [override, setOverride] = useState<OnboardingOverride>('full');
+  const [override, setOverride] = useState<OnboardingOverride>(
+    currentPath ?? 'full',
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+  const displayName =
+    [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
   const displayEmail = user.email ?? '';
-  const status = user.status ? statusLabel[user.status] ?? user.status : null;
+  const firstName =
+    user.first_name?.trim() || displayName.split(' ')[0] || 'Member';
 
-  const handleSave = async () => {
+  const handleClose = (): void => {
+    onOpenChange(false);
+  };
+
+  const handleSave = async (): Promise<void> => {
     if (override === 'full') {
+      toast.success('Restored full onboarding (preview)');
+      router.refresh();
       onOpenChange(false);
       return;
     }
@@ -69,97 +96,114 @@ export function ChangeOnboardingDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change Onboarding</DialogTitle>
-          <DialogDescription>
-            Modify the onboarding path for this user.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-medium text-foreground">{displayName}</p>
-              <p className="text-sm text-muted-foreground">{displayEmail}</p>
-            </div>
-            {status && (
-              <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-                {status}
-              </span>
-            )}
-          </div>
-
-          <div>
-            <p className="mb-2 font-medium text-foreground">Onboarding override</p>
-            <div className="space-y-1 rounded-md border border-border bg-muted/30">
-              {(
-                [
-                  { value: 'full' as const, label: 'Full onboarding' },
-                  { value: 'screening' as const, label: 'Skip screening' },
-                  {
-                    value: 'consultation' as const,
-                    label: 'Skip screening + consultation',
-                  },
-                ] as const
-              ).map(({ value, label }) => (
-                <label
-                  key={value}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm transition-colors',
-                    override === value && 'bg-primary/10',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="onboarding-override"
-                    checked={override === value}
-                    onChange={() => setOverride(value)}
-                    className="h-4 w-4 accent-primary"
-                    disabled={saving}
-                  />
-                  <span className="text-foreground">{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {override !== 'full' && (
-            <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                Skipping onboarding steps may result in a confusing experience for
-                invited users. Only use this override in exceptional situations.
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+    <HtmlModal
+      open
+      onClose={handleClose}
+      title="Change onboarding path"
+      subtitle="Controls which gates this member has to clear."
+      width={540}
+      footer={
+        <>
+          <button type="button" className="btn btn-ghost" onClick={handleClose} disabled={saving}>
             Cancel
-          </Button>
-          <Button onClick={handleSave} className="ml-2" disabled={saving}>
+          </button>
+          <button type="button" className="btn btn-acc" onClick={handleSave} disabled={saving}>
             {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              'Save Changes'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <Icon name="LoaderCircle" size={17} className="animate-spin" />
+            ) : null}
+            Save path
+          </button>
+        </>
+      }
+    >
+      <div
+        className="row"
+        style={{
+          gap: 12,
+          padding: '12px 14px',
+          background: 'var(--slate-50)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 18,
+        }}
+      >
+        <Avatar name={displayName} size="md" />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              display: 'block',
+              fontSize: 'var(--text-md)',
+              fontWeight: 'var(--fw-semibold)',
+              color: 'var(--text-strong)',
+            }}
+          >
+            {displayName}
+          </span>
+          <span
+            className="mono"
+            style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
+          >
+            {displayEmail || '—'}
+          </span>
+        </span>
+        <span className="bdg bdg-b">{formatGateBadge(gateIndex)}</span>
+      </div>
+
+      <label className="lbl" style={{ marginBottom: 9, display: 'block' }}>
+        Onboarding path
+      </label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        {onboardingOptions.map(({ value, label, description }) => {
+          const selected = override === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              className={`choice${selected ? ' on' : ''}`}
+              disabled={saving}
+              onClick={() => setOverride(value)}
+            >
+              <span className={`rd${selected ? ' on' : ''}`}>{selected ? <i /> : null}</span>
+              <span>
+                <span className="ct">{label}</span>
+                <span className="cd">{description}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="alert alert-w" style={{ marginTop: 16 }}>
+        <Icon name="TriangleAlert" size={19} />
+        <div>
+          <div className="at">{formatClearedGatesAlertTitle(firstName, gateIndex)}</div>
+          Skipping a completed gate hides it from their path but keeps the record.
+          Restoring it later requires resetting onboarding.
+        </div>
+      </div>
+
+      {error ? (
+        <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--danger)' }}>
+          {error}
+        </p>
+      ) : null}
+    </HtmlModal>
+  );
+}
+
+/**
+ * Change onboarding path dialog (HTML `mdChangeOnboarding`).
+ * Remounts on open so path/gate state resets without effect setState.
+ */
+export function ChangeOnboardingDialog({
+  open,
+  ...props
+}: ChangeOnboardingDialogProps): React.ReactElement | null {
+  if (!open) return null;
+  return (
+    <ChangeOnboardingDialogBody
+      key={`onboarding-${props.currentPath ?? 'full'}-${props.gateIndex ?? DEFAULT_ONBOARDING_GATE_INDEX}`}
+      {...props}
+    />
   );
 }

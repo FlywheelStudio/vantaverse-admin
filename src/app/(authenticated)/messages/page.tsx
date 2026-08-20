@@ -1,4 +1,4 @@
-import { PageWrapper } from '@/components/page-wrapper';
+import { Suspense } from 'react';
 import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
@@ -7,7 +7,7 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
 import { MessagesPageUI } from './messages-page-ui';
 
-export default async function MessagesPage() {
+export default async function MessagesPage(): Promise<React.ReactElement> {
   const orgMembersQuery = new OrganizationMembers();
   const conversationsQuery = new ConversationsQuery();
 
@@ -31,17 +31,11 @@ export default async function MessagesPage() {
   });
 
   return (
-    <PageWrapper
-      subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
-          Messages
-        </h1>
-      }
-    >
+    <Suspense fallback={null}>
       <MessagesPageUI
         organizations={data.adminOrgs}
         conversations={data.conversations}
       />
-    </PageWrapper>
+    </Suspense>
   );
 }

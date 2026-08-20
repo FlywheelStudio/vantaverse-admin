@@ -8,9 +8,21 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-const commitMessageFile =
-  process.argv[2] || path.join(process.cwd(), '.git', 'COMMIT_EDITMSG');
+function resolveCommitMessageFile() {
+  if (process.argv[2]) {
+    return process.argv[2];
+  }
 
+  try {
+    return execSync('git rev-parse --git-path COMMIT_EDITMSG', {
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    return path.join(process.cwd(), '.git', 'COMMIT_EDITMSG');
+  }
+}
+
+const commitMessageFile = resolveCommitMessageFile();
 const configPath = path.join(process.cwd(), 'commitlint.config.json');
 
 try {

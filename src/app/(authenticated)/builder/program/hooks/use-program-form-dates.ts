@@ -4,7 +4,7 @@ import { useEffect, RefObject } from 'react';
 import { UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { startOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import { useBuilder } from '@/context/builder-context';
+import { useOptionalBuilder } from '@/context/builder-context';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import {
@@ -14,6 +14,8 @@ import {
 } from '@/lib/utils';
 import type { ProgramTemplateFormData } from '@/app/(authenticated)/builder/program/schemas';
 import { isPreProgramTemplateStatus } from '@/lib/constants/program-assignment-status';
+
+const noopSetProgramStartDate: (date: string | null) => void = () => undefined;
 
 interface UseProgramFormDatesProps {
   initialData?: ProgramTemplate | null;
@@ -31,7 +33,9 @@ export function useProgramFormDates({
   form,
   loadedDatesForTemplateIdRef,
 }: UseProgramFormDatesProps) {
-  const { setProgramStartDate } = useBuilder();
+  const builder = useOptionalBuilder();
+  const setProgramStartDate =
+    builder?.setProgramStartDate ?? noopSetProgramStartDate;
   const { watch, setValue } = form;
   const weeks = watch('weeks');
   const startDate = watch('startDate');

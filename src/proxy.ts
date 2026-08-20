@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/core/server';
+import { updateSession } from '@/lib/supabase/core/proxy';
 import { NextRequest, NextResponse } from 'next/server';
 
-export default async function proxy(req: NextRequest) {
+export default async function proxy(req: NextRequest): Promise<NextResponse> {
   const path = req.nextUrl.pathname;
 
   // Skip middleware for static files
@@ -23,33 +23,7 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const regexPathPublic =
-    /^(\/login$|\/auth\/callback$|\/docs(\/.*)?$|\/blog(\/.*)?$|\/legals(\/.*)?$)/;
-  const isPathPublic = regexPathPublic.test(path);
-
-  const regexPathAuth = /^\/login$|\/auth\/callback$/;
-  const isPathAuth = regexPathAuth.test(path);
-
-  if (!session && !isPathPublic) {
-    const redirectUrl = new URL(
-      `/login?next=${encodeURIComponent(path)}`,
-      req.url,
-    );
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  if (session && isPathAuth) {
-    // TODO: Redirect to the dashboard
-    return NextResponse.redirect(new URL('/', req.url));
-  }
-
-  return NextResponse.next();
+  return await updateSession(req);
 }
 
 export const config = {

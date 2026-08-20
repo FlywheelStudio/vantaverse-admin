@@ -3,8 +3,12 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { avatarTone } from '@/components/widgets/utils';
 
-// Generate a consistent color from a seed string
+/**
+ * Design-system avatar background from HTML `av-t1`…`av-t4` tones.
+ * Gradients keep HSL variety for program cards only.
+ */
 export function generateColorFromSeed(
   seed: string | null | undefined,
   {
@@ -12,45 +16,56 @@ export function generateColorFromSeed(
     style = 'default',
   }: { gradient?: boolean; style?: 'default' | 'program' } = {},
 ): string {
-  if (!seed) {
-    // Fallback color for undefined/null seeds
-    return gradient
-      ? style === 'program'
-        ? 'linear-gradient(160deg, hsl(0, 0%, 36%), hsl(0, 0%, 62%))'
-        : 'linear-gradient(135deg, hsl(0, 0%, 42%), hsl(0, 0%, 58%))'
-      : 'hsl(0, 0%, 50%)';
-  }
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  // Generate HSL color with good saturation and lightness for avatars
-  const hue = Math.abs(hash) % 360;
-  if (!gradient) return `hsl(${hue}, 65%, 50%)`;
-
-  if (style === 'program') {
-    const angle = 160;
-    const delta = 44 + (Math.abs(hash) % 36); // 44..79
+  if (gradient) {
+    if (!seed) {
+      return style === 'program'
+        ? 'linear-gradient(160deg, hsl(210, 40%, 36%), hsl(190, 35%, 62%))'
+        : 'linear-gradient(135deg, hsl(210, 40%, 42%), hsl(190, 30%, 58%))';
+    }
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    if (style === 'program') {
+      const angle = 160;
+      const delta = 44 + (Math.abs(hash) % 36);
+      const hue2 = (hue + delta) % 360;
+      return `linear-gradient(${angle}deg, hsl(${hue}, 58%, 38%), hsl(${hue2}, 70%, 58%))`;
+    }
+    const delta = 26 + (Math.abs(hash) % 28);
     const hue2 = (hue + delta) % 360;
-    const sat1 = 58;
-    const sat2 = 70;
-    const light1 = 38;
-    const light2 = 58;
-    return `linear-gradient(${angle}deg, hsl(${hue}, ${sat1}%, ${light1}%), hsl(${hue2}, ${sat2}%, ${light2}%))`;
+    return `linear-gradient(135deg, hsl(${hue}, 64%, 44%), hsl(${hue2}, 72%, 56%))`;
   }
 
-  const delta = 26 + (Math.abs(hash) % 28); // 26..53
-  const hue2 = (hue + delta) % 360;
-  const sat1 = 64;
-  const sat2 = 72;
-  const light1 = 44;
-  const light2 = 56;
-
-  return `linear-gradient(135deg, hsl(${hue}, ${sat1}%, ${light1}%), hsl(${hue2}, ${sat2}%, ${light2}%))`;
+  switch (avatarTone(seed || 'default')) {
+    case 'av-t2':
+      return 'var(--cyan-100)';
+    case 'av-t3':
+      return 'var(--slate-200)';
+    case 'av-t4':
+      return 'var(--navy-700)';
+    case 'av-t1':
+    default:
+      return 'var(--navy-100)';
+  }
 }
 
-// Generate initials from name parts
+function toneForeground(seed: string): string {
+  switch (avatarTone(seed)) {
+    case 'av-t2':
+      return 'var(--cyan-800)';
+    case 'av-t3':
+      return 'var(--slate-700)';
+    case 'av-t4':
+      return 'var(--white)';
+    case 'av-t1':
+    default:
+      return 'var(--navy-700)';
+  }
+}
+
+/** Initials from name parts. */
 export function getInitials(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
@@ -83,9 +98,9 @@ export function Avatar({
   size = 36,
   className = '',
   disableNavigation = false,
-}: AvatarProps) {
-  const colorSeed = userId || 'default';
-  const avatarColor = generateColorFromSeed(colorSeed);
+}: AvatarProps): React.ReactElement {
+  const displayName = `${firstName} ${lastName}`.trim() || userId || 'Member';
+  const toneClass = avatarTone(displayName);
   const fontSize = size * 0.35;
   const initials = getInitials(firstName, lastName);
   const router = useRouter();
@@ -112,12 +127,19 @@ export function Avatar({
   ) : (
     <div
       className={cn(
-        'w-full h-full flex items-center justify-center rounded-full',
+        'av w-full h-full',
+        toneClass,
         !disableNavigation && 'cursor-pointer',
-        'text-white text-xs font-medium ring-1 ring-border/40',
         className,
       )}
-      style={{ backgroundColor: avatarColor, fontSize }}
+      style={{
+        fontSize,
+        background: generateColorFromSeed(displayName),
+        color: toneForeground(displayName),
+      }}
+      onClick={
+        disableNavigation ? undefined : () => router.push(`/users/${userId}`)
+      }
     >
       {initials}
     </div>

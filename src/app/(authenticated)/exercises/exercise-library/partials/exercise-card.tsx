@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Icon } from '@/components/medvanta';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
@@ -9,63 +9,51 @@ interface ExerciseCardProps {
   onClick: () => void;
 }
 
-export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
-  const thumb = exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object' ? exercise.thumbnail_url : null;
+function formatTypeLabel(type: string): string {
+  return type
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
-  // Format date display with relative dates
-  const getDateDisplay = () => {
-    if (!exercise.created_at || !exercise.updated_at) {
-      return null;
-    }
-    const createdDate = new Date(exercise.created_at);
-    const updatedDate = new Date(exercise.updated_at);
-    const isCreated = createdDate.getTime() === updatedDate.getTime();
-    const label = isCreated ? 'Created' : 'Last used';
-    const dateToUse = isCreated ? createdDate : updatedDate;
+function getDateDisplay(exercise: Exercise): string | null {
+  if (!exercise.created_at || !exercise.updated_at) return null;
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const date = new Date(
-      dateToUse.getFullYear(),
-      dateToUse.getMonth(),
-      dateToUse.getDate(),
-    );
+  const createdDate = new Date(exercise.created_at);
+  const updatedDate = new Date(exercise.updated_at);
+  const isCreated = createdDate.getTime() === updatedDate.getTime();
+  const label = isCreated ? 'Created' : 'Last used';
+  const dateToUse = isCreated ? createdDate : updatedDate;
 
-    const diffTime = today.getTime() - date.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const date = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate());
+  const diffDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-    let relativeDate: string;
+  if (diffDays === 0) return `${label} today`;
+  if (diffDays === 1) return `${label} yesterday`;
+  if (diffDays < 30) return `${label} ${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `${label} ${months} month${months === 1 ? '' : 's'} ago`;
+  }
+  return `${label} more than a year ago`;
+}
 
-    if (diffDays === 0) {
-      relativeDate = 'today';
-    } else if (diffDays === 1) {
-      relativeDate = 'yesterday';
-    } else if (diffDays < 30) {
-      relativeDate = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-    } else if (diffDays < 365) {
-      const months = Math.floor(diffDays / 30);
-      relativeDate = `${months} month${months === 1 ? '' : 's'} ago`;
-    } else {
-      relativeDate = 'more than a year ago';
-    }
+/** HTML `.exc` exercise card from scExercises. */
+export function ExerciseCard({ exercise, onClick }: ExerciseCardProps): React.ReactElement {
+  const thumb =
+    exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object'
+      ? exercise.thumbnail_url
+      : null;
 
-    return `${label} ${relativeDate}`;
-  };
-
-  const dateDisplay = getDateDisplay();
-  const assignmentText =
-    exercise.assigned_count === 0
-      ? 'Unassigned'
-      : `${exercise.assigned_count} assignment${exercise.assigned_count === 1 ? '' : 's'}`;
-  const hasAssignments = exercise.assigned_count && exercise.assigned_count > 0;
+  const dateDisplay = getDateDisplay(exercise);
+  const hasAssignments = Boolean(exercise.assigned_count && exercise.assigned_count > 0);
+  const category = exercise.type ? formatTypeLabel(exercise.type) : 'Exercise';
 
   return (
-    <Card
-      onClick={onClick}
-      className="group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-lg border border-border/80 bg-card shadow-(--shadow-sm) transition-all duration-300 hover:border-primary/60 hover:shadow-(--shadow-md)"
-    >
-      {/* Exercise Image */}
-      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-muted to-secondary transition-transform duration-300 group-hover:scale-105">
+    <button type="button" className="exc" onClick={onClick}>
+      <div className="thmb gr" style={{ aspectRatio: '16/10', width: '100%', position: 'relative' }}>
         <ExerciseThumbnail
           blurhash={thumb?.blurhash ?? null}
           imageUrl={thumb?.image_url ?? null}
@@ -77,33 +65,33 @@ export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
           aspectVideo={false}
           showVideoFallback={true}
         />
-      </div>
-
-      {/* Exercise Info */}
-      <CardContent
-        className="flex flex-1 flex-col gap-3 px-4 py-4"
-      >
-        <h3 className="text-foreground line-clamp-2 text-base leading-snug font-semibold">
-          {exercise.exercise_name}
-        </h3>
-
-        <div className="mt-auto space-y-2">
-          <span
-            className={[
-              'inline-flex h-7 items-center rounded-pill border px-2.5 text-xs font-medium',
-              hasAssignments
-                ? 'border-primary/20 bg-primary/10 text-primary'
-                : 'border-border bg-secondary text-secondary-foreground',
-            ].join(' ')}
-          >
-            {assignmentText}
+        {exercise.type ? (
+          <span className="src-b">{formatTypeLabel(exercise.type).slice(0, 3).toUpperCase()}</span>
+        ) : null}
+        {exercise.video_url ? (
+          <span className="pl">
+            <i>
+              <Icon name="Play" size={18} style={{ fill: 'currentColor' }} />
+            </i>
           </span>
-
-          {dateDisplay && (
-            <p className="text-muted-foreground text-sm">{dateDisplay}</p>
-          )}
+        ) : null}
+      </div>
+      <div className="meta">
+        <div className="en2">{exercise.exercise_name}</div>
+        <div className="mr">
+          <span className="row" style={{ gap: 6 }}>
+            {hasAssignments ? (
+              <span className="bdg bdg-b">{exercise.assigned_count} assigned</span>
+            ) : (
+              <span className="bdg bdg-o">Unassigned</span>
+            )}
+            <span className="bdg">{category}</span>
+          </span>
         </div>
-      </CardContent>
-    </Card>
+        {dateDisplay ? (
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-faint)' }}>{dateDisplay}</div>
+        ) : null}
+      </div>
+    </button>
   );
 }

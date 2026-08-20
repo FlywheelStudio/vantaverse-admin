@@ -1,12 +1,15 @@
-import { PageWrapper } from '@/components/page-wrapper';
-import { StatusCountsCard } from '@/app/(authenticated)/dashboard/status-counts-card';
-import { ComplianceCard } from '@/app/(authenticated)/dashboard/compliance-card';
-import { NeedingAttentionCard } from '@/app/(authenticated)/dashboard/needing-attention-card';
+import { AppBar } from '@/components/medvanta/shell';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
+import {
+  Dashboard,
+  DashboardAppBarActions,
+  formatDashboardSubtitle,
+  getGreeting,
+} from '@/components/widgets';
 
-export default async function HomePage() {
+export default async function HomePage(): Promise<React.ReactElement> {
   const profilesQuery = new ProfilesQuery();
   const dashboardQuery = new DashboardQuery();
 
@@ -33,26 +36,6 @@ export default async function HomePage() {
       query: () => dashboardQuery.getUsersNeedingAttention(),
       defaultValue: { users: [], total: 0 },
     },
-    usersPending: {
-      query: () => dashboardQuery.getUsersByStatus('pending'),
-      defaultValue: [],
-    },
-    usersInvited: {
-      query: () => dashboardQuery.getUsersByStatus('invited'),
-      defaultValue: [],
-    },
-    usersActive: {
-      query: () => dashboardQuery.getUsersByStatus('active'),
-      defaultValue: [],
-    },
-    usersNoProgram: {
-      query: () => dashboardQuery.getUsersWithNoProgram(),
-      defaultValue: [],
-    },
-    usersInProgram: {
-      query: () => dashboardQuery.getUsersInProgram(),
-      defaultValue: [],
-    },
     programCompleted: {
       query: () => dashboardQuery.getUsersProgramCompleted(),
       defaultValue: { users: [], total: 0 },
@@ -60,43 +43,32 @@ export default async function HomePage() {
   });
 
   const firstName = data.profile?.first_name ?? undefined;
+  const greeting = getGreeting();
+  const title = firstName ? `${greeting}, ${firstName}` : greeting;
+  const needingTotal = data.needingAttention?.total ?? 0;
 
   return (
-    <PageWrapper
-      subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
-          Welcome back{firstName ? `, ${firstName}` : ''}!
-        </h1>
-      }
-    >
-      <div className="flex flex-col gap-4 flex-1 min-h-0">
-        <div className="flex flex-col md:flex-row gap-4 shrink-0 h-[340px]">
-          <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
-          <ComplianceCard compliance={data.compliance?.compliance ?? 0} />
-        </div>
-        <div className="flex-1 min-h-[500px]">
-          <StatusCountsCard
-            counts={{
-              ...(data.statusCounts ?? {
-                pending: 0,
-                invited: 0,
-                active: 0,
-                noProgram: 0,
-                inProgram: 0,
-              }),
-              programCompleted: data.programCompleted?.total ?? 0,
-            }}
-            usersByFilter={{
-              pending: data.usersPending ?? [],
-              invited: data.usersInvited ?? [],
-              active: data.usersActive ?? [],
-              noProgram: data.usersNoProgram ?? [],
-              inProgram: data.usersInProgram ?? [],
-              programCompleted: data.programCompleted?.users ?? [],
-            }}
-          />
-        </div>
-      </div>
-    </PageWrapper>
+    <>
+      <AppBar
+        crumbs={[{ label: 'Dashboard' }]}
+        title={title}
+        subtitle={formatDashboardSubtitle(needingTotal)}
+        actions={<DashboardAppBarActions />}
+      />
+      <Dashboard
+        statusCounts={{
+          ...(data.statusCounts ?? {
+            pending: 0,
+            invited: 0,
+            active: 0,
+            noProgram: 0,
+            inProgram: 0,
+          }),
+          programCompleted: data.programCompleted?.total ?? 0,
+        }}
+        compliancePct={data.compliance?.compliance ?? 0}
+        needingAttention={data.needingAttention?.users ?? []}
+      />
+    </>
   );
 }

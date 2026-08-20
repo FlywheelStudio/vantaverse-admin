@@ -525,18 +525,26 @@ export class OrganizationMembers extends SupabaseQuery {
   /**
    * Get organizations where the user is an admin (excluding super admin organization)
    * @param userId - The user ID
-   * @returns Success with array of { id, name } or error
+   * @returns Success with array of { id, name, description, picture_url } or error
    */
-  public async getOrganizationsWhereUserIsAdmin(
-    userId: string,
-  ): Promise<
-    SupabaseSuccess<Array<{ id: string; name: string }>> | SupabaseError
+  public async getOrganizationsWhereUserIsAdmin(userId: string): Promise<
+    | SupabaseSuccess<
+        Array<{
+          id: string;
+          name: string;
+          description: string | null;
+          picture_url: string | null;
+        }>
+      >
+    | SupabaseError
   > {
     const supabase = await this.getClient('authenticated_user');
 
     const { data, error } = await supabase
       .from('organization_members')
-      .select('organization_id, organizations!inner(id, name, is_super_admin)')
+      .select(
+        'organization_id, organizations!inner(id, name, description, picture_url, is_super_admin)',
+      )
       .eq('user_id', userId)
       .eq('role', 'admin')
       .eq('is_active', true);
@@ -555,12 +563,17 @@ export class OrganizationMembers extends SupabaseQuery {
       };
     }
 
+    type AdminOrg = {
+      id: string;
+      name: string;
+      description: string | null;
+      picture_url: string | null;
+      is_super_admin: boolean | null;
+    };
+
     type RawOrgMember = {
       organization_id: string;
-      organizations:
-        | { id: string; name: string; is_super_admin: boolean | null }
-        | { id: string; name: string; is_super_admin: boolean | null }[]
-        | null;
+      organizations: AdminOrg | AdminOrg[] | null;
     };
 
     const organizations = (data as unknown as RawOrgMember[])
@@ -574,6 +587,8 @@ export class OrganizationMembers extends SupabaseQuery {
       .map(({ orgId, org }) => ({
         id: orgId,
         name: org!.name,
+        description: org!.description,
+        picture_url: org!.picture_url,
       }));
 
     return {

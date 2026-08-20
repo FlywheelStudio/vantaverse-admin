@@ -17,7 +17,9 @@ export const profileSchema = z.object({
   description: z.string().nullable(),
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
-  email: z.email(),
+  // DB column is `string | null`; some rows have '' or non-email strings.
+  // Keep invite/create paths strict via their own validators — this schema is for reads.
+  email: z.string().nullable(),
   status: z.enum(['pending', 'invited', 'active', 'assigned']).nullish(),
   phone: z.string().nullable(),
   journey_phase: journeyPhaseSchema.nullable(),
@@ -50,7 +52,7 @@ export const profileWithStatsSchema = profileSchema.extend({
   hp_points: z.number().nullable(),
   max_gate_type: z.string().nullable(),
   max_gate_unlocked: z.number().nullable(),
-  points_required_for_next_level: z.number().nullable(),
+  points_for_next_level: z.number().nullable(),
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
   program_assignment_id: z.uuid().nullable().optional(),

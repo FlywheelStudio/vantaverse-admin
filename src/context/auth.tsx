@@ -2,7 +2,6 @@
 
 import { supabase } from '@/lib/supabase/core/client';
 import { Session, User } from '@supabase/supabase-js';
-import { redirect } from 'next/navigation';
 import { createContext, useEffect, useState, useTransition } from 'react';
 
 export interface AuthContextType {
@@ -28,12 +27,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, startTransition] = useTransition();
 
+  /**
+   * Clears the Supabase session. Navigation is the caller's job — calling
+   * `redirect()` from a client event handler throws instead of navigating.
+   */
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);
+      throw error;
     }
-    redirect('/login');
   };
 
   useEffect(() => {

@@ -1,22 +1,13 @@
 'use client';
 
+import Image from 'next/image';
+
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Dialog } from '@/components/medvanta';
+import { avatarTone } from '@/components/widgets/utils';
 
 export type GroupMemberRow = {
   user_id: string;
@@ -28,60 +19,77 @@ export type GroupMemberRow = {
   role: 'unassigned' | 'physician' | null;
 };
 
+function memberDisplayName(member: GroupMemberRow): string {
+  if (member.first_name && member.last_name) {
+    return `${member.first_name} ${member.last_name}`;
+  }
+  return member.first_name || member.last_name || 'Unknown';
+}
+
+function memberInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 function NameEmailCell({
   member,
   organizationId,
 }: {
   member: GroupMemberRow;
   organizationId: string;
-}) {
+}): React.ReactElement {
   const router = useRouter();
-  const fullName =
-    member.first_name && member.last_name
-      ? `${member.first_name} ${member.last_name}`
-      : member.first_name || member.last_name || null;
+  const fullName = memberDisplayName(member);
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     const fromParam = encodeURIComponent(`/groups/${organizationId}`);
     router.push(`/users/${member.user_id}?from=${fromParam}`);
   };
 
   return (
-    <div
-      className="flex items-center gap-3 cursor-pointer"
+    <button
+      type="button"
+      className="cellp"
+      style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }}
       onClick={handleClick}
     >
-      <div className="size-10 shrink-0 flex items-center justify-center">
-        <Avatar
-          src={member.avatar_url}
-          firstName={member.first_name || ''}
-          lastName={member.last_name || ''}
-          userId={member.user_id || 'unknown'}
-          size={40}
-        />
-      </div>
-      <div className="flex-1 min-w-0 max-w-60">
-        <div className="font-medium text-sm text-[#1E3A5F] truncate">
-          {fullName || 'Unknown'}
-        </div>
-        {member.email && (
-          <div className="text-xs text-[#64748B] truncate">{member.email}</div>
+      <span
+        className={`av ${avatarTone(fullName)} av-32`}
+        style={{ width: 34, height: 34, fontSize: 12 }}
+      >
+        {member.avatar_url ? (
+          <Image src={member.avatar_url} alt={fullName} width={34} height={34} unoptimized className="size-full object-cover" />
+        ) : (
+          memberInitials(fullName)
         )}
-      </div>
-    </div>
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span className="nm" style={{ display: 'block' }}>
+          {fullName}
+        </span>
+        {member.email ? <span className="em">{member.email}</span> : null}
+      </span>
+    </button>
   );
 }
 
-function ProgramCell({ member }: { member: GroupMemberRow }) {
-  return (
-    <span className="text-sm text-[#1E3A5F]">{member.program_name || '-'}</span>
-  );
+function ProgramCell({ member }: { member: GroupMemberRow }): React.ReactElement {
+  if (!member.program_name) {
+    return <span className="faint">Not assigned</span>;
+  }
+  return <span className="lnk">{member.program_name}</span>;
 }
 
-function RoleCell({ member }: { member: GroupMemberRow }) {
-  return (
-    <span className="text-sm text-[#1E3A5F]">{member.role || '-'}</span>
-  );
+function RoleCell({ member }: { member: GroupMemberRow }): React.ReactElement {
+  if (!member.role) {
+    return <span className="faint">—</span>;
+  }
+  return <span className="bdg">{member.role}</span>;
 }
 
 function RemoveButton({
@@ -92,11 +100,11 @@ function RemoveButton({
   member: GroupMemberRow;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   confirmText: string;
-}) {
+}): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const isRemoving = removeMemberMutation.isPending;
 
-  const handleRemove = () => {
+  const handleRemove = (): void => {
     removeMemberMutation.mutate(member.user_id, {
       onSuccess: () => {
         setOpen(false);
@@ -105,37 +113,43 @@ function RemoveButton({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold cursor-pointer"
-        >
-          Remove
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remove member</AlertDialogTitle>
-          <AlertDialogDescription>
-            {confirmText}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="cursor-pointer" disabled={isRemoving}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            className="cursor-pointer"
-            onClick={handleRemove}
-            disabled={isRemoving}
-          >
-            {isRemoving ? 'Removing...' : 'Remove'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        style={{ color: 'var(--danger)' }}
+        onClick={() => setOpen(true)}
+      >
+        Remove
+      </button>
+      <Dialog
+        open={open}
+        title="Remove member"
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-sec"
+              onClick={() => setOpen(false)}
+              disabled={isRemoving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-dan"
+              onClick={handleRemove}
+              disabled={isRemoving}
+            >
+              {isRemoving ? 'Removing…' : 'Remove'}
+            </button>
+          </>
+        }
+      >
+        {confirmText}
+      </Dialog>
+    </>
   );
 }
 
@@ -149,26 +163,25 @@ function ActionsCell({
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
   isSuperAdminOrg?: boolean;
-}) {
+}): React.ReactElement {
   if (isSuperAdminOrg && member.role === 'unassigned' && addAdminMutation) {
     const isPending = addAdminMutation.isPending;
     return (
-      <div className="flex items-center justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          className="cursor-pointer"
+      <div style={{ textAlign: 'right' }}>
+        <button
+          type="button"
+          className="btn btn-sec btn-sm"
           disabled={isPending}
           onClick={() => addAdminMutation.mutate(member.user_id)}
         >
-          {isPending ? 'Assigning...' : 'Make admin'}
-        </Button>
+          {isPending ? 'Assigning…' : 'Make admin'}
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-end">
+    <div style={{ textAlign: 'right' }}>
       <RemoveButton
         member={member}
         removeMemberMutation={removeMemberMutation}
@@ -195,9 +208,7 @@ export function getMembersColumns({
 }): ColumnDef<GroupMemberRow>[] {
   const nameCol: ColumnDef<GroupMemberRow> = {
     accessorKey: 'name',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Name / Email</span>
-    ),
+    header: () => <span className="srt">Member</span>,
     cell: ({ row }) => (
       <NameEmailCell member={row.original} organizationId={organizationId} />
     ),
@@ -219,9 +230,7 @@ export function getMembersColumns({
 
   const actionsCol: ColumnDef<GroupMemberRow> = {
     id: 'actions',
-    header: () => (
-      <span className="text-sm font-bold text-[#1E3A5F]">Actions</span>
-    ),
+    header: () => null,
     cell: ({ row }) => (
       <ActionsCell
         member={row.original}
@@ -240,9 +249,7 @@ export function getMembersColumns({
       {
         id: 'role',
         accessorFn: (row) => row.role || '',
-        header: () => (
-          <span className="text-sm font-bold text-[#1E3A5F]">Role</span>
-        ),
+        header: () => <span>Role</span>,
         cell: ({ row }) => <RoleCell member={row.original} />,
         enableSorting: false,
         enableColumnFilter: false,
@@ -252,21 +259,15 @@ export function getMembersColumns({
   }
 
   return [
-    {
-      ...nameCol,
-    },
+    nameCol,
     {
       id: 'program',
       accessorFn: (row) => row.program_name || '',
-      header: () => (
-        <span className="text-sm font-bold text-[#1E3A5F]">Program</span>
-      ),
+      header: () => <span>Program</span>,
       cell: ({ row }) => <ProgramCell member={row.original} />,
       enableSorting: false,
       enableColumnFilter: false,
     },
-    {
-      ...actionsCol,
-    },
+    actionsCol,
   ];
 }

@@ -540,7 +540,14 @@ async function uploadUsersExcel(
 }
 
 /**
- * Create a user quickly with email, name, and optional org/team assignment
+ * Create a user quickly with email, name, and optional org/team assignment.
+ *
+ * Admins get a super-admin membership on top of the profile row. Admin-ness
+ * lives on `organization_members`, not `profiles`, so without this grant the
+ * invitee is created but cannot log in (the `isUserAdminByEmail` gate in
+ * `auth/actions.ts` rejects them) and never appears in the admin list. This
+ * mirrors the bulk-import path, which grants the same membership after
+ * `createPendingUsers`.
  */
 export async function createUserQuickAdd(data: {
   email: string;
@@ -554,7 +561,25 @@ export async function createUserQuickAdd(data: {
   | { success: false; error: string }
 > {
   const query = new ProfilesQuery();
-  return query.createQuickAdd(data);
+  const result = await query.createQuickAdd(data);
+
+  if (!result.success || data.role !== 'admin') {
+    return result;
+  }
+
+  const orgMembers = new OrganizationMembers();
+  const grant = await orgMembers.makeSuperAdmin(result.data.userId);
+
+  if (!grant.success) {
+    // Surface it rather than logging and continuing: a swallowed failure here
+    // leaves behind a user who can never sign in.
+    return {
+      success: false,
+      error: `Created ${data.email}, but granting admin access failed: ${grant.error}. Retry from the admins list.`,
+    };
+  }
+
+  return result;
 }
 
 type SendBulkInvitationsResult =

@@ -3,10 +3,11 @@ import type {
   ExerciseTemplate,
   Group,
 } from '@/lib/supabase/schemas/exercise-templates';
+import type { DayPrescription } from '@/app/(authenticated)/builder/[id]/workout-schedule/exercise-builder-mock-data';
 
 export type SelectedItem =
-  | { type: 'exercise'; data: Exercise }
-  | { type: 'template'; data: ExerciseTemplate }
+  | { type: 'exercise'; data: Exercise; prescription?: DayPrescription }
+  | { type: 'template'; data: ExerciseTemplate; prescription?: DayPrescription }
   | {
       type: 'group';
       data: Group;

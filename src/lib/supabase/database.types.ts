@@ -2075,7 +2075,7 @@ export type Database = {
           max_gate_type: Database["public"]["Enums"]["gate_unlock_type"] | null
           max_gate_unlocked: number | null
           phone: string | null
-          points_required_for_next_level: number | null
+          points_for_next_level: number | null
           program_assigned: boolean | null
           program_assignment_id: string | null
           program_assignment_name: string | null
@@ -2112,7 +2112,7 @@ export type Database = {
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
-          points_required_for_next_level?: never
+          points_for_next_level?: never
           program_assigned?: boolean | null
           program_assignment_id?: never
           program_assignment_name?: never
@@ -2149,7 +2149,7 @@ export type Database = {
           max_gate_type?: never
           max_gate_unlocked?: never
           phone?: string | null
-          points_required_for_next_level?: never
+          points_for_next_level?: never
           program_assigned?: boolean | null
           program_assignment_id?: never
           program_assignment_name?: never

@@ -61,6 +61,7 @@ export function useGroupsState() {
 
   const handleOpenAddMembers = (type: 'organization' | 'team', id: string) => {
     setAddingMembersTo({ type, id });
+    // Highlight only — never raise row z-index above HtmlModal (z-1000).
     setRowZIndex(id);
   };
 

@@ -1,46 +1,46 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
-import { cn } from '@/lib/utils';
 
 interface RoleFilterProps {
   selectedRole: MemberRole;
   onRoleSelect: (role: MemberRole) => void;
+  memberCount?: number;
+  adminCount?: number;
 }
 
 export function RoleFilter({
   selectedRole = 'patient',
   onRoleSelect,
-}: RoleFilterProps) {
+  memberCount,
+  adminCount,
+}: RoleFilterProps): React.ReactElement {
   return (
-    <div className="flex items-center gap-2 bg-muted border border-border rounded-[var(--radius-pill)] p-1">
-      <Button
-        variant="ghost"
-        size="sm"
+    <span className="seg">
+      <button
+        type="button"
+        className={selectedRole === 'patient' ? 'on' : undefined}
         onClick={() => onRoleSelect('patient')}
-        className={cn(
-          'cursor-pointer flex-1 rounded-[var(--radius-pill)] transition-colors',
-          selectedRole === 'patient'
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'text-foreground hover:bg-background',
-        )}
       >
         Members
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
+        {memberCount != null ? (
+          <span className="bdg bdg-b" style={{ padding: '0 6px', fontSize: 10 }}>
+            {memberCount}
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className={selectedRole === 'admin' ? 'on' : undefined}
         onClick={() => onRoleSelect('admin')}
-        className={cn(
-          'cursor-pointer flex-1 rounded-[var(--radius-pill)] transition-colors',
-          selectedRole === 'admin'
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'text-foreground hover:bg-background',
-        )}
       >
         Admins
-      </Button>
-    </div>
+        {adminCount != null ? (
+          <span className="bdg" style={{ padding: '0 6px', fontSize: 10 }}>
+            {adminCount}
+          </span>
+        ) : null}
+      </button>
+    </span>
   );
 }

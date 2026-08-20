@@ -1,61 +1,38 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { PageWrapper } from '@/components/page-wrapper';
-import { UserProfileCard } from '@/components/users/user-profile-card';
+import { useMemo, useState } from 'react';
+import { AppBar } from '@/components/medvanta/shell';
+import { Icon } from '@/components/medvanta';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { Appointment } from '@/lib/supabase/queries/appointments';
 import type { McIntakeSurvey } from '@/lib/supabase/queries/mc-intake';
 import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
-import { AppointmentCard } from './partials/appointment-card';
-import { HpCard } from './partials/hp-card';
-import { IpCard } from './partials/ip-card';
-import { McIntakeCard } from './partials/mc-intake-card';
-import { HabitPledgeCard } from './partials/habit-pledge-card';
-import { GroupAssignmentCard } from './partials/group-assignment-card';
-import { PhysicianAssignmentCard } from './partials/physician-assignment-card';
-import { ProgramAssignmentCard } from './partials/program-assignment-card';
-import { ProgramStatusCard } from './program-status/card';
-import { ComplianceChartCard } from './partials/compliance-chart-card';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { ChangeOnboardingDialog } from './partials/change-onboarding-dialog';
+import { MemberDetailHeader } from './partials/member-detail-header';
+import { MemberNotesTab } from './partials/member-notes-tab';
+import { HtmlOnboardingTab } from './partials/html-onboarding-tab';
+import { HtmlProgramTab } from './partials/html-program-tab';
+import { IntakeSurveyPlaceholderModal } from './partials/intake-survey-placeholder-modal';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { ChangeOnboardingDialog } from './partials/change-onboarding-dialog';
+import { getProgramSlaMode } from './partials/program-sla';
+import { getCurrentWeekIndex } from './partials/program-week';
 
-export function UserProfilePageUI({
-  user,
-  organizations,
-  physiologistsByOrgId,
-  appointments,
-  hpLevelThreshold,
-  hpTransactions,
-  empowermentThreshold,
-  gateInfo,
-  ipTransactions,
-  pointsMissingForNextLevel,
-  mcIntakeSurvey,
-  habitPledge,
-  programAssignment,
-  compliance,
-  schedule,
-  completion,
-  exerciseNamesMap,
-  groupsMap,
-}: {
+type MemberTab = 'onb' | 'prog' | 'notes';
+
+type UserProfilePageUIProps = {
   user: ProfileWithStats;
   organizations?: Array<{ id: string; name: string; description: string | null }>;
   physiologistsByOrgId: Map<
     string,
     | {
-      userId: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-      avatarUrl: string | null;
-      description: string | null;
-    }
+        userId: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        avatarUrl: string | null;
+        description: string | null;
+      }
     | null
   >;
   appointments: Appointment[];
@@ -94,184 +71,207 @@ export function UserProfilePageUI({
   completion: Array<Array<unknown>> | null | undefined;
   exerciseNamesMap: Map<string, string>;
   groupsMap: Map<string, { exercise_template_ids: string[] | null }>;
-}) {
-  // Filter screening and consultation appointments
-  const screeningAppointments = appointments.filter(
-    (a) => a.type === 'onboarding_screening',
-  );
-  const consultationAppointments = appointments.filter(
-    (a) => a.type === 'onboarding_consultation',
-  );
+};
 
-  const { user: currentUser } = useAuth();
+export function UserProfilePageUI({
+  user,
+  organizations,
+  physiologistsByOrgId,
+  mcIntakeSurvey,
+  habitPledge,
+  programAssignment,
+  compliance,
+  schedule,
+  completion,
+  exerciseNamesMap,
+  groupsMap,
+  pointsMissingForNextLevel,
+}: UserProfilePageUIProps): React.ReactElement {
+  const [activeTab, setActiveTab] = useState<MemberTab>('onb');
   const [changeOnboardingOpen, setChangeOnboardingOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [intakeSurveyOpen, setIntakeSurveyOpen] = useState(false);
 
-  const isYourself = useMemo(
-    () => user.id === currentUser?.id,
-    [user.id, currentUser?.id],
-  );
-
-  // Determine if user is a member (patient) - physicians (admin) only see profile card
   const isMember = user.role === 'patient' || !user.role;
+  const displayName = useMemo(() => {
+    const parts = [user.first_name, user.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Member';
+  }, [user.first_name, user.last_name]);
 
-  // Get physiologist for first organization (primary)
   const primaryPhysiologist =
     organizations && organizations.length > 0
       ? physiologistsByOrgId.get(organizations[0].id) ?? null
       : null;
 
-  return (
-    <PageWrapper
-      subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
-          {isYourself
-            ? 'Your '
-            : `${user.first_name && `${user.first_name}'s `} `}
-          Profile
-        </h1>
+  const programSlaMode = getProgramSlaMode({
+    programDueDate: user.program_due_date,
+    hasAssignment: Boolean(programAssignment),
+  });
+
+  const programTabBadge = useMemo(() => {
+    if (programSlaMode === 'overdue') return 'overdue';
+    if (programSlaMode !== 'assigned' || programAssignment == null) {
+      return 'not assigned';
+    }
+
+    const weekCount =
+      programAssignment.program_template?.weeks ?? schedule?.length ?? 0;
+    const weekIndex = getCurrentWeekIndex({
+      startDate: programAssignment.start_date,
+      weekCount,
+    });
+
+    return `week ${weekIndex + 1} of ${weekCount || '—'}`;
+  }, [programAssignment, programSlaMode, schedule?.length]);
+
+  const header = (
+    <MemberDetailHeader
+      user={user}
+      organizations={organizations}
+      physiologist={
+        primaryPhysiologist
+          ? {
+              firstName: primaryPhysiologist.firstName,
+              lastName: primaryPhysiologist.lastName,
+            }
+          : null
       }
-    >
-      <Card className="border border-border shadow-(--shadow-lg)">
-        {/* User Profile Header */}
-        <div className="relative bg-linear-to-br from-blue-500/10 via-primary/5 to-transparent p-8 border-b border-white/10">
-          <UserProfileCard
-            userId={user.id}
-            firstName={user.first_name || ''}
-            lastName={user.last_name || ''}
-            description={user.description}
-            email={user.email || ''}
-            avatarUrl={user.avatar_url}
-            role={user.role}
-          />
+      programAssignment={programAssignment}
+      onChangeOnboarding={() => setChangeOnboardingOpen(true)}
+      assignOpen={assignOpen}
+      onAssignOpenChange={setAssignOpen}
+    />
+  );
+
+  if (!isMember) {
+    return (
+      <>
+        <AppBar
+          crumbs={[
+            { label: 'Members', href: '/users' },
+            { label: displayName },
+          ]}
+          title={displayName}
+        />
+        <div className="body">{header}</div>
+        <ChangeOnboardingDialog
+          open={changeOnboardingOpen}
+          onOpenChange={setChangeOnboardingOpen}
+          user={{
+            id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+            status: user.status,
+          }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AppBar
+        crumbs={[
+          { label: 'Members', href: '/users' },
+          { label: displayName },
+        ]}
+        title={displayName}
+      />
+      <div className="body">
+        {header}
+
+        <div className="tabs" style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            className={activeTab === 'onb' ? 'on' : undefined}
+            onClick={() => setActiveTab('onb')}
+          >
+            <Icon name="CircleDot" size={16} />
+            Onboarding
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'prog' ? 'on' : undefined}
+            onClick={() => setActiveTab('prog')}
+          >
+            <Icon name="ClipboardList" size={16} />
+            Program
+            <span
+              className="cnt"
+              style={
+                programSlaMode === 'overdue'
+                  ? { background: 'var(--danger-soft)', color: 'var(--danger)' }
+                  : undefined
+              }
+            >
+              {programTabBadge}
+            </span>
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'notes' ? 'on' : undefined}
+            onClick={() => setActiveTab('notes')}
+          >
+            <Icon name="NotebookPen" size={16} />
+            Notes
+            <span className="cnt">2</span>
+          </button>
         </div>
 
-        {/* Cards Section - Only show for members, hide for admins */}
-        {isMember && (
-          <CardContent className="p-8">
-            <div className="grid grid-cols-3 gap-6 items-stretch">
-              {/* Left Column: Program Onboarding Progress (2/3 width) */}
-              <div className="col-span-2 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <h2 className="text-xl font-semibold text-foreground">
-                    Program Onboarding Progress
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setChangeOnboardingOpen(true)}
-                  >
-                    Change onboarding
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  <AppointmentCard
-                    title="1. Screening"
-                    appointments={screeningAppointments}
-                    profileCompletion={{
-                      screening_completed: user.screening_completed,
-                      consultation_completed: user.consultation_completed,
-                    }}
-                    stepType="screening"
-                  />
-                  <McIntakeCard survey={mcIntakeSurvey} />
-                  <AppointmentCard
-                    title="3. Virtual Consultation"
-                    appointments={consultationAppointments}
-                    profileCompletion={{
-                      screening_completed: user.screening_completed,
-                      consultation_completed: user.consultation_completed,
-                    }}
-                    stepType="consultation"
-                  />
-                  <GroupAssignmentCard
-                    organizations={organizations ?? []}
-                    userId={user.id}
-                    userFirstName={user.first_name}
-                    userLastName={user.last_name}
-                  />
-                  <PhysicianAssignmentCard
-                    physiologist={primaryPhysiologist}
-                    organizations={organizations}
-                  />
-                  <ProgramAssignmentCard
-                    assignment={programAssignment}
-                    compliance={compliance}
-                    organizations={organizations}
-                    userId={user.id}
-                    userFirstName={user.first_name}
-                    userLastName={user.last_name}
-                    maxGateUnlocked={user.max_gate_unlocked}
-                  />
-                </div>
-                <ChangeOnboardingDialog
-                  open={changeOnboardingOpen}
-                  onOpenChange={setChangeOnboardingOpen}
-                  user={{
-                    id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    email: user.email,
-                    status: user.status,
-                  }}
-                />
-              </div>
+        {activeTab === 'onb' ? (
+          <HtmlOnboardingTab
+            user={user}
+            habitPledge={habitPledge}
+            programAssignment={programAssignment}
+            schedule={schedule}
+            completion={completion}
+            pointsMissingForNextLevel={pointsMissingForNextLevel}
+            onChangePath={() => setChangeOnboardingOpen(true)}
+            onAssignProgram={() => setAssignOpen(true)}
+            onOpenIntake={() => setIntakeSurveyOpen(true)}
+          />
+        ) : null}
 
-              {/* Right Column: VantaThrive Insights (1/3 width) */}
-              <div className="col-span-1 space-y-4 border border-primary/10 rounded-xl p-4 py-6 h-full">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                  VantaThrive Insights
-                </h2>
-                <div className="space-y-4">
-                  <ComplianceChartCard
-                    compliance={compliance}
-                    programAssignment={programAssignment}
-                  />
-                  <HpCard
-                    currentLevel={user.current_level}
-                    hpPoints={user.hp_points}
-                    pointsRequiredForNextLevel={user.points_required_for_next_level}
-                    currentPhase={user.current_phase}
-                    levelDescription={hpLevelThreshold?.description ?? null}
-                    levelImageUrl={hpLevelThreshold?.image_url ?? null}
-                    transactions={hpTransactions}
-                  />
-                  <div className="grid grid-cols-2 gap-4 items-start">
-                    <IpCard
-                      empowerment={user.empowerment}
-                      empowermentTitle={user.empowerment_title}
-                      currentEffect={empowermentThreshold?.effects ?? null}
-                      gateTitle={gateInfo?.title ?? null}
-                      gateDescription={gateInfo?.description ?? null}
-                      pointsMissingForNextLevel={pointsMissingForNextLevel}
-                      basePower={empowermentThreshold?.base_power ?? null}
-                      topPower={empowermentThreshold?.top_power ?? null}
-                      transactions={ipTransactions}
-                    />
-                    <HabitPledgeCard pledge={habitPledge} />
-                  </div>
+        {activeTab === 'prog' ? (
+          <HtmlProgramTab
+            user={user}
+            hasAssignment={Boolean(programAssignment)}
+            schedule={schedule}
+            completion={completion}
+            exerciseNamesMap={exerciseNamesMap}
+            groupsMap={groupsMap}
+            programAssignment={programAssignment}
+            compliance={compliance}
+            onAssignProgram={() => setAssignOpen(true)}
+          />
+        ) : null}
 
-                </div>
-              </div>
-            </div>
+        {activeTab === 'notes' ? (
+          <MemberNotesTab
+            onOpenIntake={() => setIntakeSurveyOpen(true)}
+          />
+        ) : null}
+      </div>
 
-            {/* Program Status Card - Full width at bottom */}
-            <div className="col-span-full w-full mt-6">
-              <ProgramStatusCard
-                assignment={programAssignment}
-                compliance={compliance}
-                schedule={schedule}
-                completion={completion}
-                exerciseNamesMap={exerciseNamesMap}
-                groupsMap={groupsMap}
-                userId={user.id}
-                userFirstName={user.first_name}
-                userLastName={user.last_name}
-                maxGateUnlocked={user.max_gate_unlocked}
-              />
-            </div>
-          </CardContent>
-        )}
-      </Card>
-    </PageWrapper>
+      <ChangeOnboardingDialog
+        open={changeOnboardingOpen}
+        onOpenChange={setChangeOnboardingOpen}
+        user={{
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          status: user.status,
+        }}
+      />
+
+      <IntakeSurveyPlaceholderModal
+        open={intakeSurveyOpen}
+        onOpenChange={setIntakeSurveyOpen}
+        survey={mcIntakeSurvey}
+        memberName={displayName}
+      />
+    </>
   );
 }
