@@ -5,7 +5,12 @@ import { Icon } from '@/components/medvanta';
 import { OrgTeamFilter } from '../org-team-filter';
 import { RoleFilter } from '../role-filter';
 import { HtmlSearchField } from '../../html-helpers';
-import { MembersFilterPanel } from './members-filter-panel';
+import {
+  MembersFilterPanel,
+  DEFAULT_MEMBERS_EXTRA_FILTERS,
+  type MembersExtraFilters,
+  type PhysiologistOption,
+} from './members-filter-panel';
 import type { UsersTableFilters } from '../types';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
@@ -24,6 +29,9 @@ interface UsersTableFiltersProps {
   adminCount?: number;
   dueFilter?: DueFilter;
   onDueFilterChange?: (filter: DueFilter) => void;
+  extraFilters: MembersExtraFilters;
+  onExtraFiltersChange: (filters: MembersExtraFilters) => void;
+  physiologistOptions: PhysiologistOption[];
 }
 
 function toPanelDue(due: DueFilter): PanelDueFilter {
@@ -49,6 +57,9 @@ export function UsersTableFilters({
   adminCount = 0,
   dueFilter = 'all',
   onDueFilterChange,
+  extraFilters,
+  onExtraFiltersChange,
+  physiologistOptions,
 }: UsersTableFiltersProps): React.ReactElement {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -57,8 +68,13 @@ export function UsersTableFilters({
     if (filters.organization_id) count += 1;
     if (filters.team_id) count += 1;
     if (dueFilter !== 'all') count += 1;
+    if (extraFilters.status !== 'all') count += 1;
+    if (extraFilters.program !== 'all') count += 1;
+    if (extraFilters.physiologist) count += 1;
+    if (extraFilters.lastActive !== 'all') count += 1;
+    if (extraFilters.joined !== 'all') count += 1;
     return count;
-  }, [filters.organization_id, filters.team_id, dueFilter]);
+  }, [filters.organization_id, filters.team_id, dueFilter, extraFilters]);
 
   const handleOrgSelect = (orgId?: string): void => {
     onTeamNameChange(undefined);
@@ -84,6 +100,7 @@ export function UsersTableFilters({
   const handleClear = (): void => {
     onTeamNameChange(undefined);
     onDueFilterChange?.('all');
+    onExtraFiltersChange(DEFAULT_MEMBERS_EXTRA_FILTERS);
     onFiltersChange?.({ role: filters.role || 'patient' });
   };
 
@@ -135,6 +152,9 @@ export function UsersTableFilters({
             onDueFilterChange={(value) =>
               onDueFilterChange?.(fromPanelDue(value))
             }
+            extraFilters={extraFilters}
+            onExtraFiltersChange={onExtraFiltersChange}
+            physiologistOptions={physiologistOptions}
             onClear={handleClear}
             onApply={() => setFiltersOpen(false)}
             groupSlot={

@@ -1,31 +1,9 @@
 'use client';
 
-import { Icon } from '@/components/medvanta';
 import {
   HtmlActionsMenu,
   type HtmlActionsMenuItem,
 } from '@/components/medvanta/shell/HtmlActionsMenu';
-
-interface HtmlFiltersButtonProps {
-  activeCount?: number;
-}
-
-/** Disabled HTML `filtersBtn()` placeholder — filter panel is out of scope. */
-export function HtmlFiltersButton({
-  activeCount = 0,
-}: HtmlFiltersButtonProps): React.ReactElement {
-  return (
-    <button type="button" className="btn btn-sec" disabled title="Filters placeholder">
-      <Icon name="Funnel" size={16} />
-      Filters
-      {activeCount > 0 ? (
-        <span className="bdg bdg-b" style={{ padding: '0 6px', fontSize: 10 }}>
-          {activeCount}
-        </span>
-      ) : null}
-    </button>
-  );
-}
 
 function parseLegacyMenuItems(text: string): HtmlActionsMenuItem[] {
   return text

@@ -6,10 +6,9 @@ import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
 import { useOrganizationsTable } from '@/context/organizations';
-import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
-import { Icon } from '@/components/medvanta';
+import { Icon, IconButton } from '@/components/medvanta';
 import { avatarTone } from '@/components/widgets/utils';
 
 function groupInitials(name: string): string {
@@ -118,23 +117,9 @@ function GroupLogo({ org }: { org: Organization }): React.ReactElement {
 function MembersCell({ org }: { org: Organization }): React.ReactElement {
   const { handleOpenAddMembers } = useOrganizationsTable();
   const members = (org.members || []).filter((m) => m.role !== 'admin');
-  const avatars = members.map((member) => {
-    const profile = member.profile;
-    return {
-      src: profile?.avatar_url || undefined,
-      firstName: profile?.first_name || '',
-      lastName: profile?.last_name || '',
-      userId: profile?.id || '',
-    };
-  });
 
   return (
-    <div className="row" style={{ gap: 10 }}>
-      <AvatarGroup
-        avatars={avatars}
-        maxVisible={4}
-        onAddClick={() => handleOpenAddMembers('organization', org.id)}
-      />
+    <div className="row" style={{ gap: 10, alignItems: 'center' }}>
       <span
         style={{
           fontFamily: 'var(--font-mono)',
@@ -144,6 +129,13 @@ function MembersCell({ org }: { org: Organization }): React.ReactElement {
       >
         {members.length}
       </span>
+      <IconButton
+        icon="Plus"
+        label="Add member"
+        variant="secondary"
+        size="sm"
+        onClick={() => handleOpenAddMembers('organization', org.id)}
+      />
     </div>
   );
 }
@@ -176,10 +168,6 @@ function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
       </span>
     </div>
   );
-}
-
-function ProgramsCell(): React.ReactElement {
-  return <span className="faint">None</span>;
 }
 
 function SortHeader({
@@ -234,13 +222,6 @@ export const columns: ColumnDef<Organization>[] = [
     id: 'physiologist',
     header: () => <span>Physiologist</span>,
     cell: ({ row }) => <PhysiologistCell org={row.original} />,
-    enableSorting: false,
-    enableColumnFilter: false,
-  },
-  {
-    id: 'programs',
-    header: () => <span>Programs</span>,
-    cell: () => <ProgramsCell />,
     enableSorting: false,
     enableColumnFilter: false,
   },

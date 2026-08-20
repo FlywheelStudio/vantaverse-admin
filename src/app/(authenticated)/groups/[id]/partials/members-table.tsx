@@ -80,10 +80,6 @@ export function MembersTable({
           value={searchValue}
           onChange={setSearchValue}
         />
-        <button type="button" className="btn btn-sec" disabled title="Filters not available">
-          <Icon name="Funnel" size={16} />
-          Filters
-        </button>
       </div>
 
       <div className="tw">

@@ -1,7 +1,6 @@
 'use client';
 
-import { Icon } from '@/components/medvanta';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import { Icon, UnderConstruction } from '@/components/medvanta';
 
 export type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
 
@@ -10,69 +9,6 @@ interface TypeOption {
   label: string;
   count: number;
 }
-
-interface TagFilterGroup {
-  id: string;
-  title: string;
-  type?: 'check' | 'chips';
-  opts: Array<{ label: string; count?: number }>;
-}
-
-/** HTML `FILTERS.exercises` tag groups that lack library tag data in RPCs. */
-const EXERCISE_TAG_FILTER_GROUPS: TagFilterGroup[] = [
-  {
-    id: 'equipment',
-    title: 'Equipment',
-    opts: [
-      { label: 'No equipment', count: 88 },
-      { label: 'Dumbbell', count: 41 },
-      { label: 'Resistance band', count: 33 },
-      { label: 'Mat', count: 62 },
-      { label: 'Foam roller', count: 19 },
-      { label: 'Bench', count: 12 },
-      { label: 'Kettlebell', count: 9 },
-      { label: 'Cable machine', count: 14 },
-      { label: 'Step or box', count: 11 },
-    ],
-  },
-  {
-    id: 'body_region',
-    title: 'Body region',
-    type: 'chips',
-    opts: [
-      { label: 'Upper body', count: 96 },
-      { label: 'Lower body', count: 104 },
-      { label: 'Core', count: 71 },
-      { label: 'Full body', count: 28 },
-    ],
-  },
-  {
-    id: 'category',
-    title: 'Category',
-    type: 'chips',
-    opts: [
-      { label: 'Mobility', count: 92 },
-      { label: 'Strength', count: 78 },
-      { label: 'Core', count: 41 },
-      { label: 'Balance', count: 37 },
-    ],
-  },
-  {
-    id: 'muscle_group',
-    title: 'Muscle group',
-    opts: [
-      { label: 'Lumbar spine', count: 44 },
-      { label: 'Thoracic spine', count: 31 },
-      { label: 'Glutes', count: 37 },
-      { label: 'Hamstrings', count: 29 },
-      { label: 'Quadriceps', count: 26 },
-      { label: 'Rotator cuff', count: 22 },
-      { label: 'Deltoids', count: 18 },
-      { label: 'Obliques', count: 18 },
-      { label: 'Calves', count: 12 },
-    ],
-  },
-];
 
 interface ExercisesFilterPanelProps {
   open: boolean;
@@ -84,8 +20,6 @@ interface ExercisesFilterPanelProps {
   typeFilter: string;
   onTypeFilterChange: (value: string) => void;
   typeOptions: TypeOption[];
-  selectedTags: string[];
-  onTagToggle: (tag: string) => void;
   onClear: () => void;
   onApply: () => void;
 }
@@ -112,8 +46,6 @@ export function ExercisesFilterPanel({
   typeFilter,
   onTypeFilterChange,
   typeOptions,
-  selectedTags,
-  onTagToggle,
   onClear,
   onApply,
 }: ExercisesFilterPanelProps): React.ReactElement | null {
@@ -128,13 +60,6 @@ export function ExercisesFilterPanel({
     { label: 'Unassigned', value: 'unassigned', count: assignmentCounts.unassigned },
     { label: 'Assigned', value: 'assigned', count: assignmentCounts.assigned },
   ];
-
-  const handleTagClick = (tag: string): void => {
-    if (!selectedTags.includes(tag)) {
-      toastUnavailable(`Filtering by “${tag}”`);
-    }
-    onTagToggle(tag);
-  };
 
   return (
     <div
@@ -242,64 +167,14 @@ export function ExercisesFilterPanel({
           </div>
         </div>
 
-        {EXERCISE_TAG_FILTER_GROUPS.map((group) => (
-          <div key={group.id} className="fgrp">
-            <div className="row" style={{ marginBottom: 10 }}>
-              <span className="fgrp-t" style={{ margin: 0 }}>
-                {group.title}
-              </span>
-            </div>
-            {group.type === 'chips' ? (
-              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                {group.opts.map((o) => {
-                  const on = selectedTags.includes(o.label);
-                  return (
-                    <button
-                      key={o.label}
-                      type="button"
-                      className={`btn btn-sm ${on ? 'btn-pri' : 'btn-sec'}`}
-                      style={{
-                        height: 28,
-                        padding: '0 11px',
-                        fontSize: 'var(--text-xs)',
-                      }}
-                      onClick={() => handleTagClick(o.label)}
-                    >
-                      {on ? <Icon name="Check" size={13} /> : null}
-                      {o.label}
-                      {o.count != null ? (
-                        <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
-                          {o.count}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div>
-                {group.opts.map((o) => {
-                  const on = selectedTags.includes(o.label);
-                  return (
-                    <label key={o.label} className="fopt">
-                      <button
-                        type="button"
-                        onClick={() => handleTagClick(o.label)}
-                        style={{ display: 'contents', cursor: 'pointer' }}
-                      >
-                        <CheckMark on={on} />
-                        <span>{o.label}</span>
-                        {o.count != null ? (
-                          <span className="n">{o.count}</span>
-                        ) : null}
-                      </button>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
+        <div className="fgrp">
+          <div className="row" style={{ marginBottom: 4 }}>
+            <span className="fgrp-t" style={{ margin: 0 }}>
+              Tags
+            </span>
           </div>
-        ))}
+          <UnderConstruction compact />
+        </div>
       </div>
 
       <div className="pop-f">

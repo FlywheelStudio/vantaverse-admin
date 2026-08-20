@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
   DashboardStatusCounts,
@@ -16,20 +16,6 @@ const MOCK_SPARKS = {
   overdue: [2, 3, 3, 4, 4, 5, 5, 6],
 };
 
-const MOCK_FUNNEL = [
-  { label: 'Intake survey signed', count: 88, total: 129 },
-  { label: 'Screening attended', count: 74, total: 129 },
-  { label: 'Consultation attended', count: 61, total: 129 },
-  { label: 'Program assigned', count: 45, total: 129 },
-] as const;
-
-const MOCK_ACTIVITY = [
-  { name: 'Nadia Okonjo', text: 'completed Week 3 Day 2', when: '2h ago' },
-  { name: 'Chuck Bolland', text: 'logged a check-in — pain 2/10', when: '5h ago' },
-  { name: 'Temi Adeyemi', text: 'signed the intake survey', when: '5h ago' },
-  { name: 'Kiyoko Mori', text: 'opened the app', when: '6h ago' },
-] as const;
-
 /** Proxy for HTML "overdue" when due-date data is not available. */
 const URGENT_COMPLIANCE_LT = 30;
 
@@ -37,25 +23,8 @@ const URGENT_COMPLIANCE_LT = 30;
   programCompleted?: number;
 };
 
-function pct(n: number, d: number): number {
-  if (d <= 0) return 0;
-  return Math.round((n / d) * 100);
-}
-
 function isUrgentAttention(item: UserNeedingAttention): boolean {
   return item.compliance < URGENT_COMPLIANCE_LT;
-}
-
-function attentionReason(item: UserNeedingAttention): string {
-  const compliance = Math.round(item.compliance);
-  if (isUrgentAttention(item)) {
-    return item.program_name
-      ? `Very low compliance (${compliance}%) · ${item.program_name}`
-      : `Very low compliance (${compliance}%)`;
-  }
-  return item.program_name
-    ? `Low compliance (${compliance}%) · ${item.program_name}`
-    : `Low compliance (${compliance}%)`;
 }
 
 function attentionDisplayName(item: UserNeedingAttention): string {
@@ -76,8 +45,6 @@ export function Dashboard({
   compliancePct: number;
 }): React.ReactElement {
   const router = useRouter();
-  const [assignProgramUser, setAssignProgramUser] =
-    useState<UserNeedingAttention | null>(null);
 
   const overdue = needingAttention.filter(isUrgentAttention);
 
@@ -86,8 +53,6 @@ export function Dashboard({
       needingAttention.map((item) => ({
         item,
         name: attentionDisplayName(item),
-        isOverdue: isUrgentAttention(item),
-        reason: attentionReason(item),
       })),
     [needingAttention],
   );
@@ -111,15 +76,6 @@ export function Dashboard({
     ];
   }, [statusCounts]);
 
-  const funnel = useMemo(
-    () =>
-      MOCK_FUNNEL.map((step) => ({
-        ...step,
-        share: pct(step.count, step.total),
-      })),
-    [],
-  );
-
   return (
     <DashboardUi
       statusCounts={statusCounts}
@@ -129,19 +85,8 @@ export function Dashboard({
       overdueCount={overdue.length}
       legend={legend}
       sparks={MOCK_SPARKS}
-      funnel={funnel}
-      activity={MOCK_ACTIVITY}
-      assignProgramUser={assignProgramUser}
-      onAssignOpen={setAssignProgramUser}
-      onAssignClose={() => setAssignProgramUser(null)}
-      onAssignSuccess={() => {
-        router.refresh();
-        setAssignProgramUser(null);
-      }}
       onViewAllUsers={() => router.push('/users')}
-      onMessageUser={(userId) => {
-        router.push(`/messages?userId=${encodeURIComponent(userId)}`);
-      }}
+      onOpenUser={(userId) => router.push(`/users/${encodeURIComponent(userId)}`)}
     />
   );
 }

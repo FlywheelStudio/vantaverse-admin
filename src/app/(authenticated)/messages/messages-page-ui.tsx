@@ -41,7 +41,7 @@ function syncUserIdInUrl(userId: string | null): void {
   window.history.replaceState(window.history.state, '', next);
 }
 
-type ConvFilter = 'all' | 'unread' | 'groups';
+type ConvFilter = 'all' | 'unread';
 
 function formatConvTime(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -347,14 +347,6 @@ export function MessagesPageUI({
               <span className="seg" style={{ width: '100%' }}>
                 <button
                   type="button"
-                  className={convFilter === 'all' ? 'on' : undefined}
-                  style={{ flex: 1, padding: '0 8px' }}
-                  onClick={() => setConvFilter('all')}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
                   className={convFilter === 'unread' ? 'on' : undefined}
                   style={{ flex: 1, padding: '0 8px' }}
                   onClick={() => setConvFilter('unread')}
@@ -371,12 +363,11 @@ export function MessagesPageUI({
                 </button>
                 <button
                   type="button"
-                  className={convFilter === 'groups' ? 'on' : undefined}
+                  className={convFilter === 'all' ? 'on' : undefined}
                   style={{ flex: 1, padding: '0 8px' }}
-                  disabled
-                  title="Group threads coming soon"
+                  onClick={() => setConvFilter('all')}
                 >
-                  Groups
+                  All
                 </button>
               </span>
             </div>

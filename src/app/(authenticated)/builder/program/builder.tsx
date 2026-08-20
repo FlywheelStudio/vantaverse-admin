@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
-import { HtmlFiltersButton, HtmlRowMenu } from '../partials/html-toolbar';
+import { HtmlRowMenu } from '../partials/html-toolbar';
 import { formatRelativeEdited } from '../partials/html-utils';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { getTemplateMemberStats } from '@/app/(authenticated)/builder/actions';
@@ -51,7 +51,7 @@ function ProgramTableRow({
   const edited = formatRelativeEdited(template.updated_at);
   const assignmentId = assignment.id;
   const membersOnIt = memberStats?.members ?? 0;
-  const avgCompletion = memberStats?.avgCompletion;
+  const isTemplate = assignment.status === 'template';
 
   return (
     <tr onClick={onClick} style={{ cursor: 'pointer' }}>
@@ -72,8 +72,11 @@ function ProgramTableRow({
             <Icon name="Dumbbell" size={18} style={{ color: 'rgba(255,255,255,.9)' }} />
           </span>
           <span style={{ minWidth: 0 }}>
-            <span className="nm" style={{ display: 'block' }}>
-              {template.name}
+            <span className="row" style={{ gap: 7 }}>
+              <span className="nm" style={{ display: 'block' }}>
+                {template.name}
+              </span>
+              {isTemplate ? <span className="bdg bdg-b">Template</span> : null}
             </span>
             {template.goals ? (
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
@@ -98,16 +101,6 @@ function ProgramTableRow({
         >
           {membersOnIt}
         </span>
-      </td>
-      <td>
-        <div className="pbw" style={{ maxWidth: 110 }}>
-          <span className="pb pb-6 pb-n">
-            <i style={{ width: `${Math.max(avgCompletion ?? 0, avgCompletion ? 2 : 0)}%` }} />
-          </span>
-          <span className="v">
-            {avgCompletion != null ? `${avgCompletion}%` : '—'}
-          </span>
-        </div>
       </td>
       <td>
         <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
@@ -172,10 +165,11 @@ export function ProgramBuilder({
   const [showCreateFormLocal, setShowCreateFormLocal] = useState(false);
   const showCreateForm = showCreateFormProp || showCreateFormLocal;
   const [listPage, setListPage] = useState(1);
+  const [showAssigned, setShowAssigned] = useState(false);
   const pageSize = 21;
 
   const debouncedSearch = useDebounce(searchValue, 300);
-  const shouldUseInitialData = !debouncedSearch;
+  const shouldUseInitialData = !debouncedSearch && !showAssigned;
 
   const {
     assignments,
@@ -188,7 +182,7 @@ export function ProgramBuilder({
     debouncedSearch,
     undefined,
     pageSize,
-    false,
+    showAssigned,
     shouldUseInitialData ? initialData : undefined,
   );
 
@@ -245,6 +239,12 @@ export function ProgramBuilder({
 
   const handleSearchChange = useCallback((value: string): void => {
     setSearchValue(value);
+    setListPage(1);
+    prefetchTriggeredRef.current = false;
+  }, []);
+
+  const handleShowAssignedChange = useCallback((value: boolean): void => {
+    setShowAssigned(value);
     setListPage(1);
     prefetchTriggeredRef.current = false;
   }, []);
@@ -320,7 +320,22 @@ export function ProgramBuilder({
           value={searchValue}
           onChange={handleSearchChange}
         />
-        <HtmlFiltersButton activeCount={0} />
+        <span className="seg">
+          <button
+            type="button"
+            className={!showAssigned ? 'on' : undefined}
+            onClick={() => handleShowAssignedChange(false)}
+          >
+            Templates
+          </button>
+          <button
+            type="button"
+            className={showAssigned ? 'on' : undefined}
+            onClick={() => handleShowAssignedChange(true)}
+          >
+            All
+          </button>
+        </span>
       </div>
 
       <div className="tw">
@@ -330,7 +345,6 @@ export function ProgramBuilder({
               <th className="srt">Template</th>
               <th className="srt">Length</th>
               <th className="srt">Members on it</th>
-              <th className="srt">Avg. completion</th>
               <th className="srt">Last edited</th>
               <th />
             </tr>
@@ -338,7 +352,7 @@ export function ProgramBuilder({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
                   <span className="row" style={{ gap: 8, justifyContent: 'center' }}>
                     <Icon name="LoaderCircle" size={18} className="animate-spin" />
                     Loading programs…
@@ -347,7 +361,7 @@ export function ProgramBuilder({
               </tr>
             ) : assignments.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
                   <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                     {debouncedSearch ? 'No programs found matching your search.' : 'No programs available.'}
                   </span>

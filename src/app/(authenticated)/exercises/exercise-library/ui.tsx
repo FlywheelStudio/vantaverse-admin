@@ -30,7 +30,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const [searchValue, setSearchValue] = useState('');
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(16);
   const pageSize = 16;
@@ -100,33 +99,25 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const hasMore = visibleCount < totalCount;
 
   const activeFilterTags = useMemo(() => {
-    const tags: string[] = [...selectedTags];
+    const tags: string[] = [];
     if (assignmentFilter !== 'all') {
       tags.push(assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned');
     }
     if (typeFilter !== 'all') tags.push(formatTypeLabel(typeFilter));
     if (debouncedSearch.trim()) tags.push(`"${debouncedSearch.trim()}"`);
     return tags;
-  }, [assignmentFilter, typeFilter, debouncedSearch, selectedTags]);
+  }, [assignmentFilter, typeFilter, debouncedSearch]);
 
   const panelActiveCount = useMemo(() => {
-    let count = selectedTags.length;
+    let count = 0;
     if (assignmentFilter !== 'all') count += 1;
     if (typeFilter !== 'all') count += 1;
     return count;
-  }, [assignmentFilter, typeFilter, selectedTags]);
+  }, [assignmentFilter, typeFilter]);
 
   const handleClearFilters = (): void => {
     setAssignmentFilter('all');
     setTypeFilter('all');
-    setSelectedTags([]);
-    setVisibleCount(pageSize);
-  };
-
-  const handleTagToggle = (tag: string): void => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
     setVisibleCount(pageSize);
   };
 
@@ -176,8 +167,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
               setVisibleCount(pageSize);
             }}
             typeOptions={typeOptions}
-            selectedTags={selectedTags}
-            onTagToggle={handleTagToggle}
             onClear={handleClearFilters}
             onApply={() => setFiltersOpen(false)}
           />
@@ -209,8 +198,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
                     setAssignmentFilter('all');
                   } else if (tag.startsWith('"')) {
                     setSearchValue('');
-                  } else if (selectedTags.includes(tag)) {
-                    setSelectedTags((prev) => prev.filter((t) => t !== tag));
                   } else {
                     setTypeFilter('all');
                   }

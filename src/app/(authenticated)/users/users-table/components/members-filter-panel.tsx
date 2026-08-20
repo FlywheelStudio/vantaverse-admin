@@ -3,141 +3,36 @@
 import { Icon } from '@/components/medvanta';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
-type FilterOpt = { label: string; count?: number | null; on?: boolean; disabled?: boolean };
+type MembersStatusFilter = 'all' | 'pending' | 'invited' | 'active' | 'assigned';
+type MembersProgramFilter =
+  | 'all'
+  | 'on_program'
+  | 'completed'
+  | 'not_assigned'
+  | 'pre_program';
+type MembersLastActiveFilter = 'all' | '7d' | '30d' | '90d' | 'never';
+type MembersJoinedFilter = 'all' | 'month' | 'quarter' | 'year';
 
-type FilterGroup =
-  | { title: string; hint?: string; type?: 'check'; opts: FilterOpt[] }
-  | { title: string; hint?: string; type: 'chips'; opts: FilterOpt[] }
-  | { title: string; hint?: string; type: 'radio'; opts: FilterOpt[] }
-  | { title: string; hint?: string; type: 'date'; opts: FilterOpt[] }
-  | {
-      title: string;
-      hint?: string;
-      type: 'range';
-      min: number;
-      max: number;
-      unit?: string;
-      from: number;
-      to: number;
-    };
+export interface MembersExtraFilters {
+  status: MembersStatusFilter;
+  program: MembersProgramFilter;
+  physiologist: string | null;
+  lastActive: MembersLastActiveFilter;
+  joined: MembersJoinedFilter;
+}
 
-/** HTML `FILTERS.members` shape — non-wired groups are placeholders (disabled). */
-const MEMBERS_FILTER_GROUPS: FilterGroup[] = [
-  {
-    title: 'Group',
-    opts: [
-      { label: 'Capital MSK', count: 9, on: true, disabled: true },
-      { label: 'Northline Ortho', count: 5, disabled: true },
-      { label: 'Riverbend Spine', count: 6, disabled: true },
-      { label: 'No group', count: 41, disabled: true },
-    ],
-  },
-  {
-    title: 'Role',
-    type: 'chips',
-    opts: [
-      { label: 'Member', count: 129 },
-      { label: 'Physiologist', count: 4 },
-      { label: 'Admin', count: 6 },
-    ],
-  },
-  {
-    title: 'Status',
-    opts: [
-      { label: 'Active', count: 61, on: true, disabled: true },
-      { label: 'Invited', count: 27, disabled: true },
-      { label: 'Dormant', count: 41, disabled: true },
-      { label: 'Deactivated', count: 8, disabled: true },
-    ],
-  },
-  {
-    title: 'Onboarding gate',
-    opts: [
-      { label: '0 — invited, nothing done', count: 41, disabled: true },
-      { label: '1 — intake signed', count: 18, disabled: true },
-      { label: '2 — screening attended', count: 14, disabled: true },
-      { label: '3 — consultation attended', count: 11, disabled: true },
-      { label: '4 — program assigned', count: 45, disabled: true },
-    ],
-  },
-  {
-    title: 'Program deadline',
-    hint: '5 working days from consultation',
-    opts: [
-      { label: 'Overdue', count: 6 },
-      { label: 'Due within 2 working days', count: 5 },
-      { label: 'Not yet due', count: 0, disabled: true },
-    ],
-  },
-  {
-    title: 'Program',
-    opts: [
-      { label: 'On a program', count: 45, disabled: true },
-      { label: 'Completed a program', count: 2, disabled: true },
-      { label: 'Not assigned', count: 43, disabled: true },
-      { label: 'Pre-program only', count: 27, disabled: true },
-    ],
-  },
-  {
-    title: 'Completion',
-    type: 'range',
-    hint: 'of assigned sets',
-    min: 0,
-    max: 100,
-    unit: '%',
-    from: 0,
-    to: 40,
-  },
-  {
-    title: 'Adherence',
-    type: 'radio',
-    opts: [
-      { label: 'Any', on: true, disabled: true },
-      { label: 'On track — 75% or better', count: 22, disabled: true },
-      { label: 'Slipping — 25 to 75%', count: 19, disabled: true },
-      { label: 'At risk — under 25%', count: 42, disabled: true },
-    ],
-  },
-  {
-    title: 'Physiologist',
-    opts: [
-      { label: 'Dana Reyes', count: 14, disabled: true },
-      { label: 'Marcus Ellery', count: 9, disabled: true },
-      { label: 'Priya Raghunathan', count: 11, disabled: true },
-      { label: 'Unassigned', count: 41, disabled: true },
-    ],
-  },
-  {
-    title: 'Last active',
-    type: 'date',
-    opts: [
-      { label: 'Any time', on: true, disabled: true },
-      { label: '7 days', disabled: true },
-      { label: '30 days', disabled: true },
-      { label: '90 days', disabled: true },
-      { label: 'Never', disabled: true },
-    ],
-  },
-  {
-    title: 'Joined',
-    type: 'date',
-    opts: [
-      { label: 'Any time', on: true, disabled: true },
-      { label: 'This month', disabled: true },
-      { label: 'This quarter', disabled: true },
-      { label: 'This year', disabled: true },
-    ],
-  },
-  {
-    title: 'Flags',
-    opts: [
-      { label: 'Has unread messages', count: 3, disabled: true },
-      { label: 'Invite never opened', count: 11, disabled: true },
-      { label: 'Missing a group', count: 41, disabled: true },
-      { label: 'No activity since joining', count: 17, disabled: true },
-    ],
-  },
-];
+export const DEFAULT_MEMBERS_EXTRA_FILTERS: MembersExtraFilters = {
+  status: 'all',
+  program: 'all',
+  physiologist: null,
+  lastActive: 'all',
+  joined: 'all',
+};
+
+export interface PhysiologistOption {
+  label: string;
+  count: number;
+}
 
 interface MembersFilterPanelProps {
   open: boolean;
@@ -151,6 +46,9 @@ interface MembersFilterPanelProps {
   /** Program deadline (wired). */
   dueFilter: 'all' | 'overdue' | 'due_soon';
   onDueFilterChange: (v: 'all' | 'overdue' | 'due_soon') => void;
+  extraFilters: MembersExtraFilters;
+  onExtraFiltersChange: (filters: MembersExtraFilters) => void;
+  physiologistOptions: PhysiologistOption[];
   onClear: () => void;
   onApply: () => void;
   /** Optional live org filter UI injected into Group section. */
@@ -165,13 +63,63 @@ function CheckMark({ on }: { on?: boolean }): React.ReactElement {
   );
 }
 
-function RadioMark({ on }: { on?: boolean }): React.ReactElement {
-  return <span className={`rd${on ? ' on' : ''}`}>{on ? <i /> : null}</span>;
+/** A single-select list of options where re-clicking the active one clears back to `allValue`. */
+function SingleSelectGroup<T extends string>({
+  title,
+  hint,
+  value,
+  allValue,
+  options,
+  onChange,
+  trailing,
+}: {
+  title: string;
+  hint?: string;
+  value: T;
+  allValue: T;
+  options: Array<{ label: string; value: T; count?: number }>;
+  onChange: (value: T) => void;
+  trailing?: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="fgrp">
+      <div className="row" style={{ marginBottom: 10 }}>
+        <span className="fgrp-t" style={{ margin: 0 }}>
+          {title}
+        </span>
+        {hint ? (
+          <span className="sp mut" style={{ fontSize: 10 }}>
+            {hint}
+          </span>
+        ) : null}
+      </div>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {options.map((o) => {
+          const on = value === o.value;
+          return (
+            <label key={o.value} className="fopt">
+              <button
+                type="button"
+                onClick={() => onChange(on ? allValue : o.value)}
+                style={{ display: 'contents', cursor: 'pointer' }}
+              >
+                <CheckMark on={on} />
+                <span>{o.label}</span>
+                {o.count != null ? <span className="n">{o.count}</span> : null}
+              </button>
+            </label>
+          );
+        })}
+        {trailing}
+      </div>
+    </div>
+  );
 }
 
 /**
  * HTML `filterPanel` chrome for members.
- * Wire: Role chips + Program deadline. Other groups are layout placeholders.
+ * Wired: Role chips, Program deadline, Status, Program, Physiologist, Last active, Joined.
+ * Role → Physiologist chip remains a placeholder — no such role exists on organization_role.
  */
 export function MembersFilterPanel({
   open,
@@ -183,11 +131,19 @@ export function MembersFilterPanel({
   adminCount = 0,
   dueFilter,
   onDueFilterChange,
+  extraFilters,
+  onExtraFiltersChange,
+  physiologistOptions,
   onClear,
   onApply,
   groupSlot,
 }: MembersFilterPanelProps): React.ReactElement | null {
   if (!open) return null;
+
+  const dueOpts = [
+    { label: 'Overdue', value: 'overdue' as const, count: 6 },
+    { label: 'Due within 2 working days', value: 'due_soon' as const, count: 5 },
+  ];
 
   return (
     <div
@@ -198,6 +154,9 @@ export function MembersFilterPanel({
         right: 0,
         width: 340,
         zIndex: 120,
+        maxHeight: 'min(80vh, 640px)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <div className="pop-h">
@@ -219,270 +178,195 @@ export function MembersFilterPanel({
         </span>
       </div>
 
-      <div className="pop-b">
-        {MEMBERS_FILTER_GROUPS.map((g) => {
-          if (g.title === 'Group' && groupSlot) {
-            return (
-              <div key={g.title} className="fgrp">
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    {g.title}
-                  </span>
-                </div>
-                {groupSlot}
-              </div>
-            );
-          }
+      <div className="pop-b" style={{ overflowY: 'auto' }}>
+        {groupSlot ? (
+          <div className="fgrp">
+            <div className="row" style={{ marginBottom: 10 }}>
+              <span className="fgrp-t" style={{ margin: 0 }}>
+                Group
+              </span>
+            </div>
+            {groupSlot}
+          </div>
+        ) : null}
 
-          if (g.title === 'Role' && g.type === 'chips') {
-            const chips: Array<{
-              label: string;
-              value: 'patient' | 'admin' | 'physiologist';
-              count: number;
-            }> = [
-              { label: 'Member', value: 'patient', count: memberCount },
-              { label: 'Physiologist', value: 'physiologist', count: 0 },
-              { label: 'Admin', value: 'admin', count: adminCount },
-            ];
-            return (
-              <div key={g.title} className="fgrp">
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    Role
-                  </span>
-                </div>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {chips.map((c) => {
-                    if (c.value === 'physiologist') {
-                      return (
-                        <button
-                          key={c.label}
-                          type="button"
-                          className="btn btn-sm btn-sec"
-                          style={{
-                            height: 28,
-                            padding: '0 11px',
-                            fontSize: 'var(--text-xs)',
-                          }}
-                          onClick={() => toastUnavailable('Physiologist role filter')}
-                        >
-                          {c.label}
-                        </button>
-                      );
-                    }
-                    const on = role === c.value;
-                    return (
-                      <button
-                        key={c.label}
-                        type="button"
-                        className={`btn btn-sm ${on ? 'btn-pri' : 'btn-sec'}`}
-                        style={{
-                          height: 28,
-                          padding: '0 11px',
-                          fontSize: 'var(--text-xs)',
-                        }}
-                        onClick={() => {
-                          const nextRole: 'patient' | 'admin' | null = on
-                            ? null
-                            : c.value === 'admin'
-                              ? 'admin'
-                              : 'patient';
-                          onRoleChange(nextRole);
-                        }}
-                      >
-                        {on ? <Icon name="Check" size={13} /> : null}
-                        {c.label}
-                        <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
-                          {c.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
-
-          if (g.title === 'Program deadline' && g.type !== 'range') {
-            const opts = [
-              { label: 'Overdue', value: 'overdue' as const, count: 6 },
-              { label: 'Due within 2 working days', value: 'due_soon' as const, count: 5 },
-              { label: 'Not yet due', value: 'all' as const, count: 0, disabled: true },
-            ];
-            return (
-              <div key={g.title} className="fgrp">
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    {g.title}
-                  </span>
-                  <span className="sp mut" style={{ fontSize: 10 }}>
-                    5 working days from consultation
-                  </span>
-                </div>
-                <div>
-                  {opts.map((o) => {
-                    const on = !o.disabled && dueFilter === o.value;
-                    return (
-                      <label
-                        key={o.label}
-                        className="fopt"
-                        style={o.disabled ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
-                      >
-                        <button
-                          type="button"
-                          disabled={o.disabled}
-                          onClick={() => {
-                            if (o.disabled) return;
-                            onDueFilterChange(on ? 'all' : o.value);
-                          }}
-                          style={{
-                            display: 'contents',
-                            cursor: o.disabled ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          <CheckMark on={on} />
-                          <span>{o.label}</span>
-                          <span className="n">{o.count}</span>
-                        </button>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
-
-          if (g.type === 'range') {
-            return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    {g.title}
-                  </span>
-                  {g.hint ? (
-                    <span className="sp mut" style={{ fontSize: 10 }}>
-                      {g.hint}
-                    </span>
-                  ) : null}
-                </div>
+        <div className="fgrp">
+          <div className="row" style={{ marginBottom: 10 }}>
+            <span className="fgrp-t" style={{ margin: 0 }}>
+              Role
+            </span>
+          </div>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {(
+              [
+                { label: 'Member', value: 'patient' as const, count: memberCount },
+                { label: 'Admin', value: 'admin' as const, count: adminCount },
+              ] as const
+            ).map((c) => {
+              const on = role === c.value;
+              return (
                 <button
+                  key={c.label}
                   type="button"
-                  className="btn btn-sec btn-sm"
-                  style={{ width: '100%' }}
-                  onClick={() => toastUnavailable(`${g.title} range filter`)}
+                  className={`btn btn-sm ${on ? 'btn-pri' : 'btn-sec'}`}
+                  style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
+                  onClick={() => onRoleChange(on ? null : c.value)}
                 >
-                  {g.from}–{g.to}
-                  {g.unit ? ` ${g.unit}` : ''} · not wired
+                  {on ? <Icon name="Check" size={13} /> : null}
+                  {c.label}
+                  <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
+                    {c.count}
+                  </span>
                 </button>
-              </div>
-            );
-          }
+              );
+            })}
+            <button
+              type="button"
+              className="btn btn-sm btn-sec"
+              style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
+              onClick={() => toastUnavailable('Physiologist role filter')}
+            >
+              Physiologist
+            </button>
+          </div>
+        </div>
 
-          if (g.type === 'chips') {
-            return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    {g.title}
-                  </span>
-                  <span className="sp mut" style={{ fontSize: 10 }}>
-                    Placeholder
-                  </span>
-                </div>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {g.opts.map((o) => (
-                    <button
-                      key={o.label}
-                      type="button"
-                      className={`btn btn-sm ${o.on ? 'btn-pri' : 'btn-sec'}`}
-                      style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
-                    >
-                      {o.on ? <Icon name="Check" size={13} /> : null}
-                      {o.label}
-                      {o.count != null ? (
-                        <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
-                          {o.count}
-                        </span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          }
+        <SingleSelectGroup
+          title="Status"
+          value={extraFilters.status}
+          allValue="all"
+          options={[
+            { label: 'Pending', value: 'pending' },
+            { label: 'Invited', value: 'invited' },
+            { label: 'Active', value: 'active' },
+            { label: 'Assigned', value: 'assigned' },
+          ]}
+          onChange={(status) => onExtraFiltersChange({ ...extraFilters, status })}
+        />
 
-          if (g.type === 'date') {
-            return (
-              <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
-                <div className="row" style={{ marginBottom: 10 }}>
-                  <span className="fgrp-t" style={{ margin: 0 }}>
-                    {g.title}
-                  </span>
-                  <span className="sp mut" style={{ fontSize: 10 }}>
-                    Placeholder
-                  </span>
-                </div>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {g.opts.map((o) => (
-                    <button
-                      key={o.label}
-                      type="button"
-                      className={`btn btn-sm ${o.on ? 'btn-pri' : 'btn-sec'}`}
-                      style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
+        <div className="fgrp">
+          <div className="row" style={{ marginBottom: 10 }}>
+            <span className="fgrp-t" style={{ margin: 0 }}>
+              Program deadline
+            </span>
+            <span className="sp mut" style={{ fontSize: 10 }}>
+              5 working days from consultation
+            </span>
+          </div>
+          <div>
+            {dueOpts.map((o) => {
+              const on = dueFilter === o.value;
+              return (
+                <label key={o.label} className="fopt">
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
-                    onClick={() => toastUnavailable(`${g.title}: Custom date`)}
+                    onClick={() => onDueFilterChange(on ? 'all' : o.value)}
+                    style={{ display: 'contents', cursor: 'pointer' }}
                   >
-                    <Icon name="Calendar" size={13} /> Custom…
+                    <CheckMark on={on} />
+                    <span>{o.label}</span>
+                    <span className="n">{o.count}</span>
                   </button>
-                </div>
-              </div>
-            );
-          }
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
-          // check / radio placeholder groups
-          return (
-            <div key={g.title} className="fgrp" style={{ opacity: 0.85 }}>
-              <div className="row" style={{ marginBottom: 10 }}>
-                <span className="fgrp-t" style={{ margin: 0 }}>
-                  {g.title}
-                </span>
-                {'hint' in g && g.hint ? (
-                  <span className="sp mut" style={{ fontSize: 10 }}>
-                    {g.hint}
-                  </span>
-                ) : (
-                  <span className="sp mut" style={{ fontSize: 10 }}>
-                    Placeholder
-                  </span>
-                )}
-              </div>
-              <div>
-                {g.opts.map((o) => (
+        <SingleSelectGroup
+          title="Program"
+          value={extraFilters.program}
+          allValue="all"
+          options={[
+            { label: 'On a program', value: 'on_program' },
+            { label: 'Completed a program', value: 'completed' },
+            { label: 'Pre-program only', value: 'pre_program' },
+            { label: 'Not assigned', value: 'not_assigned' },
+          ]}
+          onChange={(program) => onExtraFiltersChange({ ...extraFilters, program })}
+        />
+
+        <div className="fgrp">
+          <div className="row" style={{ marginBottom: 10 }}>
+            <span className="fgrp-t" style={{ margin: 0 }}>
+              Physiologist
+            </span>
+          </div>
+          <div>
+            {physiologistOptions.length === 0 ? (
+              <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                No physiologists assigned yet
+              </span>
+            ) : (
+              physiologistOptions.map((o) => {
+                const on = extraFilters.physiologist === o.label;
+                return (
                   <label key={o.label} className="fopt">
                     <button
                       type="button"
-                      onClick={() => toastUnavailable(`${g.title}: ${o.label}`)}
+                      onClick={() =>
+                        onExtraFiltersChange({
+                          ...extraFilters,
+                          physiologist: on ? null : o.label,
+                        })
+                      }
                       style={{ display: 'contents', cursor: 'pointer' }}
                     >
-                      {g.type === 'radio' ? <RadioMark on={o.on} /> : <CheckMark on={o.on} />}
+                      <CheckMark on={on} />
                       <span>{o.label}</span>
-                      {o.count != null ? <span className="n">{o.count}</span> : null}
+                      <span className="n">{o.count}</span>
                     </button>
                   </label>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <SingleSelectGroup
+          title="Last active"
+          value={extraFilters.lastActive}
+          allValue="all"
+          options={[
+            { label: '7 days', value: '7d' },
+            { label: '30 days', value: '30d' },
+            { label: '90 days', value: '90d' },
+            { label: 'Never', value: 'never' },
+          ]}
+          onChange={(lastActive) => onExtraFiltersChange({ ...extraFilters, lastActive })}
+          trailing={
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
+              onClick={() => toastUnavailable('Last active: Custom date')}
+            >
+              <Icon name="Calendar" size={13} /> Custom…
+            </button>
+          }
+        />
+
+        <SingleSelectGroup
+          title="Joined"
+          value={extraFilters.joined}
+          allValue="all"
+          options={[
+            { label: 'This month', value: 'month' },
+            { label: 'This quarter', value: 'quarter' },
+            { label: 'This year', value: 'year' },
+          ]}
+          onChange={(joined) => onExtraFiltersChange({ ...extraFilters, joined })}
+          trailing={
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
+              onClick={() => toastUnavailable('Joined: Custom date')}
+            >
+              <Icon name="Calendar" size={13} /> Custom…
+            </button>
+          }
+        />
       </div>
 
       <div className="pop-f">

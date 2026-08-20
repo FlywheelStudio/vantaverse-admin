@@ -11,18 +11,6 @@ const sparks = {
   overdue: [2, 3, 3, 4, 4, 5, 5, 6],
 };
 
-const funnel = [
-  { label: 'Intake survey signed', count: 88, total: 129, share: 68 },
-  { label: 'Screening attended', count: 74, total: 129, share: 57 },
-  { label: 'Consultation attended', count: 61, total: 129, share: 47 },
-  { label: 'Program assigned', count: 45, total: 129, share: 35 },
-] as const;
-
-const activity = [
-  { name: 'Nadia Okonjo', text: 'completed Week 3 Day 2', when: '2h ago' },
-  { name: 'Chuck Bolland', text: 'logged a check-in — pain 2/10', when: '5h ago' },
-] as const;
-
 const statusCounts = {
   pending: 5,
   active: 128,
@@ -62,14 +50,8 @@ const meta = {
     overdueCount: 0,
     legend,
     sparks,
-    funnel,
-    activity,
-    assignProgramUser: null,
-    onAssignOpen: noop,
-    onAssignClose: noop,
-    onAssignSuccess: noop,
     onViewAllUsers: noop,
-    onMessageUser: noop,
+    onOpenUser: noop,
   },
 } satisfies Meta<typeof DashboardUi>;
 
@@ -86,8 +68,6 @@ export const WithAttention: Story = {
       {
         item: attentionUser,
         name: 'Nadia Okonjo',
-        isOverdue: true,
-        reason: 'Very low compliance (18%) · Knee recovery',
       },
     ],
   },

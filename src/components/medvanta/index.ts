@@ -10,3 +10,4 @@ export { Avatar } from './data-display/Avatar';
 export { Badge } from './data-display/Badge';
 export { Dialog } from './feedback/Dialog';
 export { Tooltip } from './feedback/Tooltip';
+export { UnderConstruction } from './feedback/UnderConstruction';

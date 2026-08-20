@@ -74,18 +74,26 @@ function DeleteOrganizationButton({
 }): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+
+  const closeDialog = (): void => {
+    setOpen(false);
+    setConfirmText('');
+  };
 
   const handleDelete = async (): Promise<void> => {
     setIsDeleting(true);
     try {
       await onDelete(organization.id);
-      setOpen(false);
+      closeDialog();
     } catch (error) {
       console.error('Error deleting organization:', error);
     } finally {
       setIsDeleting(false);
     }
   };
+
+  const canDelete = confirmText === organization.name;
 
   return (
     <>
@@ -100,13 +108,13 @@ function DeleteOrganizationButton({
       <Dialog
         open={open}
         title="Delete Organization"
-        onClose={() => setOpen(false)}
+        onClose={closeDialog}
         footer={
           <>
             <button
               type="button"
               className="btn btn-sec"
-              onClick={() => setOpen(false)}
+              onClick={closeDialog}
               disabled={isDeleting}
             >
               Cancel
@@ -115,15 +123,32 @@ function DeleteOrganizationButton({
               type="button"
               className="btn btn-dan"
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={isDeleting || !canDelete}
             >
               {isDeleting ? 'Deleting…' : 'Delete'}
             </button>
           </>
         }
       >
-        Are you sure you want to delete &ldquo;{organization.name}&rdquo;? This action cannot be
-        undone.
+        <p style={{ marginBottom: 14 }}>
+          Are you sure you want to delete &ldquo;{organization.name}&rdquo;? This action cannot be
+          undone.
+        </p>
+        <div className="ff">
+          <label className="lbl" htmlFor="delete-org-confirm">
+            Type <strong>{organization.name}</strong> to confirm
+          </label>
+          <div className="fld">
+            <input
+              id="delete-org-confirm"
+              type="text"
+              autoComplete="off"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={organization.name}
+            />
+          </div>
+        </div>
       </Dialog>
     </>
   );
@@ -202,7 +227,6 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
     let count = 0;
     if (appliedFilters.physiologistNames.length > 0) count += 1;
     if (appliedFilters.membersMin > 0 || appliedFilters.membersMax < 50) count += 1;
-    if (appliedFilters.programsChips.length > 0) count += 1;
     if (appliedFilters.created !== 'any') count += 1;
     return count;
   }, [appliedFilters]);

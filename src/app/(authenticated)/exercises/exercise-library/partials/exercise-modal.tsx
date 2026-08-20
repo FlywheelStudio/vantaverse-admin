@@ -2,21 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
-import { Icon, Textarea } from '@/components/medvanta';
+import { Icon, Textarea, UnderConstruction } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { HtmlActionsMenu } from '@/components/medvanta/shell/HtmlActionsMenu';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
+import { useEquipments } from '@/hooks/use-equipments';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import {
-  EXERCISE_CATEGORY_OPTIONS,
   EXERCISE_SOURCE_OPTIONS,
   MEDIA_OVERFLOW_ACTIONS,
   createExerciseModalMocks,
-  type ExerciseCategory,
   type ExerciseSource,
-  type MockCheckInQuestion,
-  type MockPrescription,
-  type TagGroup,
 } from './exercise-modal-mock-data';
 
 interface ExerciseModalProps {
@@ -25,7 +21,10 @@ interface ExerciseModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type EditableField = 'exercise_name' | 'library_tip';
+type EditableField =
+  | 'exercise_name'
+  | 'library_tip'
+  | 'library_check_in_question';
 
 function MedvantaSelect({
   value,
@@ -88,60 +87,71 @@ function ExerciseModalContent({
 }: ExerciseModalContentProps): React.ReactElement {
   const updateExerciseMutation = useUpdateExercise();
   const initialMocks = createExerciseModalMocks({
-    existingCheckIn: exerciseProp.library_check_in_question,
     typeHint: exerciseProp.type,
   });
+  const { data: equipmentOptions = [] } = useEquipments();
   const [localExercise, setLocalExercise] = useState<Exercise>(exerciseProp);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [showVideo, setShowVideo] = useState(false);
-  const [category, setCategory] = useState<ExerciseCategory>(
-    initialMocks.category,
-  );
   const [source, setSource] = useState<ExerciseSource>(initialMocks.source);
-  const [prescription, setPrescription] = useState<MockPrescription>(
-    initialMocks.prescription,
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<number[]>(
+    [],
   );
-  const [tagGroups, setTagGroups] = useState<TagGroup[]>(
-    initialMocks.tagGroups,
-  );
-  const [checkInQuestions, setCheckInQuestions] = useState<
-    MockCheckInQuestion[]
-  >(initialMocks.checkInQuestions);
+  const [isAddingEquipment, setIsAddingEquipment] = useState(false);
   const lastEditedBy = initialMocks.lastEditedBy;
   const titleRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
+  const checkInRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (editingField === 'exercise_name') {
       titleRef.current?.querySelector('input')?.focus();
     } else if (editingField === 'library_tip') {
       instructionsRef.current?.querySelector('textarea')?.focus();
+    } else if (editingField === 'library_check_in_question') {
+      checkInRef.current?.querySelector('input')?.focus();
     }
   }, [editingField]);
+
+  const selectedEquipment = equipmentOptions.filter((eq) =>
+    selectedEquipmentIds.includes(eq.id),
+  );
+  const availableEquipment = equipmentOptions.filter(
+    (eq) => !selectedEquipmentIds.includes(eq.id),
+  );
+
+  const handleAddEquipment = (id: number): void => {
+    setSelectedEquipmentIds((prev) => [...prev, id]);
+    setIsAddingEquipment(false);
+  };
+
+  const handleRemoveEquipment = (id: number): void => {
+    setSelectedEquipmentIds((prev) => prev.filter((eid) => eid !== id));
+  };
 
   const exercise = localExercise;
   const usedInPrograms = exercise.assigned_count ?? 0;
   const isUnassigned = usedInPrograms === 0;
   const exerciseIdLabel = `ID EX-${exercise.id}`;
 
+  const getFieldValue = (field: EditableField): string => {
+    if (field === 'exercise_name') return exercise.exercise_name;
+    if (field === 'library_tip') return exercise.library_tip || '';
+    return exercise.library_check_in_question || '';
+  };
+
   const handleEdit = (field: EditableField): void => {
     if (updateExerciseMutation.isPending) return;
-    const value =
-      field === 'exercise_name'
-        ? exercise.exercise_name
-        : exercise.library_tip || '';
     setEditingField(field);
-    setEditingValue(value);
+    setEditingValue(getFieldValue(field));
   };
 
   const handleSaveField = (field: EditableField): void => {
     if (updateExerciseMutation.isPending) return;
 
     const originalValue =
-      field === 'exercise_name'
-        ? exercise.exercise_name
-        : exercise.library_tip;
+      field === 'exercise_name' ? exercise.exercise_name : getFieldValue(field);
 
     const normalizedNew = editingValue.trim();
     const normalizedOriginal = originalValue?.trim() || '';
@@ -165,6 +175,22 @@ function ExerciseModalContent({
     setEditingValue('');
   };
 
+  const handleRemoveCheckInQuestion = (): void => {
+    if (updateExerciseMutation.isPending) return;
+    if (!exercise.library_check_in_question) return;
+
+    setLocalExercise((prev) => ({
+      ...prev,
+      library_check_in_question: null,
+    }));
+    updateExerciseMutation.mutate({
+      id: exercise.id,
+      data: { library_check_in_question: null },
+    });
+    setEditingField(null);
+    setEditingValue('');
+  };
+
   const handleSaveExercise = (): void => {
     if (editingField) {
       handleSaveField(editingField);
@@ -176,31 +202,6 @@ function ExerciseModalContent({
     setEditingField(null);
     setEditingValue('');
     onOpenChange(false);
-  };
-
-  const handleRemoveTag = (groupId: string, tag: string): void => {
-    setTagGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId
-          ? { ...g, tags: g.tags.filter((t) => t !== tag) }
-          : g,
-      ),
-    );
-  };
-
-  const handleRemoveCheckIn = (id: string): void => {
-    setCheckInQuestions((prev) => prev.filter((q) => q.id !== id));
-  };
-
-  const handleAddCheckIn = (): void => {
-    setCheckInQuestions((prev) => [
-      ...prev,
-      {
-        id: `ci-new-${prev.length + 1}`,
-        typeBadge: 'Yes / No',
-        text: 'New check-in question',
-      },
-    ]);
   };
 
   const getVideoUrl = (): string | null => {
@@ -400,85 +401,14 @@ function ExerciseModalContent({
             {titleContent}
           </div>
 
-          <div className="g g2" style={{ gap: 12, marginBottom: 16 }}>
-            <div>
-              <label className="lbl">Category</label>
-              <MedvantaSelect
-                value={category}
-                aria-label="Category"
-                options={EXERCISE_CATEGORY_OPTIONS}
-                onChange={(v) => setCategory(v as ExerciseCategory)}
-              />
-            </div>
-            <div>
-              <label className="lbl">Source</label>
-              <MedvantaSelect
-                value={source}
-                aria-label="Source"
-                options={EXERCISE_SOURCE_OPTIONS}
-                onChange={(v) => setSource(v as ExerciseSource)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="lbl">Default prescription</label>
-            <div className="row" style={{ gap: 8 }}>
-              <span
-                className="fld fld-sm"
-                style={{ flex: 1, padding: '0 10px', gap: 4 }}
-              >
-                <input
-                  value={prescription.sets}
-                  className="mono"
-                  style={{ textAlign: 'center', width: '100%', border: 'none', background: 'transparent', outline: 'none' }}
-                  onChange={(e) =>
-                    setPrescription((p) => ({ ...p, sets: e.target.value }))
-                  }
-                  aria-label="Sets"
-                />
-                <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-                  sets
-                </span>
-              </span>
-              <span
-                className="fld fld-sm"
-                style={{ flex: 1, padding: '0 10px', gap: 4 }}
-              >
-                <input
-                  value={prescription.reps}
-                  className="mono"
-                  style={{ textAlign: 'center', width: '100%', border: 'none', background: 'transparent', outline: 'none' }}
-                  onChange={(e) =>
-                    setPrescription((p) => ({ ...p, reps: e.target.value }))
-                  }
-                  aria-label="Reps"
-                />
-                <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-                  reps
-                </span>
-              </span>
-              <span
-                className="fld fld-sm"
-                style={{ flex: 1, padding: '0 10px', gap: 4 }}
-              >
-                <input
-                  value={prescription.rest}
-                  className="mono"
-                  style={{ textAlign: 'center', width: '100%', border: 'none', background: 'transparent', outline: 'none' }}
-                  onChange={(e) =>
-                    setPrescription((p) => ({ ...p, rest: e.target.value }))
-                  }
-                  aria-label="Rest"
-                />
-                <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-                  rest
-                </span>
-              </span>
-            </div>
-            <div className="hint">
-              Pre-fills the value whenever this exercise is added to a workout.
-            </div>
+          <div className="ff">
+            <label className="lbl">Source</label>
+            <MedvantaSelect
+              value={source}
+              aria-label="Source"
+              options={EXERCISE_SOURCE_OPTIONS}
+              onChange={(v) => setSource(v as ExerciseSource)}
+            />
           </div>
 
           <div
@@ -545,6 +475,79 @@ function ExerciseModalContent({
           style={{ justifyContent: 'space-between', marginBottom: 4 }}
         >
           <label className="lbl" style={{ margin: 0 }}>
+            Check-in question
+          </label>
+          <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
+            Asked after every set
+          </span>
+        </div>
+        {editingField === 'library_check_in_question' ? (
+          <div ref={checkInRef}>
+            <span className="fld">
+              <input
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                onBlur={() => handleSaveField('library_check_in_question')}
+                aria-label="Check-in question"
+                placeholder="e.g. Rate your pain during this movement (0–10)"
+              />
+            </span>
+          </div>
+        ) : exercise.library_check_in_question ? (
+          <div
+            className="row"
+            style={{
+              gap: 11,
+              padding: '10px 13px',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface-card)',
+            }}
+          >
+            <span
+              style={{
+                flex: 1,
+                fontSize: 'var(--text-sm)',
+                color: 'var(--text-body)',
+              }}
+            >
+              {exercise.library_check_in_question}
+            </span>
+            <button
+              type="button"
+              className="ib ib-sm"
+              aria-label="Edit check-in question"
+              onClick={() => handleEdit('library_check_in_question')}
+            >
+              <Icon name="SquarePen" size={15} />
+            </button>
+            <button
+              type="button"
+              className="ib ib-sm ib-dan"
+              aria-label="Remove check-in question"
+              onClick={handleRemoveCheckInQuestion}
+            >
+              <Icon name="X" size={15} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-dash btn-sm"
+            onClick={() => handleEdit('library_check_in_question')}
+          >
+            <Icon name="Plus" size={15} />
+            Add check-in question
+          </button>
+        )}
+      </div>
+
+      <div>
+        <div
+          className="row"
+          style={{ justifyContent: 'space-between', marginBottom: 4 }}
+        >
+          <label className="lbl" style={{ margin: 0 }}>
             Tags
           </label>
           <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
@@ -557,24 +560,48 @@ function ExerciseModalContent({
             borderRadius: 'var(--radius-md)',
             padding: '4px 14px',
             background: 'var(--surface-card)',
+            marginBottom: 10,
           }}
         >
-          {tagGroups.map((group) => (
-            <div key={group.id} className="tagrow">
-              <span className="tl">{group.label}</span>
-              <span className="tc">
-                {group.tags.map((tag) => (
-                  <span key={tag} className="tag tag-b">
-                    {tag}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${tag}`}
-                      onClick={() => handleRemoveTag(group.id, tag)}
-                    >
-                      <Icon name="X" size={13} strokeWidth={2.5} />
-                    </button>
+          <div className="tagrow">
+            <span className="tl">Equipment</span>
+            <span className="tc">
+              {selectedEquipment.map((eq) => (
+                <span key={eq.id} className="tag tag-b">
+                  {eq.name}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${eq.name}`}
+                    onClick={() => handleRemoveEquipment(eq.id)}
+                  >
+                    <Icon name="X" size={13} strokeWidth={2.5} />
+                  </button>
+                </span>
+              ))}
+              {isAddingEquipment ? (
+                <span className="sel" style={{ minWidth: 180 }}>
+                  <select
+                    autoFocus
+                    value=""
+                    aria-label="Add equipment"
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      if (id) handleAddEquipment(id);
+                    }}
+                    onBlur={() => setIsAddingEquipment(false)}
+                  >
+                    <option value="">Select equipment…</option>
+                    {availableEquipment.map((eq) => (
+                      <option key={eq.id} value={eq.id}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="ci">
+                    <Icon name="ChevronDown" size={16} />
                   </span>
-                ))}
+                </span>
+              ) : (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -583,84 +610,29 @@ function ExerciseModalContent({
                     padding: '0 9px',
                     fontSize: 'var(--text-xs)',
                   }}
-                  onClick={() => undefined}
+                  onClick={() => setIsAddingEquipment(true)}
+                  disabled={availableEquipment.length === 0}
                 >
                   <Icon name="Plus" size={13} />
                   Add
                 </button>
-              </span>
-            </div>
-          ))}
+              )}
+            </span>
+          </div>
+        </div>
+        <div
+          style={{
+            border: '1px dashed var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--slate-50)',
+          }}
+        >
+          <UnderConstruction compact />
         </div>
         <div className="hint">
-          Tags were pre-populated across the library on import. Add or remove
-          them freely — this exercise is the source of truth.
+          Equipment is pulled from the shared equipment list. Body region and
+          muscle group tags are coming soon.
         </div>
-      </div>
-
-      <div>
-        <div
-          className="row"
-          style={{ justifyContent: 'space-between', marginBottom: 8 }}
-        >
-          <label className="lbl" style={{ margin: 0 }}>
-            Check-in questions
-          </label>
-          <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-            Asked after every set
-          </span>
-        </div>
-        <div className="list-rows" style={{ marginBottom: 10 }}>
-          {checkInQuestions.map((q) => (
-            <div
-              key={q.id}
-              className="row"
-              style={{ gap: 11, padding: '10px 13px' }}
-            >
-              <Icon
-                name="GripVertical"
-                size={15}
-                style={{ color: 'var(--slate-300)' }}
-              />
-              <span className="bdg" style={{ fontSize: 10 }}>
-                {q.typeBadge}
-              </span>
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--text-body)',
-                }}
-              >
-                {q.text}
-              </span>
-              <button
-                type="button"
-                className="ib ib-sm"
-                aria-label="Edit check-in"
-                onClick={() => undefined}
-              >
-                <Icon name="SquarePen" size={15} />
-              </button>
-              <button
-                type="button"
-                className="ib ib-sm ib-dan"
-                aria-label="Remove check-in"
-                onClick={() => handleRemoveCheckIn(q.id)}
-              >
-                <Icon name="X" size={15} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="btn btn-dash btn-sm"
-          onClick={handleAddCheckIn}
-        >
-          <Icon name="Plus" size={15} />
-          Add check-in question
-        </button>
       </div>
     </HtmlModal>
   );

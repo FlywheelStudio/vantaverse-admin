@@ -1,7 +1,6 @@
 'use client';
 
 import { Icon } from '@/components/medvanta';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
 type GroupsCreatedFilter =
   | 'any'
@@ -9,13 +8,10 @@ type GroupsCreatedFilter =
   | 'quarter'
   | 'year';
 
-type GroupsProgramsChip = 'none' | '1-2' | '3+';
-
 export interface GroupsFilterState {
   physiologistNames: string[];
   membersMin: number;
   membersMax: number;
-  programsChips: GroupsProgramsChip[];
   created: GroupsCreatedFilter;
 }
 
@@ -23,7 +19,6 @@ export const DEFAULT_GROUPS_FILTERS: GroupsFilterState = {
   physiologistNames: [],
   membersMin: 0,
   membersMax: 50,
-  programsChips: [],
   created: 'any',
 };
 
@@ -54,7 +49,6 @@ function CheckMark({ on }: { on?: boolean }): React.ReactElement {
 /**
  * HTML `FILTERS.groups` chrome.
  * Wired: Physiologist (from org admins), Members range, Created.
- * Placeholder (toast): Active programs, Avg. completion, Scheduling.
  */
 export function GroupsFilterPanel({
   open,
@@ -75,17 +69,6 @@ export function GroupsFilterPanel({
       physiologistNames: on
         ? filters.physiologistNames.filter((n) => n !== label)
         : [...filters.physiologistNames, label],
-    });
-  };
-
-  const handleProgramsChip = (chip: GroupsProgramsChip): void => {
-    toastUnavailable('Filtering by active programs');
-    const on = filters.programsChips.includes(chip);
-    onChange({
-      ...filters,
-      programsChips: on
-        ? filters.programsChips.filter((c) => c !== chip)
-        : [...filters.programsChips, chip],
     });
   };
 
@@ -209,80 +192,6 @@ export function GroupsFilterPanel({
             <span className="mut" style={{ fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
               people
             </span>
-          </div>
-        </div>
-
-        <div className="fgrp">
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Active programs
-            </span>
-            <span className="sp mut" style={{ fontSize: 10 }}>
-              No program counts yet
-            </span>
-          </div>
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            {(
-              [
-                { label: 'None', value: 'none' as const },
-                { label: '1 to 2', value: '1-2' as const },
-                { label: '3 or more', value: '3+' as const },
-              ] as const
-            ).map((c) => {
-              const on = filters.programsChips.includes(c.value);
-              return (
-                <button
-                  key={c.value}
-                  type="button"
-                  className={`btn btn-sm ${on ? 'btn-pri' : 'btn-sec'}`}
-                  style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                  onClick={() => handleProgramsChip(c.value)}
-                >
-                  {on ? <Icon name="Check" size={13} /> : null}
-                  {c.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="fgrp" style={{ opacity: 0.85 }}>
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Avg. completion
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sec btn-sm"
-            style={{ width: '100%' }}
-            onClick={() => toastUnavailable('Avg. completion filter')}
-          >
-            0% – 100% · not wired
-          </button>
-        </div>
-
-        <div className="fgrp" style={{ opacity: 0.85 }}>
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Scheduling
-            </span>
-          </div>
-          <div>
-            {['Screening link set', 'No screening link', 'Appointments this week'].map(
-              (label) => (
-                <label key={label} className="fopt">
-                  <button
-                    type="button"
-                    onClick={() => toastUnavailable(label)}
-                    style={{ display: 'contents', cursor: 'pointer' }}
-                  >
-                    <CheckMark />
-                    <span>{label}</span>
-                  </button>
-                </label>
-              ),
-            )}
           </div>
         </div>
 

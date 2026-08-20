@@ -1,9 +1,9 @@
-import { Icon } from '@/components/medvanta';
+import { Icon } from '@/components/medvanta/actions/Icon';
+import { UnderConstruction } from '@/components/medvanta/feedback/UnderConstruction';
 import type {
   DashboardStatusCounts,
   UserNeedingAttention,
 } from '@/lib/supabase/queries/dashboard';
-import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/assign-program-modal';
 import { Avatar } from '@/components/widgets/avatar';
 import { StatTile } from '@/components/widgets/stat-tile';
 import { Donut } from '@/components/widgets/donut';
@@ -19,24 +19,9 @@ interface DashboardLegendItem {
   color: string;
 }
 
-interface DashboardFunnelStep {
-  label: string;
-  count: number;
-  total: number;
-  share: number;
-}
-
-interface DashboardActivityItem {
-  name: string;
-  text: string;
-  when: string;
-}
-
 interface DashboardAttentionRow {
   item: UserNeedingAttention;
   name: string;
-  isOverdue: boolean;
-  reason: string;
 }
 
  interface DashboardUiProps {
@@ -52,14 +37,8 @@ interface DashboardAttentionRow {
     completion: number[];
     overdue: number[];
   };
-  funnel: readonly DashboardFunnelStep[];
-  activity: readonly DashboardActivityItem[];
-  assignProgramUser: UserNeedingAttention | null;
-  onAssignOpen: (user: UserNeedingAttention) => void;
-  onAssignClose: () => void;
-  onAssignSuccess: () => void;
   onViewAllUsers: () => void;
-  onMessageUser: (userId: string) => void;
+  onOpenUser: (userId: string) => void;
 }
 
 /** Presentational dashboard layout — no hooks. */
@@ -71,14 +50,8 @@ export function DashboardUi({
   overdueCount,
   legend,
   sparks,
-  funnel,
-  activity,
-  assignProgramUser,
-  onAssignOpen,
-  onAssignClose,
-  onAssignSuccess,
   onViewAllUsers,
-  onMessageUser,
+  onOpenUser,
 }: DashboardUiProps): React.ReactElement {
   return (
     <div className="body">
@@ -176,7 +149,7 @@ export function DashboardUi({
                     </td>
                   </tr>
                 ) : (
-                  rows.map(({ item, name, isOverdue, reason }) => (
+                  rows.map(({ item, name }) => (
                     <tr key={item.user_id}>
                       <td>
                         <div className="cellp">
@@ -189,53 +162,17 @@ export function DashboardUi({
                           </span>
                         </div>
                       </td>
-                      <td>
-                        <span
-                          style={{
-                            display: 'block',
-                            fontSize: 'var(--text-sm)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            ...(isOverdue
-                              ? {
-                                  color: 'var(--danger)',
-                                  fontWeight: 'var(--fw-semibold)' as const,
-                                }
-                              : {}),
-                          }}
-                          title={reason}
-                        >
-                          {isOverdue ? (
-                            <Icon
-                              name="CircleAlert"
-                              size={13}
-                              style={{
-                                display: 'inline',
-                                verticalAlign: '-2px',
-                                marginRight: 5,
-                              }}
-                            />
-                          ) : null}
-                          {reason}
-                        </span>
-                      </td>
+                      <td />
                       <td>
                         <ProgressBar pct={Math.round(item.compliance)} />
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
-                          className={`btn btn-sm ${isOverdue ? 'btn-acc' : 'btn-sec'}`}
-                          onClick={() => {
-                            if (isOverdue) {
-                              onAssignOpen(item);
-                              return;
-                            }
-                            onMessageUser(item.user_id);
-                          }}
+                          className="btn btn-sm btn-sec"
+                          onClick={() => onOpenUser(item.user_id)}
                         >
-                          {isOverdue ? 'Assign program' : 'Message'}
+                          Open user
                         </button>
                       </td>
                     </tr>
@@ -244,19 +181,6 @@ export function DashboardUi({
               </tbody>
             </table>
           </div>
-          {assignProgramUser ? (
-            <AssignProgramModal
-              open={assignProgramUser !== null}
-              onOpenChange={(open) => {
-                if (!open) onAssignClose();
-              }}
-              userId={assignProgramUser.user_id}
-              userFirstName={assignProgramUser.first_name ?? undefined}
-              userLastName={assignProgramUser.last_name ?? undefined}
-              fromPath="/"
-              onAssignSuccess={onAssignSuccess}
-            />
-          ) : null}
         </div>
 
         <div className="card">
@@ -321,85 +245,18 @@ export function DashboardUi({
               <div className="ch-t">Onboarding funnel</div>
               <div className="ch-s">Where members drop out of the 5-gate path</div>
             </div>
-            <span className="bdg">129 total · mock</span>
           </div>
-          {funnel.map((step, index) => (
-            <div
-              key={step.label}
-              style={{ marginBottom: index === funnel.length - 1 ? 0 : 15 }}
-            >
-              <div
-                className="row"
-                style={{ justifyContent: 'space-between', marginBottom: 5 }}
-              >
-                <span
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--fw-medium)',
-                    color: 'var(--text-body)',
-                  }}
-                >
-                  {step.label}
-                </span>
-                <span
-                  className="mono"
-                  style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
-                >
-                  {step.count} / {step.total}
-                </span>
-              </div>
-              <ProgressBar pct={step.share} />
-            </div>
-          ))}
+          <UnderConstruction />
         </div>
 
         <div className="card">
           <div className="ch">
             <div>
               <div className="ch-t">Recent activity</div>
-              <div className="ch-s">Last 24 hours across all groups · mock</div>
+              <div className="ch-s">Last 24 hours across all groups</div>
             </div>
           </div>
-          {activity.map((row) => (
-            <div
-              key={`${row.name}-${row.when}`}
-              className="row"
-              style={{
-                gap: 11,
-                padding: '9px 0',
-                borderBottom: '1px solid var(--border-subtle)',
-              }}
-            >
-              <Avatar name={row.name} size={28} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm)' }}>
-                <b
-                  style={{
-                    color: 'var(--text-strong)',
-                    fontWeight: 'var(--fw-semibold)',
-                  }}
-                >
-                  {row.name}
-                </b>{' '}
-                {row.text}
-              </span>
-              <span
-                className="mono"
-                style={{ fontSize: 'var(--text-xs)', color: 'var(--text-faint)' }}
-              >
-                {row.when}
-              </span>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ marginTop: 12, marginLeft: -14 }}
-            disabled
-            title="Placeholder — activity log not wired"
-          >
-            View the full activity log
-            <Icon name="ArrowRight" size={15} />
-          </button>
+          <UnderConstruction />
         </div>
       </div>
     </div>
