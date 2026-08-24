@@ -107,11 +107,9 @@ export function useUpsertTag() {
       }
       return result.data;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: tagKeys.search(variables.category, ''),
-      });
-      queryClient.invalidateQueries({ queryKey: tagKeys.categories });
+    onSuccess: () => {
+      // Invalidate every tags query (catalog, categories, search).
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create tag');

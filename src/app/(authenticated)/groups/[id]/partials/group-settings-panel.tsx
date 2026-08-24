@@ -40,7 +40,9 @@ export function GroupSettingsPanel({
   );
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+  async function handleLogoChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -105,7 +107,10 @@ export function GroupSettingsPanel({
   async function handleSave(): Promise<void> {
     setSaving(true);
     try {
-      const result = await updateOrganizationScreeningUrl(organizationId, value);
+      const result = await updateOrganizationScreeningUrl(
+        organizationId,
+        value,
+      );
       if (result.success) {
         toast.success('Screening link saved');
       } else {
@@ -117,7 +122,7 @@ export function GroupSettingsPanel({
   }
 
   async function handleTest(): Promise<void> {
-    const result = await getScreeningTestLink(organizationId);
+    const result = await getScreeningTestLink(organizationId, value);
     if (result.success) {
       setTestLink(result.data);
     } else {
@@ -126,7 +131,7 @@ export function GroupSettingsPanel({
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
         <div className="ch" style={{ marginBottom: 14 }}>
           <div>
@@ -173,7 +178,9 @@ export function GroupSettingsPanel({
             <button
               type="button"
               className="btn btn-acc btn-sm"
-              disabled={savingDescription || description === (initialDescription ?? '')}
+              disabled={
+                savingDescription || description === (initialDescription ?? '')
+              }
               onClick={handleSaveDescription}
             >
               {savingDescription ? 'Saving…' : 'Save description'}
@@ -182,109 +189,123 @@ export function GroupSettingsPanel({
         </div>
       </div>
 
-      <div className="card">
-        <div className="ch" style={{ marginBottom: 14 }}>
-          <div>
-            <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
-              Screening meeting
-            </div>
-            <div className="ch-s">
-              Link members open to book their screening call
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
+        <div className="card">
+          <div className="ch" style={{ marginBottom: 14 }}>
+            <div>
+              <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
+                Screening meeting
+              </div>
+              <div className="ch-s">
+                Link members open to book their screening call
+              </div>
             </div>
           </div>
-        </div>
-        {!value ? (
-          <div className="hint" style={{ marginBottom: 12 }}>
-            No custom link set.
-          </div>
-        ) : null}
-        <div className="ff">
-          <label className="lbl">Calendly event URL</label>
-          <span className="fld">
-            <Icon name="CalendarDays" size={16} />
-            <input
-              className="mono"
-              placeholder="https://calendly.com/your-org/screening"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-            />
-          </span>
-          <div className="hint">Paste your Calendly event link.</div>
-        </div>
-        <div className="row" style={{ gap: 10, marginBottom: 0 }}>
-          <button type="button" className="btn btn-acc" disabled={saving} onClick={handleSave}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={saving}
-            onClick={handleTest}
-          >
-            Test
-            <Icon name="ExternalLink" size={15} />
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="ch" style={{ marginBottom: 14 }}>
-          <div>
-            <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
-              Group logo
+          {!value ? (
+            <div className="hint" style={{ marginBottom: 12 }}>
+              No custom link set.
             </div>
-            <div className="ch-s">Shown next to the group name</div>
-          </div>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png"
-          hidden
-          onChange={handleLogoChange}
-        />
-        <div className="row" style={{ gap: 14, marginBottom: 0 }}>
-          <span
-            className="thmb gr"
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 'var(--radius-sm)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {logoPreview ? (
-              <Image
-                src={logoPreview}
-                alt="Group logo"
-                width={56}
-                height={56}
-                unoptimized
-                className="size-full object-cover"
+          ) : null}
+          <div className="ff">
+            <label className="lbl">Calendly event URL</label>
+            <span className="fld">
+              <Icon name="CalendarDays" size={16} />
+              <input
+                className="mono"
+                placeholder="https://calendly.com/your-org/screening"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
               />
-            ) : (
-              <Icon name="Building2" size={24} />
-            )}
-          </span>
-          <span>
+            </span>
+            <div className="hint">Paste your Calendly event link.</div>
+          </div>
+          <div className="row" style={{ gap: 10, marginBottom: 0 }}>
             <button
               type="button"
-              className="btn btn-sec btn-sm"
-              disabled={uploadingLogo}
-              onClick={() => fileInputRef.current?.click()}
+              className="btn btn-acc"
+              disabled={saving}
+              onClick={handleSave}
             >
-              <Icon name="Upload" size={15} />
-              {uploadingLogo
-                ? 'Uploading…'
-                : logoPreview
-                  ? 'Replace logo'
-                  : 'Upload a logo'}
+              {saving ? 'Saving…' : 'Save'}
             </button>
-            <div className="hint">JPEG or PNG.</div>
-          </span>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={saving}
+              onClick={handleTest}
+            >
+              Test
+              <Icon name="ExternalLink" size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="ch" style={{ marginBottom: 14 }}>
+            <div>
+              <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
+                Group logo
+              </div>
+              <div className="ch-s">Shown next to the group name</div>
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png"
+            hidden
+            onChange={handleLogoChange}
+          />
+          <div className="row" style={{ gap: 14, marginBottom: 0 }}>
+            <span
+              className="thmb gr"
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 'var(--radius-sm)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              {logoPreview ? (
+                <Image
+                  src={logoPreview}
+                  alt="Group logo"
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="size-full object-cover"
+                />
+              ) : (
+                <Icon name="Building2" size={24} />
+              )}
+            </span>
+            <span>
+              <button
+                type="button"
+                className="btn btn-sec btn-sm"
+                disabled={uploadingLogo}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon name="Upload" size={15} />
+                {uploadingLogo
+                  ? 'Uploading…'
+                  : logoPreview
+                    ? 'Replace logo'
+                    : 'Upload a logo'}
+              </button>
+              <div className="hint">JPEG or PNG.</div>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -314,7 +335,10 @@ export function GroupSettingsPanel({
               padding: 12,
             }}
           >
-            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+            <div
+              className="row"
+              style={{ justifyContent: 'space-between', marginBottom: 8 }}
+            >
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"

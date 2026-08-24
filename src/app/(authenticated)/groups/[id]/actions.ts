@@ -402,8 +402,9 @@ function buildScreeningLink(
   return link;
 }
 
-/** Computed screening link for the logged-in admin, used by the Test button. */
-export async function getScreeningTestLink(organizationId: string) {
+/** Computed screening link for the logged-in admin, used by the Test button.
+ * When rawUrl is set, tests that unsaved input instead of the stored link. */
+export async function getScreeningTestLink(organizationId: string, rawUrl?: string) {
   const supabase = await createClient();
 
   const { data: auth } = await supabase.auth.getUser();
@@ -425,7 +426,17 @@ export async function getScreeningTestLink(organizationId: string) {
     return { success: false as const, error: 'Failed to load screening test data.' };
   }
 
-  const base = (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() || DEFAULT_SCREENING_BASE;
+  let base = (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() || DEFAULT_SCREENING_BASE;
+  if (rawUrl && rawUrl.trim()) {
+    const normalized = normalizeScreeningUrl(rawUrl);
+    if (normalized === null) {
+      return {
+        success: false as const,
+        error: 'Enter a valid https://calendly.com event link.',
+      };
+    }
+    base = normalized;
+  }
   const link = buildScreeningLink(base, {
     uid,
     firstName: profile?.first_name ?? '',
