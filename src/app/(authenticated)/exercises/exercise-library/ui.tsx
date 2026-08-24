@@ -2,7 +2,11 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '@/components/medvanta';
-import { useExercisesFiltered } from '@/hooks/use-exercises';
+import {
+  useExercisesFiltered,
+  useExerciseAssignmentCounts,
+  useExerciseTypes,
+} from '@/hooks/use-exercises';
 import { useAllTags } from '@/hooks/use-tags';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
@@ -49,6 +53,10 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const { data: allTags = [] } = useAllTags();
   const tagsMap = useMemo(() => new Map(allTags.map((t) => [t.id, t])), [allTags]);
 
+  // Real assignment counts + source types for the filter panel
+  const { data: countsData } = useExerciseAssignmentCounts();
+  const { data: exerciseTypes = [] } = useExerciseTypes();
+
   // Paginated + filtered exercises query
   const {
     data: queryResult,
@@ -89,6 +97,20 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   }, [queryResult, initialExercises]);
 
   const totalCount = queryResult?.pages[0]?.total ?? initialExercises?.length ?? exercises.length;
+
+  const assignmentCounts = useMemo(
+    () => ({
+      all: countsData?.all ?? totalCount,
+      assigned: countsData?.assigned ?? 0,
+      unassigned: countsData?.unassigned ?? 0,
+    }),
+    [countsData, totalCount],
+  );
+
+  const typeOptions = useMemo(
+    () => exerciseTypes.map((type) => ({ value: type, label: formatTypeLabel(type) })),
+    [exerciseTypes],
+  );
   // Staged filter helpers
   const handleOpenFilters = (): void => {
     setStagedAssignment(assignmentFilter);
@@ -213,10 +235,10 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
             activeCount={stagedActiveCount}
             assignmentFilter={stagedAssignment}
             onAssignmentFilterChange={setStagedAssignment}
-            assignmentCounts={{ all: totalCount, unassigned: 0, assigned: 0 }}
+            assignmentCounts={assignmentCounts}
             typeFilter={stagedType}
             onTypeFilterChange={setStagedType}
-            typeOptions={[]}
+            typeOptions={typeOptions}
             selectedTagIds={stagedTagIds}
             onSelectedTagIdsChange={setStagedTagIds}
             onClear={handleClearFilters}

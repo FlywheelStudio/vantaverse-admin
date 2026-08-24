@@ -5,6 +5,7 @@ import {
 } from '../query';
 import { exerciseSchema, type Exercise } from '../schemas/exercises';
 import type { PaginatedResult } from './exercise-templates';
+import { z } from 'zod';
 
 export class ExercisesQuery extends SupabaseQuery {
   /**
@@ -185,6 +186,49 @@ export class ExercisesQuery extends SupabaseQuery {
       ...new Set((data ?? []).map((r) => r.type as string).filter(Boolean)),
     ].sort((a, b) => a.localeCompare(b));
     return { success: true, data: types };
+  }
+
+  /**
+   * Get assignment status counts for the exercise library filter panel
+   * @returns Success with {all, assigned, unassigned} counts or error
+   */
+  public async getAssignmentCounts(): Promise<
+    SupabaseSuccess<{
+      all: number;
+      assigned: number;
+      unassigned: number;
+    }> | SupabaseError
+  > {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase.rpc('get_exercise_assignment_counts');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get assignment counts',
+      );
+    }
+
+    const payload = (data as {
+      all: number;
+      assigned: number;
+      unassigned: number;
+    }) || { all: 0, assigned: 0, unassigned: 0 };
+
+    const result = z
+      .object({
+        all: z.number(),
+        assigned: z.number(),
+        unassigned: z.number(),
+      })
+      .safeParse(payload);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return { success: true, data: result.data };
   }
 
   /**

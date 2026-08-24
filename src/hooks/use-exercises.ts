@@ -1,8 +1,11 @@
 'use client';
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { getExercises } from '@/app/(authenticated)/exercises/actions';
-import { getExercisesFiltered } from '@/app/(authenticated)/exercises/actions';
+import {
+  getExercises,
+  getExercisesFiltered,
+  getExerciseAssignmentCounts,
+} from '@/app/(authenticated)/exercises/actions';
 import {
   getExercisesPaginated,
   getExerciseTemplatesPaginated,
@@ -38,6 +41,7 @@ export const exercisesKeys = {
     sortOrder: 'asc' | 'desc';
   }) => [...exercisesKeys.lists(), 'filtered', filters] as const,
   types: () => [...exercisesKeys.all, 'types'] as const,
+  assignmentCounts: () => [...exercisesKeys.all, 'assignment-counts'] as const,
   templatesInfinite: (filters: {
     search?: string;
     sortBy: string;
@@ -135,6 +139,20 @@ export function useExerciseTypes() {
     queryKey: exercisesKeys.types(),
     queryFn: async () => {
       const result = await getExerciseTypes();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
+}
+
+export function useExerciseAssignmentCounts() {
+  return useQuery<
+    { all: number; assigned: number; unassigned: number },
+    Error
+  >({
+    queryKey: exercisesKeys.assignmentCounts(),
+    queryFn: async () => {
+      const result = await getExerciseAssignmentCounts();
       if (!result.success) throw new Error(result.error);
       return result.data;
     },

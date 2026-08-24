@@ -92,3 +92,11 @@ export async function getExercisesFiltered(params: {
   const query = new ExercisesQuery();
   return query.getListFiltered(params);
 }
+
+/**
+ * Get assignment status counts for the exercise library filter panel.
+ */
+export async function getExerciseAssignmentCounts() {
+  const query = new ExercisesQuery();
+  return query.getAssignmentCounts();
+}

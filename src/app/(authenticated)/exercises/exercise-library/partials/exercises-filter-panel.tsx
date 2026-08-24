@@ -10,7 +10,7 @@ export type AssignmentFilter = 'all' | 'unassigned' | 'assigned';
 interface TypeOption {
   value: string;
   label: string;
-  count: number;
+  count?: number;
 }
 
 interface ExercisesFilterPanelProps {
@@ -209,7 +209,7 @@ export function ExercisesFilterPanel({
                   >
                     <CheckMark on={on} />
                     <span>{o.label}</span>
-                    <span className="n">{o.count}</span>
+                    {o.count !== undefined ? <span className="n">{o.count}</span> : null}
                   </button>
                 </label>
               );
