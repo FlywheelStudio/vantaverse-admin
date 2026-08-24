@@ -18,6 +18,7 @@ interface EditingTeam {
 interface NewOrgData {
   name: string;
   description: string;
+  screeningUrl: string;
   imageFile: File | null;
   imagePreview: string | null;
 }
