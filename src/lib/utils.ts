@@ -75,26 +75,17 @@ export function calculateEndDate(
   return endDate;
 }
 
-/** Monday = 1 in JS getDay() */
-const MONDAY = 1;
-
 /**
  * Returns true if a date should be disabled for program start date pickers:
- * past dates or any day that is not Monday. Use for Calendar disabled prop.
+ * past dates. Use for Calendar disabled prop.
  */
 export function isProgramStartDateDisabled(date: Date): boolean {
   const day = startOfDay(date);
   const today = startOfDay(new Date());
-  if (isBefore(day, today)) return true;
-  return day.getDay() !== MONDAY;
+  return isBefore(day, today);
 }
 
-/** Next Monday from now, or today if today is Monday (for program start default). */
+/** Default program start date: today. */
 export function getNextProgramStartMonday(): Date {
-  const today = startOfDay(new Date());
-  if (today.getDay() === MONDAY) return today;
-  const next = new Date(today);
-  const daysUntilMonday = (MONDAY + 7 - today.getDay()) % 7;
-  next.setDate(next.getDate() + (daysUntilMonday || 7));
-  return next;
+  return startOfDay(new Date());
 }

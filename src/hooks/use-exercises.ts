@@ -2,6 +2,7 @@
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { getExercises } from '@/app/(authenticated)/exercises/actions';
+import { getExercisesFiltered } from '@/app/(authenticated)/exercises/actions';
 import {
   getExercisesPaginated,
   getExerciseTemplatesPaginated,
@@ -12,7 +13,7 @@ import {
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
-
+import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
 /**
  * Query key factory for exercises
  */
@@ -27,6 +28,15 @@ export const exercisesKeys = {
     pageSize: number;
     type?: string | null;
   }) => [...exercisesKeys.lists(), 'infinite', filters] as const,
+  filtered: (filters: {
+    search?: string;
+    type?: string | null;
+    assignment?: 'all' | 'unassigned' | 'assigned';
+    tagIds?: number[];
+    pageSize: number;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) => [...exercisesKeys.lists(), 'filtered', filters] as const,
   types: () => [...exercisesKeys.all, 'types'] as const,
   templatesInfinite: (filters: {
     search?: string;
@@ -59,6 +69,66 @@ export function useExercises(initialData?: Exercise[]) {
     initialData,
   });
 }
+
+
+export function useExercisesFilteredInfinite(params: {
+  search?: string;
+  type?: string | null;
+  assignment?: 'all' | 'unassigned' | 'assigned';
+  tagIds?: number[];
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}) {
+  const {
+    search,
+    type,
+    assignment = 'all',
+    tagIds,
+    pageSize = 20,
+    sortBy = 'created_at',
+    sortOrder = 'desc',
+  } = params;
+
+  return useInfiniteQuery<PaginatedResult<Exercise>, Error>({
+    queryKey: exercisesKeys.filtered({
+      search,
+      type,
+      assignment,
+      tagIds,
+      pageSize,
+      sortBy,
+      sortOrder,
+    }),
+    queryFn: async ({ pageParam = 1 }) => {
+      const result = await getExercisesFiltered({
+        search,
+        type,
+        assignment,
+        tagIds,
+        page: pageParam as number,
+        pageSize,
+        sortBy,
+        sortOrder,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore) {
+        return undefined;
+      }
+      return lastPage.page + 1;
+    },
+  });
+}
+
+export const useExercisesFiltered = useExercisesFilteredInfinite;
 
 export function useExerciseTypes() {
   return useQuery<string[], Error>({

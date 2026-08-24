@@ -76,7 +76,6 @@ function buildMergedTemplate(
     weight: v.weight !== undefined ? v.weight : (b.weight ?? null),
     rest_time: v.rest_time !== undefined ? v.rest_time : (b.rest_time ?? null),
     tempo: v.tempo !== undefined ? v.tempo : (b.tempo ?? null),
-    equipment_ids: base.equipment_ids ?? null,
     rep_override:
       v.rep_override !== undefined ? v.rep_override : (b.rep_override ?? null),
     time_override:

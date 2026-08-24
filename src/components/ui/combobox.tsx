@@ -34,6 +34,12 @@ interface ComboboxProps {
   disabled?: boolean;
   onCreateNew?: (value: string) => void;
   allowCreate?: boolean;
+  /** When false, options are shown as-is (server/typeahead filtering). Default true. */
+  filterLocally?: boolean;
+  /** Notified when the search input changes (for debounced server search). */
+  onSearchChange?: (value: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function Combobox({
@@ -47,39 +53,56 @@ export function Combobox({
   disabled = false,
   onCreateNew,
   allowCreate = false,
+  filterLocally = true,
+  onSearchChange,
+  open: openControlled,
+  onOpenChange: onOpenChangeControlled,
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
+  const open = openControlled ?? uncontrolledOpen;
+  const setOpen = onOpenChangeControlled ?? setUncontrolledOpen;
 
   const selectedOption = React.useMemo(
     () => options.find((option) => option.value === value),
     [options, value],
   );
 
+  const handleSearchChange = (next: string): void => {
+    setSearch(next);
+    onSearchChange?.(next);
+  };
+
+  const handleOpenChange = (next: boolean): void => {
+    setOpen(next);
+    if (!next) {
+      setSearch('');
+      onSearchChange?.('');
+    }
+  };
+
   const handleSelect = (currentValue: string) => {
     if (currentValue.startsWith('__create__')) {
       const newValue = currentValue.replace('__create__', '');
       onCreateNew?.(newValue);
-      setOpen(false);
-      setSearch('');
+      handleOpenChange(false);
     } else {
       const option = options.find((opt) => opt.label === currentValue);
       if (option) {
         const newValue = option.value === value ? undefined : option.value;
         onValueChange(newValue);
-        setOpen(false);
-        setSearch('');
+        handleOpenChange(false);
       }
     }
   };
 
   const filteredOptions = React.useMemo(() => {
-    if (!search.trim()) return options;
+    if (!filterLocally || !search.trim()) return options;
     const searchLower = search.toLowerCase();
     return options.filter((opt) =>
       opt.label.toLowerCase().includes(searchLower),
     );
-  }, [options, search]);
+  }, [options, search, filterLocally]);
 
   const showCreate =
     allowCreate &&
@@ -90,7 +113,7 @@ export function Combobox({
     );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -110,7 +133,7 @@ export function Combobox({
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
-            onValueChange={setSearch}
+            onValueChange={handleSearchChange}
           />
           <CommandList>
             {showCreate && (

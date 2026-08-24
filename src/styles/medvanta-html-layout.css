@@ -526,6 +526,9 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .day .df{padding:8px;display:flex;align-items:center;gap:5px;border-top:1px solid var(--border-subtle)}
 .day.rest .df{border-top:none}
 .day .df .btn{flex:1;height:30px;font-size:var(--text-xs);padding:0 10px}
+.day.disabled{background:var(--slate-100);border-style:dashed;border-color:var(--border-default);box-shadow:none;opacity:0.65;pointer-events:none}
+.day .na-m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--text-faint);padding:10px}
+.day .na-m .nl{font-size:var(--text-sm);font-weight:var(--fw-bold);color:var(--text-muted);letter-spacing:.06em}
 
 /* Messages */
 .msg-wrap{display:flex;flex:1;min-height:0;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--surface-card);box-shadow:var(--shadow-sm);overflow:hidden}

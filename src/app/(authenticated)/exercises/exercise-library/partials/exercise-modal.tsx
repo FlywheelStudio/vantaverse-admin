@@ -2,18 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
-import { Icon, Textarea, UnderConstruction } from '@/components/medvanta';
+import { Icon, Textarea } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
-import { HtmlActionsMenu } from '@/components/medvanta/shell/HtmlActionsMenu';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
-import { useEquipments } from '@/hooks/use-equipments';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import {
-  EXERCISE_SOURCE_OPTIONS,
-  MEDIA_OVERFLOW_ACTIONS,
-  createExerciseModalMocks,
-  type ExerciseSource,
-} from './exercise-modal-mock-data';
+import { formatDistanceToNow } from 'date-fns';
+import { ExerciseTagsSection } from './exercise-tags-section';
 
 interface ExerciseModalProps {
   exercise: Exercise | null;
@@ -26,35 +20,20 @@ type EditableField =
   | 'library_tip'
   | 'library_check_in_question';
 
-function MedvantaSelect({
-  value,
-  onChange,
-  options,
-  'aria-label': ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly string[];
-  'aria-label'?: string;
-}): React.ReactElement {
-  return (
-    <span className="sel" style={{ width: '100%' }}>
-      <select
-        value={value}
-        aria-label={ariaLabel}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-      <span className="ci">
-        <Icon name="ChevronDown" size={16} />
-      </span>
-    </span>
-  );
+function formatTypeLabel(type: string): string {
+  return type
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getRelativeTimeDisplay(dateString: string | null): string {
+  if (!dateString) return 'never';
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+  } catch {
+    return 'recently';
+  }
 }
 
 export function ExerciseModal({
@@ -85,21 +64,13 @@ function ExerciseModalContent({
   open,
   onOpenChange,
 }: ExerciseModalContentProps): React.ReactElement {
-  const updateExerciseMutation = useUpdateExercise();
-  const initialMocks = createExerciseModalMocks({
-    typeHint: exerciseProp.type,
-  });
-  const { data: equipmentOptions = [] } = useEquipments();
   const [localExercise, setLocalExercise] = useState<Exercise>(exerciseProp);
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [showVideo, setShowVideo] = useState(false);
-  const [source, setSource] = useState<ExerciseSource>(initialMocks.source);
-  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<number[]>(
-    [],
-  );
-  const [isAddingEquipment, setIsAddingEquipment] = useState(false);
-  const lastEditedBy = initialMocks.lastEditedBy;
+  const updateExerciseMutation = useUpdateExercise();
+  const source = exerciseProp.type ? formatTypeLabel(exerciseProp.type) : 'MedVanta';
+  const lastEditedTime = getRelativeTimeDisplay(exerciseProp.updated_at || exerciseProp.created_at);
   const titleRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
   const checkInRef = useRef<HTMLDivElement>(null);
@@ -110,25 +81,9 @@ function ExerciseModalContent({
     } else if (editingField === 'library_tip') {
       instructionsRef.current?.querySelector('textarea')?.focus();
     } else if (editingField === 'library_check_in_question') {
-      checkInRef.current?.querySelector('input')?.focus();
+      checkInRef.current?.querySelector('textarea')?.focus();
     }
   }, [editingField]);
-
-  const selectedEquipment = equipmentOptions.filter((eq) =>
-    selectedEquipmentIds.includes(eq.id),
-  );
-  const availableEquipment = equipmentOptions.filter(
-    (eq) => !selectedEquipmentIds.includes(eq.id),
-  );
-
-  const handleAddEquipment = (id: number): void => {
-    setSelectedEquipmentIds((prev) => [...prev, id]);
-    setIsAddingEquipment(false);
-  };
-
-  const handleRemoveEquipment = (id: number): void => {
-    setSelectedEquipmentIds((prev) => prev.filter((eid) => eid !== id));
-  };
 
   const exercise = localExercise;
   const usedInPrograms = exercise.assigned_count ?? 0;
@@ -175,21 +130,6 @@ function ExerciseModalContent({
     setEditingValue('');
   };
 
-  const handleRemoveCheckInQuestion = (): void => {
-    if (updateExerciseMutation.isPending) return;
-    if (!exercise.library_check_in_question) return;
-
-    setLocalExercise((prev) => ({
-      ...prev,
-      library_check_in_question: null,
-    }));
-    updateExerciseMutation.mutate({
-      id: exercise.id,
-      data: { library_check_in_question: null },
-    });
-    setEditingField(null);
-    setEditingValue('');
-  };
 
   const handleSaveExercise = (): void => {
     if (editingField) {
@@ -220,12 +160,6 @@ function ExerciseModalContent({
       ? exercise.thumbnail_url
       : null;
 
-  const mediaMenuItems = MEDIA_OVERFLOW_ACTIONS.map((action) => ({
-    id: action.id,
-    label: action.label,
-    danger: 'danger' in action ? action.danger : false,
-    onSelect: () => undefined,
-  }));
 
   const titleContent =
     editingField === 'exercise_name' ? (
@@ -259,7 +193,7 @@ function ExerciseModalContent({
       width={760}
       style={{ maxHeight: 'min(90vh, 720px)' }}
       bodyClassName="overflow-y-auto"
-      footerInfo={`Last edited 5 months ago by ${lastEditedBy}`}
+      footerInfo={`Last edited ${lastEditedTime}`}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={handleCancel}>
@@ -379,18 +313,6 @@ function ExerciseModalContent({
             </div>
           )}
 
-          <div className="row" style={{ gap: 8, marginTop: 10 }}>
-            <button
-              type="button"
-              className="btn btn-sec btn-sm"
-              style={{ flex: 1 }}
-              onClick={() => undefined}
-            >
-              <Icon name="Upload" size={15} />
-              Replace media
-            </button>
-            <HtmlActionsMenu items={mediaMenuItems} ariaLabel="Media actions" />
-          </div>
         </div>
 
         <div>
@@ -403,12 +325,9 @@ function ExerciseModalContent({
 
           <div className="ff">
             <label className="lbl">Source</label>
-            <MedvantaSelect
-              value={source}
-              aria-label="Source"
-              options={EXERCISE_SOURCE_OPTIONS}
-              onChange={(v) => setSource(v as ExerciseSource)}
-            />
+            <span className="fld ro">
+              <input value={source} readOnly disabled aria-label="Source" />
+            </span>
           </div>
 
           <div
@@ -435,6 +354,10 @@ function ExerciseModalContent({
 
       <div className="ff">
         <label className="lbl">Instructions for members</label>
+        <div className="hint">
+          Shown under the video in the member app. Plain language, no clinical
+          shorthand.
+        </div>
         {editingField === 'library_tip' ? (
           <div ref={instructionsRef}>
             <Textarea
@@ -463,177 +386,44 @@ function ExerciseModalContent({
               'Describe the set-up, the movement, and what good execution feels like…'}
           </button>
         )}
-        <div className="hint">
-          Shown under the video in the member app. Plain language, no clinical
-          shorthand.
-        </div>
       </div>
 
       <div className="ff">
-        <div
-          className="row"
-          style={{ justifyContent: 'space-between', marginBottom: 4 }}
-        >
-          <label className="lbl" style={{ margin: 0 }}>
-            Check-in question
-          </label>
-          <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-            Asked after every set
-          </span>
+        <label className="lbl">Check-in question</label>
+        <div className="hint">
+          Asked after every set. Plain language, no clinical shorthand.
         </div>
         {editingField === 'library_check_in_question' ? (
           <div ref={checkInRef}>
-            <span className="fld">
-              <input
-                value={editingValue}
-                onChange={(e) => setEditingValue(e.target.value)}
-                onBlur={() => handleSaveField('library_check_in_question')}
-                aria-label="Check-in question"
-                placeholder="e.g. Rate your pain during this movement (0–10)"
-              />
-            </span>
-          </div>
-        ) : exercise.library_check_in_question ? (
-          <div
-            className="row"
-            style={{
-              gap: 11,
-              padding: '10px 13px',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--surface-card)',
-            }}
-          >
-            <span
-              style={{
-                flex: 1,
-                fontSize: 'var(--text-sm)',
-                color: 'var(--text-body)',
-              }}
-            >
-              {exercise.library_check_in_question}
-            </span>
-            <button
-              type="button"
-              className="ib ib-sm"
-              aria-label="Edit check-in question"
-              onClick={() => handleEdit('library_check_in_question')}
-            >
-              <Icon name="SquarePen" size={15} />
-            </button>
-            <button
-              type="button"
-              className="ib ib-sm ib-dan"
-              aria-label="Remove check-in question"
-              onClick={handleRemoveCheckInQuestion}
-            >
-              <Icon name="X" size={15} />
-            </button>
+            <Textarea
+              className="ta"
+              value={editingValue}
+              onChange={(e) => setEditingValue(e.target.value)}
+              onBlur={() => handleSaveField('library_check_in_question')}
+              rows={3}
+              placeholder="e.g. Rate your pain during this movement (0–10)"
+            />
           </div>
         ) : (
           <button
             type="button"
-            className="btn btn-dash btn-sm"
             onClick={() => handleEdit('library_check_in_question')}
+            className="ta"
+            style={{
+              width: '100%',
+              cursor: 'pointer',
+              textAlign: 'left',
+              whiteSpace: 'pre-wrap',
+              minHeight: 72,
+            }}
           >
-            <Icon name="Plus" size={15} />
-            Add check-in question
+            {exercise.library_check_in_question ||
+              'e.g. Rate your pain during this movement (0–10)'}
           </button>
         )}
       </div>
 
-      <div>
-        <div
-          className="row"
-          style={{ justifyContent: 'space-between', marginBottom: 4 }}
-        >
-          <label className="lbl" style={{ margin: 0 }}>
-            Tags
-          </label>
-          <span className="mut" style={{ fontSize: 'var(--text-xs)' }}>
-            Used for filtering and for building programs
-          </span>
-        </div>
-        <div
-          style={{
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-md)',
-            padding: '4px 14px',
-            background: 'var(--surface-card)',
-            marginBottom: 10,
-          }}
-        >
-          <div className="tagrow">
-            <span className="tl">Equipment</span>
-            <span className="tc">
-              {selectedEquipment.map((eq) => (
-                <span key={eq.id} className="tag tag-b">
-                  {eq.name}
-                  <button
-                    type="button"
-                    aria-label={`Remove ${eq.name}`}
-                    onClick={() => handleRemoveEquipment(eq.id)}
-                  >
-                    <Icon name="X" size={13} strokeWidth={2.5} />
-                  </button>
-                </span>
-              ))}
-              {isAddingEquipment ? (
-                <span className="sel" style={{ minWidth: 180 }}>
-                  <select
-                    autoFocus
-                    value=""
-                    aria-label="Add equipment"
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      if (id) handleAddEquipment(id);
-                    }}
-                    onBlur={() => setIsAddingEquipment(false)}
-                  >
-                    <option value="">Select equipment…</option>
-                    {availableEquipment.map((eq) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.name}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="ci">
-                    <Icon name="ChevronDown" size={16} />
-                  </span>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  style={{
-                    height: 26,
-                    padding: '0 9px',
-                    fontSize: 'var(--text-xs)',
-                  }}
-                  onClick={() => setIsAddingEquipment(true)}
-                  disabled={availableEquipment.length === 0}
-                >
-                  <Icon name="Plus" size={13} />
-                  Add
-                </button>
-              )}
-            </span>
-          </div>
-        </div>
-        <div
-          style={{
-            border: '1px dashed var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--slate-50)',
-          }}
-        >
-          <UnderConstruction compact />
-        </div>
-        <div className="hint">
-          Equipment is pulled from the shared equipment list. Body region and
-          muscle group tags are coming soon.
-        </div>
-      </div>
+      <ExerciseTagsSection exerciseId={exercise.id} />
     </HtmlModal>
   );
 }

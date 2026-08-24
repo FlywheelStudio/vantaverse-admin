@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '@/components/medvanta';
-import { useExercises } from '@/hooks/use-exercises';
+import { useExercisesFiltered } from '@/hooks/use-exercises';
+import { useAllTags } from '@/hooks/use-tags';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
@@ -26,101 +27,156 @@ interface ExerciseLibraryProps {
 }
 
 export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): React.ReactElement {
-  const { data: exercises, isLoading } = useExercises(initialExercises);
   const [searchValue, setSearchValue] = useState('');
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+
+  // Staged state for filter panel draft
+  const [stagedAssignment, setStagedAssignment] = useState<AssignmentFilter>('all');
+  const [stagedType, setStagedType] = useState<string>('all');
+  const [stagedTagIds, setStagedTagIds] = useState<number[]>([]);
+
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(16);
-  const pageSize = 16;
+  const pageSize = 20;
+  const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  const handleSearchChange = useCallback((): void => {
-    setVisibleCount(pageSize);
-  }, []);
-
-  const debouncedSearch = useDebounce(searchValue, 300, handleSearchChange);
+  const debouncedSearch = useDebounce(searchValue, 300);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const allExercises = useMemo(
-    () => exercises ?? [],
-    [exercises],
-  );
+  // Fetch all tags to resolve tag names and category labels for filter chips
+  const { data: allTags = [] } = useAllTags();
+  const tagsMap = useMemo(() => new Map(allTags.map((t) => [t.id, t])), [allTags]);
 
-  const assignmentCounts = useMemo(() => {
-    let unassigned = 0;
-    let assigned = 0;
-    for (const exercise of allExercises) {
-      if ((exercise.assigned_count ?? 0) > 0) assigned += 1;
-      else unassigned += 1;
+  // Paginated + filtered exercises query
+  const {
+    data: queryResult,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useExercisesFiltered({
+    search: debouncedSearch,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+    assignment: assignmentFilter,
+    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    pageSize,
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+  });
+
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(target);
+    return () => observer.unobserve(target);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const exercises = useMemo(() => {
+    if (!queryResult) return initialExercises ?? [];
+    return queryResult.pages.flatMap((p) => p.data);
+  }, [queryResult, initialExercises]);
+
+  const totalCount = queryResult?.pages[0]?.total ?? initialExercises?.length ?? exercises.length;
+  // Staged filter helpers
+  const handleOpenFilters = (): void => {
+    setStagedAssignment(assignmentFilter);
+    setStagedType(typeFilter);
+    setStagedTagIds(selectedTagIds);
+    setFiltersOpen(true);
+  };
+
+  const handleApplyFilters = (): void => {
+    setAssignmentFilter(stagedAssignment);
+    setTypeFilter(stagedType);
+    setSelectedTagIds(stagedTagIds);
+    setFiltersOpen(false);
+  };
+  const handleClearFilters = (): void => {
+    setStagedAssignment('all');
+    setStagedType('all');
+    setStagedTagIds([]);
+    setAssignmentFilter('all');
+    setTypeFilter('all');
+    setSelectedTagIds([]);
+    setFiltersOpen(false);
+  };
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; type: 'assignment' | 'type' | 'tag' | 'search'; tagId?: number }> = [];
+
+    if (debouncedSearch.trim()) {
+      chips.push({ id: 'search', label: `"${debouncedSearch.trim()}"`, type: 'search' });
     }
-    return { all: allExercises.length, unassigned, assigned };
-  }, [allExercises]);
-
-  const typeOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const exercise of allExercises) {
-      const key = (exercise.type ?? '').trim();
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([value, count]) => ({
-        value,
-        label: formatTypeLabel(value),
-        count,
-      }));
-  }, [allExercises]);
-
-  const filteredExercises = useMemo(() => {
-    return allExercises.filter((exercise) => {
-      if (debouncedSearch) {
-        const matchesSearch = exercise.exercise_name
-          .toLowerCase()
-          .includes(debouncedSearch.toLowerCase());
-        if (!matchesSearch) return false;
-      }
-
-      if (typeFilter !== 'all' && exercise.type !== typeFilter) {
-        return false;
-      }
-
-      const assignedCount = exercise.assigned_count ?? 0;
-      if (assignmentFilter === 'unassigned') return assignedCount === 0;
-      if (assignmentFilter === 'assigned') return assignedCount > 0;
-
-      return true;
-    });
-  }, [allExercises, debouncedSearch, typeFilter, assignmentFilter]);
-
-  const visibleExercises = filteredExercises.slice(0, visibleCount);
-  const totalCount = filteredExercises.length;
-  const hasMore = visibleCount < totalCount;
-
-  const activeFilterTags = useMemo(() => {
-    const tags: string[] = [];
     if (assignmentFilter !== 'all') {
-      tags.push(assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned');
+      chips.push({
+        id: 'assignment',
+        label: assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned',
+        type: 'assignment',
+      });
     }
-    if (typeFilter !== 'all') tags.push(formatTypeLabel(typeFilter));
-    if (debouncedSearch.trim()) tags.push(`"${debouncedSearch.trim()}"`);
-    return tags;
-  }, [assignmentFilter, typeFilter, debouncedSearch]);
+    if (typeFilter !== 'all') {
+      chips.push({
+        id: 'type',
+        label: formatTypeLabel(typeFilter),
+        type: 'type',
+      });
+    }
+    for (const tagId of selectedTagIds) {
+      const tag = tagsMap.get(tagId);
+      const label = tag ? `${tag.category}: ${tag.name}` : `Tag #${tagId}`;
+      chips.push({
+        id: `tag-${tagId}`,
+        label,
+        type: 'tag',
+        tagId,
+      });
+    }
+
+    return chips;
+  }, [assignmentFilter, typeFilter, selectedTagIds, debouncedSearch, tagsMap]);
 
   const panelActiveCount = useMemo(() => {
     let count = 0;
     if (assignmentFilter !== 'all') count += 1;
     if (typeFilter !== 'all') count += 1;
+    count += selectedTagIds.length;
     return count;
-  }, [assignmentFilter, typeFilter]);
+  }, [assignmentFilter, typeFilter, selectedTagIds]);
 
-  const handleClearFilters = (): void => {
-    setAssignmentFilter('all');
-    setTypeFilter('all');
-    setVisibleCount(pageSize);
+  const stagedActiveCount = useMemo(() => {
+    let count = 0;
+    if (stagedAssignment !== 'all') count += 1;
+    if (stagedType !== 'all') count += 1;
+    count += stagedTagIds.length;
+    return count;
+  }, [stagedAssignment, stagedType, stagedTagIds]);
+
+  const handleRemoveChip = (chip: { type: string; tagId?: number }): void => {
+    if (chip.type === 'search') {
+      setSearchValue('');
+    } else if (chip.type === 'assignment') {
+      setAssignmentFilter('all');
+      setStagedAssignment('all');
+    } else if (chip.type === 'type') {
+      setTypeFilter('all');
+      setStagedType('all');
+    } else if (chip.type === 'tag' && chip.tagId !== undefined) {
+      const next = selectedTagIds.filter((id) => id !== chip.tagId);
+      setSelectedTagIds(next);
+      setStagedTagIds(next);
+    }
   };
-
   const handleCardClick = (exercise: Exercise): void => {
     setSelectedExercise(exercise);
     setIsModalOpen(true);
@@ -143,7 +199,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <button
             type="button"
             className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
-            onClick={() => setFiltersOpen((open) => !open)}
+            onClick={() => (filtersOpen ? setFiltersOpen(false) : handleOpenFilters())}
           >
             <Icon name="Funnel" size={15} />
             Filters
@@ -154,21 +210,17 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <ExercisesFilterPanel
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
-            activeCount={panelActiveCount}
-            assignmentFilter={assignmentFilter}
-            onAssignmentFilterChange={(value) => {
-              setAssignmentFilter(value);
-              setVisibleCount(pageSize);
-            }}
-            assignmentCounts={assignmentCounts}
-            typeFilter={typeFilter}
-            onTypeFilterChange={(value) => {
-              setTypeFilter(value);
-              setVisibleCount(pageSize);
-            }}
-            typeOptions={typeOptions}
+            activeCount={stagedActiveCount}
+            assignmentFilter={stagedAssignment}
+            onAssignmentFilterChange={setStagedAssignment}
+            assignmentCounts={{ all: totalCount, unassigned: 0, assigned: 0 }}
+            typeFilter={stagedType}
+            onTypeFilterChange={setStagedType}
+            typeOptions={[]}
+            selectedTagIds={stagedTagIds}
+            onSelectedTagIdsChange={setStagedTagIds}
             onClear={handleClearFilters}
-            onApply={() => setFiltersOpen(false)}
+            onApply={handleApplyFilters}
           />
         </div>
         <span className="sp seg">
@@ -185,24 +237,15 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
         </span>
       </div>
 
-      {activeFilterTags.length > 0 ? (
+      {activeFilterChips.length > 0 ? (
         <div className="row" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {activeFilterTags.map((tag) => (
-            <span key={tag} className="tag tag-b">
-              {tag}
+          {activeFilterChips.map((chip) => (
+            <span key={chip.id} className="tag tag-b">
+              {chip.label}
               <button
                 type="button"
-                aria-label={`Remove ${tag}`}
-                onClick={() => {
-                  if (tag === 'Unassigned' || tag === 'Assigned') {
-                    setAssignmentFilter('all');
-                  } else if (tag.startsWith('"')) {
-                    setSearchValue('');
-                  } else {
-                    setTypeFilter('all');
-                  }
-                  setVisibleCount(pageSize);
-                }}
+                aria-label={`Remove ${chip.label}`}
+                onClick={() => handleRemoveChip(chip)}
               >
                 <Icon name="X" size={13} style={{ strokeWidth: 2.5 }} />
               </button>
@@ -221,7 +264,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <span className="sp mut" style={{ fontSize: 'var(--text-sm)' }}>
             Showing{' '}
             <b className="mono" style={{ color: 'var(--text-body)' }}>
-              {visibleExercises.length}
+              {exercises.length}
             </b>{' '}
             of{' '}
             <b className="mono" style={{ color: 'var(--text-body)' }}>
@@ -236,43 +279,38 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <Icon name="LoaderCircle" size={20} className="animate-spin text-[var(--primary)]" />
           <span style={{ color: 'var(--text-muted)' }}>Loading exercises…</span>
         </div>
-      ) : visibleExercises.length === 0 ? (
+      ) : exercises.length === 0 ? (
         <div className="row" style={{ justifyContent: 'center', padding: '24px 0' }}>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            {debouncedSearch ? 'No exercises found matching your search.' : 'No exercises available.'}
-          </span>
+          <span style={{ color: 'var(--text-muted)' }}>No exercises found.</span>
         </div>
       ) : (
         <>
-          <div className="g g4">{visibleExercises.map((exercise) => (
-            <ExerciseCard
-              key={exercise.id}
-              exercise={exercise}
-              onClick={() => handleCardClick(exercise)}
-            />
-          ))}</div>
-
-          {hasMore ? (
-            <div className="row" style={{ justifyContent: 'center', marginTop: 24 }}>
-              <button
-                type="button"
-                className="btn btn-sec"
-                onClick={() => setVisibleCount((count) => count + pageSize)}
-              >
-                Load more exercises
-                <Icon name="ChevronDown" size={17} />
-              </button>
+          <div className="g g4" style={{ marginTop: 12 }}>
+            {exercises.map((exercise) => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                onClick={() => handleCardClick(exercise)}
+              />
+            ))}
+          </div>
+          <div ref={observerTargetRef} style={{ height: 1 }} />
+          {isFetchingNextPage && (
+            <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '16px 0' }}>
+              <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
+              <span style={{ color: 'var(--text-muted)' }}>Loading more exercises…</span>
             </div>
-          ) : null}
+          )}
         </>
       )}
 
-      <ExerciseModal
-        key={selectedExercise?.id}
-        exercise={selectedExercise}
-        open={isModalOpen}
-        onOpenChange={handleModalClose}
-      />
+      {selectedExercise && (
+        <ExerciseModal
+          open={isModalOpen}
+          onOpenChange={handleModalClose}
+          exercise={selectedExercise}
+        />
+      )}
     </>
   );
 }

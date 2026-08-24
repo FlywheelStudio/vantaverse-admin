@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 import { useFormContext } from 'react-hook-form';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramTemplateFormData } from '../../program/schemas';
-import { cn } from '@/lib/utils';
+import { cn, calculateEndDate, formatDateForDB } from '@/lib/utils';
 import { createParallelQueries } from '@/lib/supabase/query';
 import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
@@ -65,6 +65,7 @@ export function BuildWorkoutSection({
     duplicateWeekToAll,
     copiedWeekData,
     resizeSchedule,
+    programStartDate,
   } = useBuilder();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
@@ -73,6 +74,11 @@ export function BuildWorkoutSection({
   const scheduleBaselineRef = useRef<string | null>(null);
 
   const weeksValue = programForm.watch('weeks') ?? initialWeeks;
+  const programEndDate = useMemo(() => {
+    if (!programStartDate || weeksValue < 1) return null;
+    const end = calculateEndDate(new Date(`${programStartDate}T00:00:00`), weeksValue);
+    return end ? formatDateForDB(end) : null;
+  }, [programStartDate, weeksValue]);
 
   const [sessionsPerWeek, setSessionsPerWeek] = useState<string>(() => {
     const week = schedule[0] ?? [];
@@ -501,7 +507,7 @@ export function BuildWorkoutSection({
             </span>
           </div>
 
-          <DayBoxesGrid />
+          <DayBoxesGrid programEndDate={programEndDate} />
           <div style={{ height: 16 }} />
         </div>
       </div>

@@ -89,7 +89,7 @@ export function DateRangePicker({
           </PopoverContent>
         </Popover>
         <p className="text-xs text-muted-foreground mt-1">
-          Must be a Monday (today or later).
+          Must be today or later.
         </p>
         {errors.startDate && (
           <p className="text-sm text-red-500 mt-1">

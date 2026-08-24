@@ -348,7 +348,7 @@ export function AssignProgramModal({
             Start date <span style={{ color: 'var(--danger)' }}>*</span>
           </label>
           <p className="mut" style={{ fontSize: 'var(--text-xs)', marginBottom: 8 }}>
-            Start date must be a Monday (today or later).
+            Start date must be today or later.
           </p>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>

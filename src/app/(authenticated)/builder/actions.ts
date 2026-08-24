@@ -394,7 +394,6 @@ export async function upsertExerciseTemplate(data: {
   p_distance_override?: string[] | null;
   p_weight_override?: string[] | null;
   p_rest_time_override?: number[] | null;
-  p_equipment_ids?: number[];
   p_notes?: string;
 }): Promise<
   | { success: true; data: { id: string; template_hash: string } }
@@ -442,7 +441,6 @@ export async function editExerciseTemplate(data: {
   p_distance_override?: string[] | null;
   p_weight_override?: string[] | null;
   p_rest_time_override?: number[] | null;
-  p_equipment_ids?: number[];
   p_notes?: string;
 }): Promise<
   | { success: true; data: { id: string; template_hash: string } }

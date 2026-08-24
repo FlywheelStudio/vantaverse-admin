@@ -346,39 +346,51 @@ export type Database = {
         }
         Relationships: []
       }
-      equipments: {
+      exercise_tags: {
         Row: {
           created_at: string | null
-          description: string | null
-          icon_url: string | null
-          id: number
-          name: string
-          updated_at: string | null
+          exercise_id: number
+          tag_id: number
         }
         Insert: {
           created_at?: string | null
-          description?: string | null
-          icon_url?: string | null
-          id?: number
-          name: string
-          updated_at?: string | null
+          exercise_id: number
+          tag_id: number
         }
         Update: {
           created_at?: string | null
-          description?: string | null
-          icon_url?: string | null
-          id?: number
-          name?: string
-          updated_at?: string | null
+          exercise_id?: number
+          tag_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercise_tags_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_tags_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exercise_templates: {
         Row: {
           created_at: string | null
           distance: string | null
           distance_override: string[] | null
-          equipment_ids: number[] | null
           exercise_id: number
           id: string
           notes: string | null
@@ -399,7 +411,6 @@ export type Database = {
           created_at?: string | null
           distance?: string | null
           distance_override?: string[] | null
-          equipment_ids?: number[] | null
           exercise_id: number
           id?: string
           notes?: string | null
@@ -420,7 +431,6 @@ export type Database = {
           created_at?: string | null
           distance?: string | null
           distance_override?: string[] | null
-          equipment_ids?: number[] | null
           exercise_id?: number
           id?: string
           notes?: string | null
@@ -467,6 +477,7 @@ export type Database = {
           thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
+          updated_by: string | null
           video_type: string
           video_url: string | null
         }
@@ -482,6 +493,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string
           video_url?: string | null
         }
@@ -497,6 +509,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string
           video_url?: string | null
         }
@@ -1736,6 +1749,30 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       team_membership: {
         Row: {
           created_at: string | null
@@ -1973,6 +2010,7 @@ export type Database = {
           thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
+          updated_by: string | null
           video_type: string | null
           video_url: string | null
         }
@@ -1989,6 +2027,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string | null
           video_url?: string | null
         }
@@ -2005,6 +2044,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string | null
           video_url?: string | null
         }
@@ -2234,7 +2274,6 @@ export type Database = {
         Args: {
           p_distance?: string
           p_distance_override?: string[]
-          p_equipment_ids?: number[]
           p_exercise_id: number
           p_notes?: string
           p_rep?: number
@@ -2269,6 +2308,22 @@ export type Database = {
       extract_schedule_references: {
         Args: { normalized_schedule: Json[] }
         Returns: Json
+      }
+      get_exercise_tags: {
+        Args: { p_exercise_id: number }
+        Returns: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_habit_status: {
         Args: { due_date: string; response: string }
@@ -2325,6 +2380,12 @@ export type Database = {
       is_pre_program_template_program_template: {
         Args: { p_program_template_id: string }
         Returns: boolean
+      }
+      list_tag_categories: {
+        Args: never
+        Returns: {
+          category: string
+        }[]
       }
       loyalty_acquire_token: {
         Args: { p_priority?: "sync_award" | "get_loyalty" | "retry" }
@@ -2421,7 +2482,6 @@ export type Database = {
         Args: {
           p_distance: string
           p_distance_override: string[]
-          p_equipment_ids: number[]
           p_exercise_id: number
           p_rep: number
           p_rep_override: number[]
@@ -2525,6 +2585,22 @@ export type Database = {
       }
       run_email_triggers: { Args: never; Returns: Json }
       run_message_notification_emails: { Args: never; Returns: Json }
+      search_tags: {
+        Args: { p_category?: string; p_limit?: number; p_q?: string }
+        Returns: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       serve_daily_workout: {
         Args: {
           p_date?: string
@@ -2532,6 +2608,10 @@ export type Database = {
           p_organization_id?: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      set_exercise_tags: {
+        Args: { p_exercise_id: number; p_tag_ids?: number[] }
         Returns: Json
       }
       set_onboarding_state: {
@@ -2583,7 +2663,6 @@ export type Database = {
         Args: {
           p_distance?: string
           p_distance_override?: string[]
-          p_equipment_ids?: number[]
           p_exercise_id: number
           p_notes?: string
           p_rep?: number
@@ -2606,6 +2685,10 @@ export type Database = {
           p_note?: string
           p_title: string
         }
+        Returns: Json
+      }
+      upsert_tag: {
+        Args: { p_category: string; p_name: string }
         Returns: Json
       }
       upsert_workout_schedule: {
