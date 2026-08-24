@@ -7,6 +7,11 @@ import {
   ProgramAssignmentsQuery,
 } from '@/lib/supabase/queries/program-assignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+import {
+  DEFAULT_SCREENING_BASE,
+  buildBookingLink,
+  normalizeCalendlyUrl,
+} from '@/lib/calendly';
 
 export type GroupMemberWithProgram = {
   user_id: string;
@@ -317,32 +322,13 @@ export async function removeMemberFromOrganization(
   };
 }
 
-const DEFAULT_SCREENING_BASE =
-  'https://calendly.com/movebetter-medvanta/vantamotion-screening-app-pilot';
 
-/**
- * Validate + normalize a pasted Calendly event link.
- * Returns '' for empty input, the trimmed URL when valid, null when invalid.
- */
-function normalizeScreeningUrl(raw: string): string | null {
-  const trimmed = raw.trim().replace(/\/+$/, '');
-  if (!trimmed) return '';
-  try {
-    const url = new URL(trimmed);
-    const hostOk =
-      url.protocol === 'https:' &&
-      (url.hostname === 'calendly.com' || url.hostname.endsWith('.calendly.com'));
-    return hostOk ? trimmed : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function updateOrganizationScreeningUrl(
   organizationId: string,
   rawUrl: string,
 ) {
-  const normalized = normalizeScreeningUrl(rawUrl);
+  const normalized = normalizeCalendlyUrl(rawUrl);
   if (normalized === null) {
     return {
       success: false as const,
@@ -386,21 +372,6 @@ export async function updateOrganizationDescription(
   return { success: true as const, data: undefined };
 }
 
-function buildScreeningLink(
-  base: string,
-  user: { uid: string; firstName: string; lastName: string; email: string },
-): string {
-  const sep = base.includes('?') ? '&' : '?';
-  const first = user.firstName.trim();
-  const last = user.lastName.trim();
-  const name = first && last ? `${first} ${last}` : first || last;
-  let link = `${base}${sep}utm_term=${encodeURIComponent(user.uid)}&utm_content=onboarding_screening`;
-  if (name) link += `&name=${encodeURIComponent(name)}`;
-  if (first) link += `&first_name=${encodeURIComponent(first)}`;
-  if (last) link += `&last_name=${encodeURIComponent(last)}`;
-  if (user.email.trim()) link += `&email=${encodeURIComponent(user.email.trim())}`;
-  return link;
-}
 
 /** Computed screening link for the logged-in admin, used by the Test button.
  * When rawUrl is set, tests that unsaved input instead of the stored link. */
@@ -428,7 +399,7 @@ export async function getScreeningTestLink(organizationId: string, rawUrl?: stri
 
   let base = (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() || DEFAULT_SCREENING_BASE;
   if (rawUrl && rawUrl.trim()) {
-    const normalized = normalizeScreeningUrl(rawUrl);
+    const normalized = normalizeCalendlyUrl(rawUrl);
     if (normalized === null) {
       return {
         success: false as const,
@@ -437,7 +408,7 @@ export async function getScreeningTestLink(organizationId: string, rawUrl?: stri
     }
     base = normalized;
   }
-  const link = buildScreeningLink(base, {
+  const link = buildBookingLink(base, 'onboarding_screening', {
     uid,
     firstName: profile?.first_name ?? '',
     lastName: profile?.last_name ?? '',

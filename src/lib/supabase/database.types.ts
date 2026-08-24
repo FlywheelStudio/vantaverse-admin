@@ -1225,6 +1225,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          consultation_url: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1236,6 +1237,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          consultation_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1247,6 +1249,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          consultation_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2105,6 +2108,7 @@ export type Database = {
           avatar_url: string | null
           certificate_url: Json | null
           consultation_completed: boolean | null
+          consultation_link: string | null
           created_at: string | null
           current_level: number | null
           current_phase: string | null
@@ -2129,6 +2133,7 @@ export type Database = {
           last_name: string | null
           last_sign_in: string | null
           loyalty_status: string | null
+          loyalty_updated_at: string | null
           max_gate_type: string | null
           max_gate_unlocked: number | null
           max_gates: number | null
@@ -2313,6 +2318,7 @@ export type Database = {
         Args: { normalized_schedule: Json[] }
         Returns: Json
       }
+      get_exercise_assignment_counts: { Args: never; Returns: Json }
       get_exercise_tags: {
         Args: { p_exercise_id: number }
         Returns: {
@@ -2333,6 +2339,7 @@ export type Database = {
         Args: { due_date: string; response: string }
         Returns: string
       }
+      get_member_filter_counts: { Args: never; Returns: Json }
       get_next_workout_date: {
         Args: {
           p_patient_override?: Json[]
@@ -2384,6 +2391,38 @@ export type Database = {
       is_pre_program_template_program_template: {
         Args: { p_program_template_id: string }
         Returns: boolean
+      }
+      list_exercises_filtered: {
+        Args: {
+          p_assignment?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_tag_ids?: number[]
+          p_type?: string
+        }
+        Returns: Json
+      }
+      list_profiles_filtered: {
+        Args: {
+          p_due?: string
+          p_joined?: string
+          p_last_active?: string
+          p_org_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_physiologist?: string
+          p_program?: string
+          p_role?: string
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
+          p_team_id?: string
+        }
+        Returns: Json
       }
       list_tag_categories: {
         Args: never
@@ -2517,10 +2556,15 @@ export type Database = {
         Returns: Json
       }
       process_scheduled_notifications: { Args: never; Returns: Json }
+      profile_consultation_link: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       profile_local_date: {
         Args: { p_at?: string; p_tz: string }
         Returns: string
       }
+      profile_screening_link: { Args: { p_user_id: string }; Returns: string }
       pushfire_archive_orphaned_queue_messages: { Args: never; Returns: Json }
       pushfire_archive_user_queue_messages: {
         Args: { p_user_id: string }
@@ -2699,6 +2743,7 @@ export type Database = {
         Args: { p_notes?: string; p_schedule: Json }
         Returns: Json
       }
+      url_encode: { Args: { p_text: string }; Returns: string }
       user_can_access_chat_folder: {
         Args: { p_object_name: string }
         Returns: boolean
