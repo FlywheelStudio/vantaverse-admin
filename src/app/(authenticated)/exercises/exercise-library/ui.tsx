@@ -12,6 +12,8 @@ import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { useDebounce } from '@/hooks/use-debounce';
+import { ActiveFilterPills, useFilterDraft } from '@/components/filters';
+import type { ActiveFilter } from '@/components/filters';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import {
@@ -26,22 +28,44 @@ function formatTypeLabel(type: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+interface ExercisesFilters {
+  assignment: AssignmentFilter;
+  type: string;
+  tagIds: number[];
+}
+
+const DEFAULT_EXERCISES_FILTERS: ExercisesFilters = {
+  assignment: 'all',
+  type: 'all',
+  tagIds: [],
+};
+
+function removeFilter(state: ExercisesFilters, id: string): ExercisesFilters {
+  if (id === 'assignment') return { ...state, assignment: 'all' };
+  if (id === 'type') return { ...state, type: 'all' };
+  if (id.startsWith('tag-')) {
+    const tagId = Number(id.slice(4));
+    return { ...state, tagIds: state.tagIds.filter((t) => t !== tagId) };
+  }
+  return state;
+}
+
 interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
 }
 
 export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): React.ReactElement {
   const [searchValue, setSearchValue] = useState('');
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-
-  // Staged state for filter panel draft
-  const [stagedAssignment, setStagedAssignment] = useState<AssignmentFilter>('all');
-  const [stagedType, setStagedType] = useState<string>('all');
-  const [stagedTagIds, setStagedTagIds] = useState<number[]>([]);
-
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const {
+    applied: filters,
+    staged,
+    setStaged,
+    open: filtersOpen,
+    setOpen: setFiltersOpen,
+    apply: handleApplyFilters,
+    clearAll: clearAllDraft,
+    removePill: removeFiltersPill,
+  } = useFilterDraft<ExercisesFilters>({ initial: DEFAULT_EXERCISES_FILTERS, removeFilter });
   const pageSize = 20;
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
@@ -66,9 +90,9 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
     fetchNextPage,
   } = useExercisesFiltered({
     search: debouncedSearch,
-    type: typeFilter !== 'all' ? typeFilter : undefined,
-    assignment: assignmentFilter,
-    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    type: filters.type !== 'all' ? filters.type : undefined,
+    assignment: filters.assignment,
+    tagIds: filters.tagIds.length > 0 ? filters.tagIds : undefined,
     pageSize,
     sortBy: 'created_at',
     sortOrder: 'desc',
@@ -113,90 +137,55 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   );
   // Staged filter helpers
   const handleOpenFilters = (): void => {
-    setStagedAssignment(assignmentFilter);
-    setStagedType(typeFilter);
-    setStagedTagIds(selectedTagIds);
+    setStaged(filters);
     setFiltersOpen(true);
   };
 
-  const handleApplyFilters = (): void => {
-    setAssignmentFilter(stagedAssignment);
-    setTypeFilter(stagedType);
-    setSelectedTagIds(stagedTagIds);
-    setFiltersOpen(false);
-  };
-  const handleClearFilters = (): void => {
-    setStagedAssignment('all');
-    setStagedType('all');
-    setStagedTagIds([]);
-    setAssignmentFilter('all');
-    setTypeFilter('all');
-    setSelectedTagIds([]);
-    setFiltersOpen(false);
-  };
-  const activeFilterChips = useMemo(() => {
-    const chips: Array<{ id: string; label: string; type: 'assignment' | 'type' | 'tag' | 'search'; tagId?: number }> = [];
+  const activeFilters: ActiveFilter[] = useMemo(() => {
+    const pills: ActiveFilter[] = [];
 
     if (debouncedSearch.trim()) {
-      chips.push({ id: 'search', label: `"${debouncedSearch.trim()}"`, type: 'search' });
+      pills.push({ id: 'search', label: `"${debouncedSearch.trim()}"` });
     }
-    if (assignmentFilter !== 'all') {
-      chips.push({
+    if (filters.assignment !== 'all') {
+      pills.push({
         id: 'assignment',
-        label: assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned',
-        type: 'assignment',
+        label: filters.assignment === 'unassigned' ? 'Unassigned' : 'Assigned',
       });
     }
-    if (typeFilter !== 'all') {
-      chips.push({
-        id: 'type',
-        label: formatTypeLabel(typeFilter),
-        type: 'type',
-      });
+    if (filters.type !== 'all') {
+      pills.push({ id: 'type', label: formatTypeLabel(filters.type) });
     }
-    for (const tagId of selectedTagIds) {
+    for (const tagId of filters.tagIds) {
       const tag = tagsMap.get(tagId);
       const label = tag ? `${tag.category}: ${tag.name}` : `Tag #${tagId}`;
-      chips.push({
-        id: `tag-${tagId}`,
-        label,
-        type: 'tag',
-        tagId,
-      });
+      pills.push({ id: `tag-${tagId}`, label });
     }
 
-    return chips;
-  }, [assignmentFilter, typeFilter, selectedTagIds, debouncedSearch, tagsMap]);
+    return pills;
+  }, [filters, debouncedSearch, tagsMap]);
 
-  const panelActiveCount = useMemo(() => {
-    let count = 0;
-    if (assignmentFilter !== 'all') count += 1;
-    if (typeFilter !== 'all') count += 1;
-    count += selectedTagIds.length;
-    return count;
-  }, [assignmentFilter, typeFilter, selectedTagIds]);
+  const panelActiveCount = useMemo(
+    () =>
+      (filters.assignment !== 'all' ? 1 : 0) +
+      (filters.type !== 'all' ? 1 : 0) +
+      filters.tagIds.length,
+    [filters],
+  );
 
-  const stagedActiveCount = useMemo(() => {
-    let count = 0;
-    if (stagedAssignment !== 'all') count += 1;
-    if (stagedType !== 'all') count += 1;
-    count += stagedTagIds.length;
-    return count;
-  }, [stagedAssignment, stagedType, stagedTagIds]);
+  const stagedActiveCount = useMemo(
+    () =>
+      (staged.assignment !== 'all' ? 1 : 0) +
+      (staged.type !== 'all' ? 1 : 0) +
+      staged.tagIds.length,
+    [staged],
+  );
 
-  const handleRemoveChip = (chip: { type: string; tagId?: number }): void => {
-    if (chip.type === 'search') {
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') {
       setSearchValue('');
-    } else if (chip.type === 'assignment') {
-      setAssignmentFilter('all');
-      setStagedAssignment('all');
-    } else if (chip.type === 'type') {
-      setTypeFilter('all');
-      setStagedType('all');
-    } else if (chip.type === 'tag' && chip.tagId !== undefined) {
-      const next = selectedTagIds.filter((id) => id !== chip.tagId);
-      setSelectedTagIds(next);
-      setStagedTagIds(next);
+    } else {
+      removeFiltersPill(id);
     }
   };
   const handleCardClick = (exercise: Exercise): void => {
@@ -233,15 +222,15 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
             activeCount={stagedActiveCount}
-            assignmentFilter={stagedAssignment}
-            onAssignmentFilterChange={setStagedAssignment}
+            assignmentFilter={staged.assignment}
+            onAssignmentFilterChange={(value) => setStaged((s) => ({ ...s, assignment: value }))}
             assignmentCounts={assignmentCounts}
-            typeFilter={stagedType}
-            onTypeFilterChange={setStagedType}
+            typeFilter={staged.type}
+            onTypeFilterChange={(value) => setStaged((s) => ({ ...s, type: value }))}
             typeOptions={typeOptions}
-            selectedTagIds={stagedTagIds}
-            onSelectedTagIdsChange={setStagedTagIds}
-            onClear={handleClearFilters}
+            selectedTagIds={staged.tagIds}
+            onSelectedTagIdsChange={(tagIds) => setStaged((s) => ({ ...s, tagIds }))}
+            onClear={clearAllDraft}
             onApply={handleApplyFilters}
           />
         </div>
@@ -259,31 +248,15 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
         </span>
       </div>
 
-      {activeFilterChips.length > 0 ? (
-        <div className="row" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {activeFilterChips.map((chip) => (
-            <span key={chip.id} className="tag tag-b">
-              {chip.label}
-              <button
-                type="button"
-                aria-label={`Remove ${chip.label}`}
-                onClick={() => handleRemoveChip(chip)}
-              >
-                <Icon name="X" size={13} style={{ strokeWidth: 2.5 }} />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              setSearchValue('');
-              handleClearFilters();
-            }}
-          >
-            Clear all
-          </button>
-          <span className="sp mut" style={{ fontSize: 'var(--text-sm)' }}>
+      <ActiveFilterPills
+        pills={activeFilters}
+        onRemove={handleRemovePill}
+        onClearAll={() => {
+          setSearchValue('');
+          clearAllDraft();
+        }}
+        meta={
+          <span>
             Showing{' '}
             <b className="mono" style={{ color: 'var(--text-body)' }}>
               {exercises.length}
@@ -293,8 +266,8 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
               {totalCount}
             </b>
           </span>
-        </div>
-      ) : null}
+        }
+      />
 
       {isLoading ? (
         <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}>
