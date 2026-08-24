@@ -26,7 +26,7 @@ export type SuperAdminGroupUser = {
   role: 'unassigned' | 'physician';
 };
 
-export type GroupProgramMember = {
+type GroupProgramMember = {
   assignment_id: string;
   user_id: string;
   name: string;
