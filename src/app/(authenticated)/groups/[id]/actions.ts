@@ -282,3 +282,102 @@ export async function removeMemberFromOrganization(
     data: undefined,
   };
 }
+
+const DEFAULT_SCREENING_BASE =
+  'https://calendly.com/movebetter-medvanta/vantamotion-screening-app-pilot';
+
+/**
+ * Validate + normalize a pasted Calendly event link.
+ * Returns '' for empty input, the trimmed URL when valid, null when invalid.
+ */
+function normalizeScreeningUrl(raw: string): string | null {
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed);
+    const hostOk =
+      url.protocol === 'https:' &&
+      (url.hostname === 'calendly.com' || url.hostname.endsWith('.calendly.com'));
+    return hostOk ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateOrganizationScreeningUrl(
+  organizationId: string,
+  rawUrl: string,
+) {
+  const normalized = normalizeScreeningUrl(rawUrl);
+  if (normalized === null) {
+    return {
+      success: false as const,
+      error: 'Enter a valid https://calendly.com event link.',
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('organizations')
+    .update({ screening_url: normalized || null })
+    .eq('id', organizationId);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: `Failed to save screening link: ${error.message}`,
+    };
+  }
+
+  return { success: true as const, data: undefined };
+}
+
+function buildScreeningLink(
+  base: string,
+  user: { uid: string; firstName: string; lastName: string; email: string },
+): string {
+  const sep = base.includes('?') ? '&' : '?';
+  const first = user.firstName.trim();
+  const last = user.lastName.trim();
+  const name = first && last ? `${first} ${last}` : first || last;
+  let link = `${base}${sep}utm_term=${encodeURIComponent(user.uid)}&utm_content=onboarding_screening`;
+  if (name) link += `&name=${encodeURIComponent(name)}`;
+  if (first) link += `&first_name=${encodeURIComponent(first)}`;
+  if (last) link += `&last_name=${encodeURIComponent(last)}`;
+  if (user.email.trim()) link += `&email=${encodeURIComponent(user.email.trim())}`;
+  return link;
+}
+
+/** Computed screening link for the logged-in admin, used by the Test button. */
+export async function getScreeningTestLink(organizationId: string) {
+  const supabase = await createClient();
+
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) {
+    return { success: false as const, error: 'Not signed in.' };
+  }
+
+  const [{ data: org }, { data: profile }] = await Promise.all([
+    supabase.from('organizations').select('screening_url').eq('id', organizationId).single(),
+    supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('id', uid)
+      .single(),
+  ]);
+
+  if (!org && !profile) {
+    return { success: false as const, error: 'Failed to load screening test data.' };
+  }
+
+  const base = (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() || DEFAULT_SCREENING_BASE;
+  const link = buildScreeningLink(base, {
+    uid,
+    firstName: profile?.first_name ?? '',
+    lastName: profile?.last_name ?? '',
+    email: profile?.email ?? '',
+  });
+
+  return { success: true as const, data: link };
+}

@@ -4,9 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   getUsersWithStats,
   getUserProfileById,
+  getMembersFiltered,
+  getMemberFilterCounts,
 } from '@/app/(authenticated)/users/actions';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import type { MemberFilterCounts } from '@/lib/supabase/queries/profiles';
 
 export function useUsers(
   filters?: {
@@ -37,6 +40,78 @@ export function useUsers(
       return result.data;
     },
     initialData,
+  });
+}
+
+export interface MembersQueryFilters {
+  search?: string;
+  role?: 'patient' | 'admin';
+  organization_id?: string;
+  team_id?: string;
+  status?: string;
+  program?: string;
+  physiologist?: string | null;
+  lastActive?: string;
+  joined?: string;
+  due?: string;
+}
+
+/** Members fetched through the `list_profiles_filtered` RPC. */
+export function useMembersFiltered(filters: MembersQueryFilters, initialData?: ProfileWithStats[]) {
+  const queryKey = [
+    'members-filtered',
+    filters.search ?? null,
+    filters.role ?? null,
+    filters.organization_id ?? null,
+    filters.team_id ?? null,
+    filters.status ?? null,
+    filters.program ?? null,
+    filters.physiologist ?? null,
+    filters.lastActive ?? null,
+    filters.joined ?? null,
+    filters.due ?? null,
+  ];
+
+  return useQuery<ProfileWithStats[], Error>({
+    queryKey,
+    queryFn: async () => {
+      const result = await getMembersFiltered({
+        search: filters.search,
+        role: filters.role,
+        organizationId: filters.organization_id,
+        teamId: filters.team_id,
+        status: filters.status,
+        program: filters.program,
+        physiologist: filters.physiologist,
+        lastActive: filters.lastActive,
+        joined: filters.joined,
+        due: filters.due,
+        pageSize: 500,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data.data;
+    },
+    initialData,
+  });
+}
+
+/** Facet counts for the members filter panel. */
+export function useMemberFilterCounts() {
+  return useQuery<MemberFilterCounts, Error>({
+    queryKey: ['member-filter-counts'],
+    queryFn: async () => {
+      const result = await getMemberFilterCounts();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
   });
 }
 

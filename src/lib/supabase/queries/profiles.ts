@@ -11,8 +11,28 @@ import {
   type ProfileWithStats,
 } from '../schemas/profiles';
 import { MemberRole } from '../schemas/organization-members';
+import type { PaginatedResult } from './exercise-templates';
 
 export type SetOnboardingStateTarget = 'screening' | 'consultation';
+
+/** Shape returned by the `get_member_filter_counts` RPC. */
+export interface MemberFilterCounts {
+  roles: { patient: number; admin: number };
+  status: {
+    pending: number;
+    invited: number;
+    active: number;
+    assigned: number;
+  };
+  program: {
+    on_program: number;
+    completed: number;
+    pre_program: number;
+    not_assigned: number;
+  };
+  physiologists: Array<{ name: string; count: number }>;
+  unassigned_physiologist: number;
+}
 
 export type SetOnboardingStateResult = void;
 
@@ -1097,5 +1117,88 @@ export class ProfilesQuery extends SupabaseQuery {
     }
 
     return { success: true, data: data as unknown as SetOnboardingStateResult };
+  }
+
+  /**
+   * Get paginated members with multi-faceted filtering via
+   * the `list_profiles_filtered` RPC (search, role, org, team,
+   * status, program state, physiologist, last active, joined, due).
+   */
+  public async getListFiltered(params: {
+    search?: string;
+    role?: 'patient' | 'admin';
+    organizationId?: string;
+    teamId?: string;
+    status?: string;
+    program?: string;
+    physiologist?: string | null;
+    lastActive?: string;
+    joined?: string;
+    due?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<SupabaseSuccess<PaginatedResult<ProfileWithStats>> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase.rpc('list_profiles_filtered', {
+      p_search: params.search || undefined,
+      p_role: params.role ?? 'patient',
+      p_org_id: params.organizationId || undefined,
+      p_team_id: params.teamId || undefined,
+      p_status: params.status || 'all',
+      p_program: params.program || 'all',
+      p_physiologist: params.physiologist || undefined,
+      p_last_active: params.lastActive || 'all',
+      p_joined: params.joined || 'all',
+      p_due: params.due || 'all',
+      p_page: params.page ?? 1,
+      p_page_size: params.pageSize ?? 500,
+      p_sort_by: params.sortBy ?? 'created_at',
+      p_sort_order: params.sortOrder ?? 'desc',
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(error, 'Failed to get filtered members');
+    }
+
+    const payload = (data as { data: unknown[]; count: number }) || {
+      data: [],
+      count: 0,
+    };
+
+    const parsedData = profileWithStatsSchema.array().safeParse(payload.data ?? []);
+    if (!parsedData.success) {
+      return this.parseResponseZodError(parsedData.error);
+    }
+
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 500;
+    const total = payload.count ?? 0;
+
+    return {
+      success: true,
+      data: {
+        data: parsedData.data,
+        page,
+        pageSize,
+        total,
+        hasMore: page * pageSize < total,
+      },
+    };
+  }
+
+  /** Facet counts for the members filter panel via `get_member_filter_counts`. */
+  public async getFilterCounts(): Promise<SupabaseSuccess<MemberFilterCounts> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase.rpc('get_member_filter_counts');
+
+    if (error) {
+      return this.parseResponsePostgresError(error, 'Failed to get member filter counts');
+    }
+
+    return { success: true, data: data as MemberFilterCounts };
   }
 }

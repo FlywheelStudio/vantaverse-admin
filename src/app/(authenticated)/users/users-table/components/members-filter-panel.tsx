@@ -1,7 +1,6 @@
 'use client';
 
 import { Icon } from '@/components/medvanta';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
 type MembersStatusFilter = 'all' | 'pending' | 'invited' | 'active' | 'assigned';
 type MembersProgramFilter =
@@ -12,43 +11,75 @@ type MembersProgramFilter =
   | 'pre_program';
 type MembersLastActiveFilter = 'all' | '7d' | '30d' | '90d' | 'never';
 type MembersJoinedFilter = 'all' | 'month' | 'quarter' | 'year';
+type MembersDueFilter = 'all' | 'due' | 'overdue';
 
-export interface MembersExtraFilters {
+/** Full facet state applied server-side through `list_profiles_filtered`. */
+export interface MembersFilters {
+  organization_id?: string;
+  team_id?: string;
   status: MembersStatusFilter;
   program: MembersProgramFilter;
   physiologist: string | null;
   lastActive: MembersLastActiveFilter;
   joined: MembersJoinedFilter;
+  due: MembersDueFilter;
 }
 
-export const DEFAULT_MEMBERS_EXTRA_FILTERS: MembersExtraFilters = {
+export const DEFAULT_MEMBERS_FILTERS: MembersFilters = {
   status: 'all',
   program: 'all',
   physiologist: null,
   lastActive: 'all',
   joined: 'all',
+  due: 'all',
 };
 
-export interface PhysiologistOption {
-  label: string;
-  count: number;
+export function countActiveFilters(filters: MembersFilters): number {
+  let count = 0;
+  if (filters.organization_id) count += 1;
+  if (filters.team_id) count += 1;
+  if (filters.status !== 'all') count += 1;
+  if (filters.program !== 'all') count += 1;
+  if (filters.physiologist) count += 1;
+  if (filters.lastActive !== 'all') count += 1;
+  if (filters.joined !== 'all') count += 1;
+  if (filters.due !== 'all') count += 1;
+  return count;
+}
+
+/** Remove one pill (by id) from an applied filter state. */
+export function removeMembersFilter(state: MembersFilters, id: string): MembersFilters {
+  switch (id) {
+    case 'org':
+      return { ...state, organization_id: undefined, team_id: undefined };
+    case 'team':
+      return { ...state, team_id: undefined };
+    case 'status':
+      return { ...state, status: 'all' };
+    case 'program':
+      return { ...state, program: 'all' };
+    case 'physiologist':
+      return { ...state, physiologist: null };
+    case 'lastActive':
+      return { ...state, lastActive: 'all' };
+    case 'joined':
+      return { ...state, joined: 'all' };
+    case 'due':
+      return { ...state, due: 'all' };
+    default:
+      return state;
+  }
 }
 
 interface MembersFilterPanelProps {
   open: boolean;
   onClose: () => void;
   activeCount: number;
-  /** Role chip selection (wired). */
-  role: 'patient' | 'admin' | null;
-  onRoleChange: (role: 'patient' | 'admin' | null) => void;
-  memberCount?: number;
-  adminCount?: number;
-  /** Program deadline (wired). */
-  dueFilter: 'all' | 'overdue' | 'due_soon';
-  onDueFilterChange: (v: 'all' | 'overdue' | 'due_soon') => void;
-  extraFilters: MembersExtraFilters;
-  onExtraFiltersChange: (filters: MembersExtraFilters) => void;
-  physiologistOptions: PhysiologistOption[];
+  /** Staged filter state shown inside the panel. */
+  filters: MembersFilters;
+  onChange: (next: MembersFilters) => void;
+  physiologistOptions: Array<{ name: string; count: number }>;
+  unassignedPhysiologist?: number;
   onClear: () => void;
   onApply: () => void;
   /** Optional live org filter UI injected into Group section. */
@@ -71,7 +102,6 @@ function SingleSelectGroup<T extends string>({
   allValue,
   options,
   onChange,
-  trailing,
 }: {
   title: string;
   hint?: string;
@@ -79,7 +109,6 @@ function SingleSelectGroup<T extends string>({
   allValue: T;
   options: Array<{ label: string; value: T; count?: number }>;
   onChange: (value: T) => void;
-  trailing?: React.ReactNode;
 }): React.ReactElement {
   return (
     <div className="fgrp">
@@ -110,7 +139,6 @@ function SingleSelectGroup<T extends string>({
             </label>
           );
         })}
-        {trailing}
       </div>
     </div>
   );
@@ -118,31 +146,27 @@ function SingleSelectGroup<T extends string>({
 
 /**
  * HTML `filterPanel` chrome for members.
- * Wired: Role chips, Program deadline, Status, Program, Physiologist, Last active, Joined.
- * Role → Physiologist chip remains a placeholder — no such role exists on organization_role.
+ * Wired: Group (org/team slot), Program deadline, Status, Program, Physiologist, Last active, Joined.
  */
 export function MembersFilterPanel({
   open,
   onClose,
   activeCount,
-  role,
-  onRoleChange,
-  memberCount = 0,
-  adminCount = 0,
-  dueFilter,
-  onDueFilterChange,
-  extraFilters,
-  onExtraFiltersChange,
+  filters,
+  onChange,
   physiologistOptions,
+  unassignedPhysiologist,
   onClear,
   onApply,
   groupSlot,
 }: MembersFilterPanelProps): React.ReactElement | null {
   if (!open) return null;
 
-  const dueOpts = [
-    { label: 'Overdue', value: 'overdue' as const, count: 6 },
-    { label: 'Due within 2 working days', value: 'due_soon' as const, count: 5 },
+  const physioOpts = [
+    ...physiologistOptions.map((o) => ({ label: o.name, value: o.name, count: o.count })),
+    ...(unassignedPhysiologist && unassignedPhysiologist > 0
+      ? [{ label: 'Unassigned', value: 'Unassigned', count: unassignedPhysiologist }]
+      : []),
   ];
 
   return (
@@ -190,50 +214,9 @@ export function MembersFilterPanel({
           </div>
         ) : null}
 
-        <div className="fgrp">
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Role
-            </span>
-          </div>
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            {(
-              [
-                { label: 'Member', value: 'patient' as const, count: memberCount },
-                { label: 'Admin', value: 'admin' as const, count: adminCount },
-              ] as const
-            ).map((c) => {
-              const on = role === c.value;
-              return (
-                <button
-                  key={c.label}
-                  type="button"
-                  className={`btn btn-sm ${on ? 'btn-pri' : 'btn-sec'}`}
-                  style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-                  onClick={() => onRoleChange(on ? null : c.value)}
-                >
-                  {on ? <Icon name="Check" size={13} /> : null}
-                  {c.label}
-                  <span style={{ opacity: 0.6, marginLeft: 2 }} className="mono">
-                    {c.count}
-                  </span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              className="btn btn-sm btn-sec"
-              style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
-              onClick={() => toastUnavailable('Physiologist role filter')}
-            >
-              Physiologist
-            </button>
-          </div>
-        </div>
-
         <SingleSelectGroup
           title="Status"
-          value={extraFilters.status}
+          value={filters.status}
           allValue="all"
           options={[
             { label: 'Pending', value: 'pending' },
@@ -241,41 +224,24 @@ export function MembersFilterPanel({
             { label: 'Active', value: 'active' },
             { label: 'Assigned', value: 'assigned' },
           ]}
-          onChange={(status) => onExtraFiltersChange({ ...extraFilters, status })}
+          onChange={(status) => onChange({ ...filters, status })}
         />
 
-        <div className="fgrp">
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Program deadline
-            </span>
-            <span className="sp mut" style={{ fontSize: 10 }}>
-              5 working days from consultation
-            </span>
-          </div>
-          <div>
-            {dueOpts.map((o) => {
-              const on = dueFilter === o.value;
-              return (
-                <label key={o.label} className="fopt">
-                  <button
-                    type="button"
-                    onClick={() => onDueFilterChange(on ? 'all' : o.value)}
-                    style={{ display: 'contents', cursor: 'pointer' }}
-                  >
-                    <CheckMark on={on} />
-                    <span>{o.label}</span>
-                    <span className="n">{o.count}</span>
-                  </button>
-                </label>
-              );
-            })}
-          </div>
-        </div>
+        <SingleSelectGroup
+          title="Program deadline"
+          hint="5 working days from consultation"
+          value={filters.due}
+          allValue="all"
+          options={[
+            { label: 'Overdue', value: 'overdue' },
+            { label: 'Due later', value: 'due' },
+          ]}
+          onChange={(due) => onChange({ ...filters, due })}
+        />
 
         <SingleSelectGroup
           title="Program"
-          value={extraFilters.program}
+          value={filters.program}
           allValue="all"
           options={[
             { label: 'On a program', value: 'on_program' },
@@ -283,49 +249,26 @@ export function MembersFilterPanel({
             { label: 'Pre-program only', value: 'pre_program' },
             { label: 'Not assigned', value: 'not_assigned' },
           ]}
-          onChange={(program) => onExtraFiltersChange({ ...extraFilters, program })}
+          onChange={(program) => onChange({ ...filters, program })}
         />
 
-        <div className="fgrp">
-          <div className="row" style={{ marginBottom: 10 }}>
-            <span className="fgrp-t" style={{ margin: 0 }}>
-              Physiologist
-            </span>
-          </div>
-          <div>
-            {physiologistOptions.length === 0 ? (
-              <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
-                No physiologists assigned yet
-              </span>
-            ) : (
-              physiologistOptions.map((o) => {
-                const on = extraFilters.physiologist === o.label;
-                return (
-                  <label key={o.label} className="fopt">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onExtraFiltersChange({
-                          ...extraFilters,
-                          physiologist: on ? null : o.label,
-                        })
-                      }
-                      style={{ display: 'contents', cursor: 'pointer' }}
-                    >
-                      <CheckMark on={on} />
-                      <span>{o.label}</span>
-                      <span className="n">{o.count}</span>
-                    </button>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <SingleSelectGroup
+          title="Physiologist"
+          value={filters.physiologist ?? ('all' as string)}
+          allValue={'all' as string}
+          options={
+            physioOpts.length > 0
+              ? physioOpts
+              : [{ label: 'No physiologists assigned yet', value: 'none' }]
+          }
+          onChange={(value) =>
+            onChange({ ...filters, physiologist: value === 'all' ? null : value })
+          }
+        />
 
         <SingleSelectGroup
           title="Last active"
-          value={extraFilters.lastActive}
+          value={filters.lastActive}
           allValue="all"
           options={[
             { label: '7 days', value: '7d' },
@@ -333,39 +276,19 @@ export function MembersFilterPanel({
             { label: '90 days', value: '90d' },
             { label: 'Never', value: 'never' },
           ]}
-          onChange={(lastActive) => onExtraFiltersChange({ ...extraFilters, lastActive })}
-          trailing={
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
-              onClick={() => toastUnavailable('Last active: Custom date')}
-            >
-              <Icon name="Calendar" size={13} /> Custom…
-            </button>
-          }
+          onChange={(lastActive) => onChange({ ...filters, lastActive })}
         />
 
         <SingleSelectGroup
           title="Joined"
-          value={extraFilters.joined}
+          value={filters.joined}
           allValue="all"
           options={[
             { label: 'This month', value: 'month' },
             { label: 'This quarter', value: 'quarter' },
             { label: 'This year', value: 'year' },
           ]}
-          onChange={(joined) => onExtraFiltersChange({ ...extraFilters, joined })}
-          trailing={
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ height: 28, padding: '0 9px', fontSize: 'var(--text-xs)' }}
-              onClick={() => toastUnavailable('Joined: Custom date')}
-            >
-              <Icon name="Calendar" size={13} /> Custom…
-            </button>
-          }
+          onChange={(joined) => onChange({ ...filters, joined })}
         />
       </div>
 

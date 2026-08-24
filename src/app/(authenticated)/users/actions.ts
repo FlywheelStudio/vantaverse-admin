@@ -80,6 +80,24 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
+ * Get members filtered via the `list_profiles_filtered` RPC.
+ */
+export async function getMembersFiltered(params: Parameters<
+  ProfilesQuery['getListFiltered']
+>[0]) {
+  const query = new ProfilesQuery();
+  return query.getListFiltered(params);
+}
+
+/**
+ * Get facet counts for the members filter panel.
+ */
+export async function getMemberFilterCounts() {
+  const query = new ProfilesQuery();
+  return query.getFilterCounts();
+}
+
+/**
  * Get user profile by ID
  */
 export async function getUserProfileById(id: string) {

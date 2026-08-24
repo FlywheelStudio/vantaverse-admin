@@ -3,24 +3,6 @@
 import { PlaceholderBlock } from '@/components/medvanta/shell';
 import { Icon } from '@/components/medvanta';
 
-/** Scheduling tab placeholder — no Calendly backend. */
-export function GroupSchedulingPlaceholder(): React.ReactElement {
-  return (
-    <PlaceholderBlock title="Scheduling">
-      <div className="empty" style={{ padding: '32px 24px' }}>
-        <div className="ei">
-          <Icon name="CalendarDays" size={24} />
-        </div>
-        <div className="et">Scheduling links not available</div>
-        <div className="es">
-          Screening and consultation booking URLs will appear here when the scheduling
-          integration is wired.
-        </div>
-      </div>
-    </PlaceholderBlock>
-  );
-}
-
 /** Settings tab placeholder — domain/logo/booking settings omitted per spec. */
 export function GroupSettingsPlaceholder({
   groupName,

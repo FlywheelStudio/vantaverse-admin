@@ -1232,6 +1232,7 @@ export type Database = {
           is_super_admin: boolean | null
           name: string
           picture_url: string | null
+          screening_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1242,6 +1243,7 @@ export type Database = {
           is_super_admin?: boolean | null
           name: string
           picture_url?: string | null
+          screening_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1252,6 +1254,7 @@ export type Database = {
           is_super_admin?: boolean | null
           name?: string
           picture_url?: string | null
+          screening_url?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2141,6 +2144,7 @@ export type Database = {
           program_due_date: string | null
           program_weeks: number | null
           screening_completed: boolean | null
+          screening_link: string | null
           status: string | null
           updated_at: string | null
         }

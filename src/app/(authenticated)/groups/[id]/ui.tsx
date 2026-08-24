@@ -21,10 +21,8 @@ import {
 } from './hooks/use-group-mutations';
 import { GroupHeroCard } from './partials/group-hero-card';
 import { GroupProgramsPanel } from './partials/group-programs-panel';
-import {
-  GroupSchedulingPlaceholder,
-  GroupSettingsPlaceholder,
-} from './partials/group-tab-placeholders';
+import { GroupSettingsPlaceholder } from './partials/group-tab-placeholders';
+import { GroupSchedulingCard } from './partials/group-scheduling-card';
 import { MembersTable } from './partials/members-table';
 import type { GroupMemberRow } from './partials/members-table-columns';
 import type { GroupMemberWithProgram, SuperAdminGroupUser } from './actions';
@@ -222,7 +220,9 @@ export function GroupDetailsPageUI({
         {activeTab === 'programs' ? (
           <GroupProgramsPanel programs={programRows} groupName={org.name} />
         ) : null}
-        {activeTab === 'scheduling' ? <GroupSchedulingPlaceholder /> : null}
+        {activeTab === 'scheduling' ? (
+          <GroupSchedulingCard organizationId={org.id} initialScreeningUrl={org.screening_url ?? null} />
+        ) : null}
         {activeTab === 'settings' ? (
           <GroupSettingsPlaceholder groupName={org.name} />
         ) : null}
