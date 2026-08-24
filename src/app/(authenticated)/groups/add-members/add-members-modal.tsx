@@ -156,6 +156,18 @@ export function AddMembersModal({
   const [selectedRole, setSelectedRole] = useState<MemberRole>(
     initialRole ?? 'patient',
   );
+
+  // Track the last intent seen. Callers set initialRole per invocation
+  // (e.g. 'admin' to assign a physiologist); when it changes we adjust
+  // the role during render — before commit, so no stale frame shows.
+  const [lastIntent, setLastIntent] = useState<MemberRole | undefined>(
+    initialRole,
+  );
+  if (initialRole !== lastIntent) {
+    setLastIntent(initialRole);
+    setSelectedRole(initialRole ?? 'patient');
+  }
+
   const [viewUnassigned, setViewUnassigned] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([]);
@@ -332,6 +344,8 @@ export function AddMembersModal({
           ? 'Replace physiologist'
           : 'Assign physiologist';
 
+  // Physiologist-assignment invocations lock the modal to the admin role.
+  const isPhysiologistIntent = initialRole === 'admin';
   const isMemberRole = selectedRole === 'patient';
   const isPhysiologistRole = selectedRole === 'admin';
 
@@ -369,56 +383,60 @@ export function AddMembersModal({
         </>
       }
     >
-      <label className="lbl" style={{ marginBottom: 9 }}>
-        Add them as
-      </label>
-      <div className="g g2" style={{ gap: 11, marginBottom: 18 }}>
-        <button
-          type="button"
-          className={cn('choice', isMemberRole && 'on')}
-          onClick={() => setSelectedRole('patient')}
-        >
-          <span className={cn('rd', isMemberRole && 'on')}>
-            {isMemberRole ? <i /> : null}
-          </span>
-          <span>
-            <span className="ct">Member</span>
-            <span className="cd">
-              Follows a program, appears in completion metrics.
-            </span>
-          </span>
-        </button>
-
-        <Tooltip
-          label={
-            isPhysiologistDisabled
-              ? 'Physiologist is managed at organization level and applies to all teams in the organization'
-              : 'Co-manages the group and can edit programs.'
-          }
-        >
-          <button
-            type="button"
-            className={cn('choice', isPhysiologistRole && 'on')}
-            onClick={() => !isPhysiologistDisabled && setSelectedRole('admin')}
-            disabled={isPhysiologistDisabled}
-            style={
-              isPhysiologistDisabled
-                ? { opacity: 0.6, cursor: 'not-allowed' }
-                : undefined
-            }
-          >
-            <span className={cn('rd', isPhysiologistRole && 'on')}>
-              {isPhysiologistRole ? <i /> : null}
-            </span>
-            <span>
-              <span className="ct">Physiologist</span>
-              <span className="cd">
-                Co-manages the group and can edit programs.
+      {!isPhysiologistIntent ? (
+        <>
+          <label className="lbl" style={{ marginBottom: 9 }}>
+            Add them as
+          </label>
+          <div className="g g2" style={{ gap: 11, marginBottom: 18 }}>
+            <button
+              type="button"
+              className={cn('choice', isMemberRole && 'on')}
+              onClick={() => setSelectedRole('patient')}
+            >
+              <span className={cn('rd', isMemberRole && 'on')}>
+                {isMemberRole ? <i /> : null}
               </span>
-            </span>
-          </button>
-        </Tooltip>
-      </div>
+              <span>
+                <span className="ct">Member</span>
+                <span className="cd">
+                  Follows a program, appears in completion metrics.
+                </span>
+              </span>
+            </button>
+
+            <Tooltip
+              label={
+                isPhysiologistDisabled
+                  ? 'Physiologist is managed at organization level and applies to all teams in the organization'
+                  : 'Co-manages the group and can edit programs.'
+              }
+            >
+              <button
+                type="button"
+                className={cn('choice', isPhysiologistRole && 'on')}
+                onClick={() => !isPhysiologistDisabled && setSelectedRole('admin')}
+                disabled={isPhysiologistDisabled}
+                style={
+                  isPhysiologistDisabled
+                    ? { opacity: 0.6, cursor: 'not-allowed' }
+                    : undefined
+                }
+              >
+                <span className={cn('rd', isPhysiologistRole && 'on')}>
+                  {isPhysiologistRole ? <i /> : null}
+                </span>
+                <span>
+                  <span className="ct">Physiologist</span>
+                  <span className="cd">
+                    Co-manages the group and can edit programs.
+                  </span>
+                </span>
+              </button>
+            </Tooltip>
+          </div>
+        </>
+      ) : null}
 
       <div className="ff" style={{ marginBottom: 12 }}>
         <label className="lbl" htmlFor="add-members-invite-email">

@@ -434,6 +434,8 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .lrow{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;background:var(--surface-card);transition:background var(--dur-fast);width:100%;text-align:left}
 .lrow:hover{background:var(--slate-50)}
 .lrow.on{background:var(--cyan-50)}
+.lrow .nm{display:block;font-size:var(--text-md);font-weight:var(--fw-semibold);color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .em{display:block;font-size:var(--text-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono)}
 
 /* Thumbs */
 .thmb{background:var(--slate-100);display:flex;align-items:center;justify-content:center;color:var(--slate-400);position:relative;overflow:hidden}
