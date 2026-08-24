@@ -190,6 +190,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
+  const [screeningLinkError, setScreeningLinkError] = useState(false);
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const draft = useFilterDraft<GroupsFilterState>({ initial: DEFAULT_GROUPS_FILTERS, removeFilter });
@@ -217,6 +218,15 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [data]);
+
+  const handleSaveClick = () => {
+    if (!newOrgData.screeningUrl.trim()) {
+      setScreeningLinkError(true);
+      return;
+    }
+    setScreeningLinkError(false);
+    handleSaveNewOrg();
+  };
 
   const filteredData = useMemo(() => {
     return data.filter((org) => {
@@ -385,7 +395,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                     <CreateRowImageCell />
                     <span className="fld grow">
                       <input
-                        placeholder="Organization name"
+                        placeholder="Group name"
                         value={newOrgData.name}
                         onChange={(e) =>
                           setNewOrgData((prev) => ({ ...prev, name: e.target.value }))
@@ -402,11 +412,32 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                       }
                       style={{ flex: 1, minWidth: 160 }}
                     />
+                    <span className="fld" style={{ minWidth: 220 }}>
+                      <input
+                        required
+                        type="url"
+                        placeholder="Screening link"
+                        value={newOrgData.screeningUrl}
+                        onChange={(e) => {
+                          setScreeningLinkError(false);
+                          setNewOrgData((prev) => ({ ...prev, screeningUrl: e.target.value }));
+                        }}
+                        style={
+                          screeningLinkError ? { borderColor: 'var(--danger, #dc2626)' } : undefined
+                        }
+                        aria-invalid={screeningLinkError || undefined}
+                      />
+                      {screeningLinkError ? (
+                        <span role="alert" style={{ color: 'var(--danger, #dc2626)', fontSize: 12 }}>
+                          Screening link is required.
+                        </span>
+                      ) : null}
+                    </span>
                     <button
                       type="button"
                       className="ib ib-sec ib-sq"
-                      onClick={handleSaveNewOrg}
-                      disabled={!newOrgData.name.trim() || !!uploadingImage || savingOrg}
+                      onClick={handleSaveClick}
+                      disabled={!!uploadingImage || savingOrg}
                       aria-label="Save organization"
                     >
                       <Icon name="Save" size={16} />
@@ -414,7 +445,10 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                     <button
                       type="button"
                       className="ib ib-sec ib-sq"
-                      onClick={handleCancelNewOrg}
+                      onClick={() => {
+                        setScreeningLinkError(false);
+                        handleCancelNewOrg();
+                      }}
                       disabled={!!uploadingImage || savingOrg}
                       aria-label="Cancel"
                     >

@@ -30,11 +30,13 @@ export function useCreateOrganization() {
     mutationFn: async ({
       name,
       description,
+      screeningUrl,
     }: {
       name: string;
       description?: string | null;
+      screeningUrl?: string | null;
     }) => {
-      const result = await createOrganization(name, description);
+      const result = await createOrganization(name, description, screeningUrl);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to create organization');
