@@ -21,22 +21,28 @@ import {
 } from './hooks/use-group-mutations';
 import { GroupHeroCard } from './partials/group-hero-card';
 import { GroupProgramsPanel } from './partials/group-programs-panel';
-import { GroupSettingsPlaceholder } from './partials/group-tab-placeholders';
-import { GroupSchedulingCard } from './partials/group-scheduling-card';
+import { useGroupPrograms } from './hooks/use-group-programs';
+import { GroupSettingsPanel } from './partials/group-settings-panel';
 import { MembersTable } from './partials/members-table';
 import type { GroupMemberRow } from './partials/members-table-columns';
-import type { GroupMemberWithProgram, SuperAdminGroupUser } from './actions';
+import type {
+  GroupMemberWithProgram,
+  GroupProgramRowData,
+  SuperAdminGroupUser,
+} from './actions';
 
-type GroupDetailTab = 'members' | 'programs' | 'scheduling' | 'settings';
+type GroupDetailTab = 'members' | 'programs' | 'settings';
 
 export function GroupDetailsPageUI({
   organization,
   physician,
   initialMembers,
+  initialPrograms,
 }: {
   organization: Organization;
   physician: PhysicianInfo | null;
   initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
+  initialPrograms: GroupProgramRowData[];
 }): React.ReactElement | null {
   const { data: org } = useOrganization(organization.id, organization);
   const [activeTab, setActiveTab] = useState<GroupDetailTab>('members');
@@ -72,6 +78,10 @@ export function GroupDetailsPageUI({
   const { data: superAdminUsersData } = useSuperAdminGroupUsers(
     isSuperAdminOrg ? organization.id : null,
     initialSuperAdminUsers,
+  );
+  const { data: groupPrograms = [], isLoading: programsLoading } = useGroupPrograms(
+    isSuperAdminOrg ? null : organization.id,
+    isSuperAdminOrg ? undefined : initialPrograms,
   );
   const { data: currentPhysician } = useGroupPhysiologist(
     isSuperAdminOrg ? null : organization.id,
@@ -111,17 +121,6 @@ export function GroupDetailsPageUI({
     [members],
   );
 
-  const programRows = useMemo(() => {
-    const counts = new Map<string, number>();
-    memberRows.forEach((member) => {
-      if (!member.program_name) return;
-      counts.set(member.program_name, (counts.get(member.program_name) ?? 0) + 1);
-    });
-    return Array.from(counts.entries()).map(([name, memberCount]) => ({
-      name,
-      memberCount,
-    }));
-  }, [memberRows]);
 
   const openAddUsers = (): void => {
     if (isSuperAdminOrg) {
@@ -162,8 +161,6 @@ export function GroupDetailsPageUI({
         ) : (
           <GroupHeroCard
             organization={org}
-            memberCount={members.length}
-            programCount={programRows.length}
             physician={currentPhysician ?? null}
             onAddMembers={openAddUsers}
             onAssignPhysician={openAssignPhysician}
@@ -187,15 +184,7 @@ export function GroupDetailsPageUI({
           >
             <Icon name="ClipboardList" size={16} />
             Programs
-            <span className="cnt">{programRows.length}</span>
-          </button>
-          <button
-            type="button"
-            className={activeTab === 'scheduling' ? 'on' : undefined}
-            onClick={() => setActiveTab('scheduling')}
-          >
-            <Icon name="CalendarDays" size={16} />
-            Scheduling
+            <span className="cnt">{groupPrograms.length}</span>
           </button>
           <button
             type="button"
@@ -218,13 +207,22 @@ export function GroupDetailsPageUI({
           />
         ) : null}
         {activeTab === 'programs' ? (
-          <GroupProgramsPanel programs={programRows} groupName={org.name} />
-        ) : null}
-        {activeTab === 'scheduling' ? (
-          <GroupSchedulingCard organizationId={org.id} initialScreeningUrl={org.screening_url ?? null} />
+          <GroupProgramsPanel
+            organizationId={org.id}
+            groupName={org.name}
+            members={memberRows}
+            programs={groupPrograms}
+            isLoading={programsLoading}
+          />
         ) : null}
         {activeTab === 'settings' ? (
-          <GroupSettingsPlaceholder groupName={org.name} />
+          <GroupSettingsPanel
+            groupName={org.name}
+            organizationId={org.id}
+            initialScreeningUrl={org.screening_url ?? null}
+            initialDescription={org.description ?? null}
+            pictureUrl={org.picture_url}
+          />
         ) : null}
       </div>
 

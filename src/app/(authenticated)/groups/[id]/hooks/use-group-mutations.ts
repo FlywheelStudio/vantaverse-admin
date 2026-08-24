@@ -21,6 +21,8 @@ export const groupsKeys = {
     [...groupsKeys.detail(id), 'members'] as const,
   memberIds: (id: string | null | undefined) =>
     [...groupsKeys.detail(id), 'member-ids'] as const,
+  programs: (id: string | null | undefined) =>
+    [...groupsKeys.detail(id), 'programs'] as const,
   physiologist: (id: string | null | undefined) =>
     [...groupsKeys.detail(id), 'physiologist'] as const,
   teamMembers: (teamId: string | null | undefined) =>
