@@ -8,26 +8,25 @@ import {
 } from '@/hooks/use-passignments';
 import { CreateTemplateForm } from './form';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
 import { HtmlRowMenu } from '../partials/html-toolbar';
 import { formatRelativeEdited } from '../partials/html-utils';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
-import { getTemplateMemberStats } from '@/app/(authenticated)/builder/actions';
+import {
+  useCloneProgramAssignment,
+  useDeleteProgramAssignment,
+  type ProgramTemplateMemberStats,
+  type ProgramAssignmentsPage,
+} from '@/hooks/use-passignments';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface ProgramBuilderProps {
   onTemplateSelect?: (assignment: ProgramAssignmentWithTemplate) => void;
   initialData?: {
-    pages: Array<{
-      data: ProgramAssignmentWithTemplate[];
-      page: number;
-      pageSize: number;
-      total: number;
-      hasMore: boolean;
-    }>;
+    pages: ProgramAssignmentsPage[];
     pageParams: number[];
   };
   showCreateForm?: boolean;
@@ -38,10 +37,16 @@ function ProgramTableRow({
   assignment,
   onClick,
   memberStats,
+  duplicatePending,
+  onDuplicate,
+  onDelete,
 }: {
   assignment: ProgramAssignmentWithTemplate;
   onClick: () => void;
   memberStats?: { members: number; avgCompletion: number | null };
+  duplicatePending: boolean;
+  onDuplicate: () => void;
+  onDelete: () => void;
 }): React.ReactElement | null {
   const router = useRouter();
   const template = assignment.program_template;
@@ -81,6 +86,25 @@ function ProgramTableRow({
             {template.goals ? (
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                 {template.goals}
+              </span>
+            ) : null}
+            {assignment.profiles?.email ? (
+              <span
+                className="row"
+                style={{ gap: 4, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
+              >
+                Assigned to
+                <a
+                  href={`/users/${assignment.profiles.id}`}
+                  style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    router.push(`/users/${assignment.profiles!.id}`);
+                  }}
+                >
+                  {assignment.profiles.email}
+                </a>
               </span>
             ) : null}
           </span>
@@ -133,18 +157,26 @@ function ProgramTableRow({
                   }
                 : undefined,
             },
-            { id: 'duplicate', label: 'Duplicate', onSelect: () => toastUnavailable('Duplicate') },
             {
               id: 'assign',
               label: 'Assign to members',
-              onSelect: () => toastUnavailable('Assign to members'),
+              disabled: !assignmentId || !isTemplate,
+              onSelect: () => {
+                router.push(`/builder/review-assign?id=${assignmentId}`);
+              },
             },
-            { id: 'archive', label: 'Archive', onSelect: () => toastUnavailable('Archive') },
+            {
+              id: 'duplicate',
+              label: 'Duplicate',
+              disabled: !assignmentId || duplicatePending,
+              onSelect: onDuplicate,
+            },
             {
               id: 'delete',
               label: 'Delete',
               danger: true,
-              onSelect: () => toastUnavailable('Delete'),
+              disabled: !assignmentId,
+              onSelect: onDelete,
             },
           ]}
         />
@@ -196,23 +228,44 @@ export function ProgramBuilder({
     return assignments.slice(start, start + pageSize);
   }, [assignments, safeListPage, pageSize]);
 
-  const templateIds = useMemo(
-    () =>
-      visibleAssignments
-        .map((a) => a.program_template?.id)
-        .filter((id): id is string => Boolean(id)),
-    [visibleAssignments],
-  );
+  const memberStatsByTemplate = useMemo(() => {
+    const merged: ProgramTemplateMemberStats = {};
+    for (const page of data?.pages ?? []) {
+      Object.assign(merged, page.memberStats);
+    }
+    return merged;
+  }, [data]);
 
-  const { data: memberStatsByTemplate = {} } = useQuery({
-    queryKey: ['program-template-member-stats', templateIds],
-    queryFn: async () => {
-      const result = await getTemplateMemberStats(templateIds);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-    enabled: templateIds.length > 0,
-  });
+  const cloneMutation = useCloneProgramAssignment(
+    debouncedSearch,
+    undefined,
+    pageSize,
+    showAssigned,
+  );
+  const deleteMutation = useDeleteProgramAssignment(
+    debouncedSearch,
+    undefined,
+    pageSize,
+    showAssigned,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<ProgramAssignmentWithTemplate | null>(null);
+
+  const deleteTargetName = deleteTarget?.program_template?.name ?? '';
+  const deleteTargetMembers =
+    deleteTarget?.program_template?.id && memberStatsByTemplate[deleteTarget.program_template.id]
+      ? (memberStatsByTemplate[deleteTarget.program_template.id].members ?? 0)
+      : 0;
+  const deleteTargetDescription = [
+    'This permanently removes the template and its schedule.',
+    deleteTargetMembers > 0
+      ? `It is currently used by ${deleteTargetMembers} member${
+          deleteTargetMembers === 1 ? '' : 's'
+        }; their assigned programs will stop referencing it.`
+      : null,
+    'Type the template name below to confirm.',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const visibleRangeStart = totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
   const visibleRangeEnd = Math.min(safeListPage * pageSize, totalCount);
@@ -310,7 +363,6 @@ export function ProgramBuilder({
         <CreateTemplateForm
           onSuccess={handleCreateSuccess}
           onCancel={handleCreateCancel}
-          showDates={false}
         />
       ) : null}
 
@@ -333,7 +385,7 @@ export function ProgramBuilder({
             className={showAssigned ? 'on' : undefined}
             onClick={() => handleShowAssignedChange(true)}
           >
-            All
+            Assigned
           </button>
         </span>
       </div>
@@ -373,6 +425,9 @@ export function ProgramBuilder({
                   key={assignment.id}
                   assignment={assignment}
                   onClick={() => handleRowClick(assignment)}
+                  duplicatePending={cloneMutation.isPending}
+                  onDuplicate={() => cloneMutation.mutate(assignment.id)}
+                  onDelete={() => setDeleteTarget(assignment)}
                   memberStats={
                     assignment.program_template?.id
                       ? memberStatsByTemplate[assignment.program_template.id]
@@ -411,6 +466,21 @@ export function ProgramBuilder({
           </span>
         </div>
       ) : null}
+
+      <DeleteConfirmationDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={deleteTargetName ? `Delete “${deleteTargetName}”?` : 'Delete template?'}
+        description={deleteTargetDescription}
+        confirmText={deleteTargetName || undefined}
+        onConfirm={async () => {
+          if (!deleteTarget?.id) return;
+          await deleteMutation.mutateAsync(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
     </>
   );
 }

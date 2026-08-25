@@ -4,16 +4,20 @@ import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Icon } from '@/components/medvanta';
+import { Icon, Tooltip } from '@/components/medvanta';
 import {
   getScreeningTestLink,
   updateOrganizationScreeningUrl,
   updateOrganizationDescription,
+  getConsultationTestLink,
+  updateOrganizationConsultationUrl,
 } from '../actions';
 import {
   uploadOrganizationPicture,
   updateOrganizationPicture,
 } from '@/app/(authenticated)/groups/actions';
+
+type Preview = { src: string; title: string };
 
 export function GroupSettingsPanel({
   groupName,
@@ -21,12 +25,16 @@ export function GroupSettingsPanel({
   initialScreeningUrl,
   initialDescription,
   pictureUrl,
+  initialConsultationUrl,
+  canEditConsultation,
 }: {
   groupName: string;
   organizationId: string;
   initialScreeningUrl?: string | null;
   initialDescription?: string | null;
   pictureUrl?: string | null;
+  initialConsultationUrl?: string | null;
+  canEditConsultation?: boolean;
 }): React.ReactElement {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +42,12 @@ export function GroupSettingsPanel({
   const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState(initialDescription ?? '');
   const [savingDescription, setSavingDescription] = useState(false);
-  const [testLink, setTestLink] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [consultationValue, setConsultationValue] = useState(
+    initialConsultationUrl ?? '',
+  );
+  const [savingConsultation, setSavingConsultation] = useState(false);
+  const canEditConsultationFinal = canEditConsultation === true;
   const [logoPreview, setLogoPreview] = useState<string | null>(
     pictureUrl ?? null,
   );
@@ -104,7 +117,7 @@ export function GroupSettingsPanel({
     }
   }
 
-  async function handleSave(): Promise<void> {
+  async function handleSaveScreening(): Promise<void> {
     setSaving(true);
     try {
       const result = await updateOrganizationScreeningUrl(
@@ -121,10 +134,33 @@ export function GroupSettingsPanel({
     }
   }
 
-  async function handleTest(): Promise<void> {
+  async function handleTestScreening(): Promise<void> {
     const result = await getScreeningTestLink(organizationId, value);
     if (result.success) {
-      setTestLink(result.data);
+      setPreview({ src: result.data, title: 'Calendly screening preview' });
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  async function handleSaveConsultation(): Promise<void> {
+    setSavingConsultation(true);
+    try {
+      const result = await updateOrganizationConsultationUrl(consultationValue);
+      if (result.success) {
+        toast.success('Consultation link saved');
+      } else {
+        toast.error(result.error);
+      }
+    } finally {
+      setSavingConsultation(false);
+    }
+  }
+
+  async function handleTestConsultation(): Promise<void> {
+    const result = await getConsultationTestLink(consultationValue);
+    if (result.success) {
+      setPreview({ src: result.data, title: 'Calendly consultation preview' });
     } else {
       toast.error(result.error);
     }
@@ -132,63 +168,13 @@ export function GroupSettingsPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="card">
-        <div className="ch" style={{ marginBottom: 14 }}>
-          <div>
-            <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
-              Group details
-            </div>
-            <div className="ch-s">Basic information about this group</div>
-          </div>
-        </div>
-        <div className="ff">
-          <label className="lbl">
-            Group name<span className="req">*</span>
-          </label>
-          <span className="fld ro">
-            <input value={groupName} readOnly disabled />
-          </span>
-        </div>
-        <div className="ff">
-          <label className="lbl">Email domain</label>
-          <span className="fld ro">
-            <Icon name="AtSign" size={16} />
-            <input
-              className="mono"
-              value=""
-              placeholder="Not configured"
-              readOnly
-              disabled
-            />
-          </span>
-          <div className="hint">
-            Domain-based auto-assignment is not available in this build.
-          </div>
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label className="lbl">Description</label>
-          <textarea
-            className="ta"
-            rows={2}
-            value={description}
-            placeholder="Add a short description of this group"
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div className="row" style={{ gap: 10, marginTop: 10 }}>
-            <button
-              type="button"
-              className="btn btn-acc btn-sm"
-              disabled={
-                savingDescription || description === (initialDescription ?? '')
-              }
-              onClick={handleSaveDescription}
-            >
-              {savingDescription ? 'Saving…' : 'Save description'}
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        hidden
+        onChange={handleLogoChange}
+      />
       <div
         style={{
           display: 'grid',
@@ -201,49 +187,57 @@ export function GroupSettingsPanel({
           <div className="ch" style={{ marginBottom: 14 }}>
             <div>
               <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
-                Screening meeting
+                Group details
               </div>
-              <div className="ch-s">
-                Link members open to book their screening call
-              </div>
+              <div className="ch-s">Basic information about this group</div>
             </div>
           </div>
-          {!value ? (
-            <div className="hint" style={{ marginBottom: 12 }}>
-              No custom link set.
-            </div>
-          ) : null}
           <div className="ff">
-            <label className="lbl">Calendly event URL</label>
-            <span className="fld">
-              <Icon name="CalendarDays" size={16} />
+            <label className="lbl">
+              Group name<span className="req">*</span>
+            </label>
+            <span className="fld ro">
+              <input value={groupName} readOnly disabled />
+            </span>
+          </div>
+          <div className="ff">
+            <label className="lbl">Email domain</label>
+            <span className="fld ro">
+              <Icon name="AtSign" size={16} />
               <input
                 className="mono"
-                placeholder="https://calendly.com/your-org/screening"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
+                value=""
+                placeholder="Not configured"
+                readOnly
+                disabled
               />
             </span>
-            <div className="hint">Paste your Calendly event link.</div>
+            <div className="hint">
+              Domain-based auto-assignment is not available in this build.
+            </div>
           </div>
-          <div className="row" style={{ gap: 10, marginBottom: 0 }}>
-            <button
-              type="button"
-              className="btn btn-acc"
-              disabled={saving}
-              onClick={handleSave}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={saving}
-              onClick={handleTest}
-            >
-              Test
-              <Icon name="ExternalLink" size={15} />
-            </button>
+          <div style={{ marginBottom: 0 }}>
+            <label className="lbl">Description</label>
+            <textarea
+              className="ta"
+              rows={2}
+              value={description}
+              placeholder="Add a short description of this group"
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <div className="row" style={{ gap: 10, marginTop: 10 }}>
+              <button
+                type="button"
+                className="btn btn-acc btn-sm"
+                disabled={
+                  savingDescription ||
+                  description === (initialDescription ?? '')
+                }
+                onClick={handleSaveDescription}
+              >
+                {savingDescription ? 'Saving…' : 'Save description'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -256,13 +250,6 @@ export function GroupSettingsPanel({
               <div className="ch-s">Shown next to the group name</div>
             </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png"
-            hidden
-            onChange={handleLogoChange}
-          />
           <div className="row" style={{ gap: 14, marginBottom: 0 }}>
             <span
               className="thmb gr"
@@ -309,11 +296,148 @@ export function GroupSettingsPanel({
         </div>
       </div>
 
-      {testLink ? (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
+        <div className="card">
+          <div className="ch" style={{ marginBottom: 14 }}>
+            <div>
+              <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
+                Screening meeting
+              </div>
+              <div className="ch-s">
+                Link members open to book their screening call
+              </div>
+            </div>
+          </div>
+          {!value ? (
+            <div className="hint" style={{ marginBottom: 12 }}>
+              No custom link set.
+            </div>
+          ) : null}
+          <div className="ff">
+            <label className="lbl">Calendly event URL</label>
+            <span className="fld">
+              <Icon name="CalendarDays" size={16} />
+              <input
+                className="mono"
+                placeholder="https://calendly.com/your-org/screening"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            </span>
+            <div className="hint">Paste your Calendly event link.</div>
+          </div>
+          <div className="row" style={{ gap: 10, marginBottom: 0 }}>
+            <button
+              type="button"
+              className="btn btn-acc"
+              disabled={saving}
+              onClick={handleSaveScreening}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={saving}
+              onClick={handleTestScreening}
+            >
+              Test
+              <Icon name="ExternalLink" size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="ch" style={{ marginBottom: 14 }}>
+            <div>
+              <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
+                Onboarding consultation
+              </div>
+              <div className="ch-s">
+                Link members open to book their consultation call
+              </div>
+            </div>
+          </div>
+          {!consultationValue ? (
+            <div className="hint" style={{ marginBottom: 12 }}>
+              No custom link set.
+            </div>
+          ) : null}
+          <div className="ff">
+            <label className="lbl">Calendly event URL</label>
+            <span className={`fld${canEditConsultationFinal ? '' : ' ro'}`}>
+              <Icon name="CalendarDays" size={16} />
+              <input
+                className="mono"
+                placeholder="https://calendly.com/your-org/consultation"
+                value={consultationValue}
+                disabled={!canEditConsultationFinal}
+                onChange={(e) => setConsultationValue(e.target.value)}
+              />
+            </span>
+            <div className="hint">
+              Global link shared by every organization. Paste your Calendly
+              event link.
+            </div>
+          </div>
+          <div className="row" style={{ gap: 10, marginBottom: 0 }}>
+            {(() => {
+              const disabled = !canEditConsultationFinal;
+              const saveButton = (
+                <button
+                  type="button"
+                  className="btn btn-acc"
+                  disabled={savingConsultation || disabled}
+                  onClick={handleSaveConsultation}
+                >
+                  {savingConsultation ? 'Saving…' : 'Save'}
+                </button>
+              );
+              const testButton = (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={savingConsultation || disabled}
+                  onClick={handleTestConsultation}
+                >
+                  Test
+                  <Icon name="ExternalLink" size={15} />
+                </button>
+              );
+              if (!disabled) {
+                return (
+                  <>
+                    {saveButton}
+                    {testButton}
+                  </>
+                );
+              }
+              return (
+                <>
+                  <Tooltip label="Only super admins can edit this link">
+                    <span style={{ display: 'inline-flex' }}>{saveButton}</span>
+                  </Tooltip>
+                  <Tooltip label="Only super admins can test this link">
+                    <span style={{ display: 'inline-flex' }}>{testButton}</span>
+                  </Tooltip>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+      {preview ? (
         <div
           role="dialog"
-          aria-label="Screening link preview"
-          onClick={() => setTestLink(null)}
+          aria-label="Booking link preview"
+          onClick={() => setPreview(null)}
           style={{
             position: 'fixed',
             inset: 0,
@@ -342,15 +466,15 @@ export function GroupSettingsPanel({
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => setTestLink(null)}
+                onClick={() => setPreview(null)}
               >
                 Close
                 <Icon name="X" size={15} />
               </button>
             </div>
             <iframe
-              src={testLink}
-              title="Calendly screening preview"
+              src={preview.src}
+              title={preview.title}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               style={{ flex: 1, width: '100%', border: 0, borderRadius: 8 }}
             />

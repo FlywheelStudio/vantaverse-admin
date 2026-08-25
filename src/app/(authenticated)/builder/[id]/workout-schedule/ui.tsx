@@ -21,13 +21,11 @@ import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
 import { UpdateDerivedDialog } from './update-derived-dialog';
 import { updateDerivedProgramSchedules, updateDerivedPreProgramSchedules } from '../../actions';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useQueryClient } from '@tanstack/react-query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
 import { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
-import { estimateSessionMinutes } from './exercise-builder-mock-data';
-
-const SESSION_OPTIONS = ['2 days', '3 days', '4 days', '5 days'] as const;
 
 type BuilderAssignmentStatus =
   | typeof PROGRAM_ASSIGNMENT_STATUS.ACTIVE
@@ -59,17 +57,18 @@ export function BuildWorkoutSection({
     schedule,
     programAssignmentId,
     currentWeek,
-    copyWeek,
-    pasteWeek,
     clearWeek,
     duplicateWeekToAll,
-    copiedWeekData,
+    duplicateWeekToEveryOther,
     resizeSchedule,
     programStartDate,
   } = useBuilder();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    'duplicate' | 'apply_all' | 'clear' | null
+  >(null);
   const queryClient = useQueryClient();
   const scheduleBaselineRef = useRef<string | null>(null);
 
@@ -79,13 +78,6 @@ export function BuildWorkoutSection({
     const end = calculateEndDate(new Date(`${programStartDate}T00:00:00`), weeksValue);
     return end ? formatDateForDB(end) : null;
   }, [programStartDate, weeksValue]);
-
-  const [sessionsPerWeek, setSessionsPerWeek] = useState<string>(() => {
-    const week = schedule[0] ?? [];
-    const filled = week.filter((day) => day.length > 0).length;
-    const clamped = Math.min(5, Math.max(2, filled || 3));
-    return `${clamped} days`;
-  });
 
   const updateProgramTemplateMutation = useUpdateProgramTemplate({
     suppressToast: true,
@@ -329,21 +321,6 @@ export function BuildWorkoutSection({
     onStepActive?.();
   }, [onStepActive]);
 
-  const weekStats = useMemo(() => {
-    const week = schedule[currentWeek] ?? [];
-    let workoutDays = 0;
-    let exerciseCount = 0;
-    week.forEach((day) => {
-      if (day.length > 0) {
-        workoutDays += 1;
-        exerciseCount += day.length;
-      }
-    });
-    const avgPerSession =
-      workoutDays > 0 ? Math.round(exerciseCount / workoutDays) : 0;
-    const minutesPerSession = estimateSessionMinutes(avgPerSession);
-    return { workoutDays, exerciseCount, minutesPerSession };
-  }, [schedule, currentWeek]);
 
   const handleDecreaseWeeks = (): void => {
     const next = Math.max(1, Number(weeksValue) - 1);
@@ -355,6 +332,49 @@ export function BuildWorkoutSection({
     const next = Math.min(52, Number(weeksValue) + 1);
     programForm.setValue('weeks', next, { shouldDirty: true, shouldValidate: true });
     resizeSchedule(next);
+  };
+
+  const weekHasContent = (weekIndex: number): boolean =>
+    (schedule[weekIndex] ?? []).some((day) => day.length > 0);
+
+  const getEveryOtherTargetWeeks = (): number[] => {
+    const targets: number[] = [];
+    for (let target = currentWeek + 2; target < schedule.length; target += 2) {
+      targets.push(target);
+    }
+    return targets;
+  };
+
+  const getAllOtherTargetWeeks = (): number[] =>
+    schedule.map((_, index) => index).filter((index) => index !== currentWeek);
+
+  const runDuplicate = (everyOther: boolean): void => {
+    if (everyOther) {
+      duplicateWeekToEveryOther(currentWeek, programEndDate);
+    } else {
+      duplicateWeekToAll(currentWeek, programEndDate);
+    }
+    const label = everyOther ? 'every other week' : 'all other weeks';
+    toast.success(`Week ${currentWeek + 1} copied to ${label}`);
+  };
+
+  const handleMenuAction = (action: 'duplicate' | 'apply_all' | 'clear'): void => {
+    const wouldOverwrite =
+      action === 'duplicate'
+        ? getEveryOtherTargetWeeks().some(weekHasContent)
+        : action === 'apply_all'
+          ? getAllOtherTargetWeeks().some(weekHasContent)
+          : weekHasContent(currentWeek);
+    if (wouldOverwrite) {
+      setConfirmAction(action);
+      return;
+    }
+    if (action === 'clear') {
+      clearWeek(currentWeek);
+      toast.success(`Week ${currentWeek + 1} cleared`);
+    } else {
+      runDuplicate(action === 'duplicate');
+    }
   };
 
   return (
@@ -398,69 +418,25 @@ export function BuildWorkoutSection({
               </span>
             </div>
           </div>
-          <div>
-            <label className="lbl">Sessions per week</label>
-            <span className="sel" style={{ minWidth: 140 }}>
-              <select
-                value={sessionsPerWeek}
-                aria-label="Sessions per week"
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setSessionsPerWeek(next);
-                  onScheduleDirtyChange?.(true);
-                }}
-              >
-                {SESSION_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <span className="ci">
-                <Icon name="ChevronDown" size={16} />
-              </span>
-            </span>
-          </div>
           <span className="sp" style={{ alignSelf: 'flex-end', paddingBottom: 6 }}>
             <HtmlActionsMenu
               variant="button"
               label="Week actions"
               items={[
                 {
-                  id: 'copy',
-                  label: 'Copy week',
-                  onSelect: () => {
-                    copyWeek(currentWeek);
-                    toast.success(`Week ${currentWeek + 1} copied`);
-                  },
-                },
-                {
-                  id: 'paste',
-                  label: 'Paste into week',
-                  onSelect: () => {
-                    if (!copiedWeekData) {
-                      toast.error('Nothing to paste — copy a week first');
-                      return;
-                    }
-                    pasteWeek(currentWeek);
-                    toast.success(`Pasted into week ${currentWeek + 1}`);
-                  },
-                },
-                {
                   id: 'duplicate',
-                  label: 'Duplicate to all weeks',
-                  onSelect: () => {
-                    duplicateWeekToAll(currentWeek);
-                    toast.success(`Week ${currentWeek + 1} duplicated to all weeks`);
-                  },
+                  label: 'Duplicate to every other week',
+                  onSelect: () => handleMenuAction('duplicate'),
+                },
+                {
+                  id: 'apply_all',
+                  label: 'Apply to all weeks',
+                  onSelect: () => handleMenuAction('apply_all'),
                 },
                 {
                   id: 'clear',
                   label: 'Clear week',
-                  onSelect: () => {
-                    clearWeek(currentWeek);
-                    toast.success(`Week ${currentWeek + 1} cleared`);
-                  },
+                  onSelect: () => handleMenuAction('clear'),
                 },
               ]}
             />
@@ -492,15 +468,6 @@ export function BuildWorkoutSection({
               <Icon name="CalendarDays" size={16} style={{ color: 'var(--navy-600)' }} />
               Week {currentWeek + 1}
             </span>
-            <span className="mut">
-              {weekStats.workoutDays} workout day{weekStats.workoutDays === 1 ? '' : 's'} ·{' '}
-              {weekStats.exerciseCount} exercise
-              {weekStats.exerciseCount === 1 ? '' : 's'}
-              {weekStats.workoutDays > 0
-                ? ` · ~${weekStats.minutesPerSession} min per session`
-                : ''}
-              {` · target ${sessionsPerWeek}`}
-            </span>
             <span className="sp mut row" style={{ gap: 6, fontSize: 'var(--text-xs)' }}>
               <Icon name="GripVertical" size={14} />
               Drag exercises between days, or click a day to edit it
@@ -518,6 +485,56 @@ export function BuildWorkoutSection({
         onConfirm={performSave}
         loading={isSaving}
       />
+
+      {confirmAction ? (
+        <HtmlModal
+          open
+          title="Overwrite existing weeks?"
+          onClose={() => setConfirmAction(null)}
+          width={460}
+          footer={
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-acc"
+                onClick={() => {
+                  if (confirmAction === 'clear') {
+                    clearWeek(currentWeek);
+                    toast.success(`Week ${currentWeek + 1} cleared`);
+                  } else {
+                    runDuplicate(confirmAction === 'duplicate');
+                  }
+                  setConfirmAction(null);
+                }}
+              >
+                <Icon name="Check" size={17} />
+                Overwrite
+              </button>
+            </>
+          }
+        >
+          <div className="alert alert-i">
+            <Icon name="TriangleAlert" size={18} />
+            <div>
+              <div className="at">
+                {confirmAction === 'clear'
+                  ? `All exercises in Week ${currentWeek + 1} will be removed.`
+                  : `Week ${currentWeek + 1} will replace the exercises in Week${confirmAction === 'duplicate' ? 's' : ''} ${(confirmAction === 'duplicate' ? getEveryOtherTargetWeeks() : getAllOtherTargetWeeks())
+                    .map((week) => week + 1)
+                    .join(', ')}.`}
+              </div>
+              This cannot be undone until you save.
+            </div>
+          </div>
+        </HtmlModal>
+      ) : null}
     </>
   );
 }

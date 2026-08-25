@@ -19,7 +19,6 @@ export interface HtmlActionsMenuItem {
 
 interface HtmlActionsMenuProps {
   items: HtmlActionsMenuItem[];
-  size?: 'sm' | 'md';
   variant?: 'icon' | 'button';
   label?: string;
   ariaLabel?: string;
@@ -29,7 +28,6 @@ interface HtmlActionsMenuProps {
 /** HTML `moreBtn` / `rowMenu` overflow actions dropdown. */
 export function HtmlActionsMenu({
   items,
-  size = 'md',
   variant = 'icon',
   label,
   ariaLabel,
@@ -40,17 +38,10 @@ export function HtmlActionsMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className={cn(
-            size === 'sm'
-              ? 'ib ib-sm'
-              : variant === 'button'
-                ? 'btn btn-sec btn-sm'
-                : 'ib ib-sec',
-            triggerClassName,
-          )}
+          className={cn('btn btn-sec btn-sm', triggerClassName)}
           aria-label={ariaLabel ?? 'More actions'}
         >
-          <Icon name="Ellipsis" size={size === 'sm' ? 17 : 18} />
+          <Icon name="Ellipsis" size={17} />
           {variant === 'button' && label ? label : null}
         </button>
       </DropdownMenuTrigger>

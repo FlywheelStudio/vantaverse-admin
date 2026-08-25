@@ -50,3 +50,24 @@ export const programAssignmentWithTemplateSchema =
 export type ProgramAssignmentWithTemplate = z.infer<
   typeof programAssignmentWithTemplateSchema
 >;
+
+/** Member-facing assignment rows sharing a template (review & assign pane). */
+export const programAssignmentMemberSchema = z.object({
+  id: z.string(),
+  user_id: z.string().nullable(),
+  start_date: z.string().nullable(),
+  end_date: z.string().nullable(),
+  status: z.string().nullable(),
+  profiles: z
+    .object({
+      id: z.uuid(),
+      first_name: z.string().nullable(),
+      last_name: z.string().nullable(),
+      email: z.string().nullable(),
+    })
+    .nullish(),
+});
+
+export type ProgramAssignmentMember = z.infer<
+  typeof programAssignmentMemberSchema
+>;

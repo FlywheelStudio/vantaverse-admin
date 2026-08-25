@@ -311,6 +311,11 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     setPendingDayMeta(meta);
   };
 
+  const handleReorder = async (dayIndex: number, newItems: SelectedItem[]) => {
+    setScheduleItem(currentWeek, dayIndex, newItems);
+    await saveDraft(newItems, currentWeek, dayIndex);
+  };
+
   const handleModalCancel = useCallback(() => {
     if (selectedDay === null || initialItemsRef.current === null) return;
 
@@ -491,6 +496,7 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
                 defaultValues={defaultValues}
+                onReorder={(newItems) => handleReorder(dayIndex, newItems)}
               />
             );
           })}

@@ -38,11 +38,13 @@ export function GroupDetailsPageUI({
   physician,
   initialMembers,
   initialPrograms,
+  consultation,
 }: {
   organization: Organization;
   physician: PhysicianInfo | null;
   initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
   initialPrograms: GroupProgramRowData[];
+  consultation: { url: string | null; canEdit: boolean } | null;
 }): React.ReactElement | null {
   const { data: org } = useOrganization(organization.id, organization);
   const [activeTab, setActiveTab] = useState<GroupDetailTab>('members');
@@ -79,10 +81,11 @@ export function GroupDetailsPageUI({
     isSuperAdminOrg ? organization.id : null,
     initialSuperAdminUsers,
   );
-  const { data: groupPrograms = [], isLoading: programsLoading } = useGroupPrograms(
-    isSuperAdminOrg ? null : organization.id,
-    isSuperAdminOrg ? undefined : initialPrograms,
-  );
+  const { data: groupPrograms = [], isLoading: programsLoading } =
+    useGroupPrograms(
+      isSuperAdminOrg ? null : organization.id,
+      isSuperAdminOrg ? undefined : initialPrograms,
+    );
   const { data: currentPhysician } = useGroupPhysiologist(
     isSuperAdminOrg ? null : organization.id,
     physician,
@@ -94,7 +97,8 @@ export function GroupDetailsPageUI({
   }, [isSuperAdminOrg, membersData, superAdminUsersData]);
 
   const [membersModalOpen, setMembersModalOpen] = useState(false);
-  const [membersModalRole, setMembersModalRole] = useState<MemberRole>('patient');
+  const [membersModalRole, setMembersModalRole] =
+    useState<MemberRole>('patient');
   const [inviteUsersModalOpen, setInviteUsersModalOpen] = useState(false);
 
   const removeMemberMutation = useRemoveGroupMember(organization.id);
@@ -121,7 +125,6 @@ export function GroupDetailsPageUI({
     [members],
   );
 
-
   const openAddUsers = (): void => {
     if (isSuperAdminOrg) {
       setInviteUsersModalOpen(true);
@@ -143,10 +146,7 @@ export function GroupDetailsPageUI({
   return (
     <>
       <AppBar
-        crumbs={[
-          { label: 'Groups', href: '/groups' },
-          { label: org.name },
-        ]}
+        crumbs={[{ label: 'Groups', href: '/groups' }, { label: org.name }]}
         title={org.name}
       />
       <div className="body">
@@ -222,6 +222,8 @@ export function GroupDetailsPageUI({
             initialScreeningUrl={org.screening_url ?? null}
             initialDescription={org.description ?? null}
             pictureUrl={org.picture_url}
+            initialConsultationUrl={consultation?.url ?? null}
+            canEditConsultation={consultation?.canEdit ?? false}
           />
         ) : null}
       </div>

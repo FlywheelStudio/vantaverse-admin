@@ -16,6 +16,20 @@ import {
 import toast from 'react-hot-toast';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
+export type ProgramTemplateMemberStats = Record<
+  string,
+  { members: number; avgCompletion: number | null }
+>;
+
+export type ProgramAssignmentsPage = {
+  data: ProgramAssignmentWithTemplate[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+  memberStats?: ProgramTemplateMemberStats;
+};
+
 /**
  * Query key factory for program assignments
  */
@@ -48,13 +62,7 @@ export function programAssignmentsInfiniteQueryOptions(
   pageSize: number = 16,
   showAssigned: boolean = false,
   initialData?: {
-    pages: Array<{
-      data: ProgramAssignmentWithTemplate[];
-      page: number;
-      pageSize: number;
-      total: number;
-      hasMore: boolean;
-    }>;
+    pages: ProgramAssignmentsPage[];
     pageParams: number[];
   },
 ) {
@@ -122,13 +130,7 @@ export function useProgramAssignments(
   pageSize: number = 16,
   showAssigned: boolean = false,
   initialData?: {
-    pages: Array<{
-      data: ProgramAssignmentWithTemplate[];
-      page: number;
-      pageSize: number;
-      total: number;
-      hasMore: boolean;
-    }>;
+    pages: ProgramAssignmentsPage[];
     pageParams: number[];
   },
 ) {
@@ -190,13 +192,7 @@ export function useDeleteProgramAssignment(
 
       // Optimistically remove the item from cache
       queryClient.setQueryData<{
-        pages: Array<{
-          data: ProgramAssignmentWithTemplate[];
-          page: number;
-          pageSize: number;
-          total: number;
-          hasMore: boolean;
-        }>;
+        pages: ProgramAssignmentsPage[];
         pageParams: number[];
       }>(queryKey, (old) => {
         if (!old) return old;
@@ -233,13 +229,7 @@ export function useDeleteProgramAssignment(
 }
 
 type ProgramAssignmentsInfiniteData = {
-  pages: Array<{
-    data: ProgramAssignmentWithTemplate[];
-    page: number;
-    pageSize: number;
-    total: number;
-    hasMore: boolean;
-  }>;
+  pages: ProgramAssignmentsPage[];
   pageParams: number[];
 };
 

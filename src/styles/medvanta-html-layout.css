@@ -507,7 +507,7 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 
 /* Day grid — equal-height columns */
 .dgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:stretch}
-.day{display:flex;flex-direction:column;height:100%;border-radius:var(--radius-sm);background:var(--surface-card);border:1px solid var(--border-subtle);min-height:212px;box-shadow:var(--shadow-xs);overflow:hidden}
+.day{display:flex;flex-direction:column;height:100%;border-radius:var(--radius-sm);background:var(--surface-card);border:1px solid var(--border-subtle);min-height:300px;box-shadow:var(--shadow-xs);overflow:hidden}
 .day.rest{background:var(--slate-50);border-style:dashed;border-color:var(--border-default);box-shadow:none}
 .day .dh{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;padding:9px 11px;border-bottom:1px solid var(--border-subtle)}
 .day.rest .dh{border-bottom-color:transparent;padding-bottom:0}

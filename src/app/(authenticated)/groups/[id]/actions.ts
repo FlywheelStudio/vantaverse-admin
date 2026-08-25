@@ -3,9 +3,7 @@
 import { createClient } from '@/lib/supabase/core/server';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import {
-  ProgramAssignmentsQuery,
-} from '@/lib/supabase/queries/program-assignments';
+import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import {
   DEFAULT_SCREENING_BASE,
@@ -253,12 +251,14 @@ export async function addAdminToOrganization(
     return { success: true as const, data: undefined };
   }
 
-  const { error: insertError } = await supabase.from('organization_members').insert({
-    organization_id: organizationId,
-    user_id: userId,
-    role: 'admin',
-    is_active: true,
-  });
+  const { error: insertError } = await supabase
+    .from('organization_members')
+    .insert({
+      organization_id: organizationId,
+      user_id: userId,
+      role: 'admin',
+      is_active: true,
+    });
 
   if (insertError) {
     return {
@@ -322,8 +322,6 @@ export async function removeMemberFromOrganization(
   };
 }
 
-
-
 export async function updateOrganizationScreeningUrl(
   organizationId: string,
   rawUrl: string,
@@ -372,10 +370,12 @@ export async function updateOrganizationDescription(
   return { success: true as const, data: undefined };
 }
 
-
 /** Computed screening link for the logged-in admin, used by the Test button.
  * When rawUrl is set, tests that unsaved input instead of the stored link. */
-export async function getScreeningTestLink(organizationId: string, rawUrl?: string) {
+export async function getScreeningTestLink(
+  organizationId: string,
+  rawUrl?: string,
+) {
   const supabase = await createClient();
 
   const { data: auth } = await supabase.auth.getUser();
@@ -385,7 +385,11 @@ export async function getScreeningTestLink(organizationId: string, rawUrl?: stri
   }
 
   const [{ data: org }, { data: profile }] = await Promise.all([
-    supabase.from('organizations').select('screening_url').eq('id', organizationId).single(),
+    supabase
+      .from('organizations')
+      .select('screening_url')
+      .eq('id', organizationId)
+      .single(),
     supabase
       .from('profiles')
       .select('first_name, last_name, email')
@@ -394,10 +398,15 @@ export async function getScreeningTestLink(organizationId: string, rawUrl?: stri
   ]);
 
   if (!org && !profile) {
-    return { success: false as const, error: 'Failed to load screening test data.' };
+    return {
+      success: false as const,
+      error: 'Failed to load screening test data.',
+    };
   }
 
-  let base = (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() || DEFAULT_SCREENING_BASE;
+  let base =
+    (org?.screening_url ?? DEFAULT_SCREENING_BASE).trim() ||
+    DEFAULT_SCREENING_BASE;
   if (rawUrl && rawUrl.trim()) {
     const normalized = normalizeCalendlyUrl(rawUrl);
     if (normalized === null) {
@@ -614,11 +623,13 @@ export async function bulkAssignProgram(
         skipped.map((s) => s.user_id),
       );
     const nameById = new Map(
-      ((profilesData ?? []) as Array<{
-        id: string;
-        first_name: string | null;
-        last_name: string | null;
-      }>).map((p) => [
+      (
+        (profilesData ?? []) as Array<{
+          id: string;
+          first_name: string | null;
+          last_name: string | null;
+        }>
+      ).map((p) => [
         p.id,
         [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unnamed',
       ]),
@@ -630,7 +641,11 @@ export async function bulkAssignProgram(
   const failed: Array<{ user_id: string; error: string }> = [];
   let assignedCount = 0;
   for (const userId of assignees) {
-    const result = await query.assignToUser(templateAssignmentId, userId, startDate);
+    const result = await query.assignToUser(
+      templateAssignmentId,
+      userId,
+      startDate,
+    );
     if (result.success) assignedCount += 1;
     else failed.push({ user_id: userId, error: result.error });
   }
@@ -688,4 +703,162 @@ export async function cancelMemberProgram(
     return { success: false as const, error: error.message };
   }
   return { success: true as const, data: undefined };
+}
+
+/* ---- Onboarding consultation (global link owned by the super-admin org) ---- */
+
+type SuperAdminAuthz =
+  | { ok: true; organizationId: string }
+  | { ok: false; error: string };
+
+/**
+ * Verify the signed-in user is an active member of the super-admin
+ * organization and return that org's id, or an error message.
+ */
+async function requireSuperAdminOrgId(): Promise<SuperAdminAuthz> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Not signed in.' };
+
+  const { data: memberships, error } = await supabase
+    .from('organization_members')
+    .select('organization_id, is_active, organizations(is_super_admin)')
+    .eq('user_id', uid);
+
+  if (error)
+    return { ok: false, error: `Authorization check failed: ${error.message}` };
+
+  const superAdminOrgId = (memberships ?? []).find((m) => {
+    const orgs = (
+      m as unknown as {
+        organizations?: { is_super_admin?: boolean } | null;
+      }
+    ).organizations;
+    return m.is_active === true && orgs?.is_super_admin === true;
+  })?.organization_id;
+
+  if (!superAdminOrgId) {
+    return { ok: false, error: 'Only super admins can change settings.' };
+  }
+
+  return { ok: true, organizationId: superAdminOrgId };
+}
+
+/** Global consultation URL + edit permission for the signed-in user. */
+export async function getConsultationSettings() {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user?.id)
+    return { success: false as const, error: 'Not signed in.' };
+
+  const [{ data: link, error }, authz] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('consultation_url')
+      .eq('is_super_admin', true)
+      .limit(1)
+      .maybeSingle(),
+    requireSuperAdminOrgId(),
+  ]);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: `Failed to load consultation settings: ${error.message}`,
+    };
+  }
+
+  return {
+    success: true as const,
+    data: {
+      url: link?.consultation_url ?? null,
+      canEdit: authz.ok,
+    },
+  };
+}
+
+/** Update the global consultation URL. Super admins only. */
+export async function updateOrganizationConsultationUrl(rawUrl: string) {
+  const normalized = normalizeCalendlyUrl(rawUrl);
+  if (normalized === null) {
+    return {
+      success: false as const,
+      error: 'Enter a valid https://calendly.com event link.',
+    };
+  }
+
+  const authz = await requireSuperAdminOrgId();
+  if (!authz.ok) return { success: false as const, error: authz.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('organizations')
+    .update({ consultation_url: normalized || null })
+    .eq('id', authz.organizationId);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: `Failed to save consultation link: ${error.message}`,
+    };
+  }
+
+  return { success: true as const, data: undefined };
+}
+
+/**
+ * Computed consultation link for the logged-in admin, used by the Test button.
+ * When rawUrl is set, tests that unsaved input instead of the stored link.
+ */
+export async function getConsultationTestLink(rawUrl?: string) {
+  const supabase = await createClient();
+
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) {
+    return { success: false as const, error: 'Not signed in.' };
+  }
+
+  let base: string | null;
+  if (rawUrl && rawUrl.trim()) {
+    const normalized = normalizeCalendlyUrl(rawUrl);
+    if (normalized === null) {
+      return {
+        success: false as const,
+        error: 'Enter a valid https://calendly.com event link.',
+      };
+    }
+    base = normalized;
+  } else {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('consultation_url')
+      .eq('is_super_admin', true)
+      .limit(1)
+      .maybeSingle();
+    base = org?.consultation_url ?? null;
+  }
+
+  if (!base) {
+    return {
+      success: false as const,
+      error: 'No consultation link saved yet.',
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, email')
+    .eq('id', uid)
+    .single();
+
+  const link = buildBookingLink(base, 'onboarding_consultation', {
+    uid,
+    firstName: profile?.first_name ?? '',
+    lastName: profile?.last_name ?? '',
+    email: profile?.email ?? '',
+  });
+
+  return { success: true as const, data: link };
 }

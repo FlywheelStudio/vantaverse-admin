@@ -7,8 +7,9 @@ import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-c
 import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import { ExerciseDetailsPopover } from './partials/exercise-details-popover';
+import { useRef } from 'react';
 
-const MAX_VISIBLE_ITEMS = 4;
+const MAX_VISIBLE_ITEMS = 6;
 
 interface DayBoxProps {
   day: number;
@@ -26,6 +27,7 @@ interface DayBoxProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   defaultValues?: DefaultValuesData;
+  onReorder?: (items: SelectedItem[]) => void;
 }
 
 function formatExerciseParams(template: ExerciseTemplate): string {
@@ -58,7 +60,23 @@ export function DayBox({
   onMouseEnter,
   onMouseLeave,
   defaultValues,
+  onReorder,
 }: DayBoxProps): React.ReactElement {
+  // Reordering only supports flat exercise lists; groups are edited in the modal.
+  const canReorder =
+    !isOutOfBounds && items.length > 1 && items.every((i) => i.type !== 'group');
+  const dragIndexRef = useRef<number | null>(null);
+
+  const handleDrop = (targetIndex: number) => {
+    const from = dragIndexRef.current;
+    dragIndexRef.current = null;
+    if (from === null || from === targetIndex) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(targetIndex, 0, moved);
+    onReorder?.(next);
+  };
+
   const hasItems = items.length > 0;
   const isRest = !hasItems;
   const dayLabel = getDayOfWeek(day)?.slice(0, 3).toUpperCase() ?? `D${day}`;
@@ -143,7 +161,26 @@ export function DayBox({
         template={template}
         className="w-full"
       >
-        <div className="ex-r" role="button" tabIndex={0}>
+        <div
+          className="ex-r"
+          role="button"
+          tabIndex={0}
+          draggable={canReorder}
+          style={{ cursor: canReorder ? 'grab' : undefined }}
+          onDragStart={() => {
+            dragIndexRef.current = itemIndex;
+          }}
+          onDragOver={(e) => {
+            if (dragIndexRef.current !== null) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleDrop(itemIndex);
+          }}
+          onDragEnd={() => {
+            dragIndexRef.current = null;
+          }}
+        >
           <span
             className="et thmb"
             style={

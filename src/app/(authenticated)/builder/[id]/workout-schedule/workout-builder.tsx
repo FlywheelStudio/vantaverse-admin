@@ -32,6 +32,7 @@ export function WorkoutBuilder({
 }: WorkoutBuilderProps): React.ReactElement {
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
   const [activeStep, setActiveStep] = useState<1 | 2>(() => {
+    // Deep link (`/builder/<id>#build-workout`) opens the Workout Schedule tab.
     if (typeof window !== 'undefined' && window.location.hash === '#build-workout') {
       return 2;
     }
@@ -40,6 +41,7 @@ export function WorkoutBuilder({
   const [saveTrigger, setSaveTrigger] = useState(0);
   const [saveState, setSaveState] = useState({ disabled: true, loading: false });
   const [scheduleDirty, setScheduleDirty] = useState(false);
+
 
   const template = initialAssignment.program_template;
   const isPreProgramTemplate = isPreProgramTemplateStatus(initialAssignment.status);
@@ -100,6 +102,13 @@ export function WorkoutBuilder({
     defaultValues: formDefaultValues,
   });
 
+  // Rebase RHF defaults after child init effects load saved data (dates),
+  // so formState.isDirty reflects real edits only.
+  useEffect(() => {
+    if (!initialAssignment || !template) return;
+    programForm.reset(programForm.getValues());
+  }, [initialAssignment, template, programForm]);
+
   const handleStepClick = useCallback((step: 1 | 2): void => {
     setActiveStep(step);
   }, []);
@@ -112,6 +121,9 @@ export function WorkoutBuilder({
     programForm.reset(programForm.getValues());
     setScheduleDirty(false);
   }, [programForm]);
+
+  // Save stays disabled until the Details form or Workout schedule changes.
+  const hasChanges = programForm.formState.isDirty || scheduleDirty;
 
   if (!initialAssignment || !template) {
     return (
@@ -131,7 +143,9 @@ export function WorkoutBuilder({
             assignmentId ? `/builder/review-assign?id=${assignmentId}` : undefined
           }
           onSave={() => setSaveTrigger((value) => value + 1)}
-          saveDisabled={saveState.disabled}
+          assignmentId={assignmentId}
+          templateName={template?.name}
+          saveDisabled={saveState.disabled || !hasChanges}
           saveLoading={saveState.loading}
           showUnsaved={programForm.formState.isDirty || scheduleDirty}
         />
@@ -144,7 +158,6 @@ export function WorkoutBuilder({
         >
           <ProgramDetailsSection
             template={template}
-            initialAssignment={initialAssignment}
             status={initialAssignment.status}
             hideActions
             formMethods={programForm}

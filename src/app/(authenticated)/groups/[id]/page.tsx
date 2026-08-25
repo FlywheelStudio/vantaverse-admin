@@ -1,5 +1,6 @@
 import { getOrganizationById, getCurrentPhysiologist } from '../actions';
 import {
+  getConsultationSettings,
   getOrganizationMembersWithPrograms,
   getOrganizationPrograms,
 } from './actions';
@@ -38,11 +39,16 @@ export default async function GroupDetailsPage({
       query: () => getOrganizationPrograms(id),
       defaultValue: [],
     },
+    consultation: {
+      query: () => getConsultationSettings(),
+      defaultValue: null,
+    },
   });
 
   const physician = result.physician ?? null;
   const members = result.members ?? [];
   const programs = result.programs ?? [];
+  const consultation = result.consultation ?? null;
 
   return (
     <GroupDetailsPageUI
@@ -50,6 +56,7 @@ export default async function GroupDetailsPage({
       physician={physician}
       initialMembers={members}
       initialPrograms={programs}
+      consultation={consultation}
     />
   );
 }

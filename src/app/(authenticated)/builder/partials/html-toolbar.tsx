@@ -25,7 +25,7 @@ interface HtmlMoreButtonProps {
 /** HTML `moreBtn()` overflow menu — delegates to {@link HtmlActionsMenu}. */
 export function HtmlMoreButton({ items, tooltip }: HtmlMoreButtonProps): React.ReactElement {
   const menuItems = items ?? (tooltip ? parseLegacyMenuItems(tooltip) : []);
-  return <HtmlActionsMenu items={menuItems} size="md" variant="icon" />;
+  return <HtmlActionsMenu items={menuItems} variant="icon" />;
 }
 
 interface HtmlRowMenuProps {
@@ -36,5 +36,5 @@ interface HtmlRowMenuProps {
 /** HTML `rowMenu()` for table row overflow actions — delegates to {@link HtmlActionsMenu}. */
 export function HtmlRowMenu({ items, tooltip }: HtmlRowMenuProps): React.ReactElement {
   const menuItems = items ?? (tooltip ? parseLegacyMenuItems(tooltip) : []);
-  return <HtmlActionsMenu items={menuItems} size="sm" />;
+  return <HtmlActionsMenu items={menuItems} />;
 }

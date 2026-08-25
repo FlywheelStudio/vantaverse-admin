@@ -160,7 +160,7 @@ function parseLegacyMenuItems(text: string): HtmlActionsMenuItem[] {
 /** HTML row overflow menu — delegates to {@link HtmlActionsMenu}. */
 export function HtmlRowMenu({ label, items }: HtmlRowMenuProps): React.ReactElement {
   const menuItems = items ?? (label ? parseLegacyMenuItems(label) : []);
-  return <HtmlActionsMenu items={menuItems} size="sm" />;
+  return <HtmlActionsMenu items={menuItems} />;
 }
 
 /** HTML search field matching `.fld.grow`. */
