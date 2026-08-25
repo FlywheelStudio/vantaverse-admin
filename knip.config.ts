@@ -14,7 +14,6 @@ const config: KnipConfig = {
     '@commitlint/config-conventional',
     '@commitlint/cli',
     'commitlint',
-    'cmdk',
     '@storybook/blocks',
     'eslint-plugin-storybook',
   ],

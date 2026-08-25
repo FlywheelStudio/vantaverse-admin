@@ -13,7 +13,7 @@ type DashboardStatusCountsProp = DashboardStatusCounts & {
   programCompleted?: number;
 };
 
-export interface DashboardProps {
+interface DashboardProps {
   statusCounts: DashboardStatusCountsProp;
   compliancePct: number;
   needingAttention: UserNeedingAttention[];
