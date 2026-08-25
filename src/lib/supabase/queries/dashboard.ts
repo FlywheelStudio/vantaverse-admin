@@ -85,6 +85,52 @@ export type UserWithProgramAndGroup = UserWithoutProgram & {
   organization_id: string;
 };
 
+export type DashboardAnalyticsPoint = { date: string; value: number };
+
+export type DashboardAnalytics = {
+  statusCounts: {
+    pending: number;
+    invited: number;
+    active: number;
+    inProgram: number;
+    noProgram: number;
+    programCompleted: number;
+  };
+  series: {
+    active: DashboardAnalyticsPoint[];
+    inProgram: DashboardAnalyticsPoint[];
+    completion: DashboardAnalyticsPoint[];
+    overdue: DashboardAnalyticsPoint[];
+  };
+  deltas: {
+    active: number;
+    inProgram: number;
+    completion: number;
+    overdue: number;
+  };
+};
+
+type DashboardAnalyticsRaw = {
+  statusCounts?: Partial<Record<
+    'pending' | 'invited' | 'active' | 'inProgram' | 'noProgram' | 'programCompleted',
+    unknown
+  >>;
+  series?: Partial<Record<'active' | 'inProgram' | 'completion' | 'overdue', unknown>>;
+  deltas?: Partial<Record<'active' | 'inProgram' | 'completion' | 'overdue', unknown>>;
+};
+
+export type AttentionUserRow = {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  compliance: number;
+  program_name: string | null;
+};
+
+export type NeedsAttentionResult = { users: UserNeedingAttention[]; total: number };
+
 export class DashboardQuery extends SupabaseQuery {
   /**
    * Get counts of patients by status (pending, invited, active).
@@ -612,6 +658,102 @@ export class DashboardQuery extends SupabaseQuery {
     const users: UserNeedingAttention[] = (rows ?? [])
       .map((r) => rowToUserNeedingAttention(r as ProgramWithStatsProfileRow))
       .filter((u): u is UserNeedingAttention => u != null);
+
+    return {
+      success: true,
+      data: { users, total: users.length },
+    };
+  }
+
+  /** One point of a tile time series returned by get_dashboard_analytics. */
+  public async getDashboardAnalytics(params: {
+    organizationIds?: string[] | null;
+    from?: string;
+    to?: string;
+    bucket?: 'day' | 'week' | 'month';
+  }): Promise<SupabaseSuccess<DashboardAnalytics> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase.rpc('get_dashboard_analytics', {
+      p_organization_ids: params.organizationIds ?? null,
+      p_from: params.from ?? null,
+      p_to: params.to ?? null,
+      p_bucket: params.bucket ?? 'day',
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get dashboard analytics',
+      );
+    }
+
+    const raw = data as DashboardAnalyticsRaw;
+    const toPoints = (arr: unknown): { date: string; value: number }[] =>
+      Array.isArray(arr)
+        ? arr.map((p) => {
+            const pt = p as { date: string; value: number };
+            return { date: pt.date, value: Number(pt.value) };
+          })
+        : [];
+
+    const c = raw.statusCounts ?? {};
+    return {
+      success: true,
+      data: {
+        statusCounts: {
+          pending: Number(c.pending ?? 0),
+          invited: Number(c.invited ?? 0),
+          active: Number(c.active ?? 0),
+          inProgram: Number(c.inProgram ?? 0),
+          noProgram: Number(c.noProgram ?? 0),
+          programCompleted: Number(c.programCompleted ?? 0),
+        },
+        series: {
+          active: toPoints(raw.series?.active),
+          inProgram: toPoints(raw.series?.inProgram),
+          completion: toPoints(raw.series?.completion),
+          overdue: toPoints(raw.series?.overdue),
+        },
+        deltas: {
+          active: Number(raw.deltas?.active ?? 0),
+          inProgram: Number(raw.deltas?.inProgram ?? 0),
+          completion: Number(raw.deltas?.completion ?? 0),
+          overdue: Number(raw.deltas?.overdue ?? 0),
+        },
+      },
+    };
+  }
+
+  /** Needs-attention worklist from get_dashboard_needs_attention. */
+  public async getNeedsAttention(params: {
+    organizationIds?: string[] | null;
+  }): Promise<SupabaseSuccess<NeedsAttentionResult> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase.rpc('get_dashboard_needs_attention', {
+      p_organization_ids: params.organizationIds ?? null,
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get needs attention list',
+      );
+    }
+
+    const raw = data as { users: AttentionUserRow[]; total: number };
+    const users: UserNeedingAttention[] = (raw.users ?? []).map((u) => ({
+      user_id: u.user_id,
+      first_name: u.first_name ?? null,
+      last_name: u.last_name ?? null,
+      email: u.email ?? null,
+      avatar_url: u.avatar_url ?? null,
+      last_sign_in: null,
+      compliance: Number(u.compliance ?? 0),
+      program_name: u.program_name ?? null,
+      organization_id: null,
+    }));
 
     return {
       success: true,

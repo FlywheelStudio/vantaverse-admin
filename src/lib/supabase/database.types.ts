@@ -2318,6 +2318,19 @@ export type Database = {
         Args: { normalized_schedule: Json[] }
         Returns: Json
       }
+      get_dashboard_analytics: {
+        Args: {
+          p_bucket?: string
+          p_from?: string
+          p_organization_ids?: string[]
+          p_to?: string
+        }
+        Returns: Json
+      }
+      get_dashboard_needs_attention: {
+        Args: { p_organization_ids?: string[] }
+        Returns: Json
+      }
       get_exercise_assignment_counts: { Args: never; Returns: Json }
       get_exercise_tags: {
         Args: { p_exercise_id: number }
@@ -2352,6 +2365,14 @@ export type Database = {
       }
       get_onboarding_intake: { Args: never; Returns: Json }
       get_profiles_onboarding: { Args: never; Returns: Json }
+      get_template_member_stats: {
+        Args: { p_template_ids: string[] }
+        Returns: {
+          avg_completion: number
+          members: number
+          program_template_id: string
+        }[]
+      }
       get_user_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["organization_role"]

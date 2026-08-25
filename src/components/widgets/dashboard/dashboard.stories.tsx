@@ -50,6 +50,12 @@ const meta = {
     overdueCount: 0,
     legend,
     sparks,
+    deltas: [
+      { text: '+4', trend: 'up' },
+      { text: '+2', trend: 'up' },
+      { text: '−2 pts', trend: 'down' },
+      { text: '', trend: 'flat' },
+    ],
     onViewAllUsers: noop,
     onOpenUser: noop,
   },
