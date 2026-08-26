@@ -7,6 +7,7 @@ import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { Avatar } from '@/components/widgets/avatar';
+import { HtmlGate } from '../../html-helpers';
 import { HtmlStepList, type HtmlStepItem, type HtmlStepTone } from './html-step-list';
 import { AdherenceCard } from './insights/adherence-card';
 import type { PreprogramEngagementRow } from './insights/adherence-card';
@@ -19,6 +20,10 @@ import {
   getCurrentWeekIndex,
   parseCompletion,
 } from './program-week';
+
+function formatPhase(phase: string): string {
+  return phase.charAt(0).toUpperCase() + phase.slice(1);
+}
 
 function gateTone(
   done: boolean,
@@ -75,8 +80,14 @@ function buildOnboardingSteps(
             View survey
           </button>
           {!intakeDone && current === 0 ? (
-            <button type="button" className="btn btn-ghost btn-sm" disabled title="Placeholder">
-              Reminder
+            <button
+              type="button"
+              className="btn btn-sec btn-sm"
+              disabled
+              title="Placeholder — no reminder API"
+            >
+              <Icon name="Bell" size={15} />
+              Send reminder
             </button>
           ) : null}
         </>
@@ -291,12 +302,18 @@ export function HtmlOnboardingTab({
           <div className="ch">
             <div>
               <div className="ch-t">Onboarding path</div>
-              <div className="ch-s">
-                {cleared} of 4 gates cleared
-                {user.journey_phase ? ` · phase ${user.journey_phase}` : ''}
+              <div className="sl-head-sub">
+                <HtmlGate unlocked={cleared} total={4} />
+                <span className="sl-count">gates cleared</span>
+                {user.journey_phase ? (
+                  <>
+                    <span className="sl-dot" aria-hidden />
+                    <span className="bdg bdg-o">{formatPhase(user.journey_phase)}</span>
+                  </>
+                ) : null}
               </div>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onChangePath}>
+            <button type="button" className="btn btn-sec btn-sm" onClick={onChangePath}>
               <Icon name="Route" size={15} />
               Change path
             </button>

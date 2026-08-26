@@ -17,7 +17,7 @@ export interface HtmlStepItem {
 
 function knobIcon(tone: HtmlStepTone, knob: string | number): React.ReactNode {
   if (tone === 'done') {
-    return <Icon name="Check" size={15} />;
+    return <Icon name="Check" size={15} strokeWidth={2.4} />;
   }
   if (tone === 'fail') {
     return <Icon name="X" size={15} />;
@@ -34,22 +34,23 @@ export function HtmlStepList({
   steps: HtmlStepItem[];
 }): React.ReactElement {
   return (
-    <ol className="steps">
+    <ol className="sl">
       {steps.map((step, index) => (
-        <li key={`${step.title}-${index}`} className={`step ${step.tone}`}>
-          <div className="rail">
-            <span className="knob">{knobIcon(step.tone, step.knob)}</span>
+        <li key={`${step.title}-${index}`} className={`sl-step ${step.tone}`}>
+          <div className="sl-rail">
+            <span className="sl-knob">{knobIcon(step.tone, step.knob)}</span>
+            <span className="sl-line" />
           </div>
-          <div className="body">
-            <div className="ttl">
-              <span className="t">{step.title}</span>
+          <div className="sl-pane">
+            <div className="sl-hd">
+              <span className="sl-title">{step.title}</span>
               {step.badge}
             </div>
-            <div className="meta">{step.meta}</div>
+            <div className="sl-meta">{step.meta}</div>
             {step.sla ? (
               <div className={`sla${step.sla.fail ? ' fail' : ''}`}>{step.sla.label}</div>
             ) : null}
-            {step.actions ? <div className="acts">{step.actions}</div> : null}
+            {step.actions ? <div className="sl-acts">{step.actions}</div> : null}
           </div>
         </li>
       ))}
