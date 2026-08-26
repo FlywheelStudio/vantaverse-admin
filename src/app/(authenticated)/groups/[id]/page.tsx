@@ -1,6 +1,8 @@
 import { getOrganizationById, getCurrentPhysiologist } from '../actions';
 import {
+  getConsultationSettings,
   getOrganizationMembersWithPrograms,
+  getOrganizationPrograms,
 } from './actions';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { GroupDetailsPageUI } from './ui';
@@ -33,16 +35,28 @@ export default async function GroupDetailsPage({
       query: () => getOrganizationMembersWithPrograms(id),
       defaultValue: [],
     },
+    programs: {
+      query: () => getOrganizationPrograms(id),
+      defaultValue: [],
+    },
+    consultation: {
+      query: () => getConsultationSettings(),
+      defaultValue: null,
+    },
   });
 
   const physician = result.physician ?? null;
   const members = result.members ?? [];
+  const programs = result.programs ?? [];
+  const consultation = result.consultation ?? null;
 
   return (
     <GroupDetailsPageUI
       organization={organization.data}
       physician={physician}
       initialMembers={members}
+      initialPrograms={programs}
+      consultation={consultation}
     />
   );
 }

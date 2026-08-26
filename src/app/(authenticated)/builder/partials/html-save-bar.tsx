@@ -1,9 +1,16 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { Icon } from '@/components/medvanta';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { HtmlMoreButton } from './html-toolbar';
+import {
+  cloneProgramAssignment,
+  deleteProgramAssignment,
+} from '../actions';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 
 interface BuilderSaveBarProps {
   activeStep: 1 | 2 | 3;
@@ -15,6 +22,9 @@ interface BuilderSaveBarProps {
   saveDisabled?: boolean;
   saveLoading?: boolean;
   showUnsaved?: boolean;
+  /** Assignment of the open template; overflow actions render only when present. */
+  assignmentId?: string;
+  templateName?: string;
 }
 
 /** HTML `saveBar()` step rail for program builder / workout screens. */
@@ -72,7 +82,52 @@ export function BuilderSaveBar({
   saveDisabled = false,
   saveLoading = false,
   showUnsaved = false,
+  assignmentId,
+  templateName,
 }: BuilderSaveBarProps): React.ReactElement {
+  const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Native warning when leaving with unsaved changes (tab close, refresh,
+  // external navigation). In-app routing is not covered.
+  useEffect(() => {
+    if (!showUnsaved) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [showUnsaved]);
+
+  const handleDiscard = (): void => {
+    window.location.reload();
+  };
+
+  const handleDuplicate = async (): Promise<void> => {
+    if (!assignmentId) return;
+    try {
+      const result = await cloneProgramAssignment(assignmentId);
+      if (!result.success) throw new Error(result.error);
+      toast.success('Template duplicated');
+      router.push(`/builder/${result.data.assignmentId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to clone program');
+    }
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    if (!assignmentId) return;
+    try {
+      const result = await deleteProgramAssignment(assignmentId);
+      if (!result.success) throw new Error(result.error);
+      toast.success('Template deleted');
+      router.push('/builder');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete template');
+    }
+  };
+
   return (
     <div className="row" style={{ gap: 10, marginBottom: 18 }}>
       <span className="seg seg-lg">
@@ -146,31 +201,41 @@ export function BuilderSaveBar({
           )}
           Save template
         </button>
-        <HtmlMoreButton
-          items={[
-            {
-              id: 'discard',
-              label: 'Discard changes',
-              onSelect: () => toastUnavailable('Discard changes'),
-            },
-            {
-              id: 'duplicate',
-              label: 'Duplicate template',
-              onSelect: () => toastUnavailable('Duplicate template'),
-            },
-            {
-              id: 'archive',
-              label: 'Archive',
-              onSelect: () => toastUnavailable('Archive'),
-            },
-            {
-              id: 'delete',
-              label: 'Delete',
-              danger: true,
-              onSelect: () => toastUnavailable('Delete template'),
-            },
-          ]}
-        />
+        {assignmentId ? (
+          <>
+            <HtmlMoreButton
+              items={[
+                {
+                  id: 'discard',
+                  label: 'Discard changes',
+                  disabled: !showUnsaved,
+                  onSelect: handleDiscard,
+                },
+                {
+                  id: 'duplicate',
+                  label: 'Duplicate template',
+                  onSelect: () => void handleDuplicate(),
+                },
+                {
+                  id: 'delete',
+                  label: 'Delete',
+                  danger: true,
+                  onSelect: () => setDeleteOpen(true),
+                },
+              ]}
+            />
+            <DeleteConfirmationDialog
+              open={deleteOpen}
+              onOpenChange={(open) => {
+                if (!open) setDeleteOpen(false);
+              }}
+              title={`Delete “${templateName || 'this template'}”?`}
+              description="This permanently removes the template and its schedule. Type the template name below to confirm."
+              confirmText={templateName || undefined}
+              onConfirm={handleDelete}
+            />
+          </>
+        ) : null}
       </span>
     </div>
   );

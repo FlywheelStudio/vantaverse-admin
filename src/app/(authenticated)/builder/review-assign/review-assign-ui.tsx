@@ -1,156 +1,346 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
+import toast from 'react-hot-toast';
 import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { useQueryClient } from '@tanstack/react-query';
 import { HtmlAvatar } from '../../users/html-helpers';
 import { BuilderSaveBar } from '../partials/html-save-bar';
-import { HtmlRowMenu } from '../partials/html-toolbar';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  calculateEndDate,
+  formatDateForDB,
+  parseLocalDateString,
+} from '@/lib/utils';
+import { createParallelQueries } from '@/lib/supabase/query';
+import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
+import { programAssignmentsKeys } from '@/hooks/use-passignments';
+import { useUpsertWorkoutSchedule, useUpdateProgramSchedule } from '@/hooks/use-workout-schedule-mutations';
+import { useUpdateProgramTemplate } from '@/hooks/use-program-template-mutations';
+import { useDefaultValues } from '../[id]/default-values/use-default-values';
+import { UpdateDerivedDialog } from '../[id]/workout-schedule/update-derived-dialog';
+import {
+  updateDerivedProgramSchedules,
+  updateAssignmentDates,
+} from '../actions';
+import {
+  estimateSessionMinutes,
+  getDayName,
+} from '../[id]/workout-schedule/exercise-builder-mock-data';
+import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+import type { ProgramAssignmentWithTemplate, ProgramAssignmentMember } from '@/lib/supabase/schemas/program-assignments';
+import type { SelectedItem } from '../[id]/template-config/types';
+import { QuickAssignModal } from './quick-assign-modal';
+import { PropagateDatesDialog } from './propagate-dates-dialog';
+import { getMemberName, isOngoingProgram } from './program-window';
 
 interface ReviewAssignUIProps {
-  assignmentId?: string;
+  assignmentId: string;
+  programAssignment: ProgramAssignmentWithTemplate;
+  schedule: SelectedItem[][][];
+  members: ProgramAssignmentMember[];
 }
 
-const DEMO_TEMPLATE = {
-  name: 'Lower Body & Back Mobility',
-  weeks: 8,
-  workoutDays: 25,
-  membersOnTemplate: 14,
-};
+interface WeekStat {
+  days: string[];
+  sessions: number;
+  exercises: number;
+  minutes: number | null;
+}
 
-const CHECKS = [
-  {
-    ok: true,
-    title: 'Every week has at least one workout day',
-    detail: '8 of 8 weeks scheduled',
-  },
-  {
-    ok: true,
-    title: 'Every scheduled day has exercises',
-    detail: '25 days, none empty',
-  },
-  {
-    ok: true,
-    title: 'Every exercise has sets, reps and rest',
-    detail: '96 of 96 prescriptions complete',
-  },
-  {
-    ok: false,
-    title: 'Weeks 7 and 8 drop to 2 days a week',
-    detail:
-      'Intentional taper, or unfinished? Members see a lighter fortnight at the end.',
-  },
-  {
-    ok: false,
-    title: 'No cover image',
-    detail: 'The generated gradient cover will be used instead.',
-  },
-  {
-    ok: true,
-    title: 'Description written',
-    detail: 'Shown to members when the program is assigned',
-  },
-  {
-    ok: false,
-    title: 'Balance is mobility-heavy',
-    detail: '44% mobility, 8% balance across the 8 weeks',
-  },
-] as const;
 
-const WEEK_ROWS = [
-  { days: 'Mon Wed Fri', sessions: 3, exercises: 11, volume: 79, note: 'Baseline' },
-  { days: 'Mon Wed Fri', sessions: 3, exercises: 11, volume: 79, note: 'Baseline' },
-  { days: 'Mon Wed Fri', sessions: 3, exercises: 11, volume: 79, note: 'Baseline' },
-  { days: 'Mon Tue Thu Fri', sessions: 4, exercises: 14, volume: 100, note: 'Load added' },
-  { days: 'Mon Tue Thu Fri', sessions: 4, exercises: 14, volume: 100, note: 'Load added' },
-  { days: 'Mon Tue Thu Fri', sessions: 4, exercises: 14, volume: 100, note: 'Load added' },
-  { days: 'Mon Thu', sessions: 2, exercises: 8, volume: 57, note: 'Taper' },
-  { days: 'Mon Thu', sessions: 2, exercises: 8, volume: 57, note: 'Taper' },
-] as const;
-
-const TARGETS = [
-  {
-    type: 'group' as const,
-    name: 'Capital MSK',
-    detail: '9 members · Dana Reyes',
-    selected: true,
-  },
-  {
-    type: 'group' as const,
-    name: 'Riverbend Spine',
-    detail: '6 members · Priya Raghunathan',
-    selected: false,
-  },
-  {
-    type: 'person' as const,
-    name: 'Nadia Okonjo',
-    detail: 'Capital MSK · already on this program',
-    selected: false,
-  },
-  {
-    type: 'person' as const,
-    name: 'Temi Adeyemi',
-    detail: 'Northline Ortho · no program yet',
-    selected: true,
-  },
-  {
-    type: 'person' as const,
-    name: 'Rafael Quintero',
-    detail: 'No group · invite unopened',
-    selected: false,
-  },
-] as const;
-
-/** HTML `scReviewAssign` placeholder — layout only, no assign RPCs. */
+/** HTML `scReviewAssign` — real data: program window, weeks at a glance, members. */
 export function ReviewAssignUI({
   assignmentId,
+  programAssignment,
+  schedule,
+  members,
 }: ReviewAssignUIProps): React.ReactElement {
-  const builderHref = assignmentId ? `/builder/${assignmentId}` : '/builder';
-  const passedCount = CHECKS.filter((check) => check.ok).length;
-  const reviewCount = CHECKS.length - passedCount;
+  const builderHref = `/builder/${assignmentId}`;
+  const template = programAssignment.program_template;
+  const templateName = template?.name ?? 'Program';
+  const weeks = template?.weeks ?? 0;
+  const status = programAssignment.status;
+  const isPreProgramTemplate =
+    status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE;
+
+  // Dates: local edit state vs saved baseline (drives Unsaved changes).
+  const [savedDates, setSavedDates] = useState<{
+    start: string | null;
+    end: string | null;
+  }>({
+    start: programAssignment.start_date,
+    end: programAssignment.end_date,
+  });
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    savedDates.start ? parseLocalDateString(savedDates.start) : undefined,
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    savedDates.end ? parseLocalDateString(savedDates.end) : undefined,
+  );
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [showDerivedDialog, setShowDerivedDialog] = useState(false);
+  const [showPropagateDialog, setShowPropagateDialog] = useState(false);
+  const [isQuickAssignOpen, setIsQuickAssignOpen] = useState(false);
+
+  const isUnassigned =
+    status === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE ||
+    isPreProgramTemplate;
+  const ownOngoing = isOngoingProgram(status, savedDates.start);
+  const canEditDates =
+    !isUnassigned &&
+    (status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM || !ownOngoing);
+
+  const queryClient = useQueryClient();
+  const { values: defaultValues } = useDefaultValues();
+  const updateProgramTemplateMutation = useUpdateProgramTemplate({
+    suppressToast: true,
+  });
+  const updateProgramScheduleMutation = useUpdateProgramSchedule({
+    suppressToast: true,
+  });
+  const upsertScheduleMutation = useUpsertWorkoutSchedule({
+    suppressToast: true,
+  });
+
+  const isSaving =
+    upsertScheduleMutation.isPending ||
+    updateProgramScheduleMutation.isPending ||
+    updateProgramTemplateMutation.isPending;
+
+  const datesDirty =
+    canEditDates &&
+    ((startDate ? formatDateForDB(startDate) : null) !== savedDates.start ||
+      (endDate ? formatDateForDB(endDate) : null) !== savedDates.end);
+
+  const handleDateSelect = (range: DateRange | undefined): void => {
+    const from = range?.from;
+    if (!from) {
+      setStartDate(undefined);
+      setEndDate(undefined);
+      return;
+    }
+    // End date is always calculated from the template length.
+    setStartDate(from);
+    setEndDate(calculateEndDate(from, weeks));
+  };
+
+  /**
+   * Save template + schedule (+ assignment link). When `propagateIds` is set
+   * (assigned-program date edit), also write the new window to this assignment
+   * plus every propagated assignment.
+   */
+  const performSave = async (
+    updateDerived: boolean,
+    propagateIds?: string[],
+  ): Promise<void> => {
+    try {
+      const result = await createParallelQueries({
+        template: {
+          query: async (): Promise<SupabaseSuccess<unknown> | SupabaseError> => {
+            try {
+              const saved = await updateProgramTemplateMutation.mutateAsync({
+                templateId: template.id,
+                name: template.name,
+                weeks: template.weeks,
+                description: template.description ?? null,
+                goals: template.goals ?? null,
+                notes: template.notes ?? null,
+                imageFile: null,
+                imagePreview: null,
+                oldImageUrl:
+                  typeof template.image_url === 'string'
+                    ? template.image_url
+                    : null,
+                organizationId: template.organization_id || null,
+              });
+              return { success: true, data: saved };
+            } catch (error) {
+              return {
+                success: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Failed to update template',
+                status: 500,
+              };
+            }
+          },
+          required: true,
+        },
+        schedule: {
+          query: async (): Promise<
+            SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
+          > => {
+            try {
+              const scheduleResult = await upsertScheduleMutation.mutateAsync({
+                schedule,
+                assignmentId,
+                defaultValues,
+              });
+              return { success: true, data: scheduleResult };
+            } catch (error) {
+              return {
+                success: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Failed to save schedule',
+                status: 500,
+              };
+            }
+          },
+          required: true,
+        },
+        assignment: {
+          query: async (deps: {
+            template: unknown;
+            schedule: { id: string; schedule_hash: string };
+          }): Promise<SupabaseSuccess<unknown> | SupabaseError> => {
+            try {
+              await updateProgramScheduleMutation.mutateAsync({
+                assignmentId,
+                workoutScheduleId: deps.schedule.id,
+              });
+              return { success: true, data: { id: assignmentId } };
+            } catch (error) {
+              return {
+                success: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Failed to update assignment',
+                status: 500,
+              };
+            }
+          },
+          dependsOn: ['template', 'schedule'] as const,
+          required: false,
+        },
+      });
+
+      if (propagateIds) {
+        if (!(startDate && endDate)) {
+          throw new Error('Pick a start and end date before saving');
+        }
+        const datesResult = await updateAssignmentDates(
+          [assignmentId, ...propagateIds],
+          formatDateForDB(startDate),
+          formatDateForDB(endDate),
+        );
+        if (!datesResult.success) {
+          throw new Error(datesResult.error);
+        }
+      }
+
+      if (isUnassigned && updateDerived && result.schedule) {
+        const derivedResult = await updateDerivedProgramSchedules(
+          assignmentId,
+          result.schedule.id,
+        );
+        if (derivedResult.success) {
+          const count = derivedResult.data;
+          await queryClient.invalidateQueries({
+            queryKey: programAssignmentsKeys.all,
+          });
+          if (count > 0) {
+            toast.success(`Saved and updated ${count} active program${count !== 1 ? 's' : ''}`);
+          } else {
+            toast.success('Saved (no active programs to update)');
+          }
+        } else {
+          toast.success('Template saved, but failed to update active programs');
+        }
+      } else {
+        toast.success('Saved');
+      }
+      setSavedDates({
+        start: startDate ? formatDateForDB(startDate) : null,
+        end: endDate ? formatDateForDB(endDate) : null,
+      });
+      setShowDerivedDialog(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Save failed');
+      setShowDerivedDialog(false);
+    }
+  };
+
+  const handleSaveTriggered = (): void => {
+    void (async () => {
+      if (isPreProgramTemplate) {
+        await performSave(true);
+        return;
+      }
+      if (isUnassigned) {
+        setShowDerivedDialog(true);
+        return;
+      }
+      if (!(startDate && endDate)) {
+        toast.error('Pick a start and end date before saving');
+        return;
+      }
+      setShowPropagateDialog(true);
+      setShowPropagateDialog(true);
+    })();
+  };
+
+  // Weeks at a glance: real stats from the converted schedule.
+  const weekStats: WeekStat[] = useMemo(() => {
+    return schedule.map((week) => {
+      const days: string[] = [];
+      let exercises = 0;
+      week.forEach((dayItems, dayIndex) => {
+        if (dayItems.length > 0) {
+          days.push(getDayName(dayIndex));
+          exercises += dayItems.length;
+        }
+      });
+      return {
+        days,
+        sessions: days.length,
+        exercises,
+        minutes: days.length > 0 ? estimateSessionMinutes(Math.round(exercises / days.length)) : null,
+      };
+    });
+  }, [schedule]);
+
+  const totalWorkoutDays = weekStats.reduce((sum, w) => sum + w.sessions, 0);
+  const totalExercises = weekStats.reduce((sum, w) => sum + w.exercises, 0);
+
+  const activeMembers = members.filter(
+    (member) => member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+  );
+  const dateRange: DateRange | undefined =
+    startDate || endDate ? { from: startDate, to: endDate } : undefined;
 
   return (
     <>
       <AppBar
         crumbs={[
           { label: 'Programs', href: '/builder' },
-          { label: DEMO_TEMPLATE.name, href: builderHref },
+          { label: templateName, href: builderHref },
           { label: 'Review and assign' },
         ]}
-        title={DEMO_TEMPLATE.name}
-        subtitle={`Template · ${DEMO_TEMPLATE.weeks} weeks · ${DEMO_TEMPLATE.workoutDays} workout days · ${DEMO_TEMPLATE.membersOnTemplate} members already on it`}
+        title={templateName}
+        subtitle={`Template · ${weeks} week${weeks === 1 ? '' : 's'}`}
       />
       <div className="body">
         <BuilderSaveBar
           activeStep={3}
           detailsHref={builderHref}
           workoutHref={`${builderHref}#build-workout`}
-          showUnsaved={false}
-          saveDisabled
+          onSave={handleSaveTriggered}
+          saveDisabled={!datesDirty || isSaving}
+          saveLoading={isSaving}
+          showUnsaved={datesDirty}
+          assignmentId={assignmentId}
+          templateName={templateName}
         />
-
-        <div
-          className="row"
-          style={{
-            gap: 10,
-            marginBottom: 18,
-            padding: '12px 14px',
-            background: 'var(--warning-soft)',
-            border: '1px solid color-mix(in oklch, var(--warning) 30%, white)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--text-body)',
-          }}
-        >
-          <Icon name="TriangleAlert" size={18} style={{ color: 'var(--warning)' }} />
-          <span>
-            <b style={{ color: 'var(--text-strong)' }}>
-              Placeholder — assign flow not available.
-            </b>{' '}
-            Layout matches HTML review &amp; assign; bulk push and assign RPCs are not wired.
-          </span>
-        </div>
 
         <div
           className="g"
@@ -160,71 +350,11 @@ export function ReviewAssignUI({
           }}
         >
           <div>
-            <div className="card card-flush" style={{ marginBottom: 16 }}>
-              <div className="cs">
-                <span className="cs-t">Before you assign</span>
-                <span className="bdg bdg-b">{passedCount} checks passed</span>
-                <span className="bdg">{reviewCount} to review</span>
-                <span className="sp mut" style={{ fontSize: 'var(--text-xs)' }}>
-                  Nothing here blocks assigning
-                </span>
-              </div>
-              <div style={{ padding: '6px 20px 12px' }}>
-                {CHECKS.map((check) => (
-                  <div
-                    key={check.title}
-                    className="row"
-                    style={{
-                      gap: 11,
-                      padding: '11px 0',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <Icon
-                      name={check.ok ? 'CircleCheck' : 'TriangleAlert'}
-                      size={17}
-                      style={{
-                        color: check.ok ? 'var(--navy-600)' : 'var(--slate-500)',
-                        marginTop: 1,
-                      }}
-                    />
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: 'var(--text-md)',
-                          fontWeight: check.ok
-                            ? 'var(--fw-medium)'
-                            : 'var(--fw-semibold)',
-                          color: 'var(--text-strong)',
-                        }}
-                      >
-                        {check.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 'var(--text-xs)',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        {check.detail}
-                      </span>
-                    </span>
-                    {!check.ok ? <span className="bdg">Review</span> : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="card card-flush">
               <div className="cs">
-                <span className="cs-t">The 8 weeks at a glance</span>
+                <span className="cs-t">The {weeks} weeks at a glance</span>
                 <span className="sp">
-                  <Link
-                    href={`${builderHref}#build-workout`}
-                    className="btn btn-ghost btn-sm"
-                  >
+                  <Link href={`${builderHref}#build-workout`} className="btn btn-ghost btn-sm">
                     <Icon name="SquarePen" size={15} />
                     Edit the schedule
                   </Link>
@@ -236,89 +366,72 @@ export function ReviewAssignUI({
                     <th>Week</th>
                     <th>Days</th>
                     <th>Sessions</th>
-                    <th>Exercises</th>
-                    <th>Volume</th>
-                    <th>Progression</th>
+                    <th>Avg session</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {WEEK_ROWS.map((week, index) => (
-                    <tr key={index}>
-                      <td style={{ width: 74 }}>
-                        <span
-                          className="mono"
-                          style={{
-                            fontWeight: 'var(--fw-semibold)',
-                            color: 'var(--text-strong)',
-                          }}
-                        >
-                          Week {index + 1}
-                        </span>
-                      </td>
-                      <td>{week.days}</td>
-                      <td>
-                        <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
-                          {week.sessions}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
-                          {week.exercises}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="pbw" style={{ maxWidth: 120 }}>
-                          <span className="pb pb-6 pb-n">
-                            <i style={{ width: `${week.volume}%` }} />
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="bdg" style={{ fontSize: 10 }}>
-                          {week.note}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right', width: 52 }}>
-                        <HtmlRowMenu
-                          items={[
-                            {
-                              id: 'open',
-                              label: `Open week ${index + 1}`,
-                              onSelect: () =>
-                                toastUnavailable(`Open week ${index + 1}`),
-                            },
-                            {
-                              id: 'copy',
-                              label: 'Copy week',
-                              onSelect: () => toastUnavailable('Copy week'),
-                            },
-                            {
-                              id: 'clear',
-                              label: 'Clear week',
-                              onSelect: () => toastUnavailable('Clear week'),
-                            },
-                          ]}
-                        />
+                  {weekStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="mut" style={{ padding: 14 }}>
+                        No workout days scheduled yet — build the schedule first.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    weekStats.map((week, index) => (
+                      <tr key={index}>
+                        <td style={{ width: 74 }}>
+                          <span
+                            className="mono"
+                            style={{
+                              fontWeight: 'var(--fw-semibold)',
+                              color: 'var(--text-strong)',
+                            }}
+                          >
+                            {index + 1}
+                          </span>
+                        </td>
+                        <td>{week.days.length > 0 ? week.days.join(' ') : <span className="mut">—</span>}</td>
+                        <td>
+                          <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
+                            {week.sessions}
+                          </span>
+                        </td>
+                        <td>
+                          {week.minutes !== null ? (
+                            <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
+                              ~{week.minutes} min
+                            </span>
+                          ) : (
+                            <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                              Unspecified
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right', width: 52 }}>
+                          <Link
+                            href={`${builderHref}#build-workout`}
+                            className="ib ib-ghost ib-sm"
+                            aria-label={`Edit week ${index + 1}`}
+                          >
+                            <Icon name="SquarePen" size={15} />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
               <div className="cf">
                 <span>
                   <b className="mono" style={{ color: 'var(--text-body)' }}>
-                    25
+                    {totalWorkoutDays}
                   </b>{' '}
                   workout days ·{' '}
                   <b className="mono" style={{ color: 'var(--text-body)' }}>
-                    96
+                    {totalExercises}
                   </b>{' '}
-                  prescriptions · about{' '}
-                  <b className="mono" style={{ color: 'var(--text-body)' }}>
-                    22
-                  </b>{' '}
-                  min per session
+                  prescriptions
                 </span>
               </div>
             </div>
@@ -329,140 +442,90 @@ export function ReviewAssignUI({
               <div className="ch" style={{ marginBottom: 14 }}>
                 <div>
                   <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
-                    Assign it to
+                    Program window
                   </div>
                   <div className="ch-s">
-                    Groups assign to everyone in them, now and later
+                    {isUnassigned
+                      ? 'Dates are set per member when assigned'
+                      : ownOngoing
+                        ? 'Locked while the program runs'
+                        : 'End date follows the template length'}
                   </div>
                 </div>
               </div>
-              <div className="row" style={{ gap: 8, marginBottom: 12 }}>
-                <span className="fld grow">
-                  <Icon name="Search" size={16} />
-                  <input
-                    placeholder="Search people or groups…"
-                    disabled
-                    title="Placeholder — assign flow not available"
-                  />
-                </span>
-              </div>
-              <div className="list-rows" style={{ marginBottom: 14 }}>
-                {TARGETS.map((target) => (
-                  <div
-                    key={target.name}
-                    className={`lrow${target.selected ? ' on' : ''}`}
+
+              {isUnassigned ? (
+                <>
+                  <p className="mut" style={{ fontSize: 'var(--text-sm)', marginBottom: 10 }}>
+                    Assign this template to one or more members with a shared start date.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-acc btn-full"
+                    onClick={() => setIsQuickAssignOpen(true)}
                   >
-                    <span className={`cb${target.selected ? ' on' : ''}`}>
-                      {target.selected ? (
-                        <Icon name="Check" size={13} strokeWidth={3} />
-                      ) : null}
-                    </span>
-                    {target.type === 'group' ? (
-                      <span
-                        className="thmb gr"
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 'var(--radius-sm)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: 'var(--white)',
-                          background:
-                            'linear-gradient(135deg, var(--navy-700), var(--cyan-600))',
-                        }}
+                    <Icon name="ClipboardList" size={16} />
+                    Quick assign
+                  </button>
+                </>
+              ) : canEditDates ? (
+                <>
+                  <label className="lbl" style={{ marginBottom: 8 }}>
+                    Start date<span className="req">*</span>
+                  </label>
+                  <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="btn btn-sec btn-full"
+                        style={{ justifyContent: 'flex-start' }}
                       >
-                        {target.name
-                          .split(/\s+/)
-                          .map((part) => part[0])
-                          .join('')
-                          .slice(0, 2)}
-                      </span>
-                    ) : (
-                      <HtmlAvatar name={target.name} size={32} />
-                    )}
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: 'var(--text-md)',
-                          fontWeight: 'var(--fw-semibold)',
-                          color: 'var(--text-strong)',
-                        }}
-                      >
-                        {target.name}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 'var(--text-xs)',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        {target.detail}
-                      </span>
-                    </span>
-                    <span
-                      className={`bdg${target.type === 'group' ? ' bdg-b' : ''}`}
-                      style={{ fontSize: 10 }}
-                    >
-                      {target.type === 'group' ? 'Group' : 'Person'}
-                    </span>
+                        <Icon name="Calendar" size={16} />
+                        {startDate
+                          ? `${format(startDate, 'EEE, MMM d')} – ${endDate ? format(endDate, 'EEE, MMM d, yyyy') : '…'}`
+                          : 'Select start date'}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={handleDateSelect}
+                        defaultMonth={startDate}
+                        numberOfMonths={1}
+                        autoFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="hint" style={{ marginTop: 8 }}>
+                    End date auto-calculates from the {weeks}-week length.
                   </div>
-                ))}
-              </div>
-              <label className="lbl" style={{ marginBottom: 8 }}>
-                Start date<span className="req">*</span>
-              </label>
-              <div
-                className="row"
-                style={{ gap: 7, flexWrap: 'wrap', marginBottom: 7 }}
-              >
-                <button type="button" className="btn btn-pri btn-sm" disabled>
-                  <Icon name="Check" size={15} />
-                  Mon 10 Aug
-                </button>
-                <button type="button" className="btn btn-sec btn-sm" disabled>
-                  Mon 17 Aug
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled>
-                  <Icon name="Calendar" size={15} />
-                  Another Monday
-                </button>
-              </div>
-              <div className="hint" style={{ marginBottom: 14 }}>
-                Everyone selected starts on the same Monday.
-              </div>
-              <div
-                className="row"
-                style={{
-                  gap: 11,
-                  padding: '12px 14px',
-                  background: 'var(--navy-50)',
-                  border: '1px solid var(--navy-200)',
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: 14,
-                }}
-              >
-                <Icon name="UsersRound" size={17} style={{ color: 'var(--navy-700)' }} />
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-body)' }}>
-                  <b style={{ color: 'var(--text-strong)' }}>
-                    10 people will start on Mon 10 Aug.
-                  </b>
-                  <br />
-                  9 from Capital MSK plus Temi Adeyemi. Each gets their own editable copy.
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn btn-acc btn-full"
-                disabled
-                title="Placeholder — assign flow not available"
-              >
-                <Icon name="BadgeCheck" size={17} />
-                Assign program
-              </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-body)' }}>
+                    {savedDates.start ? (
+                      <>
+                        <b>{format(parseLocalDateString(savedDates.start), 'EEE, MMM d, yyyy')}</b>
+                        {' – '}
+                        <b>
+                          {savedDates.end
+                            ? format(parseLocalDateString(savedDates.end), 'EEE, MMM d, yyyy')
+                            : 'ongoing'}
+                        </b>
+                      </>
+                    ) : (
+                      <span className="mut">No dates set</span>
+                    )}
+                  </div>
+                  {ownOngoing && savedDates.start ? (
+                    <div className="hint" style={{ marginTop: 8 }}>
+                      Start date locked while running — extend weeks in Workout
+                      Schedule to extend the end date.
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
 
             <div className="card">
@@ -471,48 +534,98 @@ export function ReviewAssignUI({
                   <div className="ch-t" style={{ fontSize: 'var(--text-base)' }}>
                     Already on this template
                   </div>
-                  <div className="ch-s">
-                    Unaffected unless you push changes to them
-                  </div>
+                  <div className="ch-s">Live programs; unaffected unless you push changes</div>
                 </div>
               </div>
-              <div className="row" style={{ gap: 11, marginBottom: 12 }}>
-                <span className="row" style={{ gap: -8 }}>
-                  {['NO', 'CB', 'TS', 'RA', 'BR'].map((initials) => (
-                    <HtmlAvatar key={initials} name={initials} size={28} />
-                  ))}
-                </span>
-                <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
-                  14 members across 3 groups
-                </span>
-              </div>
-              <label className="cbl" style={{ alignItems: 'flex-start' }}>
-                <span className="cb" style={{ marginTop: 1 }} />
-                <span>
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 'var(--text-sm)',
-                      color: 'var(--text-body)',
-                    }}
-                  >
-                    Also push this schedule to their remaining weeks
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-xs)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    Completed weeks are never rewritten. 3 members are mid-week and
-                    finish the current one first.
-                  </span>
-                </span>
-              </label>
+              {members.length === 0 ? (
+                <p className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                  No members assigned yet — assign this template to add the first one.
+                </p>
+              ) : (
+                <>
+                  <div className="row" style={{ gap: 11, marginBottom: 12 }}>
+                    <span className="row" style={{ gap: -8 }}>
+                      {members.slice(0, 5).map((member) => (
+                        <HtmlAvatar
+                          key={member.id}
+                          name={getMemberName(member)}
+                          size={28}
+                        />
+                      ))}
+                    </span>
+                    <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                      {activeMembers.length} active · {members.length} total
+                    </span>
+                  </div>
+                  <div className="list-rows">
+                    {members.map((member) => (
+                      <div key={member.id} className="lrow">
+                        <HtmlAvatar name={getMemberName(member)} size={32} />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: 'var(--text-md)',
+                              fontWeight: 'var(--fw-medium)',
+                              color: 'var(--text-strong)',
+                            }}
+                          >
+                            {getMemberName(member)}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 'var(--text-xs)',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            {member.start_date
+                              ? `Started ${format(parseLocalDateString(member.start_date), 'MMM d, yyyy')}`
+                              : 'No start date'}
+                          </span>
+                        </span>
+                        <span className={`bdg${member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ? ' bdg-b' : ''}`} style={{ fontSize: 10 }}>
+                          {member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ? 'Active' : 'Pre-program'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <UpdateDerivedDialog
+        open={showDerivedDialog}
+        onOpenChange={(open) => {
+          if (!open) setShowDerivedDialog(false);
+        }}
+        onConfirm={(updateDerived) => void performSave(updateDerived)}
+        loading={isSaving}
+        templateName={templateName}
+      />
+
+      <PropagateDatesDialog
+        open={showPropagateDialog}
+        onOpenChange={setShowPropagateDialog}
+        members={members.filter((member) => member.id !== assignmentId)}
+        startDate={startDate}
+        endDate={endDate}
+        loading={isSaving}
+        onConfirm={(ids) => void performSave(false, ids)}
+      />
+
+      <QuickAssignModal
+        open={isQuickAssignOpen}
+        onOpenChange={setIsQuickAssignOpen}
+        templateAssignmentId={assignmentId}
+        weeks={weeks}
+        organizationId={programAssignment.organization_id ?? null}
+        assignedUserIds={members
+          .map((member) => member.user_id)
+          .filter((id): id is string => !!id)}
+      />
     </>
   );
 }

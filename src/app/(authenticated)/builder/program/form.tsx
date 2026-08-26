@@ -7,19 +7,15 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
-import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import {
   programTemplateFormSchema,
   type ProgramTemplateFormData,
 } from './schemas';
-import { useProgramFormDates } from './hooks/use-program-form-dates';
 import { useProgramFormInit } from './hooks/use-program-form-init';
 import { useProgramFormSubmit } from './hooks/use-program-form-submit';
 import { ImageUploadField } from './partials/image-upload-field';
-import { DateRangePicker } from './partials/date-range-picker';
 import {
   FormTextField,
-  FormNumberField,
   FormTextareaField,
 } from './partials/form-fields';
 
@@ -27,8 +23,6 @@ interface CreateTemplateFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   initialData?: ProgramTemplate | null;
-  initialAssignment?: ProgramAssignmentWithTemplate | null;
-  showDates?: boolean;
   hideActions?: boolean;
   formMethods?: UseFormReturn<ProgramTemplateFormData>;
   lockMetadataExceptWeeks?: boolean;
@@ -38,8 +32,6 @@ export function CreateTemplateForm({
   onSuccess,
   onCancel,
   initialData,
-  initialAssignment,
-  showDates = true,
   hideActions = false,
   formMethods,
   lockMetadataExceptWeeks = false,
@@ -63,8 +55,7 @@ export function CreateTemplateForm({
 
   const form = formMethods ?? defaultForm;
 
-  const { watch, reset } = form;
-  const weeks = watch('weeks');
+  const { reset } = form;
 
   const { imagePreview, setImagePreview } = useProgramFormInit({
     initialData,
@@ -73,13 +64,6 @@ export function CreateTemplateForm({
     loadedDatesForTemplateIdRef,
   });
 
-  const { startDate, dateRange, handleDateSelect } =
-    useProgramFormDates({
-      initialData,
-      initialAssignment,
-      form,
-      loadedDatesForTemplateIdRef,
-    });
 
   const { onSubmit, isSubmitting } = useProgramFormSubmit({
     initialData,
@@ -129,27 +113,7 @@ export function CreateTemplateForm({
                 disabled={lockMetadataExceptWeeks}
               />
 
-              <FormNumberField
-                register={form.register}
-                errors={form.formState.errors}
-                name="weeks"
-                label="Weeks"
-                min={1}
-                required
-              />
 
-              {showDates && (
-                <DateRangePicker
-              weeks={weeks}
-              startDate={startDate}
-              dateRange={dateRange}
-              onDateSelect={handleDateSelect}
-              errors={{
-                startDate: form.formState.errors.startDate,
-                  endDate: form.formState.errors.endDate,
-                }}
-              />
-              )}
 
               <FormTextField
                 register={form.register}

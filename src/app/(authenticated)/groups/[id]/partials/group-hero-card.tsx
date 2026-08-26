@@ -27,8 +27,6 @@ function physicianName(physician: PhysicianInfo | null): string | null {
 
 interface GroupHeroCardProps {
   organization: Pick<Organization, 'id' | 'name' | 'description' | 'picture_url' | 'created_at'>;
-  memberCount: number;
-  programCount: number;
   physician: PhysicianInfo | null;
   onAddMembers: () => void;
   onAssignPhysician: () => void;
@@ -37,8 +35,6 @@ interface GroupHeroCardProps {
 /** HTML scGroupDetail hero card — logo, stats, physiologist, actions. */
 export function GroupHeroCard({
   organization,
-  memberCount,
-  programCount,
   physician,
   onAddMembers,
   onAssignPhysician,
@@ -118,8 +114,6 @@ export function GroupHeroCard({
           </div>
 
           <div className="row" style={{ gap: 22, flexWrap: 'wrap', marginTop: 14 }}>
-            <HeroStat icon="UsersRound" label="Members" value={String(memberCount)} />
-            <HeroStat icon="ClipboardList" label="Active programs" value={String(programCount)} />
             <HeroStat icon="Calendar" label="Created" value={createdLabel} />
             <span>
               <span

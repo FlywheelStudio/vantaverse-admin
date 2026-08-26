@@ -24,6 +24,8 @@ interface DashboardAttentionRow {
   name: string;
 }
 
+export type DashboardDelta = { text: string; trend: 'up' | 'down' | 'flat' };
+
  interface DashboardUiProps {
   statusCounts: DashboardStatusCountsProp;
   compliancePct: number;
@@ -37,6 +39,7 @@ interface DashboardAttentionRow {
     completion: number[];
     overdue: number[];
   };
+  deltas: DashboardDelta[];
   onViewAllUsers: () => void;
   onOpenUser: (userId: string) => void;
 }
@@ -50,6 +53,7 @@ export function DashboardUi({
   overdueCount,
   legend,
   sparks,
+  deltas,
   onViewAllUsers,
   onOpenUser,
 }: DashboardUiProps): React.ReactElement {
@@ -59,34 +63,34 @@ export function DashboardUi({
         <StatTile
           label="Active members"
           value={statusCounts.active}
-          delta="+4 WoW"
-          trend="up"
+          delta={deltas[0].text}
+          trend={deltas[0].trend}
           icon="UsersRound"
           spark={sparks.active}
         />
         <StatTile
           label="In a program"
           value={statusCounts.inProgram}
-          delta="+2 WoW"
-          trend="up"
+          delta={deltas[1].text}
+          trend={deltas[1].trend}
           icon="ClipboardList"
           spark={sparks.inProgram}
         />
         <StatTile
           label="Avg. completion"
           value={`${Math.round(compliancePct)}%`}
-          delta="-2 pts WoW"
-          trend="down"
+          delta={deltas[2].text}
+          trend={deltas[2].trend}
           icon="Percent"
           spark={sparks.completion}
         />
         <StatTile
           label="Programs overdue"
           value={overdueCount}
-          delta={overdueCount ? `+${Math.min(overdueCount, 2)} WoW` : undefined}
-          trend={overdueCount ? 'up' : 'flat'}
+          delta={deltas[3].text || undefined}
+          trend={deltas[3].trend}
           icon="Hourglass"
-          footer="Past the 5 working day deadline"
+          footer="No program assigned within 12 days of consultation"
           spark={sparks.overdue}
         />
       </div>

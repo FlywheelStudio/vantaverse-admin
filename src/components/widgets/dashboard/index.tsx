@@ -6,25 +6,30 @@ import type {
   DashboardStatusCounts,
   UserNeedingAttention,
 } from '@/lib/supabase/queries/dashboard';
-import { DashboardUi } from './ui';
+import type { DashboardAnalyticsPoint } from '@/lib/supabase/queries/dashboard';
+import { DashboardUi, type DashboardDelta } from './ui';
 
-/** Mock spark series when real time-series data is unavailable (HTML scDashboard). */
-const MOCK_SPARKS = {
-  active: [44, 47, 46, 51, 54, 53, 57, 61],
-  inProgram: [36, 38, 39, 41, 40, 43, 44, 45],
-  completion: [19, 18, 17, 17, 15, 15, 14, 13],
-  overdue: [2, 3, 3, 4, 4, 5, 5, 6],
-};
-
-/** Proxy for HTML "overdue" when due-date data is not available. */
-const URGENT_COMPLIANCE_LT = 30;
-
- type DashboardStatusCountsProp = DashboardStatusCounts & {
+type DashboardStatusCountsProp = DashboardStatusCounts & {
   programCompleted?: number;
 };
 
-function isUrgentAttention(item: UserNeedingAttention): boolean {
-  return item.compliance < URGENT_COMPLIANCE_LT;
+interface DashboardProps {
+  statusCounts: DashboardStatusCountsProp;
+  compliancePct: number;
+  needingAttention: UserNeedingAttention[];
+  overdueCount: number;
+  series: {
+    active: DashboardAnalyticsPoint[];
+    inProgram: DashboardAnalyticsPoint[];
+    completion: DashboardAnalyticsPoint[];
+    overdue: DashboardAnalyticsPoint[];
+  };
+  deltas: {
+    active: number;
+    inProgram: number;
+    completion: number;
+    overdue: number;
+  };
 }
 
 function attentionDisplayName(item: UserNeedingAttention): string {
@@ -35,18 +40,32 @@ function attentionDisplayName(item: UserNeedingAttention): string {
   );
 }
 
+function sparkValues(points: DashboardAnalyticsPoint[]): number[] {
+  return points.map((p) => p.value);
+}
+
+function formatDelta(value: number, unit = ''): string {
+  if (!value) return '';
+  const sign = value > 0 ? '+' : '−';
+  const magnitude = Math.abs(Math.round(unit ? value * 10 : value) / 10);
+  return `${sign}${magnitude}${unit}`;
+}
+
+function deltaTrend(value: number): DashboardDelta['trend'] {
+  if (value > 0) return 'up';
+  if (value < 0) return 'down';
+  return 'flat';
+}
+
 export function Dashboard({
   statusCounts,
-  needingAttention,
   compliancePct,
-}: {
-  statusCounts: DashboardStatusCountsProp;
-  needingAttention: UserNeedingAttention[];
-  compliancePct: number;
-}): React.ReactElement {
+  needingAttention,
+  overdueCount,
+  series,
+  deltas,
+}: DashboardProps): React.ReactElement {
   const router = useRouter();
-
-  const overdue = needingAttention.filter(isUrgentAttention);
 
   const rows = useMemo(
     () =>
@@ -76,15 +95,41 @@ export function Dashboard({
     ];
   }, [statusCounts]);
 
+  // "In a program" and "overdue" count members; a decrease is the good direction.
+  const memberDeltaTrend = (value: number): DashboardDelta['trend'] =>
+    value === 0 ? 'flat' : value < 0 ? 'down' : 'up';
+
+  const tileDeltas: DashboardDelta[] = [
+    { text: formatDelta(deltas.active), trend: deltaTrend(deltas.active) },
+    {
+      text: formatDelta(deltas.inProgram),
+      trend: memberDeltaTrend(deltas.inProgram),
+    },
+    {
+      text: formatDelta(deltas.completion, ' pts'),
+      trend: deltaTrend(deltas.completion),
+    },
+    {
+      text: formatDelta(deltas.overdue),
+      trend: memberDeltaTrend(deltas.overdue),
+    },
+  ];
+
   return (
     <DashboardUi
       statusCounts={statusCounts}
       compliancePct={compliancePct}
       attentionCount={needingAttention.length}
       rows={rows}
-      overdueCount={overdue.length}
+      overdueCount={overdueCount}
       legend={legend}
-      sparks={MOCK_SPARKS}
+      sparks={{
+        active: sparkValues(series.active),
+        inProgram: sparkValues(series.inProgram),
+        completion: sparkValues(series.completion),
+        overdue: sparkValues(series.overdue),
+      }}
+      deltas={tileDeltas}
       onViewAllUsers={() => router.push('/users')}
       onOpenUser={(userId) => router.push(`/users/${encodeURIComponent(userId)}`)}
     />

@@ -7,6 +7,7 @@ import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-template
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
+import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
@@ -37,19 +38,64 @@ export async function getProgramAssignmentsPaginated(
 }
 
 /**
+ * Bulk-assign a template-status program to multiple users with one shared start date.
+ * End dates are calculated from the template's week count per user.
+ */
+export async function bulkAssignProgramToUsers(
+  templateAssignmentId: string,
+  userIds: string[],
+  startDate: string, // ISO date string (YYYY-MM-DD)
+): Promise<{
+  success: boolean;
+  assigned: number;
+  failed: Array<{ userId: string; error: string }>;
+}> {
+  const query = new ProgramAssignmentsQuery();
+  const failed: Array<{ userId: string; error: string }> = [];
+  let assigned = 0;
+
+  for (const userId of userIds) {
+    const result = await query.assignToUser(
+      templateAssignmentId,
+      userId,
+      startDate,
+    );
+    if (result.success) {
+      assigned += 1;
+    } else {
+      failed.push({ userId, error: result.error });
+    }
+  }
+
+  return { success: failed.length === 0, assigned, failed };
+}
+
+/**
+ * Update start/end dates for specific program assignments (date propagation)
+ */
+export async function updateAssignmentDates(
+  assignmentIds: string[],
+  startDate: string, // ISO date string (YYYY-MM-DD)
+  endDate: string, // ISO date string (YYYY-MM-DD)
+) {
+  const query = new ProgramAssignmentsQuery();
+  return query.updateDatesByIds(assignmentIds, startDate, endDate);
+}
+
+/**
+ * Get all patients (role='patient') in an organization
+ */
+export async function getOrganizationPatients(organizationId: string) {
+  const query = new ProfilesQuery();
+  return query.getPatientsByOrganization(organizationId);
+}
+
+/**
  * Get a single program assignment by ID (joined with program_template)
  */
 export async function getProgramAssignmentById(id: string) {
   const query = new ProgramAssignmentsQuery();
   return query.getById(id);
-}
-
-/**
- * Member counts + avg completion for program templates (Members on it / Avg. completion columns).
- */
-export async function getTemplateMemberStats(templateIds: string[]) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getMemberStatsByTemplateIds(templateIds);
 }
 
 /**
@@ -394,7 +440,6 @@ export async function upsertExerciseTemplate(data: {
   p_distance_override?: string[] | null;
   p_weight_override?: string[] | null;
   p_rest_time_override?: number[] | null;
-  p_equipment_ids?: number[];
   p_notes?: string;
 }): Promise<
   | { success: true; data: { id: string; template_hash: string } }
@@ -442,7 +487,6 @@ export async function editExerciseTemplate(data: {
   p_distance_override?: string[] | null;
   p_weight_override?: string[] | null;
   p_rest_time_override?: number[] | null;
-  p_equipment_ids?: number[];
   p_notes?: string;
 }): Promise<
   | { success: true; data: { id: string; template_hash: string } }

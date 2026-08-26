@@ -217,6 +217,7 @@ export class OrganizationsQuery extends SupabaseQuery {
   public async create(
     name: string,
     description?: string | null,
+    screeningUrl?: string | null,
   ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
 
@@ -225,6 +226,7 @@ export class OrganizationsQuery extends SupabaseQuery {
       .insert({
         name: name.trim(),
         description: description?.trim() || null,
+        screening_url: screeningUrl?.trim() || null,
       })
       .select()
       .single();

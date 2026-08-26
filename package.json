@@ -16,7 +16,7 @@
     "commitlint": "node scripts/commitlint.js",
     "release": "release-it --ci",
     "prepare": "husky",
-    "supabase:gen": "pnpm supabase gen types typescript --project-id rijathaquzmuxtuipenz --schema public > src/lib/supabase/database.types.ts",
+    "supabase:gen": "pnpm supabase gen types typescript --project-id bzsloubjksvbnosoymwu --schema public > src/lib/supabase/database.types.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

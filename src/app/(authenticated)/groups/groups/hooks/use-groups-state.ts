@@ -21,11 +21,13 @@ export function useGroupsState() {
   const [newOrgData, setNewOrgData] = useState<{
     name: string;
     description: string;
+    screeningUrl: string;
     imageFile: File | null;
     imagePreview: string | null;
   }>({
     name: '',
     description: '',
+    screeningUrl: '',
     imageFile: null,
     imagePreview: null,
   });
@@ -76,6 +78,7 @@ export function useGroupsState() {
     setNewOrgData({
       name: '',
       description: '',
+      screeningUrl: '',
       imageFile: null,
       imagePreview: null,
     });
@@ -91,6 +94,7 @@ export function useGroupsState() {
     setNewOrgData({
       name: '',
       description: '',
+      screeningUrl: '',
       imageFile: null,
       imagePreview: null,
     });

@@ -144,7 +144,7 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
   };
 
   const handleSaveNewOrg = async () => {
-    if (!state.newOrgData.name.trim()) {
+    if (!state.newOrgData.name.trim() || !state.newOrgData.screeningUrl.trim()) {
       return;
     }
 
@@ -153,6 +153,7 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
       const org = await createOrgMutation.mutateAsync({
         name: state.newOrgData.name.trim(),
         description: state.newOrgData.description.trim() || null,
+        screeningUrl: state.newOrgData.screeningUrl.trim(),
       });
 
       // Upload image if provided
@@ -176,6 +177,7 @@ export function GroupsUI({ initialOrganizations }: GroupsUIProps) {
       state.setNewOrgData({
         name: '',
         description: '',
+        screeningUrl: '',
         imageFile: null,
         imagePreview: null,
       });

@@ -346,39 +346,51 @@ export type Database = {
         }
         Relationships: []
       }
-      equipments: {
+      exercise_tags: {
         Row: {
           created_at: string | null
-          description: string | null
-          icon_url: string | null
-          id: number
-          name: string
-          updated_at: string | null
+          exercise_id: number
+          tag_id: number
         }
         Insert: {
           created_at?: string | null
-          description?: string | null
-          icon_url?: string | null
-          id?: number
-          name: string
-          updated_at?: string | null
+          exercise_id: number
+          tag_id: number
         }
         Update: {
           created_at?: string | null
-          description?: string | null
-          icon_url?: string | null
-          id?: number
-          name?: string
-          updated_at?: string | null
+          exercise_id?: number
+          tag_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercise_tags_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_tags_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exercise_templates: {
         Row: {
           created_at: string | null
           distance: string | null
           distance_override: string[] | null
-          equipment_ids: number[] | null
           exercise_id: number
           id: string
           notes: string | null
@@ -399,7 +411,6 @@ export type Database = {
           created_at?: string | null
           distance?: string | null
           distance_override?: string[] | null
-          equipment_ids?: number[] | null
           exercise_id: number
           id?: string
           notes?: string | null
@@ -420,7 +431,6 @@ export type Database = {
           created_at?: string | null
           distance?: string | null
           distance_override?: string[] | null
-          equipment_ids?: number[] | null
           exercise_id?: number
           id?: string
           notes?: string | null
@@ -467,6 +477,7 @@ export type Database = {
           thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
+          updated_by: string | null
           video_type: string
           video_url: string | null
         }
@@ -482,6 +493,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string
           video_url?: string | null
         }
@@ -497,6 +509,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string
           video_url?: string | null
         }
@@ -1212,6 +1225,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          consultation_url: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1219,9 +1233,11 @@ export type Database = {
           is_super_admin: boolean | null
           name: string
           picture_url: string | null
+          screening_url: string | null
           updated_at: string | null
         }
         Insert: {
+          consultation_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1229,9 +1245,11 @@ export type Database = {
           is_super_admin?: boolean | null
           name: string
           picture_url?: string | null
+          screening_url?: string | null
           updated_at?: string | null
         }
         Update: {
+          consultation_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1239,6 +1257,7 @@ export type Database = {
           is_super_admin?: boolean | null
           name?: string
           picture_url?: string | null
+          screening_url?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1736,6 +1755,30 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       team_membership: {
         Row: {
           created_at: string | null
@@ -1973,6 +2016,7 @@ export type Database = {
           thumbnail_url: Json | null
           type: string | null
           updated_at: string | null
+          updated_by: string | null
           video_type: string | null
           video_url: string | null
         }
@@ -1989,6 +2033,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string | null
           video_url?: string | null
         }
@@ -2005,6 +2050,7 @@ export type Database = {
           thumbnail_url?: Json | null
           type?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_type?: string | null
           video_url?: string | null
         }
@@ -2062,6 +2108,7 @@ export type Database = {
           avatar_url: string | null
           certificate_url: Json | null
           consultation_completed: boolean | null
+          consultation_link: string | null
           created_at: string | null
           current_level: number | null
           current_phase: string | null
@@ -2086,6 +2133,7 @@ export type Database = {
           last_name: string | null
           last_sign_in: string | null
           loyalty_status: string | null
+          loyalty_updated_at: string | null
           max_gate_type: string | null
           max_gate_unlocked: number | null
           max_gates: number | null
@@ -2101,6 +2149,7 @@ export type Database = {
           program_due_date: string | null
           program_weeks: number | null
           screening_completed: boolean | null
+          screening_link: string | null
           status: string | null
           updated_at: string | null
         }
@@ -2234,7 +2283,6 @@ export type Database = {
         Args: {
           p_distance?: string
           p_distance_override?: string[]
-          p_equipment_ids?: number[]
           p_exercise_id: number
           p_notes?: string
           p_rep?: number
@@ -2270,10 +2318,41 @@ export type Database = {
         Args: { normalized_schedule: Json[] }
         Returns: Json
       }
+      get_dashboard_analytics: {
+        Args: {
+          p_bucket?: string
+          p_from?: string
+          p_organization_ids?: string[]
+          p_to?: string
+        }
+        Returns: Json
+      }
+      get_dashboard_needs_attention: {
+        Args: { p_organization_ids?: string[] }
+        Returns: Json
+      }
+      get_exercise_assignment_counts: { Args: never; Returns: Json }
+      get_exercise_tags: {
+        Args: { p_exercise_id: number }
+        Returns: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_habit_status: {
         Args: { due_date: string; response: string }
         Returns: string
       }
+      get_member_filter_counts: { Args: never; Returns: Json }
       get_next_workout_date: {
         Args: {
           p_patient_override?: Json[]
@@ -2286,6 +2365,14 @@ export type Database = {
       }
       get_onboarding_intake: { Args: never; Returns: Json }
       get_profiles_onboarding: { Args: never; Returns: Json }
+      get_template_member_stats: {
+        Args: { p_template_ids: string[] }
+        Returns: {
+          avg_completion: number
+          members: number
+          program_template_id: string
+        }[]
+      }
       get_user_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["organization_role"]
@@ -2325,6 +2412,44 @@ export type Database = {
       is_pre_program_template_program_template: {
         Args: { p_program_template_id: string }
         Returns: boolean
+      }
+      list_exercises_filtered: {
+        Args: {
+          p_assignment?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_tag_ids?: number[]
+          p_type?: string
+        }
+        Returns: Json
+      }
+      list_profiles_filtered: {
+        Args: {
+          p_due?: string
+          p_joined?: string
+          p_last_active?: string
+          p_org_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_physiologist?: string
+          p_program?: string
+          p_role?: string
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
+          p_team_id?: string
+        }
+        Returns: Json
+      }
+      list_tag_categories: {
+        Args: never
+        Returns: {
+          category: string
+        }[]
       }
       loyalty_acquire_token: {
         Args: { p_priority?: "sync_award" | "get_loyalty" | "retry" }
@@ -2421,7 +2546,6 @@ export type Database = {
         Args: {
           p_distance: string
           p_distance_override: string[]
-          p_equipment_ids: number[]
           p_exercise_id: number
           p_rep: number
           p_rep_override: number[]
@@ -2453,10 +2577,15 @@ export type Database = {
         Returns: Json
       }
       process_scheduled_notifications: { Args: never; Returns: Json }
+      profile_consultation_link: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       profile_local_date: {
         Args: { p_at?: string; p_tz: string }
         Returns: string
       }
+      profile_screening_link: { Args: { p_user_id: string }; Returns: string }
       pushfire_archive_orphaned_queue_messages: { Args: never; Returns: Json }
       pushfire_archive_user_queue_messages: {
         Args: { p_user_id: string }
@@ -2525,6 +2654,22 @@ export type Database = {
       }
       run_email_triggers: { Args: never; Returns: Json }
       run_message_notification_emails: { Args: never; Returns: Json }
+      search_tags: {
+        Args: { p_category?: string; p_limit?: number; p_q?: string }
+        Returns: {
+          category: string
+          created_at: string | null
+          id: number
+          name: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       serve_daily_workout: {
         Args: {
           p_date?: string
@@ -2532,6 +2677,10 @@ export type Database = {
           p_organization_id?: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      set_exercise_tags: {
+        Args: { p_exercise_id: number; p_tag_ids?: number[] }
         Returns: Json
       }
       set_onboarding_state: {
@@ -2583,7 +2732,6 @@ export type Database = {
         Args: {
           p_distance?: string
           p_distance_override?: string[]
-          p_equipment_ids?: number[]
           p_exercise_id: number
           p_notes?: string
           p_rep?: number
@@ -2608,10 +2756,15 @@ export type Database = {
         }
         Returns: Json
       }
+      upsert_tag: {
+        Args: { p_category: string; p_name: string }
+        Returns: Json
+      }
       upsert_workout_schedule: {
         Args: { p_notes?: string; p_schedule: Json }
         Returns: Json
       }
+      url_encode: { Args: { p_text: string }; Returns: string }
       user_can_access_chat_folder: {
         Args: { p_object_name: string }
         Returns: boolean

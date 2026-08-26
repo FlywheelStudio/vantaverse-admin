@@ -1,12 +1,19 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '@/components/medvanta';
-import { useExercises } from '@/hooks/use-exercises';
+import {
+  useExercisesFiltered,
+  useExerciseAssignmentCounts,
+  useExerciseTypes,
+} from '@/hooks/use-exercises';
+import { useAllTags } from '@/hooks/use-tags';
 import { ExerciseCard } from './partials/exercise-card';
 import { ExerciseModal } from './partials/exercise-modal';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { useDebounce } from '@/hooks/use-debounce';
+import { ActiveFilterPills, useFilterDraft } from '@/components/filters';
+import type { ActiveFilter } from '@/components/filters';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import {
@@ -21,106 +28,166 @@ function formatTypeLabel(type: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+interface ExercisesFilters {
+  assignment: AssignmentFilter;
+  type: string;
+  tagIds: number[];
+}
+
+const DEFAULT_EXERCISES_FILTERS: ExercisesFilters = {
+  assignment: 'all',
+  type: 'all',
+  tagIds: [],
+};
+
+function removeFilter(state: ExercisesFilters, id: string): ExercisesFilters {
+  if (id === 'assignment') return { ...state, assignment: 'all' };
+  if (id === 'type') return { ...state, type: 'all' };
+  if (id.startsWith('tag-')) {
+    const tagId = Number(id.slice(4));
+    return { ...state, tagIds: state.tagIds.filter((t) => t !== tagId) };
+  }
+  return state;
+}
+
 interface ExerciseLibraryProps {
   initialExercises?: Exercise[];
 }
 
 export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): React.ReactElement {
-  const { data: exercises, isLoading } = useExercises(initialExercises);
   const [searchValue, setSearchValue] = useState('');
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(16);
-  const pageSize = 16;
+  const {
+    applied: filters,
+    staged,
+    setStaged,
+    open: filtersOpen,
+    setOpen: setFiltersOpen,
+    apply: handleApplyFilters,
+    clearAll: clearAllDraft,
+    removePill: removeFiltersPill,
+  } = useFilterDraft<ExercisesFilters>({ initial: DEFAULT_EXERCISES_FILTERS, removeFilter });
+  const pageSize = 20;
+  const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  const handleSearchChange = useCallback((): void => {
-    setVisibleCount(pageSize);
-  }, []);
-
-  const debouncedSearch = useDebounce(searchValue, 300, handleSearchChange);
+  const debouncedSearch = useDebounce(searchValue, 300);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const allExercises = useMemo(
-    () => exercises ?? [],
-    [exercises],
+  // Fetch all tags to resolve tag names and category labels for filter chips
+  const { data: allTags = [] } = useAllTags();
+  const tagsMap = useMemo(() => new Map(allTags.map((t) => [t.id, t])), [allTags]);
+
+  // Real assignment counts + source types for the filter panel
+  const { data: countsData } = useExerciseAssignmentCounts();
+  const { data: exerciseTypes = [] } = useExerciseTypes();
+
+  // Paginated + filtered exercises query
+  const {
+    data: queryResult,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useExercisesFiltered({
+    search: debouncedSearch,
+    type: filters.type !== 'all' ? filters.type : undefined,
+    assignment: filters.assignment,
+    tagIds: filters.tagIds.length > 0 ? filters.tagIds : undefined,
+    pageSize,
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+  });
+
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(target);
+    return () => observer.unobserve(target);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const exercises = useMemo(() => {
+    if (!queryResult) return initialExercises ?? [];
+    return queryResult.pages.flatMap((p) => p.data);
+  }, [queryResult, initialExercises]);
+
+  const totalCount = queryResult?.pages[0]?.total ?? initialExercises?.length ?? exercises.length;
+
+  const assignmentCounts = useMemo(
+    () => ({
+      all: countsData?.all ?? totalCount,
+      assigned: countsData?.assigned ?? 0,
+      unassigned: countsData?.unassigned ?? 0,
+    }),
+    [countsData, totalCount],
   );
 
-  const assignmentCounts = useMemo(() => {
-    let unassigned = 0;
-    let assigned = 0;
-    for (const exercise of allExercises) {
-      if ((exercise.assigned_count ?? 0) > 0) assigned += 1;
-      else unassigned += 1;
-    }
-    return { all: allExercises.length, unassigned, assigned };
-  }, [allExercises]);
-
-  const typeOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const exercise of allExercises) {
-      const key = (exercise.type ?? '').trim();
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([value, count]) => ({
-        value,
-        label: formatTypeLabel(value),
-        count,
-      }));
-  }, [allExercises]);
-
-  const filteredExercises = useMemo(() => {
-    return allExercises.filter((exercise) => {
-      if (debouncedSearch) {
-        const matchesSearch = exercise.exercise_name
-          .toLowerCase()
-          .includes(debouncedSearch.toLowerCase());
-        if (!matchesSearch) return false;
-      }
-
-      if (typeFilter !== 'all' && exercise.type !== typeFilter) {
-        return false;
-      }
-
-      const assignedCount = exercise.assigned_count ?? 0;
-      if (assignmentFilter === 'unassigned') return assignedCount === 0;
-      if (assignmentFilter === 'assigned') return assignedCount > 0;
-
-      return true;
-    });
-  }, [allExercises, debouncedSearch, typeFilter, assignmentFilter]);
-
-  const visibleExercises = filteredExercises.slice(0, visibleCount);
-  const totalCount = filteredExercises.length;
-  const hasMore = visibleCount < totalCount;
-
-  const activeFilterTags = useMemo(() => {
-    const tags: string[] = [];
-    if (assignmentFilter !== 'all') {
-      tags.push(assignmentFilter === 'unassigned' ? 'Unassigned' : 'Assigned');
-    }
-    if (typeFilter !== 'all') tags.push(formatTypeLabel(typeFilter));
-    if (debouncedSearch.trim()) tags.push(`"${debouncedSearch.trim()}"`);
-    return tags;
-  }, [assignmentFilter, typeFilter, debouncedSearch]);
-
-  const panelActiveCount = useMemo(() => {
-    let count = 0;
-    if (assignmentFilter !== 'all') count += 1;
-    if (typeFilter !== 'all') count += 1;
-    return count;
-  }, [assignmentFilter, typeFilter]);
-
-  const handleClearFilters = (): void => {
-    setAssignmentFilter('all');
-    setTypeFilter('all');
-    setVisibleCount(pageSize);
+  const typeOptions = useMemo(
+    () => exerciseTypes.map((type) => ({ value: type, label: formatTypeLabel(type) })),
+    [exerciseTypes],
+  );
+  // Staged filter helpers
+  const handleOpenFilters = (): void => {
+    setStaged(filters);
+    setFiltersOpen(true);
   };
 
+  const activeFilters: ActiveFilter[] = useMemo(() => {
+    const pills: ActiveFilter[] = [];
+
+    if (debouncedSearch.trim()) {
+      pills.push({ id: 'search', label: `"${debouncedSearch.trim()}"` });
+    }
+    if (filters.assignment !== 'all') {
+      pills.push({
+        id: 'assignment',
+        label: filters.assignment === 'unassigned' ? 'Unassigned' : 'Assigned',
+      });
+    }
+    if (filters.type !== 'all') {
+      pills.push({ id: 'type', label: formatTypeLabel(filters.type) });
+    }
+    for (const tagId of filters.tagIds) {
+      const tag = tagsMap.get(tagId);
+      const label = tag ? `${tag.category}: ${tag.name}` : `Tag #${tagId}`;
+      pills.push({ id: `tag-${tagId}`, label });
+    }
+
+    return pills;
+  }, [filters, debouncedSearch, tagsMap]);
+
+  const panelActiveCount = useMemo(
+    () =>
+      (filters.assignment !== 'all' ? 1 : 0) +
+      (filters.type !== 'all' ? 1 : 0) +
+      filters.tagIds.length,
+    [filters],
+  );
+
+  const stagedActiveCount = useMemo(
+    () =>
+      (staged.assignment !== 'all' ? 1 : 0) +
+      (staged.type !== 'all' ? 1 : 0) +
+      staged.tagIds.length,
+    [staged],
+  );
+
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') {
+      setSearchValue('');
+    } else {
+      removeFiltersPill(id);
+    }
+  };
   const handleCardClick = (exercise: Exercise): void => {
     setSelectedExercise(exercise);
     setIsModalOpen(true);
@@ -143,7 +210,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <button
             type="button"
             className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
-            onClick={() => setFiltersOpen((open) => !open)}
+            onClick={() => (filtersOpen ? setFiltersOpen(false) : handleOpenFilters())}
           >
             <Icon name="Funnel" size={15} />
             Filters
@@ -154,21 +221,17 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
           <ExercisesFilterPanel
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
-            activeCount={panelActiveCount}
-            assignmentFilter={assignmentFilter}
-            onAssignmentFilterChange={(value) => {
-              setAssignmentFilter(value);
-              setVisibleCount(pageSize);
-            }}
+            activeCount={stagedActiveCount}
+            assignmentFilter={staged.assignment}
+            onAssignmentFilterChange={(value) => setStaged((s) => ({ ...s, assignment: value }))}
             assignmentCounts={assignmentCounts}
-            typeFilter={typeFilter}
-            onTypeFilterChange={(value) => {
-              setTypeFilter(value);
-              setVisibleCount(pageSize);
-            }}
+            typeFilter={staged.type}
+            onTypeFilterChange={(value) => setStaged((s) => ({ ...s, type: value }))}
             typeOptions={typeOptions}
-            onClear={handleClearFilters}
-            onApply={() => setFiltersOpen(false)}
+            selectedTagIds={staged.tagIds}
+            onSelectedTagIdsChange={(tagIds) => setStaged((s) => ({ ...s, tagIds }))}
+            onClear={clearAllDraft}
+            onApply={handleApplyFilters}
           />
         </div>
         <span className="sp seg">
@@ -185,94 +248,64 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
         </span>
       </div>
 
-      {activeFilterTags.length > 0 ? (
-        <div className="row" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {activeFilterTags.map((tag) => (
-            <span key={tag} className="tag tag-b">
-              {tag}
-              <button
-                type="button"
-                aria-label={`Remove ${tag}`}
-                onClick={() => {
-                  if (tag === 'Unassigned' || tag === 'Assigned') {
-                    setAssignmentFilter('all');
-                  } else if (tag.startsWith('"')) {
-                    setSearchValue('');
-                  } else {
-                    setTypeFilter('all');
-                  }
-                  setVisibleCount(pageSize);
-                }}
-              >
-                <Icon name="X" size={13} style={{ strokeWidth: 2.5 }} />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              setSearchValue('');
-              handleClearFilters();
-            }}
-          >
-            Clear all
-          </button>
-          <span className="sp mut" style={{ fontSize: 'var(--text-sm)' }}>
+      <ActiveFilterPills
+        pills={activeFilters}
+        onRemove={handleRemovePill}
+        onClearAll={() => {
+          setSearchValue('');
+          clearAllDraft();
+        }}
+        meta={
+          <span>
             Showing{' '}
             <b className="mono" style={{ color: 'var(--text-body)' }}>
-              {visibleExercises.length}
+              {exercises.length}
             </b>{' '}
             of{' '}
             <b className="mono" style={{ color: 'var(--text-body)' }}>
               {totalCount}
             </b>
           </span>
-        </div>
-      ) : null}
+        }
+      />
 
       {isLoading ? (
         <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '24px 0' }}>
           <Icon name="LoaderCircle" size={20} className="animate-spin text-[var(--primary)]" />
           <span style={{ color: 'var(--text-muted)' }}>Loading exercises…</span>
         </div>
-      ) : visibleExercises.length === 0 ? (
+      ) : exercises.length === 0 ? (
         <div className="row" style={{ justifyContent: 'center', padding: '24px 0' }}>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            {debouncedSearch ? 'No exercises found matching your search.' : 'No exercises available.'}
-          </span>
+          <span style={{ color: 'var(--text-muted)' }}>No exercises found.</span>
         </div>
       ) : (
         <>
-          <div className="g g4">{visibleExercises.map((exercise) => (
-            <ExerciseCard
-              key={exercise.id}
-              exercise={exercise}
-              onClick={() => handleCardClick(exercise)}
-            />
-          ))}</div>
-
-          {hasMore ? (
-            <div className="row" style={{ justifyContent: 'center', marginTop: 24 }}>
-              <button
-                type="button"
-                className="btn btn-sec"
-                onClick={() => setVisibleCount((count) => count + pageSize)}
-              >
-                Load more exercises
-                <Icon name="ChevronDown" size={17} />
-              </button>
+          <div className="g g4" style={{ marginTop: 12 }}>
+            {exercises.map((exercise) => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                onClick={() => handleCardClick(exercise)}
+              />
+            ))}
+          </div>
+          <div ref={observerTargetRef} style={{ height: 1 }} />
+          {isFetchingNextPage && (
+            <div className="row" style={{ justifyContent: 'center', gap: 8, padding: '16px 0' }}>
+              <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
+              <span style={{ color: 'var(--text-muted)' }}>Loading more exercises…</span>
             </div>
-          ) : null}
+          )}
         </>
       )}
 
-      <ExerciseModal
-        key={selectedExercise?.id}
-        exercise={selectedExercise}
-        open={isModalOpen}
-        onOpenChange={handleModalClose}
-      />
+      {selectedExercise && (
+        <ExerciseModal
+          open={isModalOpen}
+          onOpenChange={handleModalClose}
+          exercise={selectedExercise}
+        />
+      )}
     </>
   );
 }

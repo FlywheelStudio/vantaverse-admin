@@ -26,7 +26,10 @@ function buildSubtitle(admins: ProfileWithStats[]): string {
 export function ManagePageUI({
   initialAdmins,
 }: ManagePageUIProps): React.ReactElement {
-  const { data: admins, isLoading } = useUsers({ role: 'admin' }, initialAdmins);
+  const { data: admins, isLoading } = useUsers(
+    { role: 'admin' },
+    initialAdmins,
+  );
 
   const rows = useMemo(() => admins ?? [], [admins]);
   const subtitle = useMemo(() => buildSubtitle(rows), [rows]);

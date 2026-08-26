@@ -170,6 +170,43 @@ function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
   );
 }
 
+function ScreeningLinkCell({ org }: { org: Organization }): React.ReactElement {
+  const url = org.screening_url;
+
+  if (!url) {
+    return <span className="faint">—</span>;
+  }
+
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Screening link copied');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  return (
+    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+      <span
+        title={url}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-sm)',
+          color: 'var(--text-muted)',
+          maxWidth: 200,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {url.replace(/^https?:\/\//, '')}
+      </span>
+      <IconButton icon="Copy" label="Copy screening link" variant="secondary" size="sm" onClick={handleCopy} />
+    </div>
+  );
+}
+
 function SortHeader({
   label,
   sorted,
@@ -238,6 +275,14 @@ export const columns: ColumnDef<Organization>[] = [
         } as ColumnDef<Organization>,
       ]
     : []),
+
+  {
+    id: 'screening_link',
+    header: () => <span>Screening Link</span>,
+    cell: ({ row }) => <ScreeningLinkCell org={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
+  },
   {
     accessorKey: 'created_at',
     header: ({ column }) => {

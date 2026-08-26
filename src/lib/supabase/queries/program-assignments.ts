@@ -5,8 +5,10 @@ import {
 } from '../query';
 import {
   programAssignmentSchema,
+  programAssignmentMemberSchema,
   programAssignmentWithTemplateSchema,
   type ProgramAssignment,
+  type ProgramAssignmentMember,
   type ProgramAssignmentWithTemplate,
 } from '../schemas/program-assignments';
 import type { ProgramTemplate } from '../schemas/program-templates';
@@ -92,6 +94,10 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
     pageSize: number;
     total: number;
     hasMore: boolean;
+    memberStats: Record<
+      string,
+      { members: number; avgCompletion: number | null }
+    >;
   }> {
     return {
       success: true,
@@ -101,6 +107,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         pageSize,
         total: 0,
         hasMore: false,
+        memberStats: {},
       },
     };
   }
@@ -194,6 +201,10 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         pageSize: number;
         total: number;
         hasMore: boolean;
+        memberStats: Record<
+          string,
+          { members: number; avgCompletion: number | null }
+        >;
       }>
     | SupabaseError
   > {
@@ -240,7 +251,8 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
 
     // Filter by status
     if (showAssigned) {
-      query = query.in('status', ['template', 'active']);
+      // Only member-assigned programs (templates are shown by the Templates tab)
+      query = query.eq('status', 'active');
     } else {
       query = query.eq('status', 'template');
     }
@@ -322,6 +334,17 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       : count || 0;
     const hasMore = from + result.data.length < total;
 
+    // Member counts / avg completion for the templates on this page (RPC).
+    const pageTemplateIds = Array.from(
+      new Set(
+        result.data
+          .map((item) => item.program_template?.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const memberStatsResult =
+      await this.getMemberStatsByTemplateIds(pageTemplateIds);
+
     return {
       success: true,
       data: {
@@ -330,6 +353,7 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
         pageSize,
         total,
         hasMore,
+        memberStats: memberStatsResult.success ? memberStatsResult.data : {},
       },
     };
   }
@@ -608,6 +632,47 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Get member assignments sharing a template: live members only
+   * (status active or pre_program, user_id set).
+   * @param programTemplateId - The program template ID
+   * @returns Success with member assignment rows or error
+   */
+  public async getMembersByTemplateId(
+    programTemplateId: string,
+  ): Promise<SupabaseSuccess<ProgramAssignmentMember[]> | SupabaseError> {
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase
+      .from('program_assignment')
+      .select(
+        `id, user_id, start_date, end_date, status,
+        profiles!program_assignment_user_id_fkey (id, first_name, last_name, email)`,
+      )
+      .eq('program_template_id', programTemplateId)
+      .in('status', [
+        PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+        PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
+      ])
+      .not('user_id', 'is', null)
+      .order('created_at');
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to get template members',
+      );
+    }
+
+    const result = programAssignmentMemberSchema.array().safeParse(data ?? []);
+
+    if (!result.success) {
+      return this.parseResponseZodError(result.error);
+    }
+
+    return { success: true, data: result.data };
+  }
+
+  /**
    * Delete a program assignment
    * @param id - The assignment ID
    * @returns Success or error
@@ -757,6 +822,37 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   }
 
   /**
+   * Update start/end dates for specific program assignments (date propagation).
+   * @param ids - Assignment IDs to update
+   * @param startDate - Start date (ISO string)
+   * @param endDate - End date (ISO string)
+   */
+  public async updateDatesByIds(
+    ids: string[],
+    startDate: string,
+    endDate: string,
+  ): Promise<SupabaseSuccess<void> | SupabaseError> {
+    if (ids.length === 0) {
+      return { success: true, data: undefined };
+    }
+    const supabase = await this.getClient('service_role');
+
+    const { error } = await supabase
+      .from('program_assignment')
+      .update({ start_date: startDate, end_date: endDate })
+      .in('id', ids);
+
+    if (error) {
+      return this.parseResponsePostgresError(
+        error,
+        'Failed to update program assignment dates',
+      );
+    }
+
+    return { success: true, data: undefined };
+  }
+
+  /**
    * Update workout schedule ID
    * @param assignmentId - The assignment ID
    * @param workoutScheduleId - The workout schedule ID
@@ -867,12 +963,17 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
   /**
    * Aggregate member counts + avg completion per program template (active member programs).
    */
+  /**
+   * Aggregate member counts + avg completion per program template (active member programs).
+   * Uses the get_template_member_stats RPC (GROUP BY in Postgres) instead of
+   * scanning program_with_stats, which runs calculate_compliance() per row.
+   */
   public async getMemberStatsByTemplateIds(
     templateIds: string[],
   ): Promise<
-    | SupabaseSuccess<
-        Record<string, { members: number; avgCompletion: number | null }>
-      >
+    SupabaseSuccess<
+      Record<string, { members: number; avgCompletion: number | null }>
+    >
     | SupabaseError
   > {
     const empty: Record<
@@ -883,14 +984,11 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       return { success: true, data: empty };
     }
 
-    const supabase = await this.getClient('authenticated_user');
-    const { data, error } = await supabase
-      .from('program_with_stats')
-      .select(
-        'program_template_id, program_completion_percentage, compliance, user_id',
-      )
-      .in('program_template_id', templateIds)
-      .not('user_id', 'is', null);
+    const supabase = await this.getClient('service_role');
+
+    const { data, error } = await supabase.rpc('get_template_member_stats', {
+      p_template_ids: templateIds,
+    });
 
     if (error) {
       return this.parseResponsePostgresError(
@@ -899,45 +997,24 @@ export class ProgramAssignmentsQuery extends SupabaseQuery {
       );
     }
 
-    const aggregates = new Map<
-      string,
-      { members: number; sum: number; withPct: number }
-    >();
-
-    for (const raw of data ?? []) {
-      const row = raw as {
-        program_template_id: string | null;
-        program_completion_percentage?: number | null;
-        compliance?: number | null;
-        user_id: string | null;
-      };
-      if (!row.program_template_id || !row.user_id) continue;
-      const current = aggregates.get(row.program_template_id) ?? {
-        members: 0,
-        sum: 0,
-        withPct: 0,
-      };
-      current.members += 1;
-      const pct = row.program_completion_percentage ?? row.compliance;
-      if (typeof pct === 'number' && !Number.isNaN(pct)) {
-        current.sum += pct;
-        current.withPct += 1;
-      }
-      aggregates.set(row.program_template_id, current);
-    }
-
     const result: Record<
       string,
       { members: number; avgCompletion: number | null }
     > = {};
     for (const id of templateIds) {
-      const agg = aggregates.get(id);
-      result[id] = {
-        members: agg?.members ?? 0,
+      result[id] = { members: 0, avgCompletion: null };
+    }
+
+    for (const raw of data ?? []) {
+      const row = raw as {
+        program_template_id: string;
+        members: number;
+        avg_completion: number | null;
+      };
+      result[row.program_template_id] = {
+        members: Number(row.members),
         avgCompletion:
-          agg && agg.withPct > 0
-            ? Math.round(agg.sum / agg.withPct)
-            : null,
+          row.avg_completion === null ? null : Number(row.avg_completion),
       };
     }
 

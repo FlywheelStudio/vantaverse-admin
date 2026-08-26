@@ -20,7 +20,11 @@ import toast from 'react-hot-toast';
 import { DayBox } from './day-box';
 import { useDefaultValues } from '../default-values/use-default-values';
 
-export function DayBoxesGrid() {
+interface DayBoxesGridProps {
+  programEndDate?: string | null;
+}
+
+export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
@@ -95,8 +99,8 @@ export function DayBoxesGrid() {
     [getWeekStartMonday],
   );
 
-  // Check if a day is before start_date
-  const isDayBeforeStart = useCallback(
+  // Check if a day is outside the program bounds (before start or after end)
+  const isDayOutOfBounds = useCallback(
     (weekIndex: number, dayOfWeek: number): boolean => {
       if (!programStartDate) return false;
 
@@ -107,9 +111,16 @@ export function DayBoxesGrid() {
       if (!dayDate) return false;
       dayDate.setHours(0, 0, 0, 0);
 
-      return dayDate.getTime() < start.getTime();
+      if (dayDate.getTime() < start.getTime()) return true;
+
+      if (programEndDate) {
+        const end = parseLocalDate(programEndDate);
+        end.setHours(0, 0, 0, 0);
+        if (dayDate.getTime() > end.getTime()) return true;
+      }
+      return false;
     },
-    [programStartDate, parseLocalDate, calculateDayDate],
+    [programStartDate, programEndDate, parseLocalDate, calculateDayDate],
   );
 
   // Calculate date for currently selected day
@@ -300,6 +311,11 @@ export function DayBoxesGrid() {
     setPendingDayMeta(meta);
   };
 
+  const handleReorder = async (dayIndex: number, newItems: SelectedItem[]) => {
+    setScheduleItem(currentWeek, dayIndex, newItems);
+    await saveDraft(newItems, currentWeek, dayIndex);
+  };
+
   const handleModalCancel = useCallback(() => {
     if (selectedDay === null || initialItemsRef.current === null) return;
 
@@ -391,7 +407,8 @@ export function DayBoxesGrid() {
           const isPasteDisabled =
             !copiedDayData ||
             (copiedDayIndex?.week === currentWeek &&
-              copiedDayIndex?.day === dayIndex);
+              copiedDayIndex?.day === dayIndex) ||
+            isDayOutOfBounds(currentWeek, hoveredDay);
 
           if (!isPasteDisabled) {
             event.preventDefault();
@@ -400,7 +417,7 @@ export function DayBoxesGrid() {
         }
       }
     },
-    [hoveredDay, currentWeek, copyDay, handlePasteDay, copiedDayData, copiedDayIndex],
+    [hoveredDay, currentWeek, copyDay, handlePasteDay, copiedDayData, copiedDayIndex, isDayOutOfBounds],
   );
 
   useEffect(() => {
@@ -448,21 +465,7 @@ export function DayBoxesGrid() {
                 })
               : null;
 
-            const isBeforeStart = isDayBeforeStart(currentWeek, day);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const dayStart = dayDate
-              ? new Date(
-                  dayDate.getFullYear(),
-                  dayDate.getMonth(),
-                  dayDate.getDate(),
-                  0,
-                  0,
-                  0,
-                  0,
-                )
-              : null;
-            const isPastDate = dayStart ? dayStart.getTime() < today.getTime() : false;
+            const isOutOfBounds = isDayOutOfBounds(currentWeek, day);
             const isDayCopied =
               copiedDayIndex?.week === currentWeek &&
               copiedDayIndex?.day === dayIndex;
@@ -478,8 +481,7 @@ export function DayBoxesGrid() {
                 weekIndex={currentWeek}
                 items={items}
                 formattedDate={formattedDate}
-                isBeforeStart={isBeforeStart}
-                isPastDate={isPastDate}
+                isOutOfBounds={isOutOfBounds}
                 isDayCopied={isDayCopied}
                 isDayPasteDisabled={isDayPasteDisabled}
                 isPasteAnimating={
@@ -494,6 +496,7 @@ export function DayBoxesGrid() {
                 onMouseEnter={() => setHoveredDay(day)}
                 onMouseLeave={() => setHoveredDay(null)}
                 defaultValues={defaultValues}
+                onReorder={(newItems) => handleReorder(dayIndex, newItems)}
               />
             );
           })}

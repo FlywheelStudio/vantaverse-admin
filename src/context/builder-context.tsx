@@ -37,7 +37,10 @@ interface BuilderContextValue {
   copyWeek: (weekIndex: number) => void;
   pasteWeek: (targetWeekIndex: number) => void;
   clearWeek: (weekIndex: number) => void;
-  duplicateWeekToAll: (weekIndex: number) => void;
+  /** Copy source week to all other weeks (in-bounds days only). */
+  duplicateWeekToAll: (weekIndex: number, endDate?: string | null) => void;
+  /** Copy source week to every other week after it (index+2, +4, ...). */
+  duplicateWeekToEveryOther: (weekIndex: number, endDate?: string | null) => void;
   copiedDayIndex: { week: number; day: number } | null;
   copiedDayData: SelectedItem[] | null;
   copyDay: (weekIndex: number, dayIndex: number) => void;
@@ -431,30 +434,109 @@ export function BuilderContextProvider({
     });
   }, []);
 
-  const duplicateWeekToAll = useCallback(
-    (weekIndex: number) => {
+  const isDayOutOfBoundsForWeek = useCallback(
+    (weekIndex: number, dayIndex: number, endDate: string | null | undefined): boolean => {
+      if (!programStartDate) return false;
+
+      const parse = (dateString: string): Date => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day, 0, 0, 0, 0);
+      };
+
+      const start = parse(programStartDate);
+      // Week grid is Monday-based; snap start back to its Monday (same as DayBoxesGrid)
+      const dayOfWeek = start.getDay();
+      const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(start);
+      monday.setDate(monday.getDate() - mondayOffset);
+
+      const dayDate = new Date(monday);
+      dayDate.setDate(dayDate.getDate() + weekIndex * 7 + dayIndex);
+
+      if (dayDate.getTime() < start.getTime()) return true;
+      if (endDate && dayDate.getTime() > parse(endDate).getTime()) return true;
+      return false;
+    },
+    [programStartDate],
+  );
+
+  const cloneWeekToTargets = useCallback(
+    (
+      weekIndex: number,
+      targets: number[],
+      endDate?: string | null,
+    ): void => {
       if (weekIndex < 0 || weekIndex >= schedule.length) return;
 
       const source = schedule[weekIndex];
       if (!source) return;
 
-      const sourceCopy: SelectedItem[][] = source.map((day) =>
+      const sourceItems: SelectedItem[][] = source.map((day) =>
         day.map((item) => ({ ...item })),
       );
+      const sourceMeta = Array.from({ length: 7 }, (_, dayIndex) => {
+        const meta = dayMeta[weekIndex]?.[dayIndex];
+        return meta ? { ...meta } : { ...EMPTY_DAY_SCHEDULE_META };
+      });
 
       setScheduleState((prev) => {
-        const updated = prev.map((week, index) =>
-          index === weekIndex
-            ? week
-            : sourceCopy.map((day) => day.map((item) => ({ ...item }))),
-        );
+        let changed = false;
+        const updated = [...prev];
+        for (const target of targets) {
+          if (target < 0 || target >= prev.length || target === weekIndex) continue;
+          updated[target] = prev[target].map((existingDay, dayIndex) =>
+            isDayOutOfBoundsForWeek(target, dayIndex, endDate)
+              ? existingDay
+              : sourceItems[dayIndex].map((item) => ({ ...item })),
+          );
+          changed = true;
+        }
+        if (!changed) return prev;
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
         }
         return updated;
       });
+
+      setDayMetaState((prev) => {
+        let changed = false;
+        const updated = [...prev];
+        for (const target of targets) {
+          if (target < 0 || target >= prev.length || target === weekIndex) continue;
+          updated[target] = prev[target].map((existingMeta, dayIndex) =>
+            isDayOutOfBoundsForWeek(target, dayIndex, endDate)
+              ? existingMeta
+              : { ...sourceMeta[dayIndex] },
+          );
+          changed = true;
+        }
+        if (!changed) return prev;
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(updated));
+        }
+        return updated;
+      });
     },
-    [schedule],
+    [schedule, dayMeta, isDayOutOfBoundsForWeek],
+  );
+
+  const duplicateWeekToAll = useCallback(
+    (weekIndex: number, endDate?: string | null): void => {
+      const targets = schedule.map((_, index) => index).filter((index) => index !== weekIndex);
+      cloneWeekToTargets(weekIndex, targets, endDate);
+    },
+    [schedule, cloneWeekToTargets],
+  );
+
+  const duplicateWeekToEveryOther = useCallback(
+    (weekIndex: number, endDate?: string | null): void => {
+      const targets: number[] = [];
+      for (let target = weekIndex + 2; target < schedule.length; target += 2) {
+        targets.push(target);
+      }
+      cloneWeekToTargets(weekIndex, targets, endDate);
+    },
+    [schedule, cloneWeekToTargets],
   );
 
   const copyDay = useCallback(
@@ -548,6 +630,7 @@ export function BuilderContextProvider({
         pasteWeek,
         clearWeek,
         duplicateWeekToAll,
+        duplicateWeekToEveryOther,
         copiedDayIndex,
         copiedDayData,
         copyDay,

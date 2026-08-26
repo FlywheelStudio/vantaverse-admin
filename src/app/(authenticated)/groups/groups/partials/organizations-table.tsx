@@ -15,6 +15,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from '@/context/organizations';
+import { ActiveFilterPills, useFilterDraft, type ActiveFilter } from '@/components/filters';
 import { Dialog, Icon } from '@/components/medvanta';
 import { HtmlSearchField } from '../../partials/html-search-field';
 import { HtmlTableFooter } from '../../partials/html-table-footer';
@@ -154,6 +155,19 @@ function DeleteOrganizationButton({
   );
 }
 
+function removeFilter(state: GroupsFilterState, id: string): GroupsFilterState {
+  if (id.startsWith('physio-')) {
+    const name = id.slice('physio-'.length);
+    return {
+      ...state,
+      physiologistNames: state.physiologistNames.filter((n) => n !== name),
+    };
+  }
+  if (id === 'members') return { ...state, membersMin: 0, membersMax: 50 };
+  if (id === 'created') return { ...state, created: 'any' };
+  return state;
+}
+
 interface OrganizationsTableProps {
   columns: ColumnDef<Organization>[];
   data: Organization[];
@@ -176,15 +190,12 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
+  const [screeningLinkError, setScreeningLinkError] = useState(false);
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [panelFilters, setPanelFilters] =
-    useState<GroupsFilterState>(DEFAULT_GROUPS_FILTERS);
-  const [appliedFilters, setAppliedFilters] =
-    useState<GroupsFilterState>(DEFAULT_GROUPS_FILTERS);
+  const draft = useFilterDraft<GroupsFilterState>({ initial: DEFAULT_GROUPS_FILTERS, removeFilter });
+  const appliedFilters = draft.applied;
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     setColumnFilters((prev) => {
       const existing = prev.find((f) => f.id === 'group');
@@ -208,6 +219,15 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [data]);
 
+  const handleSaveClick = () => {
+    if (!newOrgData.screeningUrl.trim()) {
+      setScreeningLinkError(true);
+      return;
+    }
+    setScreeningLinkError(false);
+    handleSaveNewOrg();
+  };
+
   const filteredData = useMemo(() => {
     return data.filter((org) => {
       const count = orgMembersCount(org);
@@ -230,6 +250,44 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
     if (appliedFilters.created !== 'any') count += 1;
     return count;
   }, [appliedFilters]);
+
+  const pills = useMemo<ActiveFilter[]>(() => {
+    const result: ActiveFilter[] = [];
+    const term = searchValue.trim();
+    if (term) result.push({ id: 'search', label: `"${term}"` });
+    for (const name of appliedFilters.physiologistNames) {
+      result.push({ id: `physio-${name}`, label: name });
+    }
+    if (appliedFilters.membersMin !== 0 || appliedFilters.membersMax !== 50) {
+      result.push({
+        id: 'members',
+        label: `${appliedFilters.membersMin}-${appliedFilters.membersMax} members`,
+      });
+    }
+    if (appliedFilters.created !== 'any') {
+      const labels: Record<GroupsFilterState['created'], string> = {
+        any: '',
+        '30d': '30 days',
+        quarter: 'This quarter',
+        year: 'This year',
+      };
+      result.push({ id: 'created', label: `Created: ${labels[appliedFilters.created]}` });
+    }
+    return result;
+  }, [searchValue, appliedFilters]);
+
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') {
+      setSearchValue('');
+      return;
+    }
+    draft.removePill(id);
+  };
+
+  const clearEverything = (): void => {
+    setSearchValue('');
+    draft.clearAll();
+  };
 
   const table = useReactTable({
     data: filteredData,
@@ -267,6 +325,13 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
 
   const filteredCount = table.getFilteredRowModel().rows.length;
 
+  const showing = (
+    <span>
+      Showing{' '}
+      <b className="mono">{filteredCount}</b> of <b className="mono">{data.length}</b>
+    </span>
+  );
+
   return (
     <>
       <div className="tbar">
@@ -279,8 +344,8 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
         <div style={{ position: 'relative', flex: '0 0 auto' }}>
           <button
             type="button"
-            className={`btn btn-sec${filtersOpen ? ' btn-pri' : ''}`}
-            onClick={() => setFiltersOpen((open) => !open)}
+            className={`btn btn-sec${draft.open ? ' btn-pri' : ''}`}
+            onClick={() => draft.setOpen((open) => !open)}
           >
             <Icon name="Funnel" size={16} />
             Filters
@@ -289,26 +354,22 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
             ) : null}
           </button>
           <GroupsFilterPanel
-            open={filtersOpen}
+            open={draft.open}
             onClose={() => {
-              setPanelFilters(appliedFilters);
-              setFiltersOpen(false);
+              draft.setStaged(draft.applied);
+              draft.setOpen(false);
             }}
             activeCount={activeFilterCount}
             physiologistOptions={physiologistOptions}
-            filters={panelFilters}
-            onChange={setPanelFilters}
-            onClear={() => {
-              setPanelFilters(DEFAULT_GROUPS_FILTERS);
-              setAppliedFilters(DEFAULT_GROUPS_FILTERS);
-            }}
-            onApply={() => {
-              setAppliedFilters(panelFilters);
-              setFiltersOpen(false);
-            }}
+            filters={draft.staged}
+            onChange={draft.setStaged}
+            onClear={draft.clearAll}
+            onApply={draft.apply}
           />
         </div>
       </div>
+
+      <ActiveFilterPills pills={pills} onRemove={handleRemovePill} onClearAll={clearEverything} meta={showing} />
 
       <div className="tw" ref={tableContainerRef}>
         <table className="tbl">
@@ -334,7 +395,7 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                     <CreateRowImageCell />
                     <span className="fld grow">
                       <input
-                        placeholder="Organization name"
+                        placeholder="Group name"
                         value={newOrgData.name}
                         onChange={(e) =>
                           setNewOrgData((prev) => ({ ...prev, name: e.target.value }))
@@ -351,11 +412,32 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                       }
                       style={{ flex: 1, minWidth: 160 }}
                     />
+                    <span className="fld" style={{ minWidth: 220 }}>
+                      <input
+                        required
+                        type="url"
+                        placeholder="Screening link"
+                        value={newOrgData.screeningUrl}
+                        onChange={(e) => {
+                          setScreeningLinkError(false);
+                          setNewOrgData((prev) => ({ ...prev, screeningUrl: e.target.value }));
+                        }}
+                        style={
+                          screeningLinkError ? { borderColor: 'var(--danger, #dc2626)' } : undefined
+                        }
+                        aria-invalid={screeningLinkError || undefined}
+                      />
+                      {screeningLinkError ? (
+                        <span role="alert" style={{ color: 'var(--danger, #dc2626)', fontSize: 12 }}>
+                          Screening link is required.
+                        </span>
+                      ) : null}
+                    </span>
                     <button
                       type="button"
                       className="ib ib-sec ib-sq"
-                      onClick={handleSaveNewOrg}
-                      disabled={!newOrgData.name.trim() || !!uploadingImage || savingOrg}
+                      onClick={handleSaveClick}
+                      disabled={!!uploadingImage || savingOrg}
                       aria-label="Save organization"
                     >
                       <Icon name="Save" size={16} />
@@ -363,7 +445,10 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps): 
                     <button
                       type="button"
                       className="ib ib-sec ib-sq"
-                      onClick={handleCancelNewOrg}
+                      onClick={() => {
+                        setScreeningLinkError(false);
+                        handleCancelNewOrg();
+                      }}
                       disabled={!!uploadingImage || savingOrg}
                       aria-label="Cancel"
                     >

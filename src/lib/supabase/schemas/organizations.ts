@@ -21,6 +21,7 @@ export const organizationSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   picture_url: z.string().nullable(),
+  screening_url: z.string().nullable().optional(),
   is_active: z.boolean().nullable(),
   is_super_admin: z.boolean().nullable(),
   created_at: z.string().nullable(),

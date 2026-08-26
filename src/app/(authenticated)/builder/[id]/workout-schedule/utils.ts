@@ -231,7 +231,6 @@ export async function convertSelectedItemsToDatabaseSchedule(
               weight: defaultValues.weight,
               rest_time: defaultValues.rest_time,
               tempo: defaultValues.tempo as string[] | null,
-              equipment_ids: null,
               rep_override: null,
               time_override: null,
               distance_override: null,

@@ -1,124 +1,70 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { Icon } from '@/components/medvanta';
 import { OrgTeamFilter } from '../org-team-filter';
 import { RoleFilter } from '../role-filter';
 import { HtmlSearchField } from '../../html-helpers';
 import {
   MembersFilterPanel,
-  DEFAULT_MEMBERS_EXTRA_FILTERS,
-  type MembersExtraFilters,
-  type PhysiologistOption,
+  type MembersFilters,
 } from './members-filter-panel';
-import type { UsersTableFilters } from '../types';
-import { MemberRole } from '@/lib/supabase/schemas/organization-members';
-
-type DueFilter = 'all' | 'due' | 'overdue';
-type PanelDueFilter = 'all' | 'overdue' | 'due_soon';
 
 interface UsersTableFiltersProps {
-  searchValue: string;
-  onSearchChange: (value: string) => void;
-  filters: UsersTableFilters;
-  selectedOrgName?: string;
-  selectedTeamName?: string;
-  onFiltersChange?: (filters: UsersTableFilters) => void;
-  onTeamNameChange: (name: string | undefined) => void;
+  role: 'patient' | 'admin';
+  onRoleSelect: (role: 'patient' | 'admin') => void;
   memberCount?: number;
   adminCount?: number;
-  dueFilter?: DueFilter;
-  onDueFilterChange?: (filter: DueFilter) => void;
-  extraFilters: MembersExtraFilters;
-  onExtraFiltersChange: (filters: MembersExtraFilters) => void;
-  physiologistOptions: PhysiologistOption[];
-}
-
-function toPanelDue(due: DueFilter): PanelDueFilter {
-  return due === 'due' ? 'due_soon' : due;
-}
-
-function fromPanelDue(due: PanelDueFilter): DueFilter {
-  return due === 'due_soon' ? 'due' : due;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  /** Staged filter state shown inside the panel. */
+  staged: MembersFilters;
+  onStagedChange: (next: MembersFilters) => void;
+  /** Number of applied facets (funnel-button badge). */
+  activeCount: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  physiologistOptions: Array<{ name: string; count: number }>;
+  unassignedPhysiologist?: number;
+  selectedOrgName?: string;
+  selectedTeamName?: string;
+  onStagedOrgSelect: (orgId?: string) => void;
+  onStagedTeamSelect: (teamId?: string, teamName?: string) => void;
+  onClearAll: () => void;
+  /** Apply staged filters + close the panel. */
+  onApply: () => void;
 }
 
 /**
- * Members toolbar + HTML `filterPanel` chrome (`filtersBtn` + FILTERS.members).
+ * Members toolbar: role tabs + search + filter panel trigger.
+ * Pills row lives in the parent (`UsersTable`).
  */
 export function UsersTableFilters({
-  searchValue,
-  onSearchChange,
-  filters,
-  selectedOrgName,
-  selectedTeamName,
-  onFiltersChange,
-  onTeamNameChange,
+  role,
+  onRoleSelect,
   memberCount = 0,
   adminCount = 0,
-  dueFilter = 'all',
-  onDueFilterChange,
-  extraFilters,
-  onExtraFiltersChange,
+  searchValue,
+  onSearchChange,
+  staged,
+  onStagedChange,
+  activeCount,
+  open,
+  onOpenChange,
   physiologistOptions,
+  unassignedPhysiologist,
+  selectedOrgName,
+  selectedTeamName,
+  onStagedOrgSelect,
+  onStagedTeamSelect,
+  onClearAll,
+  onApply,
 }: UsersTableFiltersProps): React.ReactElement {
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.organization_id) count += 1;
-    if (filters.team_id) count += 1;
-    if (dueFilter !== 'all') count += 1;
-    if (extraFilters.status !== 'all') count += 1;
-    if (extraFilters.program !== 'all') count += 1;
-    if (extraFilters.physiologist) count += 1;
-    if (extraFilters.lastActive !== 'all') count += 1;
-    if (extraFilters.joined !== 'all') count += 1;
-    return count;
-  }, [filters.organization_id, filters.team_id, dueFilter, extraFilters]);
-
-  const handleOrgSelect = (orgId?: string): void => {
-    onTeamNameChange(undefined);
-    const newFilters: UsersTableFilters = {
-      ...(orgId && { organization_id: orgId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleTeamSelect = (teamId?: string, teamName?: string): void => {
-    onTeamNameChange(teamName);
-    const newFilters: UsersTableFilters = {
-      ...(filters.organization_id && {
-        organization_id: filters.organization_id,
-      }),
-      ...(teamId && { team_id: teamId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleClear = (): void => {
-    onTeamNameChange(undefined);
-    onDueFilterChange?.('all');
-    onExtraFiltersChange(DEFAULT_MEMBERS_EXTRA_FILTERS);
-    onFiltersChange?.({ role: filters.role || 'patient' });
-  };
-
-  const handleRoleSelect = (role: MemberRole): void => {
-    onFiltersChange?.({ ...filters, role });
-  };
-
-  const handlePanelRoleChange = (role: MemberRole | null): void => {
-    if (!role) return;
-    handleRoleSelect(role);
-  };
-
   return (
     <div style={{ marginBottom: 14 }}>
       <div className="tbar">
         <RoleFilter
-          selectedRole={filters.role || 'patient'}
-          onRoleSelect={handleRoleSelect}
+          selectedRole={role}
+          onRoleSelect={onRoleSelect}
           memberCount={memberCount}
           adminCount={adminCount}
         />
@@ -131,41 +77,32 @@ export function UsersTableFilters({
         <div style={{ position: 'relative', flex: '0 0 auto' }}>
           <button
             type="button"
-            className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
-            onClick={() => setFiltersOpen((open) => !open)}
+            className={`btn btn-sec btn-sm${open ? ' btn-pri' : ''}`}
+            onClick={() => onOpenChange(!open)}
           >
             <Icon name="Funnel" size={15} />
             Filters
-            {activeFilterCount > 0 ? (
-              <span className="bdg bdg-b">{activeFilterCount}</span>
-            ) : null}
+            {activeCount > 0 ? <span className="bdg bdg-b">{activeCount}</span> : null}
           </button>
           <MembersFilterPanel
-            open={filtersOpen}
-            onClose={() => setFiltersOpen(false)}
-            activeCount={activeFilterCount}
-            role={filters.role || 'patient'}
-            onRoleChange={handlePanelRoleChange}
-            memberCount={memberCount}
-            adminCount={adminCount}
-            dueFilter={toPanelDue(dueFilter)}
-            onDueFilterChange={(value) =>
-              onDueFilterChange?.(fromPanelDue(value))
-            }
-            extraFilters={extraFilters}
-            onExtraFiltersChange={onExtraFiltersChange}
+            open={open}
+            onClose={() => onOpenChange(false)}
+            activeCount={activeCount}
+            filters={staged}
+            onChange={onStagedChange}
             physiologistOptions={physiologistOptions}
-            onClear={handleClear}
-            onApply={() => setFiltersOpen(false)}
+            unassignedPhysiologist={unassignedPhysiologist}
+            onClear={onClearAll}
+            onApply={onApply}
             groupSlot={
               <OrgTeamFilter
-                selectedOrgId={filters.organization_id}
+                selectedOrgId={staged.organization_id}
                 selectedOrgName={selectedOrgName}
-                selectedTeamId={filters.team_id}
+                selectedTeamId={staged.team_id}
                 selectedTeamName={selectedTeamName}
-                onOrgSelect={handleOrgSelect}
-                onTeamSelect={handleTeamSelect}
-                onClear={handleClear}
+                onOrgSelect={onStagedOrgSelect}
+                onTeamSelect={onStagedTeamSelect}
+                onClear={onClearAll}
               />
             }
           />

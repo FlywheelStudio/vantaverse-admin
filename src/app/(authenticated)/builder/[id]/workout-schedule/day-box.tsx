@@ -7,16 +7,16 @@ import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-c
 import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import { ExerciseDetailsPopover } from './partials/exercise-details-popover';
+import { useRef } from 'react';
 
-const MAX_VISIBLE_ITEMS = 4;
+const MAX_VISIBLE_ITEMS = 6;
 
 interface DayBoxProps {
   day: number;
   weekIndex: number;
   items: SelectedItem[];
   formattedDate: string | null;
-  isBeforeStart: boolean;
-  isPastDate: boolean;
+  isOutOfBounds: boolean;
   isDayCopied: boolean;
   isDayPasteDisabled: boolean;
   isPasteAnimating?: boolean;
@@ -27,6 +27,7 @@ interface DayBoxProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   defaultValues?: DefaultValuesData;
+  onReorder?: (items: SelectedItem[]) => void;
 }
 
 function formatExerciseParams(template: ExerciseTemplate): string {
@@ -49,8 +50,7 @@ export function DayBox({
   weekIndex,
   items,
   formattedDate,
-  isBeforeStart,
-  isPastDate,
+  isOutOfBounds,
   isDayCopied,
   isDayPasteDisabled,
   isPasteAnimating = false,
@@ -60,16 +60,26 @@ export function DayBox({
   onMouseEnter,
   onMouseLeave,
   defaultValues,
+  onReorder,
 }: DayBoxProps): React.ReactElement {
+  // Reordering only supports flat exercise lists; groups are edited in the modal.
+  const canReorder =
+    !isOutOfBounds && items.length > 1 && items.every((i) => i.type !== 'group');
+  const dragIndexRef = useRef<number | null>(null);
+
+  const handleDrop = (targetIndex: number) => {
+    const from = dragIndexRef.current;
+    dragIndexRef.current = null;
+    if (from === null || from === targetIndex) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(targetIndex, 0, moved);
+    onReorder?.(next);
+  };
+
   const hasItems = items.length > 0;
   const isRest = !hasItems;
-  const isWarning = isBeforeStart || isPastDate;
   const dayLabel = getDayOfWeek(day)?.slice(0, 3).toUpperCase() ?? `D${day}`;
-  const warningLabel = isBeforeStart
-    ? 'Before start'
-    : isPastDate
-      ? 'Past'
-      : null;
 
   const getTemplateFromExercise = (
     item: Extract<SelectedItem, { type: 'exercise' }>,
@@ -92,7 +102,6 @@ export function DayBox({
       template_hash: 'synthetic',
       exercise_id: item.data.id,
       notes: null,
-      equipment_ids: null,
       rep_override: null,
       time_override: null,
       distance_override: null,
@@ -152,7 +161,26 @@ export function DayBox({
         template={template}
         className="w-full"
       >
-        <div className="ex-r" role="button" tabIndex={0}>
+        <div
+          className="ex-r"
+          role="button"
+          tabIndex={0}
+          draggable={canReorder}
+          style={{ cursor: canReorder ? 'grab' : undefined }}
+          onDragStart={() => {
+            dragIndexRef.current = itemIndex;
+          }}
+          onDragOver={(e) => {
+            if (dragIndexRef.current !== null) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleDrop(itemIndex);
+          }}
+          onDragEnd={() => {
+            dragIndexRef.current = null;
+          }}
+        >
           <span
             className="et thmb"
             style={
@@ -180,14 +208,11 @@ export function DayBox({
 
   return (
     <div
-      className={cn('day', isRest && 'rest', isWarning && 'day-warn')}
-      style={
-        isWarning
-          ? {
-              borderColor: 'color-mix(in oklch, var(--danger) 40%, var(--border-default))',
-            }
-          : undefined
-      }
+      className={cn(
+        'day',
+        isOutOfBounds && 'disabled',
+        !isOutOfBounds && isRest && 'rest',
+      )}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       data-week={weekIndex}
@@ -196,65 +221,72 @@ export function DayBox({
       <div className="dh">
         <span
           className="dn"
-          style={isWarning ? { color: 'var(--danger)' } : undefined}
+          style={isOutOfBounds ? { color: 'var(--text-muted)' } : undefined}
         >
           {dayLabel}
         </span>
         {formattedDate ? (
           <span
             className="dd"
-            style={isWarning ? { color: 'var(--danger)' } : undefined}
+            style={isOutOfBounds ? { color: 'var(--text-muted)' } : undefined}
           >
             {formattedDate}
-            {warningLabel ? ` · ${warningLabel}` : ''}
           </span>
         ) : null}
         <span className="sp" />
-        <button
-          type="button"
-          className="ib ib-sm"
-          aria-label={isDayCopied ? 'Day copied' : 'Copy day'}
-          title={isDayCopied ? 'Copied — Ctrl/⌘+C' : 'Copy day — Ctrl/⌘+C'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopyDay();
-          }}
-          style={
-            isDayCopied
-              ? { color: 'var(--success, var(--cyan-600))' }
-              : undefined
-          }
-        >
-          <Icon name={isDayCopied ? 'Check' : 'Copy'} size={14} />
-        </button>
-        <button
-          type="button"
-          className="ib ib-sm"
-          aria-label="Paste day"
-          title={
-            isDayPasteDisabled
-              ? isDayCopied
-                ? 'Already the copied day'
-                : 'Nothing to paste'
-              : 'Paste day — Ctrl/⌘+V'
-          }
-          disabled={isDayPasteDisabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPasteDay();
-          }}
-          style={{
-            opacity: isDayPasteDisabled ? 0.4 : 1,
-            color: isPasteAnimating
-              ? 'var(--success, var(--cyan-600))'
-              : undefined,
-          }}
-        >
-          <Icon name="ClipboardPaste" size={14} />
-        </button>
+        {!isOutOfBounds && (
+          <>
+            <button
+              type="button"
+              className="ib ib-sm"
+              aria-label={isDayCopied ? 'Day copied' : 'Copy day'}
+              title={isDayCopied ? 'Copied — Ctrl/⌘+C' : 'Copy day — Ctrl/⌘+C'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopyDay();
+              }}
+              style={
+                isDayCopied
+                  ? { color: 'var(--success, var(--cyan-600))' }
+                  : undefined
+              }
+            >
+              <Icon name={isDayCopied ? 'Check' : 'Copy'} size={14} />
+            </button>
+            <button
+              type="button"
+              className="ib ib-sm"
+              aria-label="Paste day"
+              title={
+                isDayPasteDisabled
+                  ? isDayCopied
+                    ? 'Already the copied day'
+                    : 'Nothing to paste'
+                  : 'Paste day — Ctrl/⌘+V'
+              }
+              disabled={isDayPasteDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPasteDay();
+              }}
+              style={{
+                opacity: isDayPasteDisabled ? 0.4 : 1,
+                color: isPasteAnimating
+                  ? 'var(--success, var(--cyan-600))'
+                  : undefined,
+              }}
+            >
+              <Icon name="ClipboardPaste" size={14} />
+            </button>
+          </>
+        )}
       </div>
 
-      {hasItems ? (
+      {isOutOfBounds ? (
+        <div className="na-m">
+          <span className="nl">N/A</span>
+        </div>
+      ) : hasItems ? (
         <div className="dbody">
           {visibleItems.map((item, idx) => renderExerciseRow(item, idx))}
           {hiddenCount > 0 ? (
@@ -274,17 +306,18 @@ export function DayBox({
         </div>
       )}
 
-      <div className="df">
-        <button
-          type="button"
-          className={cn('btn btn-sm', hasItems ? 'btn-sec' : 'btn-ghost')}
-          disabled={isWarning}
-          onClick={() => onAddExercise(day)}
-        >
-          <Icon name="Plus" size={14} />
-          {hasItems ? 'Edit' : 'Add'}
-        </button>
-      </div>
+      {!isOutOfBounds && (
+        <div className="df">
+          <button
+            type="button"
+            className={cn('btn btn-sm', hasItems ? 'btn-sec' : 'btn-ghost')}
+            onClick={() => onAddExercise(day)}
+          >
+            <Icon name="Plus" size={14} />
+            {hasItems ? 'Edit' : 'Add'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
