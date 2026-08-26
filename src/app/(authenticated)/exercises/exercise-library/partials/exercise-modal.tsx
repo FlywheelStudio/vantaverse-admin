@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
-import { Icon, Textarea } from '@/components/medvanta';
+import { Icon } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
+import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ExerciseTagsSection } from './exercise-tags-section';
 
@@ -15,10 +16,42 @@ interface ExerciseModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type EditableField =
-  | 'exercise_name'
-  | 'library_tip'
-  | 'library_check_in_question';
+const NAME_MAX = 80;
+const TIP_MAX = 400;
+const CHECK_IN_MAX = 140;
+
+/** A check-in question asks the member to confirm their own form or effort. */
+const CHECK_IN_PLACEHOLDER =
+  'Did you keep your hips in line with your knees through the whole squat?';
+
+const CHECK_IN_EXAMPLES: ReadonlyArray<{ label: string; value: string }> = [
+  {
+    label: 'Alignment',
+    value: 'Did you keep your hips in line with your knees the whole way down?',
+  },
+  {
+    label: 'Full range',
+    value: 'Were you able to move through the full range without cutting it short?',
+  },
+  {
+    label: 'Control',
+    value: 'Could you control the movement on the way back up?',
+  },
+];
+
+interface Draft {
+  exercise_name: string;
+  library_tip: string;
+  library_check_in_question: string;
+}
+
+function toDraft(exercise: Exercise): Draft {
+  return {
+    exercise_name: exercise.exercise_name ?? '',
+    library_tip: exercise.library_tip ?? '',
+    library_check_in_question: exercise.library_check_in_question ?? '',
+  };
+}
 
 function formatTypeLabel(type: string): string {
   return type
@@ -53,6 +86,71 @@ export function ExerciseModal({
   );
 }
 
+interface CopyFieldProps {
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  max: number;
+  rows: number;
+  placeholder: string;
+  emptyNote?: string;
+  dirty: boolean;
+  onChange: (value: string) => void;
+  children?: React.ReactNode;
+}
+
+/** Label + live counter, optional caption, auto-growing control, status line. */
+function CopyField({
+  id,
+  label,
+  hint,
+  value,
+  max,
+  rows,
+  placeholder,
+  emptyNote,
+  dirty,
+  onChange,
+  children,
+}: CopyFieldProps): React.ReactElement {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  const note = dirty ? 'Unsaved' : !value.trim() ? emptyNote : undefined;
+
+  return (
+    <div className="fgrp">
+      <div className="fgrp-hd">
+        <label className="lbl" htmlFor={id}>
+          {label}
+        </label>
+        <span className={cn('fgrp-meta', value.length > max && 'over')}>
+          {value.length}/{max}
+        </span>
+      </div>
+      {hint ? <p className="fgrp-hint">{hint}</p> : null}
+      <textarea
+        id={id}
+        ref={ref}
+        className="ta ta-grow"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ minHeight: rows * 21 + 22 }}
+      />
+      {children}
+      <div className={cn('fgrp-note', dirty && 'dt')}>{note}</div>
+    </div>
+  );
+}
+
 interface ExerciseModalContentProps {
   exercise: Exercise;
   open: boolean;
@@ -60,87 +158,59 @@ interface ExerciseModalContentProps {
 }
 
 function ExerciseModalContent({
-  exercise: exerciseProp,
+  exercise,
   open,
   onOpenChange,
 }: ExerciseModalContentProps): React.ReactElement {
-  const [localExercise, setLocalExercise] = useState<Exercise>(exerciseProp);
-  const [editingField, setEditingField] = useState<EditableField | null>(null);
-  const [editingValue, setEditingValue] = useState<string>('');
+  const [draft, setDraft] = useState<Draft>(() => toDraft(exercise));
   const [showVideo, setShowVideo] = useState(false);
   const updateExerciseMutation = useUpdateExercise();
-  const source = exerciseProp.type ? formatTypeLabel(exerciseProp.type) : 'MedVanta';
-  const lastEditedTime = getRelativeTimeDisplay(exerciseProp.updated_at || exerciseProp.created_at);
-  const titleRef = useRef<HTMLDivElement>(null);
-  const instructionsRef = useRef<HTMLDivElement>(null);
-  const checkInRef = useRef<HTMLDivElement>(null);
+  const source = exercise.type ? formatTypeLabel(exercise.type) : 'MedVanta';
+  const lastEditedTime = getRelativeTimeDisplay(
+    exercise.updated_at || exercise.created_at,
+  );
 
-  useEffect(() => {
-    if (editingField === 'exercise_name') {
-      titleRef.current?.querySelector('input')?.focus();
-    } else if (editingField === 'library_tip') {
-      instructionsRef.current?.querySelector('textarea')?.focus();
-    } else if (editingField === 'library_check_in_question') {
-      checkInRef.current?.querySelector('textarea')?.focus();
-    }
-  }, [editingField]);
-
-  const exercise = localExercise;
   const usedInPrograms = exercise.assigned_count ?? 0;
   const isUnassigned = usedInPrograms === 0;
   const exerciseIdLabel = `ID EX-${exercise.id}`;
 
-  const getFieldValue = (field: EditableField): string => {
-    if (field === 'exercise_name') return exercise.exercise_name;
-    if (field === 'library_tip') return exercise.library_tip || '';
-    return exercise.library_check_in_question || '';
+  const saved = toDraft(exercise);
+  const isDirty = (field: keyof Draft): boolean =>
+    draft[field].trim() !== saved[field].trim();
+  const dirtyCount = (Object.keys(draft) as (keyof Draft)[]).filter(isDirty)
+    .length;
+  const nameIsEmpty = draft.exercise_name.trim().length === 0;
+
+  const setField = (field: keyof Draft, value: string): void => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
   };
-
-  const handleEdit = (field: EditableField): void => {
-    if (updateExerciseMutation.isPending) return;
-    setEditingField(field);
-    setEditingValue(getFieldValue(field));
-  };
-
-  const handleSaveField = (field: EditableField): void => {
-    if (updateExerciseMutation.isPending) return;
-
-    const originalValue =
-      field === 'exercise_name' ? exercise.exercise_name : getFieldValue(field);
-
-    const normalizedNew = editingValue.trim();
-    const normalizedOriginal = originalValue?.trim() || '';
-
-    if (normalizedNew !== normalizedOriginal) {
-      const updateData: Partial<Exercise> = {
-        [field]: normalizedNew || null,
-      };
-
-      setLocalExercise((prev) =>
-        prev ? { ...prev, [field]: normalizedNew || null } : prev,
-      );
-
-      updateExerciseMutation.mutate({
-        id: exercise.id,
-        data: updateData,
-      });
-    }
-
-    setEditingField(null);
-    setEditingValue('');
-  };
-
 
   const handleSaveExercise = (): void => {
-    if (editingField) {
-      handleSaveField(editingField);
+    if (updateExerciseMutation.isPending) return;
+
+    if (dirtyCount === 0 || nameIsEmpty) {
+      onOpenChange(false);
+      return;
     }
+
+    const updateData: Partial<Exercise> = {};
+    if (isDirty('exercise_name')) {
+      updateData.exercise_name = draft.exercise_name.trim();
+    }
+    if (isDirty('library_tip')) {
+      updateData.library_tip = draft.library_tip.trim() || null;
+    }
+    if (isDirty('library_check_in_question')) {
+      updateData.library_check_in_question =
+        draft.library_check_in_question.trim() || null;
+    }
+
+    updateExerciseMutation.mutate({ id: exercise.id, data: updateData });
     onOpenChange(false);
   };
 
   const handleCancel = (): void => {
-    setEditingField(null);
-    setEditingValue('');
+    setDraft(toDraft(exercise));
     onOpenChange(false);
   };
 
@@ -160,29 +230,11 @@ function ExerciseModalContent({
       ? exercise.thumbnail_url
       : null;
 
-
-  const titleContent =
-    editingField === 'exercise_name' ? (
-      <div ref={titleRef}>
-        <span className="fld">
-          <input
-            value={editingValue}
-            onChange={(e) => setEditingValue(e.target.value)}
-            onBlur={() => handleSaveField('exercise_name')}
-            aria-label="Exercise name"
-          />
-        </span>
-      </div>
-    ) : (
-      <button
-        type="button"
-        onClick={() => handleEdit('exercise_name')}
-        className="fld"
-        style={{ width: '100%', cursor: 'pointer', textAlign: 'left' }}
-      >
-        <span style={{ flex: 1 }}>{exercise.exercise_name}</span>
-      </button>
-    );
+  const nameNote = nameIsEmpty
+    ? 'Exercise name is required.'
+    : isDirty('exercise_name')
+      ? 'Unsaved'
+      : undefined;
 
   return (
     <HtmlModal
@@ -193,7 +245,11 @@ function ExerciseModalContent({
       width={760}
       style={{ maxHeight: 'min(90vh, 720px)' }}
       bodyClassName="overflow-y-auto"
-      footerInfo={`Last edited ${lastEditedTime}`}
+      footerInfo={
+        dirtyCount > 0
+          ? `${dirtyCount} unsaved change${dirtyCount === 1 ? '' : 's'}`
+          : `Last edited ${lastEditedTime}`
+      }
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={handleCancel}>
@@ -203,7 +259,9 @@ function ExerciseModalContent({
             type="button"
             className="btn btn-acc"
             onClick={handleSaveExercise}
-            disabled={updateExerciseMutation.isPending}
+            disabled={
+              updateExerciseMutation.isPending || dirtyCount === 0 || nameIsEmpty
+            }
           >
             Save exercise
           </button>
@@ -215,7 +273,7 @@ function ExerciseModalContent({
         style={{
           gridTemplateColumns: 'minmax(0,1.05fr) minmax(0,1fr)',
           gap: 20,
-          marginBottom: 20,
+          marginBottom: 4,
         }}
       >
         <div>
@@ -312,21 +370,55 @@ function ExerciseModalContent({
               <span className="src-b">{source}</span>
             </div>
           )}
-
         </div>
 
         <div>
-          <div className="ff">
-            <label className="lbl">
-              Exercise name<span className="req">*</span>
-            </label>
-            {titleContent}
+          <div className="fgrp">
+            <div className="fgrp-hd">
+              <label className="lbl" htmlFor="exercise-name">
+                Exercise name<span className="req">*</span>
+              </label>
+              <span
+                className={cn(
+                  'fgrp-meta',
+                  draft.exercise_name.length > NAME_MAX && 'over',
+                )}
+              >
+                {draft.exercise_name.length}/{NAME_MAX}
+              </span>
+            </div>
+            <span className={cn('fld', nameIsEmpty && 'inv')}>
+              <input
+                id="exercise-name"
+                value={draft.exercise_name}
+                onChange={(e) => setField('exercise_name', e.target.value)}
+                placeholder="e.g. Standing Hip Abduction"
+              />
+            </span>
+            <div
+              className={cn(
+                'fgrp-note',
+                nameIsEmpty ? 'err' : isDirty('exercise_name') && 'dt',
+              )}
+            >
+              {nameNote}
+            </div>
           </div>
 
-          <div className="ff">
-            <label className="lbl">Source</label>
+          <div className="fgrp">
+            <div className="fgrp-hd">
+              <label className="lbl" htmlFor="exercise-source">
+                Source
+              </label>
+            </div>
             <span className="fld ro">
-              <input value={source} readOnly disabled aria-label="Source" />
+              <input
+                id="exercise-source"
+                value={source}
+                readOnly
+                disabled
+                aria-label="Source"
+              />
             </span>
           </div>
 
@@ -334,15 +426,13 @@ function ExerciseModalContent({
             className="row"
             style={{
               gap: 8,
-              marginTop: 16,
+              marginTop: 4,
               paddingTop: 14,
               borderTop: '1px solid var(--border-subtle)',
               flexWrap: 'wrap',
             }}
           >
-            {isUnassigned ? (
-              <span className="bdg bdg-o">Unassigned</span>
-            ) : null}
+            {isUnassigned ? <span className="bdg bdg-o">Unassigned</span> : null}
             <span className="bdg">
               Used in {usedInPrograms} program
               {usedInPrograms === 1 ? '' : 's'}
@@ -352,75 +442,49 @@ function ExerciseModalContent({
         </div>
       </div>
 
-      <div className="ff">
-        <label className="lbl">Instructions for members</label>
-        <div className="hint">
-          Shown under the video in the member app. Plain language, no clinical
-          shorthand.
-        </div>
-        {editingField === 'library_tip' ? (
-          <div ref={instructionsRef}>
-            <Textarea
-              className="ta"
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSaveField('library_tip')}
-              rows={3}
-              placeholder="Describe the set-up, the movement, and what good execution feels like…"
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleEdit('library_tip')}
-            className="ta"
-            style={{
-              width: '100%',
-              cursor: 'pointer',
-              textAlign: 'left',
-              whiteSpace: 'pre-wrap',
-              minHeight: 72,
-            }}
-          >
-            {exercise.library_tip ||
-              'Describe the set-up, the movement, and what good execution feels like…'}
-          </button>
-        )}
-      </div>
+      <div className="fsec">
+        <div className="fsec-t">What the member sees</div>
 
-      <div className="ff">
-        <label className="lbl">Check-in question</label>
-        <div className="hint">
-          Asked after every set. Plain language, no clinical shorthand.
-        </div>
-        {editingField === 'library_check_in_question' ? (
-          <div ref={checkInRef}>
-            <Textarea
-              className="ta"
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSaveField('library_check_in_question')}
-              rows={3}
-              placeholder="e.g. Rate your pain during this movement (0–10)"
-            />
+        <CopyField
+          id="exercise-instructions"
+          label="Instructions for members"
+          hint="Shown under the video in the member app. Plain language, no clinical shorthand."
+          value={draft.library_tip}
+          max={TIP_MAX}
+          rows={3}
+          placeholder="Describe the set-up, the movement, and what good execution feels like…"
+          emptyNote="Empty — members see the video with no written guidance."
+          dirty={isDirty('library_tip')}
+          onChange={(value) => setField('library_tip', value)}
+        />
+
+        <CopyField
+          id="exercise-check-in"
+          label="Check-in question"
+          value={draft.library_check_in_question}
+          max={CHECK_IN_MAX}
+          rows={2}
+          placeholder={CHECK_IN_PLACEHOLDER}
+          emptyNote="Empty — nothing is asked after a set."
+          dirty={isDirty('library_check_in_question')}
+          onChange={(value) => setField('library_check_in_question', value)}
+        >
+          <div className="ex-chips">
+            <span className="cl">Start from:</span>
+            {CHECK_IN_EXAMPLES.map((example) => (
+              <button
+                key={example.label}
+                type="button"
+                className="chip-s"
+                onClick={() =>
+                  setField('library_check_in_question', example.value)
+                }
+              >
+                {example.label}
+              </button>
+            ))}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleEdit('library_check_in_question')}
-            className="ta"
-            style={{
-              width: '100%',
-              cursor: 'pointer',
-              textAlign: 'left',
-              whiteSpace: 'pre-wrap',
-              minHeight: 72,
-            }}
-          >
-            {exercise.library_check_in_question ||
-              'e.g. Rate your pain during this movement (0–10)'}
-          </button>
-        )}
+        </CopyField>
       </div>
 
       <ExerciseTagsSection exerciseId={exercise.id} />

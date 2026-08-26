@@ -121,12 +121,17 @@
 .fld-lg{height:46px}
 .fld svg{color:var(--text-muted)}
 .fld.ro{background:var(--slate-50)}
-textarea.ta{
-  width:100%;padding:10px 14px;resize:vertical;font-family:var(--font-sans);font-size:var(--text-md);
+.ta{
+  width:100%;padding:10px 14px;font-family:var(--font-sans);font-size:var(--text-md);
   line-height:var(--lh-normal);color:var(--text-strong);background:var(--surface-card);
   border:1px solid var(--border-default);border-radius:var(--radius-md);outline:none;
+  transition:border-color var(--dur-fast),box-shadow var(--dur-fast);
 }
-textarea.ta:focus{border-color:var(--border-focus);box-shadow:var(--shadow-focus)}
+textarea.ta{resize:vertical}
+.ta:focus{border-color:var(--border-focus);box-shadow:var(--shadow-focus)}
+.ta::placeholder{color:var(--text-faint)}
+.ta-grow{resize:none;overflow:hidden}
+.ta.inv,.fld.inv{border-color:var(--danger)}
 .sel{position:relative;display:inline-flex}
 .sel select{
   appearance:none;height:40px;padding:0 36px 0 14px;font-family:var(--font-sans);font-size:var(--text-md);
@@ -139,6 +144,41 @@ textarea.ta:focus{border-color:var(--border-focus);box-shadow:var(--shadow-focus
 .lbl .req{color:var(--danger);margin-left:3px}
 .hint{font-size:var(--text-xs);color:var(--text-muted);margin-top:6px}
 .ff{margin-bottom:16px}
+
+/* Field group — label + counter row, caption, control, status line.
+   Replaces .ff for long-form fields: one grid gap instead of .lbl's and
+   .hint's colliding margins, so it reads label -> caption -> control. */
+.fgrp{display:grid;gap:7px;margin-bottom:20px}
+.fgrp-hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-width:0}
+.fgrp-hd .lbl{margin-bottom:0}
+.fgrp-meta{
+  font-family:var(--font-mono);font-size:var(--text-2xs);color:var(--text-faint);
+  font-variant-numeric:tabular-nums;flex:0 0 auto;
+}
+.fgrp-meta.over{color:var(--warning)}
+.fgrp-hint{font-size:var(--text-xs);color:var(--text-muted);line-height:var(--lh-snug);margin:-2px 0 1px}
+.fgrp-note{font-size:var(--text-2xs);color:var(--text-faint);min-height:16px;display:flex;align-items:center;gap:5px}
+.fgrp-note.dt{color:var(--warning);font-weight:var(--fw-medium)}
+.fgrp-note.err{color:var(--danger);font-weight:var(--fw-medium)}
+
+/* Section rule inside a form body */
+.fsec{border-top:1px solid var(--border-subtle);padding-top:16px;margin-top:18px}
+.fsec-t{
+  font-size:var(--text-2xs);font-weight:var(--fw-bold);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-faint);margin-bottom:14px;
+}
+
+/* Click-to-fill starter values under a field */
+.ex-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ex-chips .cl{font-size:var(--text-2xs);color:var(--text-faint)}
+.chip-s{
+  font-family:var(--font-sans);font-size:var(--text-xs);font-weight:var(--fw-medium);
+  color:var(--text-link);background:var(--cyan-50);border:1px dashed var(--cyan-200);
+  border-radius:var(--radius-pill);padding:3px 10px;cursor:pointer;
+  transition:background var(--dur-fast),border-color var(--dur-fast);
+}
+.chip-s:hover{background:var(--cyan-100);border-color:var(--cyan-300)}
+.chip-s:focus-visible{outline:none;box-shadow:var(--shadow-focus)}
 
 .cb,.rd{
   width:20px;height:20px;border-radius:var(--radius-xs);display:inline-flex;align-items:center;justify-content:center;
