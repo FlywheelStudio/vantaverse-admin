@@ -22,22 +22,7 @@ const CHECK_IN_MAX = 140;
 
 /** A check-in question asks the member to confirm their own form or effort. */
 const CHECK_IN_PLACEHOLDER =
-  'Did you keep your hips in line with your knees through the whole squat?';
-
-const CHECK_IN_EXAMPLES: ReadonlyArray<{ label: string; value: string }> = [
-  {
-    label: 'Alignment',
-    value: 'Did you keep your hips in line with your knees the whole way down?',
-  },
-  {
-    label: 'Full range',
-    value: 'Were you able to move through the full range without cutting it short?',
-  },
-  {
-    label: 'Control',
-    value: 'Could you control the movement on the way back up?',
-  },
-];
+  'Example: Did you keep your hips in line with your knees through the whole squat?';
 
 interface Draft {
   exercise_name: string;
@@ -97,7 +82,6 @@ interface CopyFieldProps {
   emptyNote?: string;
   dirty: boolean;
   onChange: (value: string) => void;
-  children?: React.ReactNode;
 }
 
 /** Label + live counter, optional caption, auto-growing control, status line. */
@@ -112,7 +96,6 @@ function CopyField({
   emptyNote,
   dirty,
   onChange,
-  children,
 }: CopyFieldProps): React.ReactElement {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -145,7 +128,6 @@ function CopyField({
         onChange={(e) => onChange(e.target.value)}
         style={{ minHeight: rows * 21 + 22 }}
       />
-      {children}
       <div className={cn('fgrp-note', dirty && 'dt')}>{note}</div>
     </div>
   );
@@ -468,23 +450,7 @@ function ExerciseModalContent({
           emptyNote="Empty — nothing is asked after a set."
           dirty={isDirty('library_check_in_question')}
           onChange={(value) => setField('library_check_in_question', value)}
-        >
-          <div className="ex-chips">
-            <span className="cl">Start from:</span>
-            {CHECK_IN_EXAMPLES.map((example) => (
-              <button
-                key={example.label}
-                type="button"
-                className="chip-s"
-                onClick={() =>
-                  setField('library_check_in_question', example.value)
-                }
-              >
-                {example.label}
-              </button>
-            ))}
-          </div>
-        </CopyField>
+        />
       </div>
 
       <ExerciseTagsSection exerciseId={exercise.id} />
