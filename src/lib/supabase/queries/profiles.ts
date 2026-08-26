@@ -1168,7 +1168,38 @@ export class ProfilesQuery extends SupabaseQuery {
       count: 0,
     };
 
-    const parsedData = profileWithStatsSchema.array().safeParse(payload.data ?? []);
+    const rows = payload.data ?? [];
+    if (rows.length === 0) {
+      const page = params.page ?? 1;
+      const pageSize = params.pageSize ?? 500;
+      return {
+        success: true,
+        data: {
+          data: [],
+          page,
+          pageSize,
+          total: payload.count ?? 0,
+          hasMore: false,
+        },
+      };
+    }
+
+    // RPC returns profiles_with_stats rows only — attach org names like getListWithStats.
+    const profileIds = rows.map(
+      (row) => (row as Record<string, unknown>).id as string,
+    );
+    const [superAdminData, membershipsData] = await Promise.all([
+      this.getSuperAdminData(),
+      this.getOrganizationMemberships(profileIds),
+    ]);
+    const enrichedProfiles = this.enrichProfilesWithMetadata(
+      rows,
+      superAdminData.userIds,
+      membershipsData.orgMembershipsMap,
+      membershipsData.userRoleMap,
+    );
+
+    const parsedData = profileWithStatsSchema.array().safeParse(enrichedProfiles);
     if (!parsedData.success) {
       return this.parseResponseZodError(parsedData.error);
     }

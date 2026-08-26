@@ -20,12 +20,12 @@ import {
 import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
 import { AddUserMenu } from './users-table/components/add-user-menu';
-import { HtmlMoreButton } from '@/app/(authenticated)/builder/partials/html-toolbar';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { MemberFilterCounts } from '@/lib/supabase/queries/profiles';
 
 interface UsersPageUIProps {
   initialUsers: ProfileWithStats[];
+  initialCounts?: MemberFilterCounts;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -70,8 +70,10 @@ function buildSubtitle(users: ProfileWithStats[]): string {
     : orgPart;
 }
 
-export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElement {
-  const [role, setRole] = useState<'patient' | 'admin'>('patient');
+export function UsersPageUI({
+  initialUsers,
+  initialCounts,
+}: UsersPageUIProps): React.ReactElement {
   const [searchValue, setSearchValue] = useState('');
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const debouncedSearch = useDebounce(searchValue, 300);
@@ -91,13 +93,11 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
   });
 
   const { data: organizations } = useOrganizations();
-  const { data: counts } = useMemberFilterCounts();
+  const { data: counts } = useMemberFilterCounts(initialCounts);
 
   // Seed the first paint with the SSR patient list while on default filters.
   const isDefaultState =
-    role === 'patient' &&
-    !debouncedSearch.trim() &&
-    countActiveFilters(filters) === 0;
+    !debouncedSearch.trim() && countActiveFilters(filters) === 0;
 
   const {
     data: members,
@@ -105,7 +105,7 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
   } = useMembersFiltered(
     {
       search: debouncedSearch || undefined,
-      role,
+      role: 'patient',
       organization_id: filters.organization_id,
       team_id: filters.team_id,
       status: filters.status,
@@ -120,14 +120,6 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
 
   const displayUsers = useMemo(() => members ?? [], [members]);
   const subtitle = useMemo(() => buildSubtitle(displayUsers), [displayUsers]);
-
-  const tableColumns = useMemo(
-    () => (role === 'admin' ? columns.filter((col) => col.id !== 'program') : columns),
-    [role],
-  );
-
-  const memberCount = counts?.roles.patient ?? displayUsers.length;
-  const adminCount = counts?.roles.admin ?? 0;
 
   // Staged group selection helpers (names kept for pill + panel labels).
   const handleStagedOrgSelect = (orgId?: string): void => {
@@ -204,42 +196,12 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
         title="Members"
         subtitle={subtitle}
         actions={
-          <>
-            <AddUserMenu role={role} />
-            <HtmlMoreButton
-              items={[
-                {
-                  id: 'import',
-                  label: 'Import from CSV',
-                  onSelect: () => toastUnavailable('Import from CSV'),
-                },
-                {
-                  id: 'export',
-                  label: 'Export all',
-                  onSelect: () => toastUnavailable('Export all'),
-                },
-                {
-                  id: 'columns',
-                  label: 'Choose columns',
-                  onSelect: () => toastUnavailable('Choose columns'),
-                },
-                {
-                  id: 'admins',
-                  label: 'Manage admins',
-                  onSelect: () => toastUnavailable('Manage admins'),
-                },
-              ]}
-            />
-          </>
+            <AddUserMenu role="patient" />
         }
       />
       <div className="body">
         <div style={{ position: 'relative' }}>
           <UsersTableFilters
-            role={role}
-            onRoleSelect={setRole}
-            memberCount={memberCount}
-            adminCount={adminCount}
             searchValue={searchValue}
             onSearchChange={setSearchValue}
             staged={staged}
@@ -275,7 +237,7 @@ export function UsersPageUI({ initialUsers }: UsersPageUIProps): React.ReactElem
         />
 
         <UsersTable
-          columns={tableColumns}
+          columns={columns}
           data={displayUsers}
           isLoading={isLoading}
         />

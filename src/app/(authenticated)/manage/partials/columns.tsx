@@ -13,9 +13,18 @@ import {
   HtmlSortHeader,
   HtmlStatusBadge,
 } from '../../users/html-helpers';
-import { sendBulkInvitations } from '../../users/actions';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import { removeAdminUser, sendBulkInvitations } from '../../users/actions';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function fullNameOf(profile: ProfileWithStats): string {
   const parts = [profile.first_name, profile.last_name].filter(Boolean);
@@ -109,9 +118,12 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [sending, setSending] = React.useState(false);
+  const [removing, setRemoving] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const awaitingInvite =
     profile.status === 'pending' || profile.status === 'invited';
+  const displayName = fullNameOf(profile);
 
   const handleResend = async (): Promise<void> => {
     if (!profile.email || sending) return;
@@ -139,28 +151,75 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
     }
   };
 
+  const handleRemove = async (): Promise<void> => {
+    if (removing) return;
+    setRemoving(true);
+    try {
+      const result = await removeAdminUser(profile.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${displayName} removed`);
+      setConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (error) {
+      console.error('Error removing admin:', error);
+      toast.error('Failed to remove admin');
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   return (
-    <HtmlRowMenu
-      items={[
-        {
-          id: 'view',
-          label: 'View profile',
-          onSelect: () => router.push(`/users/${profile.id}`),
-        },
-        {
-          id: 'resend',
-          label: sending ? 'Sending…' : 'Resend invitation',
-          disabled: !awaitingInvite || !profile.email || sending,
-          onSelect: handleResend,
-        },
-        {
-          id: 'remove',
-          label: 'Remove admin',
-          danger: true,
-          onSelect: () => toastUnavailable('Remove admin'),
-        },
-      ]}
-    />
+    <>
+      <HtmlRowMenu
+        items={[
+          {
+            id: 'view',
+            label: 'View profile',
+            onSelect: () => router.push(`/users/${profile.id}`),
+          },
+          {
+            id: 'resend',
+            label: sending ? 'Sending…' : 'Resend invitation',
+            disabled: !awaitingInvite || !profile.email || sending,
+            onSelect: handleResend,
+          },
+          {
+            id: 'remove',
+            label: 'Remove admin',
+            danger: true,
+            onSelect: () => setConfirmOpen(true),
+          },
+        ]}
+      />
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove admin</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes {displayName}
+              {profile.email ? ` (${profile.email})` : ''}. Their account and
+              admin access cannot be recovered. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removing}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleRemove();
+              }}
+            >
+              {removing ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

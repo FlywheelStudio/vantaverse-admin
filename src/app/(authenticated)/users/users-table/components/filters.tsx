@@ -2,7 +2,6 @@
 
 import { Icon } from '@/components/medvanta';
 import { OrgTeamFilter } from '../org-team-filter';
-import { RoleFilter } from '../role-filter';
 import { HtmlSearchField } from '../../html-helpers';
 import {
   MembersFilterPanel,
@@ -10,10 +9,6 @@ import {
 } from './members-filter-panel';
 
 interface UsersTableFiltersProps {
-  role: 'patient' | 'admin';
-  onRoleSelect: (role: 'patient' | 'admin') => void;
-  memberCount?: number;
-  adminCount?: number;
   searchValue: string;
   onSearchChange: (value: string) => void;
   /** Staged filter state shown inside the panel. */
@@ -35,14 +30,10 @@ interface UsersTableFiltersProps {
 }
 
 /**
- * Members toolbar: role tabs + search + filter panel trigger.
+ * Members toolbar: search + filter panel trigger.
  * Pills row lives in the parent (`UsersTable`).
  */
 export function UsersTableFilters({
-  role,
-  onRoleSelect,
-  memberCount = 0,
-  adminCount = 0,
   searchValue,
   onSearchChange,
   staged,
@@ -62,12 +53,6 @@ export function UsersTableFilters({
   return (
     <div style={{ marginBottom: 14 }}>
       <div className="tbar">
-        <RoleFilter
-          selectedRole={role}
-          onRoleSelect={onRoleSelect}
-          memberCount={memberCount}
-          adminCount={adminCount}
-        />
         <HtmlSearchField
           value={searchValue}
           onChange={onSearchChange}

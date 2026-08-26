@@ -132,12 +132,9 @@ export function useCreateUserQuickAdd() {
 }
 
 /**
- * Mutation hook for importing users from CSV
- * No optimistic updates (batch operation, complex result)
+ * Parse CSV into staged invite rows (no user creation / cache invalidation).
  */
 export function useImportUsersCSV() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (data: { csvText: string; role: MemberRole }) => {
       const result = await importUsersCSV(data.csvText, data.role);
@@ -151,27 +148,13 @@ export function useImportUsersCSV() {
     onError: (error) => {
       toast.error(error.message || 'Failed to import CSV file');
     },
-    onSuccess: (data) => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
-      if (data.errors.length > 0) {
-        toast.error(
-          `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
-        );
-      }
-    },
   });
 }
 
 /**
- * Mutation hook for importing users from Excel
- * No optimistic updates (batch operation, complex result)
+ * Parse Excel into staged invite rows (no user creation / cache invalidation).
  */
 export function useImportUsersExcel() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (data: { fileData: ArrayBuffer; role: MemberRole }) => {
       const result = await importUsersExcel(data.fileData, data.role);
@@ -184,17 +167,6 @@ export function useImportUsersExcel() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to import Excel file');
-    },
-    onSuccess: (data) => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
-      if (data.errors.length > 0) {
-        toast.error(
-          `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
-        );
-      }
     },
   });
 }

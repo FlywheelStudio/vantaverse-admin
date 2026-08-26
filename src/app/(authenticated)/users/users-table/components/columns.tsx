@@ -87,7 +87,8 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
 
   if (orgs.length === 0) {
     const handleAssignSuccess = () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: ['members-filtered'] });
       setModalOpen(false);
     };
 
@@ -169,7 +170,8 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
     (profile.max_gate_unlocked ?? 0) >= MIN_GATES_FOR_PROGRAM_ASSIGNMENT;
 
   const handleAssignSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['users'] });
+    void queryClient.invalidateQueries({ queryKey: ['users'] });
+    void queryClient.invalidateQueries({ queryKey: ['members-filtered'] });
     setModalOpen(false);
   };
 
@@ -250,7 +252,8 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
       const successful = data.results.filter((r) => r.success);
       if (successful.length > 0) {
         toast.success('Invitation sent successfully');
-        queryClient.invalidateQueries({ queryKey: ['users'] });
+        void queryClient.invalidateQueries({ queryKey: ['users'] });
+        void queryClient.invalidateQueries({ queryKey: ['members-filtered'] });
         setOpen(false);
       } else {
         const failed = data.results.find((r) => !r.success);
