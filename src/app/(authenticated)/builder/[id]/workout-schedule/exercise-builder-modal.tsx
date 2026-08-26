@@ -32,6 +32,8 @@ import {
   type DayScheduleMeta,
 } from './exercise-builder-mock-data';
 
+const FL_SUPERSETS_ENABLED = process.env.NEXT_PUBLIC_FL_SUPERSETS === 'true';
+
 export interface ExerciseBuilderDonePayload {
   items: SelectedItem[];
   isRestDay: boolean;
@@ -304,6 +306,8 @@ export function ExerciseBuilderModal({
   };
 
   const handleToggleSuperset = (index: number): void => {
+    if (!FL_SUPERSETS_ENABLED) return;
+
     const updated = [...selectedItems];
     const item = updated[index];
     if (item && item.type === 'group') {
