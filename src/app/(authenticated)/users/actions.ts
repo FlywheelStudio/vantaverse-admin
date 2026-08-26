@@ -619,7 +619,7 @@ async function uploadUsersExcel(
  * invitee is created but cannot log in (the `isUserAdminByEmail` gate in
  * `auth/actions.ts` rejects them) and never appears in the admin list.
  */
-export async function createUserQuickAdd(data: {
+async function createUserQuickAdd(data: {
   email: string;
   firstName: string;
   lastName: string;
@@ -726,7 +726,6 @@ export interface ImportUsersResult {
  */
 export async function importUsersCSV(
   csvText: string,
-  _role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
@@ -740,7 +739,6 @@ export async function importUsersCSV(
  */
 export async function importUsersExcel(
   fileData: ArrayBuffer,
-  _role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
@@ -831,7 +829,7 @@ export interface InviteBatchItem {
   asAdmin?: boolean;
 }
 
-export interface InviteBatchResult {
+interface InviteBatchResult {
   created: number;
   invited: number;
   failed: Array<{ email: string; error: string }>;

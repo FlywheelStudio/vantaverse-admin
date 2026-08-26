@@ -656,7 +656,6 @@ export function AddUserModal({
               <div className="slim-scrollbar" style={{ overflowY: 'auto', maxHeight: '100%' }}>
                 <FileUploadTab
                   fileType="csv"
-                  role={role}
                   onImported={handleImported}
                   onCancel={() => setInviteMode('type')}
                 />

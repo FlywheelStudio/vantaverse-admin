@@ -315,12 +315,6 @@
   display: none;
 }
 
-/* Radix ScrollArea viewport uses display:table which breaks width constraint / ellipsis */
-.messages-conversations-scroll [data-radix-scroll-area-viewport] > div {
-  display: block !important;
-  min-width: 0;
-}
-
 .loader {
   width: 50px;
   aspect-ratio: 1;
