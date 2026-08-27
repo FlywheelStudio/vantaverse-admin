@@ -1,4 +1,4 @@
-export interface MockInvitee {
+export interface Invitee {
   id: string;
   email: string;
   firstName: string;
@@ -9,26 +9,13 @@ export interface MockInvitee {
   onboarding: 'full' | 'screening' | 'consultation';
 }
 
-interface MockInviteGroup {
-  id: string;
-  name: string;
-}
-
-/** Mock groups for invite Group picker (no RPC). */
-export const MOCK_INVITE_GROUPS: MockInviteGroup[] = [
-  { id: 'grp-capital-msk', name: 'Capital MSK' },
-  { id: 'grp-northline-ortho', name: 'Northline Ortho' },
-  { id: 'grp-riverbend-spine', name: 'Riverbend Spine' },
-  { id: 'grp-harbor-health', name: 'Harbor Health' },
-];
-
 export const KEEP_ROLE_VALUE = '__keep_role__';
 export const KEEP_GROUP_VALUE = '__keep_group__';
 export const KEEP_ONBOARDING_VALUE = '__keep_onboarding__';
 export const CHOOSE_GROUP_VALUE = '';
 
-export type InviteOnboarding = MockInvitee['onboarding'];
-export type InviteRole = MockInvitee['role'];
+export type InviteOnboarding = Invitee['onboarding'];
+export type InviteRole = Invitee['role'];
 
 export const INVITE_ROLE_OPTIONS: Array<{ value: InviteRole; label: string }> = [
   { value: 'member', label: 'Member' },
@@ -44,59 +31,15 @@ export const INVITE_ONBOARDING_OPTIONS: Array<{
   { value: 'consultation', label: 'Skip screening + consultation' },
 ];
 
-/** Sample invitees matching HTML `INVITEES` for layout QA. */
-export const SAMPLE_INVITEES: MockInvitee[] = [
-  {
-    id: 'sample-priya',
-    email: 'priya.menon@capitalmsk.com',
-    firstName: 'Priya',
-    lastName: 'Menon',
-    role: 'member',
-    groupId: 'grp-capital-msk',
-    groupName: 'Capital MSK',
-    onboarding: 'full',
-  },
-  {
-    id: 'sample-owen',
-    email: 'owen.fairhurst@capitalmsk.com',
-    firstName: 'Owen',
-    lastName: 'Fairhurst',
-    role: 'admin',
-    groupId: 'grp-capital-msk',
-    groupName: 'Capital MSK',
-    onboarding: 'screening',
-  },
-  {
-    id: 'sample-idowu',
-    email: 'm.idowu@capitalmsk.com',
-    firstName: '',
-    lastName: '',
-    role: 'member',
-    groupId: null,
-    groupName: null,
-    onboarding: 'full',
-  },
-  {
-    id: 'sample-hana',
-    email: 'hana.wexler@northlineortho.com',
-    firstName: 'Hana',
-    lastName: 'Wexler',
-    role: 'member',
-    groupId: 'grp-northline-ortho',
-    groupName: 'Northline Ortho',
-    onboarding: 'full',
-  },
-];
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 /**
- * Build a mock invitee row from an email with default role / group / path.
+ * Build an invitee row from an email with default role / group / path.
  */
 export function createInviteeFromEmail(
   email: string,
-  overrides: Partial<MockInvitee> = {},
-): MockInvitee {
+  overrides: Partial<Invitee> = {},
+): Invitee {
   const normalized = email.trim().toLowerCase();
   return {
     id: `invite-${normalized}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -131,12 +74,4 @@ export function parseInviteEmails(text: string): string[] {
   }
 
   return emails;
-}
-
-/**
- * Resolve mock group name from id.
- */
-export function getMockGroupName(groupId: string | null): string | null {
-  if (!groupId) return null;
-  return MOCK_INVITE_GROUPS.find((g) => g.id === groupId)?.name ?? null;
 }

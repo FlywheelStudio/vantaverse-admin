@@ -2,7 +2,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  createUserQuickAdd,
   importUsersCSV,
   importUsersExcel,
   deleteAuthUser,
@@ -11,136 +10,14 @@ import {
 } from '../../actions';
 import toast from 'react-hot-toast';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
-
-interface CreateUserQuickAddData {
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: MemberRole;
-}
 
 /**
- * Creates an optimistic user object for optimistic updates
- */
-function createOptimisticUser(
-  variables: CreateUserQuickAddData,
-): ProfileWithStats {
-  return {
-    id: `temp-${Date.now()}`,
-    email: variables.email.trim().toLowerCase(),
-    first_name: variables.firstName.trim() || null,
-    last_name: variables.lastName.trim() || null,
-    status: 'pending',
-    description: null,
-    phone: null,
-    journey_phase: null,
-    screening_completed: null,
-    intro_completed: null,
-    consultation_completed: null,
-    program_assigned: null,
-    program_acknowledged: null,
-    program_due_date: null,
-    avatar_url: null,
-    certificate_url: null,
-    timezone: null,
-    last_sign_in: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    current_level: null,
-    current_phase: null,
-    empowerment: null,
-    empowerment_base: null,
-    empowerment_metadata: null,
-    empowerment_threshold: null,
-    empowerment_title: null,
-    empowerment_top: null,
-    hp_points: null,
-    max_gate_type: null,
-    max_gate_unlocked: null,
-    points_for_next_level: null,
-    program_completion_percentage: null,
-    program_weeks: null,
-    program_assignment_id: null,
-    program_assignment_name: null,
-    is_super_admin: false,
-    orgMemberships: [],
-  };
-}
-
-/**
- * Mutation hook for creating a user via quick add
- * Includes optimistic updates
- */
-export function useCreateUserQuickAdd() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: CreateUserQuickAddData) => {
-      const result = await createUserQuickAdd({
-        email: data.email.trim(),
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        role: data.role,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create user');
-      }
-
-      return result.data;
-    },
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['users'] });
-
-      // Snapshot previous values for all user queries
-      const previousQueries = queryClient.getQueriesData<ProfileWithStats[]>({
-        queryKey: ['users'],
-      });
-
-      // Create optimistic user entry
-      const optimisticUser = createOptimisticUser(variables);
-
-      // Optimistically add user to all user queries
-      queryClient.setQueriesData<ProfileWithStats[]>(
-        { queryKey: ['users'] },
-        (old) => {
-          if (!old) return old;
-          return [optimisticUser, ...old];
-        },
-      );
-
-      return { previousQueries };
-    },
-    onError: (error, _variables, context) => {
-      // Rollback on error
-      if (context?.previousQueries) {
-        context.previousQueries.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
-      }
-      toast.error(error.message || 'Failed to create user');
-    },
-    onSuccess: () => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      toast.success('User added');
-    },
-  });
-}
-
-/**
- * Mutation hook for importing users from CSV
- * No optimistic updates (batch operation, complex result)
+ * Parse CSV into staged invite rows (no user creation / cache invalidation).
  */
 export function useImportUsersCSV() {
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: { csvText: string; role: MemberRole }) => {
-      const result = await importUsersCSV(data.csvText, data.role);
+    mutationFn: async (data: { csvText: string }) => {
+      const result = await importUsersCSV(data.csvText);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to import CSV file');
@@ -151,30 +28,16 @@ export function useImportUsersCSV() {
     onError: (error) => {
       toast.error(error.message || 'Failed to import CSV file');
     },
-    onSuccess: (data) => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
-      if (data.errors.length > 0) {
-        toast.error(
-          `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
-        );
-      }
-    },
   });
 }
 
 /**
- * Mutation hook for importing users from Excel
- * No optimistic updates (batch operation, complex result)
+ * Parse Excel into staged invite rows (no user creation / cache invalidation).
  */
 export function useImportUsersExcel() {
-  const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (data: { fileData: ArrayBuffer; role: MemberRole }) => {
-      const result = await importUsersExcel(data.fileData, data.role);
+    mutationFn: async (data: { fileData: ArrayBuffer }) => {
+      const result = await importUsersExcel(data.fileData);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to import Excel file');
@@ -184,17 +47,6 @@ export function useImportUsersExcel() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to import Excel file');
-    },
-    onSuccess: (data) => {
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
-      if (data.errors.length > 0) {
-        toast.error(
-          `${data.errors.length} issue${data.errors.length > 1 ? 's' : ''} found during import`,
-        );
-      }
     },
   });
 }

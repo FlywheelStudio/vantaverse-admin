@@ -100,7 +100,7 @@ export function useMembersFiltered(filters: MembersQueryFilters, initialData?: P
 }
 
 /** Facet counts for the members filter panel. */
-export function useMemberFilterCounts() {
+export function useMemberFilterCounts(initialData?: MemberFilterCounts) {
   return useQuery<MemberFilterCounts, Error>({
     queryKey: ['member-filter-counts'],
     queryFn: async () => {
@@ -112,6 +112,7 @@ export function useMemberFilterCounts() {
 
       return result.data;
     },
+    initialData,
   });
 }
 

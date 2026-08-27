@@ -60,7 +60,7 @@
 .abar-row{display:flex;align-items:flex-end;gap:20px;padding:14px 24px 16px}
 .abar-id{min-width:0;flex:1}
 .abar-sub{font-size:var(--text-sm);color:var(--text-muted);margin-top:4px}
-.abar-acts{display:flex;align-items:center;gap:8px;flex:0 0 auto;padding-bottom:2px}
+.abar-acts{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;flex:0 1 auto;min-width:0;padding-bottom:2px}
 .abar h1{font-size:var(--text-2xl);font-weight:var(--fw-extrabold);letter-spacing:var(--tracking-tight);margin-top:3px}
 
 .body{flex:1;overflow:auto;padding:22px 24px 40px}
