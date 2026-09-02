@@ -7,7 +7,7 @@ export const programTemplateFormSchema = z
   .object({
     name: z.string().min(1, 'Name is required').trim(),
     weeks: z.number().int().min(1, 'Weeks must be at least 1'),
-    coming_soon_weeks: z.number().int().min(0).default(0),
+    coming_soon_weeks: z.number().int().min(0),
     description: z.string().trim().optional(),
     goals: z.string().trim().optional(),
     notes: z.string().trim().optional(),
