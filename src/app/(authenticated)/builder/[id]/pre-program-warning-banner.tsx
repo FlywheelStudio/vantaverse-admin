@@ -1,27 +1,20 @@
-import { Zap } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { Icon } from '@/components/medvanta';
 
-export function PreProgramWarningBanner() {
+export function PreProgramWarningBanner(): React.ReactElement {
   return (
-    <Alert
-      className={cn(
-        'mb-6 border border-orange-300 bg-orange-50 text-foreground',
-        '[&>svg]:text-amber-500',
-      )}
-    >
-      <Zap className="h-4 w-4" aria-hidden />
-      <AlertTitle className="text-orange-600 font-semibold">
-        You&apos;re editing the PreProgram.
-      </AlertTitle>
-      <AlertDescription className="text-muted-foreground">
-        <p>
+    <div className="alert alert-w" style={{ marginBottom: 18 }}>
+      <Icon name="TriangleAlert" size={19} />
+      <div>
+        <div className="at">You&apos;re editing the PreProgram.</div>
+        <div>
           Saving publishes the workout to{' '}
-          <span className="font-semibold text-foreground">every user</span> who is
-          currently on it — there&apos;s no per-user copy and nothing to re-assign.
-          Changes are live immediately.
-        </p>
-      </AlertDescription>
-    </Alert>
+          <span style={{ fontWeight: 'var(--fw-semibold)', color: 'var(--text-strong)' }}>
+            every user
+          </span>{' '}
+          who is currently on it — there&apos;s no per-user copy and nothing to re-assign. Changes
+          are live immediately.
+        </div>
+      </div>
+    </div>
   );
 }

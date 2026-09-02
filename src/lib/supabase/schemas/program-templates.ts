@@ -5,6 +5,7 @@ export const programTemplateSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   weeks: z.number(),
+  coming_soon_weeks: z.number().int().min(0).default(0),
   goals: z.string().nullable(),
   image_url: z.unknown().nullable(),
   organization_id: z.string().nullable(),

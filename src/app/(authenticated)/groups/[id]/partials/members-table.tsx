@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -9,21 +9,33 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
-import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Loader2, UserPlus } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/medvanta';
+import { ActiveFilterPills, useFilterDraft } from '@/components/filters';
+import { HtmlSearchField } from '../../partials/html-search-field';
+import { HtmlTableFooter } from '../../partials/html-table-footer';
 import {
   getMembersColumns,
   type GroupMemberRow,
 } from './members-table-columns';
 import type { UseMutationResult } from '@tanstack/react-query';
 
+type ProgramFilter = 'all' | 'assigned' | 'not_assigned';
+
+interface GroupMembersFilters {
+  program: ProgramFilter;
+}
+
+const DEFAULT_FILTERS: GroupMembersFilters = { program: 'all' };
+
+function removeFilter(state: GroupMembersFilters, id: string): GroupMembersFilters {
+  if (id === 'program') return { ...state, program: 'all' };
+  return state;
+}
+
 export function MembersTable({
   data,
   isLoading,
-  onAddClick,
   removeMemberMutation,
   addAdminMutation,
   removeAdminMutation,
@@ -32,16 +44,29 @@ export function MembersTable({
 }: {
   data: GroupMemberRow[];
   isLoading?: boolean;
-  onAddClick: () => void;
   removeMemberMutation: UseMutationResult<string, Error, string, unknown>;
   addAdminMutation?: UseMutationResult<string, Error, string, unknown>;
   removeAdminMutation?: UseMutationResult<string, Error, string, unknown>;
   isSuperAdminOrg?: boolean;
   organizationId: string;
-}) {
+}): React.ReactElement {
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const {
+    applied: filters,
+    staged,
+    setStaged,
+    open: panelOpen,
+    setOpen: setPanelOpen,
+    apply: applyFilters,
+    clearAll: clearAllDraft,
+    removePill: removeFiltersPill,
+  } = useFilterDraft<GroupMembersFilters>({
+    initial: DEFAULT_FILTERS,
+    removeFilter,
+  });
 
   useEffect(() => {
     setColumnFilters((prev) => {
@@ -62,57 +87,163 @@ export function MembersTable({
     organizationId,
   });
 
+  const programFilteredData = useMemo(() => {
+    if (filters.program === 'all') return data;
+    const hasProgram = (member: GroupMemberRow): boolean =>
+      Boolean(member.program_name && member.program_name !== 'Empty');
+    return data.filter((member) =>
+      filters.program === 'assigned' ? hasProgram(member) : !hasProgram(member),
+    );
+  }, [data, filters.program]);
+
   const table = useReactTable({
-    data,
+    data: programFilteredData,
     columns,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     state: { columnFilters },
-    initialState: {
-      pagination: { pageSize: 10 },
-    },
+    initialState: { pagination: { pageSize: 10 } },
   });
 
+  const filteredCount = table.getFilteredRowModel().rows.length;
+
+  const activeFilters = useMemo(() => {
+    const pills = [];
+    const term = debouncedSearch.trim();
+    if (term) pills.push({ id: 'search', label: `"${term}"` });
+    if (filters.program !== 'all') {
+      pills.push({
+        id: 'program',
+        label: filters.program === 'assigned' ? 'Has program' : 'No program',
+      });
+    }
+    return pills;
+  }, [debouncedSearch, filters.program]);
+
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') setSearchValue('');
+    else removeFiltersPill(id);
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-1 min-w-[260px]">
-          <Input
-            placeholder="Search by name or email..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-          <Button
-            onClick={onAddClick}
-            className="bg-[#2454FF] hover:bg-[#1E3FCC] text-white shrink-0"
+    <>
+      <div className="tbar">
+        <HtmlSearchField
+          placeholder="Search members in this group…"
+          value={searchValue}
+          onChange={setSearchValue}
+        />
+        <span className="sp" />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec btn-sm${panelOpen ? ' btn-pri' : ''}`}
+            onClick={() => {
+              setStaged(filters);
+              setPanelOpen(!panelOpen);
+            }}
           >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add users
-          </Button>
+            <Icon name="Funnel" size={15} />
+            Filters
+          </button>
+          {panelOpen ? (
+            <div
+              className="pop"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                width: 300,
+                zIndex: 120,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div className="pop-h">
+                <Icon name="Funnel" size={16} style={{ color: 'var(--navy-600)' }} />
+                <span style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--fw-bold)' }}>
+                  Filter members
+                </span>
+                <span className="sp">
+                  <button
+                    type="button"
+                    className="ib ib-sm"
+                    aria-label="Close"
+                    onClick={() => setPanelOpen(false)}
+                  >
+                    <Icon name="X" size={17} />
+                  </button>
+                </span>
+              </div>
+              <div className="pop-b" style={{ overflowY: 'auto' }}>
+                <div className="fgrp">
+                  <div className="row" style={{ marginBottom: 10 }}>
+                    <span className="fgrp-t" style={{ margin: 0 }}>Program</span>
+                  </div>
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    {(
+                      [
+                        { label: 'All', value: 'all' as const },
+                        { label: 'Assigned', value: 'assigned' as const },
+                        { label: 'Not assigned', value: 'not_assigned' as const },
+                      ] as const
+                    ).map((o) => (
+                      <button
+                        key={o.value}
+                        type="button"
+                        className={`btn btn-sm ${staged.program === o.value ? 'btn-pri' : 'btn-sec'}`}
+                        style={{ height: 28, padding: '0 11px', fontSize: 'var(--text-xs)' }}
+                        onClick={() =>
+                          setStaged({
+                            ...staged,
+                            program: staged.program === o.value ? 'all' : o.value,
+                          })
+                        }
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="pop-f">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    clearAllDraft();
+                  }}
+                >
+                  Clear all
+                </button>
+                <span className="sp" />
+                <button
+                  type="button"
+                  className="btn btn-pri btn-sm"
+                  onClick={applyFilters}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <ActiveFilterPills pills={activeFilters} onRemove={handleRemovePill} />
+
+      <div className="tw">
+        <table className="tbl">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="border-b-2 border-[#2454FF]/20"
-              >
+              <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="text-left py-4 px-4 text-sm font-bold text-[#1E3A5F]"
-                  >
+                  <th key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
               </tr>
@@ -121,82 +252,47 @@ export function MembersTable({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center py-5">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#2454FF]" />
-                    <span className="text-[#64748B]">Loading members...</span>
-                  </div>
+                <td colSpan={columns.length} className="mut" style={{ textAlign: 'center', padding: 24 }}>
+                  <span className="row" style={{ gap: 8, justifyContent: 'center' }}>
+                    <Icon name="LoaderCircle" size={18} className="animate-spin" />
+                    Loading members…
+                  </span>
                 </td>
               </tr>
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index, array) => (
-                <motion.tr
-                  key={row.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.03,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className={`border-b border-[#E5E9F0] hover:bg-[#F5F7FA]/50 transition-colors ${
-                    index === array.length - 1 ? 'border-b-0' : ''
-                  }`}
-                >
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="py-5 px-4">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                    <td key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
-                </motion.tr>
+                </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center py-5">
+                <td colSpan={columns.length} className="mut" style={{ textAlign: 'center', padding: 24 }}>
                   No results.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <HtmlTableFooter
+          summary={
+            <>
+              Showing{' '}
+              <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-body)' }}>
+                {filteredCount}
+              </b>{' '}
+              member{filteredCount === 1 ? '' : 's'}
+            </>
+          }
+          page={table.getState().pagination.pageIndex + 1}
+          pageCount={Math.max(table.getPageCount(), 1)}
+          onPageChange={(nextPage) => table.setPageIndex(nextPage - 1)}
+        />
       </div>
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6 pt-6 border-t border-[#E5E9F0]">
-        <div className="flex justify-center md:justify-start">
-          <span className="text-sm text-[#64748B]">
-            {table.getFilteredRowModel().rows.length} member(s) total.
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <div className="px-4 py-2 bg-[#2454FF]/10 text-[#2454FF] rounded-lg font-medium text-sm">
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
-            {table.getPageCount()}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="text-[#64748B] border-[#E5E9F0] rounded-lg"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

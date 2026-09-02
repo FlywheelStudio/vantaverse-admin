@@ -1,12 +1,12 @@
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { createParallelQueries } from '@/lib/supabase/query';
 import { AdminProfileViewUI } from './ui';
 
 interface AdminProfileViewProps {
-  user: ProfileWithStats;
+  user: AdminProfile;
   currentUserId: string | null;
   organizations?: Organization[];
 }

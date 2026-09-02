@@ -22,6 +22,7 @@ export const exerciseSchema = z.object({
   matched_library_exercise_name: z.string().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  updated_by: z.string().nullable().optional(),
   assigned_count: z.number().optional(),
 });
 

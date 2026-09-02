@@ -1,102 +1,133 @@
-import { PageWrapper } from '@/components/page-wrapper';
-import { StatusCountsCard } from '@/app/(authenticated)/dashboard/status-counts-card';
-import { ComplianceCard } from '@/app/(authenticated)/dashboard/compliance-card';
-import { NeedingAttentionCard } from '@/app/(authenticated)/dashboard/needing-attention-card';
-import { createParallelQueries } from '@/lib/supabase/query';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
+import { Suspense } from 'react';
+import { AppBar } from '@/components/medvanta/shell';
+import { Dashboard } from '@/components/widgets';
+import { DashboardSkeleton } from '@/components/widgets/dashboard/skeleton';
+import {
+  dashboardRangeDays,
+  parseDashboardRange,
+} from '@/components/widgets/app-bar-actions/ranges';
+import { DashboardAppBarActions } from '@/components/widgets/app-bar-actions';
+import {
+  formatDashboardSubtitle,
+  getGreeting,
+} from '@/components/widgets/utils';
+import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import {
+  DashboardQuery,
+  type DashboardAnalytics,
+  type NeedsAttentionResult,
+} from '@/lib/supabase/queries/dashboard';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
 
-export default async function HomePage() {
-  const profilesQuery = new ProfilesQuery();
+function unwrap<T>(
+  result: SupabaseSuccess<T> | SupabaseError,
+  fallback: T,
+): T {
+  return result.success ? result.data : fallback;
+}
+
+const EMPTY_ANALYTICS: DashboardAnalytics = {
+  statusCounts: {
+    pending: 0,
+    invited: 0,
+    active: 0,
+    inProgram: 0,
+    noProgram: 0,
+    programCompleted: 0,
+  },
+  series: { active: [], inProgram: [], completion: [], overdue: [] },
+  deltas: { active: 0, inProgram: 0, completion: 0, overdue: 0 },
+};
+
+type PageSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+async function DashboardContent({
+  groupId,
+  range,
+}: {
+  groupId?: string;
+  range: ReturnType<typeof parseDashboardRange>;
+}): Promise<React.ReactElement> {
+  const adminsQuery = new AdminsQuery();
   const dashboardQuery = new DashboardQuery();
 
-  const data = await createParallelQueries({
-    profile: {
-      query: () => profilesQuery.getAuthProfile(),
-      defaultValue: null,
-    },
-    statusCounts: {
-      query: () => dashboardQuery.getStatusCounts(),
-      defaultValue: {
-        pending: 0,
-        invited: 0,
-        active: 0,
-        noProgram: 0,
-        inProgram: 0,
-      },
-    },
-    compliance: {
-      query: () => dashboardQuery.getAggregateCompliance(),
-      defaultValue: { compliance: 0, programCompletion: 0 },
-    },
-    needingAttention: {
-      query: () => dashboardQuery.getUsersNeedingAttention(),
-      defaultValue: { users: [], total: 0 },
-    },
-    usersPending: {
-      query: () => dashboardQuery.getUsersByStatus('pending'),
-      defaultValue: [],
-    },
-    usersInvited: {
-      query: () => dashboardQuery.getUsersByStatus('invited'),
-      defaultValue: [],
-    },
-    usersActive: {
-      query: () => dashboardQuery.getUsersByStatus('active'),
-      defaultValue: [],
-    },
-    usersNoProgram: {
-      query: () => dashboardQuery.getUsersWithNoProgram(),
-      defaultValue: [],
-    },
-    usersInProgram: {
-      query: () => dashboardQuery.getUsersInProgram(),
-      defaultValue: [],
-    },
-    programCompleted: {
-      query: () => dashboardQuery.getUsersProgramCompleted(),
-      defaultValue: { users: [], total: 0 },
-    },
+  const days = dashboardRangeDays(range);
+  const to = new Date().toISOString().slice(0, 10);
+  const from =
+    days === null
+      ? undefined
+      // eslint-disable-next-line react-hooks/purity -- async server component, not hook render
+      : new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+  const [profile, analytics, attention] = await Promise.all([
+    adminsQuery.getAuthProfile(),
+    dashboardQuery.getDashboardAnalytics({
+      organizationIds: groupId ? [groupId] : null,
+      from,
+      to,
+      bucket: range === 'all' ? 'month' : range === '90d' ? 'week' : 'day',
+    }),
+    dashboardQuery.getNeedsAttention({
+      organizationIds: groupId ? [groupId] : null,
+    }),
+  ]);
+
+  const profileData = unwrap<AdminProfile | null>(profile, null);
+  const analyticsData = unwrap<DashboardAnalytics>(analytics, EMPTY_ANALYTICS);
+  const attentionData = unwrap<NeedsAttentionResult>(attention, {
+    users: [],
+    total: 0,
   });
 
-  const firstName = data.profile?.first_name ?? undefined;
+  const firstName = profileData?.first_name ?? undefined;
+  const greeting = getGreeting();
+  const title = firstName ? `${greeting}, ${firstName}` : greeting;
 
   return (
-    <PageWrapper
-      subheader={
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
-          Welcome back{firstName ? `, ${firstName}` : ''}!
-        </h1>
-      }
-    >
-      <div className="flex flex-col gap-4 flex-1 min-h-0">
-        <div className="flex flex-col md:flex-row gap-4 shrink-0 h-[340px]">
-          <NeedingAttentionCard data={data.needingAttention ?? { users: [], total: 0 }} />
-          <ComplianceCard compliance={data.compliance?.compliance ?? 0} />
-        </div>
-        <div className="flex-1 min-h-[500px]">
-          <StatusCountsCard
-            counts={{
-              ...(data.statusCounts ?? {
-                pending: 0,
-                invited: 0,
-                active: 0,
-                noProgram: 0,
-                inProgram: 0,
-              }),
-              programCompleted: data.programCompleted?.total ?? 0,
-            }}
-            usersByFilter={{
-              pending: data.usersPending ?? [],
-              invited: data.usersInvited ?? [],
-              active: data.usersActive ?? [],
-              noProgram: data.usersNoProgram ?? [],
-              inProgram: data.usersInProgram ?? [],
-              programCompleted: data.programCompleted?.users ?? [],
-            }}
-          />
-        </div>
-      </div>
-    </PageWrapper>
+    <>
+      <AppBar
+        crumbs={[{ label: 'Dashboard' }]}
+        title={title}
+        subtitle={formatDashboardSubtitle(attentionData.total)}
+        actions={
+          <DashboardAppBarActions groupId={groupId} range={range} />
+        }
+      />
+      {/* Latest completion bucket = current aggregate completion. */}
+      <Dashboard
+        statusCounts={analyticsData.statusCounts}
+        compliancePct={analyticsData.series.completion.at(-1)?.value ?? 0}
+        needingAttention={attentionData.users}
+        overdueCount={analyticsData.series.overdue.at(-1)?.value ?? 0}
+        series={analyticsData.series}
+        deltas={analyticsData.deltas}
+      />
+    </>
+  );
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: PageSearchParams;
+}): Promise<React.ReactElement> {
+  const params = await searchParams;
+  const groupParam = firstParam(params.group);
+  // Only well-formed UUIDs reach the query layer.
+  const groupId = /^[0-9a-fA-F-]{36}$/.test(groupParam ?? '')
+    ? groupParam
+    : undefined;
+  const range = parseDashboardRange(firstParam(params.range));
+  const viewKey = `${groupId ?? 'all'}-${range}`;
+
+  return (
+    <Suspense key={viewKey} fallback={<DashboardSkeleton />}>
+      <DashboardContent groupId={groupId} range={range} />
+    </Suspense>
   );
 }

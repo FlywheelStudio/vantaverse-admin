@@ -1,18 +1,14 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useEffect, useRef, useState } from 'react';
 import { ExerciseThumbnail } from '@/components/ui/exercise-thumbnail';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Icon } from '@/components/medvanta';
+import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useUpdateExercise } from '@/hooks/use-exercise-mutations';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import { Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { ExerciseTagsSection } from './exercise-tags-section';
 
 interface ExerciseModalProps {
   exercise: Exercise | null;
@@ -20,90 +16,187 @@ interface ExerciseModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type EditableField =
-  | 'exercise_name'
-  | 'library_tip'
-  | 'library_check_in_question';
+const NAME_MAX = 80;
+const TIP_MAX = 400;
+const CHECK_IN_MAX = 140;
+
+/** A check-in question asks the member to confirm their own form or effort. */
+const CHECK_IN_PLACEHOLDER =
+  'Example: Did you keep your hips in line with your knees through the whole squat?';
+
+interface Draft {
+  exercise_name: string;
+  library_tip: string;
+  library_check_in_question: string;
+}
+
+function toDraft(exercise: Exercise): Draft {
+  return {
+    exercise_name: exercise.exercise_name ?? '',
+    library_tip: exercise.library_tip ?? '',
+    library_check_in_question: exercise.library_check_in_question ?? '',
+  };
+}
+
+function formatTypeLabel(type: string): string {
+  return type
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getRelativeTimeDisplay(dateString: string | null): string {
+  if (!dateString) return 'never';
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+  } catch {
+    return 'recently';
+  }
+}
 
 export function ExerciseModal({
-  exercise: exerciseProp,
+  exercise,
   open,
   onOpenChange,
-}: ExerciseModalProps) {
-  const updateExerciseMutation = useUpdateExercise();
-  const [localExercise, setLocalExercise] = useState<Exercise | null>(
-    exerciseProp,
+}: ExerciseModalProps): React.ReactElement | null {
+  if (!exercise) return null;
+
+  return (
+    <ExerciseModalContent
+      key={exercise.id}
+      exercise={exercise}
+      open={open}
+      onOpenChange={onOpenChange}
+    />
   );
-  const [editingField, setEditingField] = useState<EditableField | null>(null);
-  const [editingValue, setEditingValue] = useState<string>('');
-  const [showVideo, setShowVideo] = useState(false);
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+}
 
-  // Focus input when editing starts
+interface CopyFieldProps {
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  max: number;
+  rows: number;
+  placeholder: string;
+  emptyNote?: string;
+  dirty: boolean;
+  onChange: (value: string) => void;
+}
+
+/** Label + live counter, optional caption, auto-growing control, status line. */
+function CopyField({
+  id,
+  label,
+  hint,
+  value,
+  max,
+  rows,
+  placeholder,
+  emptyNote,
+  dirty,
+  onChange,
+}: CopyFieldProps): React.ReactElement {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
-    if (editingField && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
-    }
-  }, [editingField]);
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
 
-  if (!localExercise) return null;
+  const note = dirty ? 'Unsaved' : !value.trim() ? emptyNote : undefined;
 
-  const exercise = localExercise;
+  return (
+    <div className="fgrp">
+      <div className="fgrp-hd">
+        <label className="lbl" htmlFor={id}>
+          {label}
+        </label>
+        <span className={cn('fgrp-meta', value.length > max && 'over')}>
+          {value.length}/{max}
+        </span>
+      </div>
+      {hint ? <p className="fgrp-hint">{hint}</p> : null}
+      <textarea
+        id={id}
+        ref={ref}
+        className="ta ta-grow"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ minHeight: rows * 21 + 22 }}
+      />
+      <div className={cn('fgrp-note', dirty && 'dt')}>{note}</div>
+    </div>
+  );
+}
 
-  const handleEdit = (field: EditableField) => {
+interface ExerciseModalContentProps {
+  exercise: Exercise;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function ExerciseModalContent({
+  exercise,
+  open,
+  onOpenChange,
+}: ExerciseModalContentProps): React.ReactElement {
+  const [draft, setDraft] = useState<Draft>(() => toDraft(exercise));
+  const [showVideo, setShowVideo] = useState(false);
+  const updateExerciseMutation = useUpdateExercise();
+  const source = exercise.type ? formatTypeLabel(exercise.type) : 'MedVanta';
+  const lastEditedTime = getRelativeTimeDisplay(
+    exercise.updated_at || exercise.created_at,
+  );
+
+  const usedInPrograms = exercise.assigned_count ?? 0;
+  const isUnassigned = usedInPrograms === 0;
+  const exerciseIdLabel = `ID EX-${exercise.id}`;
+
+  const saved = toDraft(exercise);
+  const isDirty = (field: keyof Draft): boolean =>
+    draft[field].trim() !== saved[field].trim();
+  const dirtyCount = (Object.keys(draft) as (keyof Draft)[]).filter(isDirty)
+    .length;
+  const nameIsEmpty = draft.exercise_name.trim().length === 0;
+
+  const setField = (field: keyof Draft, value: string): void => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveExercise = (): void => {
     if (updateExerciseMutation.isPending) return;
-    const value =
-      field === 'exercise_name'
-        ? exercise.exercise_name
-        : field === 'library_tip'
-          ? exercise.library_tip || ''
-          : exercise.library_check_in_question || '';
-    setEditingField(field);
-    setEditingValue(value);
-  };
 
-  const handleSave = (field: EditableField) => {
-    if (updateExerciseMutation.isPending) return;
-
-    const originalValue =
-      field === 'exercise_name'
-        ? exercise.exercise_name
-        : field === 'library_tip'
-          ? exercise.library_tip
-          : exercise.library_check_in_question;
-
-    const normalizedNew = editingValue.trim();
-    const normalizedOriginal = originalValue?.trim() || '';
-
-    if (normalizedNew !== normalizedOriginal) {
-      const updateData: Partial<Exercise> = {
-        [field]: normalizedNew || null,
-      };
-
-      // Update local state immediately for UI feedback
-      setLocalExercise((prev) =>
-        prev ? { ...prev, [field]: normalizedNew || null } : prev,
-      );
-
-      // Trigger mutation (optimistic update handles query cache)
-      updateExerciseMutation.mutate({
-        id: exercise.id,
-        data: updateData,
-      });
+    if (dirtyCount === 0 || nameIsEmpty) {
+      onOpenChange(false);
+      return;
     }
 
-    setEditingField(null);
-    setEditingValue('');
+    const updateData: Partial<Exercise> = {};
+    if (isDirty('exercise_name')) {
+      updateData.exercise_name = draft.exercise_name.trim();
+    }
+    if (isDirty('library_tip')) {
+      updateData.library_tip = draft.library_tip.trim() || null;
+    }
+    if (isDirty('library_check_in_question')) {
+      updateData.library_check_in_question =
+        draft.library_check_in_question.trim() || null;
+    }
+
+    updateExerciseMutation.mutate({ id: exercise.id, data: updateData });
+    onOpenChange(false);
   };
 
-  const handleCancel = () => {
-    setEditingField(null);
-    setEditingValue('');
+  const handleCancel = (): void => {
+    setDraft(toDraft(exercise));
+    onOpenChange(false);
   };
 
-  const getVideoUrl = () => {
+  const getVideoUrl = (): string | null => {
     if (exercise.video_type === 'youtube' && exercise.video_url) {
       return `https://www.youtube.com/embed/${exercise.video_url}`;
     }
@@ -114,156 +207,253 @@ export function ExerciseModal({
   };
 
   const videoUrl = getVideoUrl();
-  const thumb = exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object' ? exercise.thumbnail_url : null;
+  const thumb =
+    exercise.thumbnail_url && typeof exercise.thumbnail_url === 'object'
+      ? exercise.thumbnail_url
+      : null;
+
+  const nameNote = nameIsEmpty
+    ? 'Exercise name is required.'
+    : isDirty('exercise_name')
+      ? 'Unsaved'
+      : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-[var(--radius-2xl)] border-border bg-card p-6 shadow-[var(--shadow-hero)] sm:p-8">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold tracking-tight">
-            {editingField === 'exercise_name' ? (
-              <Input
-                ref={inputRef as React.RefObject<HTMLInputElement>}
-                value={editingValue}
-                onChange={(e) => setEditingValue(e.target.value)}
-                onBlur={() => handleSave('exercise_name')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    handleCancel();
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSave('exercise_name');
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <span
-                onClick={() => handleEdit('exercise_name')}
-                className="cursor-pointer transition-colors hover:text-primary"
-              >
-                {exercise.exercise_name}
-              </span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Video Player: poster (blurhash → image) then video on play */}
-        {videoUrl && (
-          <div className="bg-muted relative mx-auto aspect-video w-full max-w-2xl overflow-hidden rounded-[var(--radius-lg)]">
-            {!showVideo ? (
-              <>
-                <ExerciseThumbnail
-                  blurhash={thumb?.blurhash ?? null}
-                  imageUrl={thumb?.image_url ?? null}
-                  videoUrl={null}
-                  videoType={exercise.video_type}
-                  alt={exercise.exercise_name}
-                  className="h-full w-full"
-                  fill
-                  aspectVideo={false}
-                  showVideoFallback={false}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowVideo(true)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors hover:bg-black/40"
-                  aria-label="Play video"
-                >
-                  <span className="rounded-full bg-primary p-4 text-primary-foreground shadow-lg">
-                    <Play className="h-8 w-8" fill="currentColor" />
-                  </span>
-                </button>
-              </>
-            ) : (
-              <>
-                {exercise.video_type === 'youtube' ? (
-                  <iframe
-                    src={videoUrl}
+    <HtmlModal
+      open={open}
+      title="Edit exercise"
+      subtitle="Changes apply everywhere this exercise is used."
+      onClose={handleCancel}
+      width={760}
+      style={{ maxHeight: 'min(90vh, 720px)' }}
+      bodyClassName="overflow-y-auto"
+      footerInfo={
+        dirtyCount > 0
+          ? `${dirtyCount} unsaved change${dirtyCount === 1 ? '' : 's'}`
+          : `Last edited ${lastEditedTime}`
+      }
+      footer={
+        <>
+          <button type="button" className="btn btn-ghost" onClick={handleCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-acc"
+            onClick={handleSaveExercise}
+            disabled={
+              updateExerciseMutation.isPending || dirtyCount === 0 || nameIsEmpty
+            }
+          >
+            Save exercise
+          </button>
+        </>
+      }
+    >
+      <div
+        className="g"
+        style={{
+          gridTemplateColumns: 'minmax(0,1.05fr) minmax(0,1fr)',
+          gap: 20,
+          marginBottom: 4,
+        }}
+      >
+        <div>
+          {videoUrl ? (
+            <div
+              className="thmb gr"
+              style={{
+                aspectRatio: '4/3',
+                width: '100%',
+                position: 'relative',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              {!showVideo ? (
+                <>
+                  <ExerciseThumbnail
+                    blurhash={thumb?.blurhash ?? null}
+                    imageUrl={thumb?.image_url ?? null}
+                    videoUrl={null}
+                    videoType={exercise.video_type}
+                    alt={exercise.exercise_name}
                     className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={exercise.exercise_name}
+                    fill
+                    aspectVideo={false}
+                    showVideoFallback={false}
                   />
-                ) : (
-                  <video
-                    src={videoUrl}
-                    controls
-                    className="h-full w-full"
-                    preload="metadata"
+                  <span className="src-b">{source}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowVideo(true)}
+                    className="pl"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      opacity: 1,
+                    }}
+                    aria-label="Play video"
                   >
-                    Your browser does not support the video tag.
-                  </video>
+                    <i>
+                      <Icon
+                        name="Play"
+                        size={20}
+                        style={{ fill: 'currentColor' }}
+                      />
+                    </i>
+                  </button>
+                </>
+              ) : exercise.video_type === 'youtube' ? (
+                <iframe
+                  src={videoUrl}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={exercise.exercise_name}
+                />
+              ) : (
+                <video
+                  src={videoUrl}
+                  controls
+                  className="h-full w-full"
+                  preload="metadata"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )}
+            </div>
+          ) : (
+            <div
+              className="thmb gr"
+              style={{
+                aspectRatio: '4/3',
+                width: '100%',
+                position: 'relative',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <ExerciseThumbnail
+                blurhash={thumb?.blurhash ?? null}
+                imageUrl={thumb?.image_url ?? null}
+                videoUrl={null}
+                videoType={exercise.video_type}
+                alt={exercise.exercise_name}
+                className="h-full w-full"
+                fill
+                aspectVideo={false}
+                showVideoFallback={true}
+              />
+              <span className="src-b">{source}</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="fgrp">
+            <div className="fgrp-hd">
+              <label className="lbl" htmlFor="exercise-name">
+                Exercise name<span className="req">*</span>
+              </label>
+              <span
+                className={cn(
+                  'fgrp-meta',
+                  draft.exercise_name.length > NAME_MAX && 'over',
                 )}
-              </>
-            )}
+              >
+                {draft.exercise_name.length}/{NAME_MAX}
+              </span>
+            </div>
+            <span className={cn('fld', nameIsEmpty && 'inv')}>
+              <input
+                id="exercise-name"
+                value={draft.exercise_name}
+                onChange={(e) => setField('exercise_name', e.target.value)}
+                placeholder="e.g. Standing Hip Abduction"
+              />
+            </span>
+            <div
+              className={cn(
+                'fgrp-note',
+                nameIsEmpty ? 'err' : isDirty('exercise_name') && 'dt',
+              )}
+            >
+              {nameNote}
+            </div>
           </div>
-        )}
 
-        {/* Instructions Section */}
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold">Instructions</h3>
-          {editingField === 'library_tip' ? (
-            <Textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSave('library_tip')}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  handleCancel();
-                } else if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSave('library_tip');
-                }
-              }}
-              className="min-h-[7.5rem]"
-              autoFocus
-            />
-          ) : (
-            <p
-              onClick={() => handleEdit('library_tip')}
-              className="hover:bg-muted/60 cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors hover:text-primary"
-            >
-              {exercise.library_tip || 'Click to add instructions'}
-            </p>
-          )}
-        </div>
+          <div className="fgrp">
+            <div className="fgrp-hd">
+              <label className="lbl" htmlFor="exercise-source">
+                Source
+              </label>
+            </div>
+            <span className="fld ro">
+              <input
+                id="exercise-source"
+                value={source}
+                readOnly
+                disabled
+                aria-label="Source"
+              />
+            </span>
+          </div>
 
-        {/* Check-in Questions Section */}
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold">Check-in Questions</h3>
-          {editingField === 'library_check_in_question' ? (
-            <Textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-              value={editingValue}
-              onChange={(e) => setEditingValue(e.target.value)}
-              onBlur={() => handleSave('library_check_in_question')}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  handleCancel();
-                } else if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSave('library_check_in_question');
-                }
-              }}
-              className="min-h-[7.5rem]"
-              autoFocus
-            />
-          ) : (
-            <p
-              onClick={() => handleEdit('library_check_in_question')}
-              className="hover:bg-muted/60 cursor-pointer whitespace-pre-wrap rounded-[var(--radius-md)] px-3 py-2 text-sm transition-colors hover:text-primary"
-            >
-              {exercise.library_check_in_question ||
-                'Click to add check-in questions'}
-            </p>
-          )}
+          <div
+            className="row"
+            style={{
+              gap: 8,
+              marginTop: 4,
+              paddingTop: 14,
+              borderTop: '1px solid var(--border-subtle)',
+              flexWrap: 'wrap',
+            }}
+          >
+            {isUnassigned ? <span className="bdg bdg-o">Unassigned</span> : null}
+            <span className="bdg">
+              Used in {usedInPrograms} program
+              {usedInPrograms === 1 ? '' : 's'}
+            </span>
+            <span className="bdg mono">{exerciseIdLabel}</span>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      <div className="fsec">
+        <div className="fsec-t">What the member sees</div>
+
+        <CopyField
+          id="exercise-instructions"
+          label="Instructions for members"
+          hint="Shown under the video in the member app. Plain language, no clinical shorthand."
+          value={draft.library_tip}
+          max={TIP_MAX}
+          rows={3}
+          placeholder="Describe the set-up, the movement, and what good execution feels like…"
+          emptyNote="Empty — members see the video with no written guidance."
+          dirty={isDirty('library_tip')}
+          onChange={(value) => setField('library_tip', value)}
+        />
+
+        <CopyField
+          id="exercise-check-in"
+          label="Check-in question"
+          value={draft.library_check_in_question}
+          max={CHECK_IN_MAX}
+          rows={2}
+          placeholder={CHECK_IN_PLACEHOLDER}
+          emptyNote="Empty — nothing is asked after a set."
+          dirty={isDirty('library_check_in_question')}
+          onChange={(value) => setField('library_check_in_question', value)}
+        />
+      </div>
+
+      <ExerciseTagsSection exerciseId={exercise.id} />
+    </HtmlModal>
   );
 }

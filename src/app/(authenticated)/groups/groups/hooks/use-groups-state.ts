@@ -21,11 +21,13 @@ export function useGroupsState() {
   const [newOrgData, setNewOrgData] = useState<{
     name: string;
     description: string;
+    screeningUrl: string;
     imageFile: File | null;
     imagePreview: string | null;
   }>({
     name: '',
     description: '',
+    screeningUrl: '',
     imageFile: null,
     imagePreview: null,
   });
@@ -61,6 +63,7 @@ export function useGroupsState() {
 
   const handleOpenAddMembers = (type: 'organization' | 'team', id: string) => {
     setAddingMembersTo({ type, id });
+    // Highlight only — never raise row z-index above HtmlModal (z-1000).
     setRowZIndex(id);
   };
 
@@ -75,6 +78,7 @@ export function useGroupsState() {
     setNewOrgData({
       name: '',
       description: '',
+      screeningUrl: '',
       imageFile: null,
       imagePreview: null,
     });
@@ -90,6 +94,7 @@ export function useGroupsState() {
     setNewOrgData({
       name: '',
       description: '',
+      screeningUrl: '',
       imageFile: null,
       imagePreview: null,
     });

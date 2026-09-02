@@ -13,6 +13,8 @@ import { SortableItem } from './sortable-item';
 import { SelectedItemComponent } from './selected-item';
 import { generateItemId, getGroupItemIds } from './dnd-utils';
 
+const FL_SUPERSETS_ENABLED = process.env.NEXT_PUBLIC_FL_SUPERSETS === 'true';
+
 interface SelectedGroupProps {
   group: Group;
   index: number;
@@ -63,20 +65,28 @@ export function SelectedGroupComponent({
           <div className="font-semibold text-sm text-foreground">{group.name}</div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 ">
-            <Checkbox
-              id={`superset-${index}`}
-              checked={group.isSuperset}
-              onCheckedChange={onToggleSuperset}
-              className="cursor-pointer"
-            />
-            <label
-              htmlFor={`superset-${index}`}
-              className="text-sm text-muted-foreground cursor-pointer"
-            >
-              Superset
-            </label>
-          </div>
+          {(FL_SUPERSETS_ENABLED || group.isSuperset) && (
+            <div className="flex items-center gap-1 ">
+              {FL_SUPERSETS_ENABLED ? (
+                <>
+                  <Checkbox
+                    id={`superset-${index}`}
+                    checked={group.isSuperset}
+                    onCheckedChange={onToggleSuperset}
+                    className="cursor-pointer"
+                  />
+                  <label
+                    htmlFor={`superset-${index}`}
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Superset
+                  </label>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Superset</span>
+              )}
+            </div>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

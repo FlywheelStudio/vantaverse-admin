@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { Icon } from '@/components/medvanta';
 import { useOrganizationsTable } from '@/context/organizations';
 
 export function CreateRowImageCell() {
@@ -12,18 +12,16 @@ export function CreateRowImageCell() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isUploading = creatingRow && uploadingImage !== null;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
       return;
     }
 
-    // Store file and create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
@@ -35,13 +33,12 @@ export function CreateRowImageCell() {
     };
     reader.readAsDataURL(file);
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     fileInputRef.current?.click();
   };
 
@@ -55,12 +52,13 @@ export function CreateRowImageCell() {
         className="hidden"
       />
       <button
+        type="button"
         onClick={handleClick}
         disabled={isUploading}
-        className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring hover:bg-primary/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-[var(--slate-50)] transition-colors hover:border-[var(--border-focus)] hover:bg-[var(--primary-soft)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {newOrgData.imagePreview ? (
-          <div className="relative w-full h-full rounded-full overflow-hidden bg-muted">
+          <div className="relative h-full w-full overflow-hidden rounded-[var(--radius-pill)]">
             <Image
               src={newOrgData.imagePreview}
               alt=""
@@ -70,13 +68,13 @@ export function CreateRowImageCell() {
             />
           </div>
         ) : (
-          <Upload className="h-5 w-5 text-muted-foreground" />
+          <Icon name="Upload" size={20} className="text-[var(--text-muted)]" />
         )}
-        {isUploading && (
-          <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
+        {isUploading ? (
+          <div className="pointer-events-none absolute -inset-1 flex items-center justify-center">
             <div className="loader" style={{ width: '56px', height: '56px' }} />
           </div>
-        )}
+        ) : null}
       </button>
     </>
   );

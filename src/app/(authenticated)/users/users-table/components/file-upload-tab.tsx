@@ -11,7 +11,6 @@ import {
   getTemplateExcelUrl,
   type ImportUsersResult,
 } from '../../actions';
-import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import {
   useImportUsersCSV,
   useImportUsersExcel,
@@ -21,14 +20,12 @@ interface FileUploadTabProps {
   fileType: 'csv' | 'excel';
   onImported: (result: ImportUsersResult) => void;
   onCancel: () => void;
-  role: MemberRole;
 }
 
 export function FileUploadTab({
   fileType,
   onImported,
   onCancel,
-  role = 'patient',
 }: FileUploadTabProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -86,13 +83,11 @@ export function FileUploadTab({
         const csvText = await file.text();
         result = await importCSVMutation.mutateAsync({
           csvText,
-          role,
         });
       } else {
         const arrayBuffer = await file.arrayBuffer();
         result = await importExcelMutation.mutateAsync({
           fileData: arrayBuffer,
-          role,
         });
       }
       // Always call onImported with the result, even if arrays are empty

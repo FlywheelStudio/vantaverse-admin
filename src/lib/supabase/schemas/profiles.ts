@@ -17,7 +17,9 @@ export const profileSchema = z.object({
   description: z.string().nullable(),
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
-  email: z.email(),
+  // DB column is `string | null`; some rows have '' or non-email strings.
+  // Keep invite/create paths strict via their own validators — this schema is for reads.
+  email: z.string().nullable(),
   status: z.enum(['pending', 'invited', 'active', 'assigned']).nullish(),
   phone: z.string().nullable(),
   journey_phase: journeyPhaseSchema.nullable(),
@@ -25,7 +27,6 @@ export const profileSchema = z.object({
   intro_completed: z.boolean().nullable(),
   consultation_completed: z.boolean().nullable(),
   program_assigned: z.boolean().nullable(),
-  program_started: z.boolean().nullable(),
   program_due_date: z.string().nullable(),
   avatar_url: z.string().nullable(),
   certificate_url: z.any().nullable(),
@@ -50,9 +51,11 @@ export const profileWithStatsSchema = profileSchema.extend({
   hp_points: z.number().nullable(),
   max_gate_type: z.string().nullable(),
   max_gate_unlocked: z.number().nullable(),
-  points_required_for_next_level: z.number().nullable(),
+  points_for_next_level: z.number().nullable(),
   program_completion_percentage: z.number().nullable(),
   program_weeks: z.number().nullable(),
+  /** From active program_assignment.acknowledged via profiles_with_stats */
+  program_acknowledged: z.boolean().nullable(),
   program_assignment_id: z.uuid().nullable().optional(),
   program_assignment_name: z.string().nullable().optional(),
   is_super_admin: z.boolean().optional(),

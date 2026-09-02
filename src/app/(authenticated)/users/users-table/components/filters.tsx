@@ -1,84 +1,98 @@
-import { Input } from '@/components/ui/input';
+'use client';
+
+import { Icon } from '@/components/medvanta';
 import { OrgTeamFilter } from '../org-team-filter';
-import { RoleFilter } from '../role-filter';
-import { AddUserMenu } from './add-user-menu';
-import type { UsersTableFilters } from '../types';
-import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { HtmlSearchField } from '../../html-helpers';
+import {
+  MembersFilterPanel,
+  type MembersFilters,
+} from './members-filter-panel';
 
 interface UsersTableFiltersProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
-  filters: UsersTableFilters;
+  /** Staged filter state shown inside the panel. */
+  staged: MembersFilters;
+  onStagedChange: (next: MembersFilters) => void;
+  /** Number of applied facets (funnel-button badge). */
+  activeCount: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  physiologistOptions: Array<{ name: string; count: number }>;
+  unassignedPhysiologist?: number;
   selectedOrgName?: string;
   selectedTeamName?: string;
-  onFiltersChange?: (filters: UsersTableFilters) => void;
-  onTeamNameChange: (name: string | undefined) => void;
+  onStagedOrgSelect: (orgId?: string) => void;
+  onStagedTeamSelect: (teamId?: string, teamName?: string) => void;
+  onClearAll: () => void;
+  /** Apply staged filters + close the panel. */
+  onApply: () => void;
 }
 
+/**
+ * Members toolbar: search + filter panel trigger.
+ * Pills row lives in the parent (`UsersTable`).
+ */
 export function UsersTableFilters({
   searchValue,
   onSearchChange,
-  filters,
+  staged,
+  onStagedChange,
+  activeCount,
+  open,
+  onOpenChange,
+  physiologistOptions,
+  unassignedPhysiologist,
   selectedOrgName,
   selectedTeamName,
-  onFiltersChange,
-  onTeamNameChange,
-}: UsersTableFiltersProps) {
-  const handleOrgSelect = (orgId?: string) => {
-    onTeamNameChange(undefined);
-    const newFilters: UsersTableFilters = {
-      ...(orgId && { organization_id: orgId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleTeamSelect = (teamId?: string, teamName?: string) => {
-    onTeamNameChange(teamName);
-    const newFilters: UsersTableFilters = {
-      ...(filters.organization_id && {
-        organization_id: filters.organization_id,
-      }),
-      ...(teamId && { team_id: teamId }),
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleClear = () => {
-    onTeamNameChange(undefined);
-    const newFilters: UsersTableFilters = {
-      role: filters.role || 'patient',
-    };
-    onFiltersChange?.(newFilters);
-  };
-
-  const handleRoleSelect = (role: MemberRole) => {
-    onFiltersChange?.({ ...filters, role });
-  };
-
+  onStagedOrgSelect,
+  onStagedTeamSelect,
+  onClearAll,
+  onApply,
+}: UsersTableFiltersProps): React.ReactElement {
   return (
-    <div className="flex flex-row gap-4 w-full">
-      <AddUserMenu role={filters.role} />
-      <Input
-        placeholder="Search users..."
-        value={searchValue}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="flex-1 h-11 rounded-[var(--radius-md)] bg-background"
-      />
-      <OrgTeamFilter
-        selectedOrgId={filters.organization_id}
-        selectedOrgName={selectedOrgName}
-        selectedTeamId={filters.team_id}
-        selectedTeamName={selectedTeamName}
-        onOrgSelect={handleOrgSelect}
-        onTeamSelect={handleTeamSelect}
-        onClear={handleClear}
-      />
-      <RoleFilter
-        selectedRole={filters.role || 'patient'}
-        onRoleSelect={handleRoleSelect}
-      />
+    <div style={{ marginBottom: 14 }}>
+      <div className="tbar">
+        <HtmlSearchField
+          value={searchValue}
+          onChange={onSearchChange}
+          placeholder="Search by name or email…"
+        />
+        <span className="sp" />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec btn-sm${open ? ' btn-pri' : ''}`}
+            onClick={() => onOpenChange(!open)}
+          >
+            <Icon name="Funnel" size={15} />
+            Filters
+            {activeCount > 0 ? <span className="bdg bdg-b">{activeCount}</span> : null}
+          </button>
+          <MembersFilterPanel
+            open={open}
+            onClose={() => onOpenChange(false)}
+            activeCount={activeCount}
+            filters={staged}
+            onChange={onStagedChange}
+            physiologistOptions={physiologistOptions}
+            unassignedPhysiologist={unassignedPhysiologist}
+            onClear={onClearAll}
+            onApply={onApply}
+            groupSlot={
+              <OrgTeamFilter
+                selectedOrgId={staged.organization_id}
+                selectedOrgName={selectedOrgName}
+                selectedTeamId={staged.team_id}
+                selectedTeamName={selectedTeamName}
+                onOrgSelect={onStagedOrgSelect}
+                onTeamSelect={onStagedTeamSelect}
+                onClear={onClearAll}
+              />
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }

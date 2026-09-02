@@ -23,6 +23,12 @@ export const messageSchema = z.object({
   metadata: z.unknown().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  /** Present when loaded from `messages_with_stats`. */
+  sender_id: z.uuid().nullable().optional(),
+  sender_first_name: z.string().nullable().optional(),
+  sender_last_name: z.string().nullable().optional(),
+  sender_avatar_url: z.string().nullable().optional(),
+  sender_is_admin: z.boolean().nullable().optional(),
 });
 
 export type MessageType = z.infer<typeof messageTypeSchema>;

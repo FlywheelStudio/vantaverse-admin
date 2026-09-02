@@ -2,127 +2,62 @@
 
 import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import Image from 'next/image';
-import { Textarea } from '@/components/ui/textarea';
 import { useOrganizationsTable } from '@/context/organizations';
-import { AvatarGroup } from '@/components/ui/avatar-group';
 import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
+import { Icon, IconButton } from '@/components/medvanta';
+import { avatarTone } from '@/components/widgets/utils';
 
-function EditableNameCell({ org }: { org: Organization }) {
-  const value = org.name;
+function groupInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function GroupCell({ org }: { org: Organization }): React.ReactElement {
   const router = useRouter();
 
   return (
-    <div className="flex items-center gap-2">
-      <span
-        onClick={() => router.push(`/groups/${org.id}`)}
-        className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
-      >
-        {value}
+    <div className="cellp">
+      <GroupLogo org={org} />
+      <span style={{ minWidth: 0 }}>
+        <button
+          type="button"
+          className="nm"
+          style={{ display: 'block', cursor: 'pointer', border: 'none', background: 'transparent', padding: 0, textAlign: 'left' }}
+          onClick={() => router.push(`/groups/${org.id}`)}
+        >
+          {org.name}
+        </button>
+        <span className="em">{org.description || '—'}</span>
       </span>
     </div>
   );
 }
 
-function EditableDescriptionCell({ org }: { org: Organization }) {
-  const {
-    editingCell,
-    editingValue,
-    setEditingValue,
-    handleCellEdit,
-    handleCellBlur,
-    handleCancel,
-    inputRef,
-  } = useOrganizationsTable();
-  const isEditing =
-    editingCell?.id === org.id && editingCell?.field === 'description';
-  const description = org.description;
-
-  if (isEditing) {
-    return (
-      <Textarea
-        ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-        value={editingValue}
-        onChange={(e) => setEditingValue(e.target.value)}
-        onBlur={() =>
-          handleCellBlur(org.id, 'description', editingValue, description)
-        }
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            handleCancel();
-          }
-        }}
-        className="min-h-[50px] bg-card text-sm"
-        autoFocus
-      />
-    );
-  }
-
-  return (
-    <span
-      onClick={() => handleCellEdit(org.id, 'description')}
-      className="text-muted-foreground cursor-pointer hover:text-primary transition-colors"
-    >
-      {description || '—'}
-    </span>
-  );
-}
-
-function PictureCell({ org }: { org: Organization }) {
+function GroupLogo({ org }: { org: Organization }): React.ReactElement {
   const { handleImageUpload, uploadingImage } = useOrganizationsTable();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isUploading = uploadingImage === org.id;
-  const pictureUrl = org.picture_url;
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type. Only JPEG and PNG images are allowed.');
       return;
     }
-
-    // Upload immediately for existing orgs
     await handleImageUpload(file, org.id);
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
-  const handleClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  if (!pictureUrl) {
-    return (
-      <>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <button
-          onClick={handleClick}
-          disabled={isUploading}
-          className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring hover:bg-primary/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Upload className="h-5 w-5 text-muted-foreground" />
-        </button>
-      </>
-    );
-  }
 
   return (
     <>
@@ -134,153 +69,195 @@ function PictureCell({ org }: { org: Organization }) {
         className="hidden"
       />
       <button
-        onClick={handleClick}
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted transition-colors hover:border-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="thmb gr"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 'var(--radius-sm)',
+          flex: '0 0 auto',
+          overflow: 'hidden',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+        }}
       >
-        <Image
-          src={pictureUrl}
-          alt=""
-          className="aspect-square size-full object-contain"
-          width={48}
-          height={48}
-          key={pictureUrl}
-        />
-        {isUploading && (
-          <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
-            <div className="loader" style={{ width: '56px', height: '56px' }} />
-          </div>
+        {org.picture_url ? (
+          <Image
+            src={org.picture_url}
+            alt=""
+            width={38}
+            height={38}
+            className="size-full object-cover"
+          />
+        ) : (
+          <span
+            className={`av ${avatarTone(org.name)}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
+              fontSize: 12,
+              fontWeight: 'var(--fw-bold)',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            {groupInitials(org.name)}
+          </span>
         )}
       </button>
     </>
   );
 }
 
-function MembersCell({ org }: { org: Organization }) {
+function MembersCell({ org }: { org: Organization }): React.ReactElement {
   const { handleOpenAddMembers } = useOrganizationsTable();
   const members = (org.members || []).filter((m) => m.role !== 'admin');
-  const avatars = members.map((member) => {
-    const profile = member.profile;
-    return {
-      src: profile?.avatar_url || undefined,
-      firstName: profile?.first_name || '',
-      lastName: profile?.last_name || '',
-      userId: profile?.id || '',
-    };
-  });
+
   return (
-    <AvatarGroup
-      avatars={avatars}
-      maxVisible={5}
-      onAddClick={() => handleOpenAddMembers('organization', org.id)}
-    />
+    <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-sm)',
+          color: 'var(--text-muted)',
+        }}
+      >
+        {members.length}
+      </span>
+      <IconButton
+        icon="Plus"
+        label="Add member"
+        variant="secondary"
+        size="sm"
+        onClick={() => handleOpenAddMembers('organization', org.id)}
+      />
+    </div>
   );
 }
 
-function PhysiologistCell({ org }: { org: Organization }) {
+function PhysiologistCell({ org }: { org: Organization }): React.ReactElement {
   const physiologists = (org.members || []).filter((m) => m.role === 'admin');
-  const avatars = physiologists.map((member) => {
-    const profile = member.profile;
-    return {
-      src: profile?.avatar_url || undefined,
-      firstName: profile?.first_name || '',
-      lastName: profile?.last_name || '',
-      userId: profile?.id || '',
-    };
-  });
+  const admin = physiologists[0]?.profile;
+  const name = admin
+    ? [admin.first_name, admin.last_name].filter(Boolean).join(' ') || 'Admin'
+    : null;
+
+  if (!admin) {
+    return <span className="faint">Not assigned</span>;
+  }
+
   return (
-    <AvatarGroup avatars={avatars} maxVisible={1} />
+    <div className="row" style={{ gap: 9 }}>
+      <span
+        className={`av ${avatarTone(name || 'A')} av-28`}
+        style={{ width: 28, height: 28, fontSize: 11 }}
+      >
+        {admin.avatar_url ? (
+          <Image src={admin.avatar_url} alt={name || ''} width={28} height={28} unoptimized className="size-full object-cover" />
+        ) : (
+          groupInitials(name || 'A')
+        )}
+      </span>
+      <span style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--fw-medium)', color: 'var(--text-strong)' }}>
+        {name}
+      </span>
+    </div>
   );
 }
 
-const isTeamsEnabled =
-  process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
+function ScreeningLinkCell({ org }: { org: Organization }): React.ReactElement {
+  const url = org.screening_url;
+
+  if (!url) {
+    return <span className="faint">—</span>;
+  }
+
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Screening link copied');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  return (
+    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+      <span
+        title={url}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-sm)',
+          color: 'var(--text-muted)',
+          maxWidth: 200,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {url.replace(/^https?:\/\//, '')}
+      </span>
+      <IconButton icon="Copy" label="Copy screening link" variant="secondary" size="sm" onClick={handleCopy} />
+    </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sorted,
+  onToggle,
+}: {
+  label: string;
+  sorted: false | 'asc' | 'desc';
+  onToggle: () => void;
+}): React.ReactElement {
+  return (
+    <button type="button" className="srt" onClick={onToggle} style={{ border: 'none', background: 'transparent', padding: 0 }}>
+      {label}
+      <Icon
+        name={sorted === 'desc' ? 'ChevronDown' : 'ChevronUp'}
+        size={14}
+        style={{ marginLeft: 4, verticalAlign: 'middle', opacity: sorted ? 1 : 0.4 }}
+      />
+    </button>
+  );
+}
+
+const isTeamsEnabled = process.env.NEXT_PUBLIC_FL_TEAMS !== 'true';
 
 export const columns: ColumnDef<Organization>[] = [
   {
-    accessorKey: 'picture_url',
-    header: () => <span className="text-xs font-semibold text-muted-foreground">Image</span>,
-    cell: ({ row }) => <PictureCell org={row.original} />,
-    enableSorting: false,
-    enableColumnFilter: false,
-  },
-  {
+    id: 'group',
     accessorKey: 'name',
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Name
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Group"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
-    cell: ({ row }) => <EditableNameCell org={row.original} />,
+    cell: ({ row }) => <GroupCell org={row.original} />,
     filterFn: (row, id, value) => {
       const name = row.getValue(id) as string;
       return name?.toLowerCase().includes(String(value).toLowerCase());
     },
   },
   {
-    accessorKey: 'description',
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Description
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
-      );
-    },
-    cell: ({ row }) => <EditableDescriptionCell org={row.original} />,
-  },
-  {
     accessorKey: 'members_count',
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Members
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
-      );
-    },
+    header: () => <span>Members</span>,
     cell: ({ row }) => <MembersCell org={row.original} />,
   },
   {
-    accessorKey: 'physiologist',
-    header: () => (
-      <span className="text-xs font-semibold text-muted-foreground">
-        Physiologist
-      </span>
-    ),
+    id: 'physiologist',
+    header: () => <span>Physiologist</span>,
     cell: ({ row }) => <PhysiologistCell org={row.original} />,
     enableSorting: false,
     enableColumnFilter: false,
@@ -289,7 +266,7 @@ export const columns: ColumnDef<Organization>[] = [
     ? [
         {
           accessorKey: 'teams_count',
-          header: () => <span className="text-xs font-semibold text-muted-foreground">Teams</span>,
+          header: () => <span>Teams</span>,
           cell: ({ row }: { row: { original: Organization } }) => (
             <TeamsCell organization={row.original} />
           ),
@@ -298,31 +275,37 @@ export const columns: ColumnDef<Organization>[] = [
         } as ColumnDef<Organization>,
       ]
     : []),
+
+  {
+    id: 'screening_link',
+    header: () => <span>Screening Link</span>,
+    cell: ({ row }) => <ScreeningLinkCell org={row.original} />,
+    enableSorting: false,
+    enableColumnFilter: false,
+  },
   {
     accessorKey: 'created_at',
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <button
-          onClick={() => column.toggleSorting(sorted === 'asc')}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Created
-          {sorted === 'asc' ? (
-            <ChevronUp className="h-4 w-4 text-foreground" />
-          ) : sorted === 'desc' ? (
-            <ChevronDown className="h-4 w-4 text-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground/60" />
-          )}
-        </button>
+        <SortHeader
+          label="Created"
+          sorted={sorted}
+          onToggle={() => column.toggleSorting(sorted === 'asc')}
+        />
       );
     },
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string | null;
-      if (!date) return <span className="text-muted-foreground">—</span>;
+      if (!date) return <span className="faint">—</span>;
       return (
-        <span className="text-muted-foreground">
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--text-muted)',
+          }}
+        >
           {new Date(date).toLocaleDateString()}
         </span>
       );

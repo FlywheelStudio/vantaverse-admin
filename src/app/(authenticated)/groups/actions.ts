@@ -29,9 +29,10 @@ export async function getOrganizationById(id: string) {
 export async function createOrganization(
   name: string,
   description?: string | null,
+  screeningUrl?: string | null,
 ) {
   const query = new OrganizationsQuery();
-  return query.create(name, description);
+  return query.create(name, description, screeningUrl);
 }
 
 /**

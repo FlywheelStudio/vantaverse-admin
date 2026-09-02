@@ -299,7 +299,6 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
     p_distance_override?: string[] | null;
     p_weight_override?: string[] | null;
     p_rest_time_override?: number[] | null;
-    p_equipment_ids?: number[];
     p_notes?: string;
   }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');
@@ -358,7 +357,6 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
     p_distance_override?: string[] | null;
     p_weight_override?: string[] | null;
     p_rest_time_override?: number[] | null;
-    p_equipment_ids?: number[];
     p_notes?: string;
   }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
     const supabase = await this.getClient('authenticated_user');

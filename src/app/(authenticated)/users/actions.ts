@@ -80,6 +80,24 @@ export async function getUsersWithStats(filters?: {
 }
 
 /**
+ * Get members filtered via the `list_profiles_filtered` RPC.
+ */
+export async function getMembersFiltered(params: Parameters<
+  ProfilesQuery['getListFiltered']
+>[0]) {
+  const query = new ProfilesQuery();
+  return query.getListFiltered(params);
+}
+
+/**
+ * Get facet counts for the members filter panel.
+ */
+export async function getMemberFilterCounts() {
+  const query = new ProfilesQuery();
+  return query.getFilterCounts();
+}
+
+/**
  * Get user profile by ID
  */
 export async function getUserProfileById(id: string) {
@@ -192,6 +210,60 @@ export async function uploadUserAvatar(
 export async function deleteAuthUser(userId: string) {
   const query = new ProfilesQuery();
   return query.deleteAuthUser(userId);
+}
+
+/**
+ * Hard-delete an admin from /manage: blocks self-remove and sole-admin remove.
+ */
+export async function removeAdminUser(
+  userId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { createClient } = await import('@/lib/supabase/core/server');
+  const { OrganizationsQuery } = await import(
+    '@/lib/supabase/queries/organizations'
+  );
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+  if (auth.user.id === userId) {
+    return { success: false, error: 'You cannot remove yourself as admin' };
+  }
+
+  const orgQuery = new OrganizationsQuery();
+  const orgResult = await orgQuery.getSuperAdminOrganizationId();
+  if (!orgResult.success) {
+    return { success: false, error: orgResult.error };
+  }
+
+  const admin = await createAdminClient();
+  const { count, error: countError } = await admin
+    .from('organization_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgResult.data)
+    .eq('is_active', true)
+    .eq('role', 'admin');
+
+  if (countError) {
+    return { success: false, error: countError.message };
+  }
+  if ((count ?? 0) <= 1) {
+    return {
+      success: false,
+      error: 'Cannot remove the sole remaining admin',
+    };
+  }
+
+  const deleted = await deleteAuthUser(userId);
+  if (!deleted.success) {
+    return { success: false, error: deleted.error };
+  }
+
+  revalidatePath('/manage');
+  revalidatePath('/users');
+  return { success: true };
 }
 
 /**
@@ -540,9 +612,14 @@ async function uploadUsersExcel(
 }
 
 /**
- * Create a user quickly with email, name, and optional org/team assignment
+ * Create a user quickly with email, name, and optional org/team assignment.
+ *
+ * Admins get a super-admin membership on top of the profile row. Admin-ness
+ * lives on `organization_members`, not `profiles`, so without this grant the
+ * invitee is created but cannot log in (the `isUserAdminByEmail` gate in
+ * `auth/actions.ts` rejects them) and never appears in the admin list.
  */
-export async function createUserQuickAdd(data: {
+async function createUserQuickAdd(data: {
   email: string;
   firstName: string;
   lastName: string;
@@ -554,7 +631,25 @@ export async function createUserQuickAdd(data: {
   | { success: false; error: string }
 > {
   const query = new ProfilesQuery();
-  return query.createQuickAdd(data);
+  const result = await query.createQuickAdd(data);
+
+  if (!result.success || data.role !== 'admin') {
+    return result;
+  }
+
+  const orgMembers = new OrganizationMembers();
+  const grant = await orgMembers.makeSuperAdmin(result.data.userId);
+
+  if (!grant.success) {
+    // Surface it rather than logging and continuing: a swallowed failure here
+    // leaves behind a user who can never sign in.
+    return {
+      success: false,
+      error: `Created ${data.email}, but granting admin access failed: ${grant.error}. Retry from the admins list.`,
+    };
+  }
+
+  return result;
 }
 
 type SendBulkInvitationsResult =
@@ -626,195 +721,266 @@ export interface ImportUsersResult {
   errors: ValidationError[];
 }
 
-async function createPendingUsers(
-  rows: ImportUserRow[],
-  role: MemberRole,
-): Promise<{
-  createdUsers: ImportedUser[];
-  errors: ValidationError[];
-}> {
-  const supabase = await createAdminClient();
-  const createdUsers: ImportedUser[] = [];
-  const errors: ValidationError[] = [];
-  const orgMembersQuery = new OrganizationMembers();
-
-  for (const row of rows) {
-    const email = row.email.toLowerCase().trim();
-    const firstName = row.firstName.trim();
-    const lastName = row.lastName.trim();
-
-    const { data: authUser, error: authError } =
-      await supabase.auth.admin.createUser({
-        email,
-        user_metadata: { first_name: firstName, last_name: lastName },
-        email_confirm: true,
-      });
-
-    if (authError || !authUser.user) {
-      errors.push({
-        rowNumber: row.rowNumber,
-        field: 'Email',
-        message: authError?.message || 'Failed to create auth user',
-      });
-      continue;
-    }
-
-    const userId = authUser.user.id;
-
-    const profilesQuery = new ProfilesQuery();
-    const updateResult = await profilesQuery.update(userId, {
-      first_name: firstName || null,
-      last_name: lastName || null,
-      status: 'pending',
-    });
-
-    if (!updateResult.success) {
-      errors.push({
-        rowNumber: row.rowNumber,
-        field: 'Status',
-        message: `Failed to set status: ${updateResult.error}`,
-      });
-    }
-
-    // Add to super admin organization if role is admin
-    if (role === 'admin') {
-      const superAdminResult = await orgMembersQuery.makeSuperAdmin(userId);
-      // Log error but don't fail user creation if super admin org doesn't exist
-      if (!superAdminResult.success) {
-        console.error(
-          'Failed to add user to super admin organization:',
-          superAdminResult.error,
-        );
-      }
-    }
-
-    createdUsers.push({
-      id: userId,
-      email,
-      firstName,
-      lastName,
-      status: 'pending',
-    });
-  }
-
-  return { createdUsers, errors };
-}
-
-async function resolveExistingUsers(
-  rows: ImportUserRow[],
-  role: MemberRole,
-): Promise<
-  { success: true; data: ImportedUser[] } | { success: false; error: string }
-> {
-  const profileQuery = new ProfilesQuery();
-  const emails = rows.map((r) => r.email.toLowerCase().trim());
-  const result = await profileQuery.getByEmailsForImport(emails);
-  if (!result.success) return { success: false, error: result.error };
-
-  const byEmail = new Map(
-    result.data
-      .filter((p) => p.email)
-      .map((p) => [String(p.email).toLowerCase(), p]),
-  );
-
-  const existingUsers: ImportedUser[] = rows.map((r) => {
-    const emailLower = r.email.toLowerCase().trim();
-    const p = byEmail.get(emailLower);
-    return {
-      id: p?.id ?? `missing:${emailLower}`,
-      email: emailLower,
-      firstName: p?.first_name ?? r.firstName ?? '',
-      lastName: p?.last_name ?? r.lastName ?? '',
-      status: (p?.status ?? 'active') as ProfileStatus | string,
-    };
-  });
-
-  // Add existing users to super admin organization if role is admin
-  if (role === 'admin') {
-    const orgMembersQuery = new OrganizationMembers();
-    for (const user of existingUsers) {
-      // Skip if user ID is missing (failed lookup)
-      if (user.id.startsWith('missing:')) continue;
-
-      const superAdminResult = await orgMembersQuery.makeSuperAdmin(user.id);
-      // Log error but don't fail if super admin org doesn't exist
-      if (!superAdminResult.success) {
-        console.error(
-          'Failed to add existing user to super admin organization:',
-          superAdminResult.error,
-        );
-      }
-    }
-  }
-
-  return { success: true, data: existingUsers };
-}
-
+/**
+ * Parse + validate CSV into staged invite rows (no auth/profile creation).
+ */
 export async function importUsersCSV(
   csvText: string,
-  role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
   const parsed = await uploadUsersCSV(csvText);
-  if (!parsed.success) {
-    return parsed;
-  }
-
-  const createResult = await createPendingUsers(parsed.data.usersToAdd, role);
-  const existingResult = await resolveExistingUsers(
-    parsed.data.existingUsers,
-    role,
-  );
-  if (!existingResult.success) return existingResult;
-
-  const result = {
-    success: true as const,
-    data: {
-      createdUsers: createResult.createdUsers,
-      existingUsers: existingResult.data,
-      failedUsers: parsed.data.failedUsers.map((u) => ({
-        rowNumber: u.rowNumber,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-      })),
-      errors: [...parsed.data.errors, ...createResult.errors],
-    },
-  };
-
-  return result;
+  if (!parsed.success) return parsed;
+  return stageImportRows(parsed.data);
 }
 
+/**
+ * Parse + validate Excel into staged invite rows (no auth/profile creation).
+ */
 export async function importUsersExcel(
   fileData: ArrayBuffer,
-  role: MemberRole,
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
   const parsed = await uploadUsersExcel(fileData);
   if (!parsed.success) return parsed;
+  return stageImportRows(parsed.data);
+}
 
-  const createResult = await createPendingUsers(parsed.data.usersToAdd, role);
-  const existingResult = await resolveExistingUsers(
-    parsed.data.existingUsers,
-    role,
+/**
+ * Map parse results into ImportUsersResult without creating users.
+ * New emails get temporary staged ids; existing emails get real profile ids.
+ */
+async function stageImportRows(
+  parsed: ImportValidationResult,
+): Promise<
+  { success: true; data: ImportUsersResult } | { success: false; error: string }
+> {
+  const profileQuery = new ProfilesQuery();
+  const existingEmails = parsed.existingUsers.map((u) =>
+    u.email.toLowerCase().trim(),
   );
-  if (!existingResult.success) return existingResult;
+  const existingLookup =
+    existingEmails.length > 0
+      ? await profileQuery.getByEmailsForImport(existingEmails)
+      : { success: true as const, data: [] as Array<{
+          id: string;
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          status: string | null;
+        }> };
+
+  if (!existingLookup.success) {
+    return { success: false, error: existingLookup.error };
+  }
+
+  const byEmail = new Map(
+    existingLookup.data
+      .filter((p) => p.email)
+      .map((p) => [String(p.email).toLowerCase(), p]),
+  );
+
+  const createdUsers: ImportedUser[] = parsed.usersToAdd.map((u) => ({
+    id: `staged:${u.email.toLowerCase().trim()}`,
+    email: u.email.toLowerCase().trim(),
+    firstName: u.firstName,
+    lastName: u.lastName,
+    status: 'pending',
+  }));
+
+  const existingUsers: ImportedUser[] = parsed.existingUsers.map((u) => {
+    const emailLower = u.email.toLowerCase().trim();
+    const p = byEmail.get(emailLower);
+    return {
+      id: p?.id ?? `missing:${emailLower}`,
+      email: emailLower,
+      firstName: p?.first_name ?? u.firstName ?? '',
+      lastName: p?.last_name ?? u.lastName ?? '',
+      status: (p?.status ?? 'active') as ProfileStatus | string,
+    };
+  });
 
   return {
     success: true,
     data: {
-      createdUsers: createResult.createdUsers,
-      existingUsers: existingResult.data,
-      failedUsers: parsed.data.failedUsers.map((u) => ({
+      createdUsers,
+      existingUsers,
+      failedUsers: parsed.failedUsers.map((u) => ({
         rowNumber: u.rowNumber,
         email: u.email,
         firstName: u.firstName,
         lastName: u.lastName,
       })),
-      errors: [...parsed.data.errors, ...createResult.errors],
+      errors: parsed.errors,
     },
+  };
+}
+
+export interface InviteBatchItem {
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId: string;
+  /** Present when staging an already-registered user. */
+  existingUserId?: string;
+  onboarding?: 'full' | 'screening' | 'consultation';
+  /** Per-row admin grant (member modal can promote a row to admin). */
+  asAdmin?: boolean;
+}
+
+interface InviteBatchResult {
+  created: number;
+  invited: number;
+  failed: Array<{ email: string; error: string }>;
+}
+
+/**
+ * Create/ensure users + org membership, then email invitations.
+ * `defaultIsAdmin` applies when an item omits `asAdmin`.
+ */
+export async function sendInviteBatch(
+  items: InviteBatchItem[],
+  defaultIsAdmin: boolean,
+): Promise<
+  | { success: true; data: InviteBatchResult }
+  | { success: false; error: string }
+> {
+  if (items.length === 0) {
+    return { success: false, error: 'No invitees to send' };
+  }
+
+  const missingOrg = items.find((item) => !item.organizationId);
+  if (missingOrg) {
+    return {
+      success: false,
+      error: `Group required for ${missingOrg.email}`,
+    };
+  }
+
+  const orgMembers = new OrganizationMembers();
+  const failed: Array<{ email: string; error: string }> = [];
+  const adminEmails: string[] = [];
+  const memberEmails: string[] = [];
+  let created = 0;
+
+  for (const item of items) {
+    const email = item.email.toLowerCase().trim();
+    const isAdmin = item.asAdmin ?? defaultIsAdmin;
+    const orgRole: MemberRole = isAdmin ? 'admin' : 'patient';
+    let userId = item.existingUserId?.startsWith('staged:')
+      ? undefined
+      : item.existingUserId?.startsWith('missing:')
+        ? undefined
+        : item.existingUserId;
+
+    if (!userId || !isValidUuid(userId)) {
+      const createResult = await createUserQuickAdd({
+        email,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        role: orgRole,
+      });
+
+      if (!createResult.success) {
+        // Likely already exists — resolve by email and continue.
+        const profiles = new ProfilesQuery();
+        const lookup = await profiles.getByEmailsForImport([email]);
+        if (!lookup.success || lookup.data.length === 0) {
+          failed.push({ email, error: createResult.error });
+          continue;
+        }
+        const match = lookup.data.find(
+          (p) => p.email?.toLowerCase() === email,
+        );
+        if (!match?.id) {
+          failed.push({ email, error: createResult.error });
+          continue;
+        }
+        userId = match.id;
+        if (isAdmin) {
+          const grant = await orgMembers.makeSuperAdmin(userId);
+          if (!grant.success) {
+            failed.push({ email, error: grant.error });
+            continue;
+          }
+        }
+      } else {
+        userId = createResult.data.userId;
+        created += 1;
+      }
+    } else if (isAdmin) {
+      const grant = await orgMembers.makeSuperAdmin(userId);
+      if (!grant.success) {
+        failed.push({ email, error: grant.error });
+        continue;
+      }
+    }
+
+    const membership = await orgMembers.addOrUpdateMembership(
+      userId,
+      item.organizationId,
+      orgRole,
+    );
+    if (!membership.success) {
+      failed.push({ email, error: membership.error });
+      continue;
+    }
+
+    if (
+      !isAdmin &&
+      item.onboarding &&
+      item.onboarding !== 'full' &&
+      isValidUuid(userId)
+    ) {
+      const onboarding = await setOnboardingStateForUsers(
+        [userId],
+        item.onboarding,
+        { skipRevalidate: true },
+      );
+      if (!onboarding.success) {
+        failed.push({ email, error: onboarding.error });
+        continue;
+      }
+    }
+
+    if (isAdmin) adminEmails.push(email);
+    else memberEmails.push(email);
+  }
+
+  let invited = 0;
+  const sendGroups: Array<{ emails: string[]; isAdmin: boolean }> = [
+    { emails: adminEmails, isAdmin: true },
+    { emails: memberEmails, isAdmin: false },
+  ];
+
+  for (const group of sendGroups) {
+    if (group.emails.length === 0) continue;
+    const inviteResult = await sendBulkInvitations(group.emails, group.isAdmin);
+    if (!inviteResult.success) {
+      return { success: false, error: inviteResult.error };
+    }
+    for (const row of inviteResult.data.results) {
+      if (row.success) {
+        invited += 1;
+      } else {
+        failed.push({
+          email: row.email,
+          error: row.error || 'Failed to send invitation',
+        });
+      }
+    }
+    for (const row of inviteResult.data.validationErrors ?? []) {
+      failed.push({ email: row.email, error: row.error });
+    }
+  }
+
+  revalidatePath('/users');
+  revalidatePath('/manage');
+
+  return {
+    success: true,
+    data: { created, invited, failed },
   };
 }
 

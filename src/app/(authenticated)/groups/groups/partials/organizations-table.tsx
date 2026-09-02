@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -12,27 +12,59 @@ import {
   type ColumnFiltersState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, Plus, Save, X, Trash2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useIsMobile } from '@/hooks/use-mobile';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganizationsTable } from '@/context/organizations';
+import { ActiveFilterPills, useFilterDraft, type ActiveFilter } from '@/components/filters';
+import { Dialog, Icon } from '@/components/medvanta';
+import { HtmlSearchField } from '../../partials/html-search-field';
+import { HtmlTableFooter } from '../../partials/html-table-footer';
 import { CreateRowImageCell } from './create-row-image-cell';
 import { TeamsExpandedRow } from '../../teams/partials/teams-expanded-row';
+import {
+  DEFAULT_GROUPS_FILTERS,
+  GroupsFilterPanel,
+  type GroupsFilterState,
+} from './groups-filter-panel';
+
+function physiologistName(org: Organization): string | null {
+  const admin = (org.members || []).find((m) => m.role === 'admin')?.profile;
+  if (!admin) return null;
+  const name = [admin.first_name, admin.last_name].filter(Boolean).join(' ').trim();
+  return name || admin.email || null;
+}
+
+function orgMembersCount(org: Organization): number {
+  return (
+    org.members_count ??
+    (org.members || []).filter((m) => m.role !== 'admin').length
+  );
+}
+
+function matchesCreatedFilter(
+  createdAt: string | null | undefined,
+  filter: GroupsFilterState['created'],
+): boolean {
+  if (filter === 'any') return true;
+  if (!createdAt) return false;
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  const now = Date.now();
+  if (filter === '30d') return now - created <= 30 * 24 * 60 * 60 * 1000;
+  if (filter === 'quarter') {
+    const d = new Date();
+    const quarterStart = new Date(
+      d.getFullYear(),
+      Math.floor(d.getMonth() / 3) * 3,
+      1,
+    );
+    return created >= quarterStart.getTime();
+  }
+  if (filter === 'year') {
+    return new Date(createdAt).getFullYear() === new Date().getFullYear();
+  }
+  return true;
+}
 
 function DeleteOrganizationButton({
   organization,
@@ -40,15 +72,21 @@ function DeleteOrganizationButton({
 }: {
   organization: Organization;
   onDelete: (id: string) => Promise<void>;
-}) {
+}): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
 
-  const handleDelete = async () => {
+  const closeDialog = (): void => {
+    setOpen(false);
+    setConfirmText('');
+  };
+
+  const handleDelete = async (): Promise<void> => {
     setIsDeleting(true);
     try {
       await onDelete(organization.id);
-      setOpen(false);
+      closeDialog();
     } catch (error) {
       console.error('Error deleting organization:', error);
     } finally {
@@ -56,42 +94,78 @@ function DeleteOrganizationButton({
     }
   };
 
+  const canDelete = confirmText === organization.name;
+
   return (
-    <div className="flex gap-2">
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="cursor-pointer font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{organization.name}&rdquo;?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer" disabled={isDeleting}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="cursor-pointer"
-              onClick={handleDelete}
+    <>
+      <button
+        type="button"
+        className="ib ib-dan ib-sq ib-sm"
+        aria-label={`Delete ${organization.name}`}
+        onClick={() => setOpen(true)}
+      >
+        <Icon name="Trash2" size={16} />
+      </button>
+      <Dialog
+        open={open}
+        title="Delete Organization"
+        onClose={closeDialog}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-sec"
+              onClick={closeDialog}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-dan"
+              onClick={handleDelete}
+              disabled={isDeleting || !canDelete}
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ marginBottom: 14 }}>
+          Are you sure you want to delete &ldquo;{organization.name}&rdquo;? This action cannot be
+          undone.
+        </p>
+        <div className="ff">
+          <label className="lbl" htmlFor="delete-org-confirm">
+            Type <strong>{organization.name}</strong> to confirm
+          </label>
+          <div className="fld">
+            <input
+              id="delete-org-confirm"
+              type="text"
+              autoComplete="off"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={organization.name}
+            />
+          </div>
+        </div>
+      </Dialog>
+    </>
   );
+}
+
+function removeFilter(state: GroupsFilterState, id: string): GroupsFilterState {
+  if (id.startsWith('physio-')) {
+    const name = id.slice('physio-'.length);
+    return {
+      ...state,
+      physiologistNames: state.physiologistNames.filter((n) => n !== name),
+    };
+  }
+  if (id === 'members') return { ...state, membersMin: 0, membersMax: 50 };
+  if (id === 'created') return { ...state, created: 'any' };
+  return state;
 }
 
 interface OrganizationsTableProps {
@@ -99,9 +173,8 @@ interface OrganizationsTableProps {
   data: Organization[];
 }
 
-export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
+export function OrganizationsTable({ columns, data }: OrganizationsTableProps): React.ReactElement {
   const {
-    handleCreate,
     creatingRow,
     newOrgData,
     setNewOrgData,
@@ -115,28 +188,109 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     savingOrg,
   } = useOrganizationsTable();
 
-  const isMobile = useIsMobile();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
+  const [screeningLinkError, setScreeningLinkError] = useState(false);
   const debouncedSearch = useDebounce(searchValue, 300);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const draft = useFilterDraft<GroupsFilterState>({ initial: DEFAULT_GROUPS_FILTERS, removeFilter });
+  const appliedFilters = draft.applied;
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     setColumnFilters((prev) => {
-      const existing = prev.find((f) => f.id === 'name');
-      if (existing && existing.value === debouncedSearch) {
-        return prev;
-      }
-      const filtered = prev.filter((f) => f.id !== 'name');
+      const existing = prev.find((f) => f.id === 'group');
+      if (existing && existing.value === debouncedSearch) return prev;
+      const filtered = prev.filter((f) => f.id !== 'group');
       return debouncedSearch
-        ? [...filtered, { id: 'name', value: debouncedSearch }]
+        ? [...filtered, { id: 'group', value: debouncedSearch }]
         : filtered;
     });
   }, [debouncedSearch]);
 
+  const physiologistOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const org of data) {
+      const name = physiologistName(org);
+      if (!name) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [data]);
+
+  const handleSaveClick = () => {
+    if (!newOrgData.screeningUrl.trim()) {
+      setScreeningLinkError(true);
+      return;
+    }
+    setScreeningLinkError(false);
+    handleSaveNewOrg();
+  };
+
+  const filteredData = useMemo(() => {
+    return data.filter((org) => {
+      const count = orgMembersCount(org);
+      if (count < appliedFilters.membersMin || count > appliedFilters.membersMax) {
+        return false;
+      }
+      if (appliedFilters.physiologistNames.length > 0) {
+        const name = physiologistName(org);
+        if (!name || !appliedFilters.physiologistNames.includes(name)) return false;
+      }
+      if (!matchesCreatedFilter(org.created_at, appliedFilters.created)) return false;
+      return true;
+    });
+  }, [data, appliedFilters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (appliedFilters.physiologistNames.length > 0) count += 1;
+    if (appliedFilters.membersMin > 0 || appliedFilters.membersMax < 50) count += 1;
+    if (appliedFilters.created !== 'any') count += 1;
+    return count;
+  }, [appliedFilters]);
+
+  const pills = useMemo<ActiveFilter[]>(() => {
+    const result: ActiveFilter[] = [];
+    const term = searchValue.trim();
+    if (term) result.push({ id: 'search', label: `"${term}"` });
+    for (const name of appliedFilters.physiologistNames) {
+      result.push({ id: `physio-${name}`, label: name });
+    }
+    if (appliedFilters.membersMin !== 0 || appliedFilters.membersMax !== 50) {
+      result.push({
+        id: 'members',
+        label: `${appliedFilters.membersMin}-${appliedFilters.membersMax} members`,
+      });
+    }
+    if (appliedFilters.created !== 'any') {
+      const labels: Record<GroupsFilterState['created'], string> = {
+        any: '',
+        '30d': '30 days',
+        quarter: 'This quarter',
+        year: 'This year',
+      };
+      result.push({ id: 'created', label: `Created: ${labels[appliedFilters.created]}` });
+    }
+    return result;
+  }, [searchValue, appliedFilters]);
+
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') {
+      setSearchValue('');
+      return;
+    }
+    draft.removePill(id);
+  };
+
+  const clearEverything = (): void => {
+    setSearchValue('');
+    draft.clearAll();
+  };
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -144,272 +298,222 @@ export function OrganizationsTable({ columns, data }: OrganizationsTableProps) {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      columnFilters,
-    },
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
+    state: { sorting, columnFilters },
+    initialState: { pagination: { pageSize: 25 } },
   });
 
-  // Close expanded view when pagination changes
   useEffect(() => {
-    if (expandedOrganizationId) {
-      handleExpandToggle(expandedOrganizationId);
-    }
+    if (expandedOrganizationId) handleExpandToggle(expandedOrganizationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table.getState().pagination.pageIndex]);
 
-  // Close expanded view when sorting changes
   useEffect(() => {
-    if (expandedOrganizationId) {
-      handleExpandToggle(expandedOrganizationId);
-    }
+    if (expandedOrganizationId) handleExpandToggle(expandedOrganizationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorting]);
 
-  // Close expanded view when filtering changes
   useEffect(() => {
-    if (expandedOrganizationId) {
-      handleExpandToggle(expandedOrganizationId);
-    }
+    if (expandedOrganizationId) handleExpandToggle(expandedOrganizationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
 
-  // Smooth scroll to top when creating new row
   useEffect(() => {
     if (creatingRow && tableContainerRef.current) {
-      tableContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
+      tableContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [creatingRow]);
 
+  const filteredCount = table.getFilteredRowModel().rows.length;
+
+  const showing = (
+    <span>
+      Showing{' '}
+      <b className="mono">{filteredCount}</b> of <b className="mono">{data.length}</b>
+    </span>
+  );
+
   return (
-    <div className="flex min-h-0 flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <Button
-          onClick={handleCreate}
-          className="h-11 rounded-pill px-5 shadow-(--shadow-md) cursor-pointer"
-        >
-          {isMobile ? <Plus className="h-4 w-4" /> : 'Create New'}
-        </Button>
-        <Input
-          placeholder="Search groups..."
+    <>
+      <div className="tbar">
+        <HtmlSearchField
+          placeholder="Search groups by name or domain…"
           value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          className="h-11 flex-1 rounded-md bg-background"
+          onChange={setSearchValue}
         />
+        <span className="sp" />
+        <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            className={`btn btn-sec${draft.open ? ' btn-pri' : ''}`}
+            onClick={() => draft.setOpen((open) => !open)}
+          >
+            <Icon name="Funnel" size={16} />
+            Filters
+            {activeFilterCount > 0 ? (
+              <span className="bdg bdg-b">{activeFilterCount}</span>
+            ) : null}
+          </button>
+          <GroupsFilterPanel
+            open={draft.open}
+            onClose={() => {
+              draft.setStaged(draft.applied);
+              draft.setOpen(false);
+            }}
+            activeCount={activeFilterCount}
+            physiologistOptions={physiologistOptions}
+            filters={draft.staged}
+            onChange={draft.setStaged}
+            onClear={draft.clearAll}
+            onApply={draft.apply}
+          />
+        </div>
       </div>
-      <div
-        ref={tableContainerRef}
-        className="relative max-h-[calc(100dvh-20rem)] overflow-auto rounded-lg border border-border/60 bg-card"
-      >
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+
+      <ActiveFilterPills pills={pills} onRemove={handleRemovePill} onClearAll={clearEverything} meta={showing} />
+
+      <div className="tw" ref={tableContainerRef}>
+        <table className="tbl">
+          <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="border-b border-border"
-              >
-                {headerGroup.headers.map((header) => {
-                  const isDescription = header.column.id === 'description';
-                  const isCreated = header.column.id === 'created_at';
-                  return (
-                    <th
-                      key={header.id}
-                      className={`text-left py-3 px-4 text-sm font-semibold text-muted-foreground ${
-                        isDescription ? 'hidden lg:table-cell' : ''
-                      } ${isCreated ? 'hidden md:table-cell' : ''}`}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </th>
-                  );
-                })}
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">
-                  Actions
-                </th>
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <th key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                ))}
+                <th style={{ width: 52 }} aria-label="Actions" />
               </tr>
             ))}
           </thead>
           <tbody>
-            {creatingRow && (
-              <tr className="border-b border-border/60 bg-muted/30">
-                <td className="py-5 px-4">
-                  <CreateRowImageCell />
-                </td>
-                <td className="py-5 px-4">
-                  <Input
-                    value={newOrgData.name}
-                    onChange={(e) =>
-                      setNewOrgData((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                    placeholder="Organization name"
-                    className="h-10 bg-card text-sm font-medium"
-                  />
-                </td>
-                <td className="py-5 px-4 hidden lg:table-cell">
-                  <Textarea
-                    value={newOrgData.description}
-                    onChange={(e) =>
-                      setNewOrgData((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    placeholder="Description"
-                    className="min-h-[60px] bg-card text-sm"
-                  />
-                </td>
-                <td className="py-5 px-4">
-                  <span className="font-medium text-muted-foreground">—</span>
-                </td>
-                <td className="py-5 px-4 hidden md:table-cell">
-                  <span className="text-muted-foreground">—</span>
-                </td>
-                <td className="py-5 px-4">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleSaveNewOrg}
-                      disabled={
-                        !newOrgData.name.trim() || !!uploadingImage || savingOrg
+            {creatingRow ? (
+              <tr>
+                <td colSpan={columns.length + 1}>
+                  <div className="row" style={{ gap: 12, padding: '8px 0' }}>
+                    <CreateRowImageCell />
+                    <span className="fld grow">
+                      <input
+                        placeholder="Group name"
+                        value={newOrgData.name}
+                        onChange={(e) =>
+                          setNewOrgData((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                      />
+                    </span>
+                    <textarea
+                      className="ta"
+                      rows={1}
+                      placeholder="Description"
+                      value={newOrgData.description}
+                      onChange={(e) =>
+                        setNewOrgData((prev) => ({ ...prev, description: e.target.value }))
                       }
-                      size="icon-sm"
-                      className="h-9 w-9 rounded-md cursor-pointer"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={handleCancelNewOrg}
-                      variant="outline"
+                      style={{ flex: 1, minWidth: 160 }}
+                    />
+                    <span className="fld" style={{ minWidth: 220 }}>
+                      <input
+                        required
+                        type="url"
+                        placeholder="Screening link"
+                        value={newOrgData.screeningUrl}
+                        onChange={(e) => {
+                          setScreeningLinkError(false);
+                          setNewOrgData((prev) => ({ ...prev, screeningUrl: e.target.value }));
+                        }}
+                        style={
+                          screeningLinkError ? { borderColor: 'var(--danger, #dc2626)' } : undefined
+                        }
+                        aria-invalid={screeningLinkError || undefined}
+                      />
+                      {screeningLinkError ? (
+                        <span role="alert" style={{ color: 'var(--danger, #dc2626)', fontSize: 12 }}>
+                          Screening link is required.
+                        </span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      className="ib ib-sec ib-sq"
+                      onClick={handleSaveClick}
                       disabled={!!uploadingImage || savingOrg}
-                      size="icon-sm"
-                      className="h-9 w-9 rounded-md cursor-pointer"
+                      aria-label="Save organization"
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <Icon name="Save" size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ib ib-sec ib-sq"
+                      onClick={() => {
+                        setScreeningLinkError(false);
+                        handleCancelNewOrg();
+                      }}
+                      disabled={!!uploadingImage || savingOrg}
+                      aria-label="Cancel"
+                    >
+                      <Icon name="X" size={16} />
+                    </button>
                   </div>
                 </td>
               </tr>
-            )}
+            ) : null}
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index, array) => {
+              table.getRowModel().rows.map((row) => {
                 const org = row.original;
                 const isExpanded = expandedOrganizationId === org.id;
                 const teams = org.teams || [];
-                const columnCount = columns.length + 1; // +1 for Actions column
+                const columnCount = columns.length + 1;
 
                 return (
                   <React.Fragment key={row.id}>
-                    <tr
-                      className={`border-b border-border/60 hover:bg-muted/40 transition-colors ${
-                        index === array.length - 1 && !isExpanded
-                          ? 'border-b-0'
-                          : ''
-                      } ${rowZIndex === org.id ? 'highlighted-row' : ''}`}
-                      style={
-                        rowZIndex === org.id
-                          ? {
-                              position: 'relative',
-                              zIndex: 9999,
-                              backgroundColor: 'var(--card)',
-                            }
-                          : undefined
-                      }
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const isDescription = cell.column.id === 'description';
-                        const isCreated = cell.column.id === 'created_at';
-                        return (
-                          <td
-                            key={cell.id}
-                            className={`py-5 px-4 ${
-                              isDescription ? 'hidden lg:table-cell' : ''
-                            } ${isCreated ? 'hidden md:table-cell' : ''}`}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="py-5 px-4">
+                    <tr className={rowZIndex === org.id ? 'sel-row' : undefined}>
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                      <td style={{ textAlign: 'right' }}>
                         <DeleteOrganizationButton
                           organization={row.original}
                           onDelete={handleDelete}
                         />
                       </td>
                     </tr>
-                    {isExpanded && (
+                    {isExpanded ? (
                       <TeamsExpandedRow
                         organizationId={org.id}
                         teams={teams}
                         columnCount={columnCount}
                       />
-                    )}
+                    ) : null}
                   </React.Fragment>
                 );
               })
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className="h-24 text-center py-5 px-4"
-                >
-                  <span className="text-muted-foreground">No results.</span>
+                <td colSpan={columns.length + 1} className="mut" style={{ textAlign: 'center', padding: 24 }}>
+                  No results.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <HtmlTableFooter
+          summary={
+            <>
+              Showing all{' '}
+              <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-body)' }}>
+                {filteredCount}
+              </b>{' '}
+              groups
+            </>
+          }
+          page={table.getState().pagination.pageIndex + 1}
+          pageCount={Math.max(table.getPageCount(), 1)}
+          onPageChange={(nextPage) => table.setPageIndex(nextPage - 1)}
+        />
       </div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-6">
-        <div className="flex justify-center md:justify-start">
-          <span className="text-sm text-muted-foreground">
-            {table.getFilteredRowModel().rows.length} organization(s) total.
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="rounded-pill"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <div className="px-4 py-2 rounded-md border border-border bg-secondary text-secondary-foreground font-medium text-sm">
-            {isMobile
-              ? `${table.getState().pagination.pageIndex + 1}/${table.getPageCount()}`
-              : `Page ${table.getState().pagination.pageIndex + 1} of ${table.getPageCount()}`}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="rounded-pill"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

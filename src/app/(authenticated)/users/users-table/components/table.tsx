@@ -1,75 +1,65 @@
-import { useMemo, useState } from 'react';
-import { flexRender } from '@tanstack/react-table';
-import { Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useOrganizations } from '@/hooks/use-organizations';
-import { useUsersTable } from '../hooks/use-users-table';
-import { UsersTableFilters } from './filters';
-import { UsersTablePagination } from './pagination';
-import type { UsersTableProps } from '../types';
+'use client';
 
+import { useState } from 'react';
+import { flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, type SortingState, type ColumnDef } from '@tanstack/react-table';
+import { Loader2 } from 'lucide-react';
+
+import { UsersTablePagination } from './pagination';
+import { UsersTableBulkBar } from './bulk-bar';
+import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+
+interface UsersTableProps {
+  columns: ColumnDef<ProfileWithStats>[];
+  data: ProfileWithStats[];
+  isLoading?: boolean;
+}
+
+/**
+ * Presentational members table.
+ *
+ * Facet filtering and search live in the parent (`UsersPageUI`) through the
+ * `list_profiles_filtered` RPC; this component only sorts and paginates the
+ * already-filtered rows client-side.
+ */
 export function UsersTable({
   columns,
   data,
-  filters = { role: 'patient' },
-  onFiltersChange,
   isLoading = false,
-}: UsersTableProps) {
-  const { data: organizations } = useOrganizations();
-  const [selectedTeamName, setSelectedTeamName] = useState<
-    string | undefined
-  >();
+}: UsersTableProps): React.ReactElement {
+  const [sorting, setSorting] = useState<SortingState>([]);
 
-  const { table, searchValue, setSearchValue } = useUsersTable({
-    columns,
+  const table = useReactTable({
     data,
-    filters,
+    columns,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: { sorting },
+    initialState: { pagination: { pageSize: 10 } },
   });
 
-  // Compute org name from filters (derived state)
-  const selectedOrgName = useMemo(() => {
-    if (filters.organization_id && organizations) {
-      const org = organizations.find((o) => o.id === filters.organization_id);
-      return org?.name;
-    }
-    return undefined;
-  }, [filters.organization_id, organizations]);
-
-  const handleTeamNameChange = (name: string | undefined) => {
-    setSelectedTeamName(name);
-  };
-
-  // Get filter display names for empty state
-  const emptyStateMessage =
-    filters.team_id && selectedTeamName
-      ? `No members assigned to this team`
-      : filters.organization_id && selectedOrgName
-        ? `No members assigned to this organization`
-        : 'No results.';
-
   return (
-    <div className="flex flex-col gap-6">
-      <UsersTableFilters
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        filters={filters}
-        selectedOrgName={selectedOrgName}
-        selectedTeamName={selectedTeamName}
-        onFiltersChange={onFiltersChange}
-        onTeamNameChange={handleTeamNameChange}
-      />
-      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-border">
-        <table className="w-full">
+    <div className="tw" style={{ overflow: 'visible' }}>
+      <UsersTableBulkBar table={table} />
+      <div style={{ overflowX: 'auto' }}>
+        <table className="tbl">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="border-b border-border bg-muted/40"
-              >
+              <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left px-4 py-3 text-xs font-semibold tracking-wide text-muted-foreground"
+                    style={
+                      header.id === 'select'
+                        ? { width: 40 }
+                        : header.id === 'actions'
+                          ? { textAlign: 'right', width: 52 }
+                          : undefined
+                    }
+                    className={
+                      header.column.getCanSort() ? 'srt' : undefined
+                    }
                   >
                     {header.isPlaceholder
                       ? null
@@ -85,50 +75,40 @@ export function UsersTable({
           <tbody>
             {isLoading ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="h-24 text-center py-5 px-4"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-muted-foreground">
-                      Loading members...
-                    </span>
+                <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+                  <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+                    <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
+                    <span className="mut">Loading members…</span>
                   </div>
                 </td>
               </tr>
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index, array) => (
-                <motion.tr
+              table.getRowModel().rows.map((row) => (
+                <tr
                   key={row.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.03,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className={`border-b border-border hover:bg-muted/40 transition-colors ${index === array.length - 1 ? 'border-b-0' : ''}`}
+                  className={row.getIsSelected() ? 'sel-row' : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="py-5 px-4">
+                    <td
+                      key={cell.id}
+                      style={
+                        cell.column.id === 'actions'
+                          ? { textAlign: 'right', width: 52 }
+                          : undefined
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
                       )}
                     </td>
                   ))}
-                </motion.tr>
+                </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="h-24 text-center py-5 px-4"
-                >
-                  <span className="text-sm text-muted-foreground">
-                    {emptyStateMessage}
-                  </span>
+                <td colSpan={columns.length} style={{ textAlign: 'center' }}>
+                  <span className="mut">No results.</span>
                 </td>
               </tr>
             )}

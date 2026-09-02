@@ -1,96 +1,247 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import { useUsers } from '@/hooks/use-users';
+import { AppBar } from '@/components/medvanta/shell';
+import { useOrganizations } from '@/hooks/use-organizations';
+import { ActiveFilterPills, useFilterDraft } from '@/components/filters';
+import type { ActiveFilter } from '@/components/filters';
+import { useDebounce } from '@/hooks/use-debounce';
+import {
+  useMembersFiltered,
+  useMemberFilterCounts,
+} from '@/hooks/use-users';
+import { UsersTableFilters } from './users-table/components/filters';
+import {
+  DEFAULT_MEMBERS_FILTERS,
+  countActiveFilters,
+  removeMembersFilter,
+  type MembersFilters,
+} from './users-table/components/members-filter-panel';
 import { UsersTable } from './users-table/components/table';
 import { columns } from './users-table/components/columns';
-import { Card, CardContent } from '@/components/ui/card';
-import { MemberRole } from '@/lib/supabase/schemas/organization-members';
+import { AddUserMenu } from './users-table/components/add-user-menu';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
-
-const contentVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-    },
-  },
-  exit: {
-    opacity: 0,
-    y: 20,
-    transition: {
-      duration: 0.3,
-    },
-  },
-};
+import type { MemberFilterCounts } from '@/lib/supabase/queries/profiles';
 
 interface UsersPageUIProps {
   initialUsers: ProfileWithStats[];
+  initialCounts?: MemberFilterCounts;
 }
 
-export function UsersPageUI({ initialUsers }: UsersPageUIProps) {
-  const [filters, setFilters] = useState<{
-    organization_id?: string;
-    team_id?: string;
-    role: MemberRole;
-  }>({ role: 'patient' });
-  const { data: users, isLoading } = useUsers(
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  invited: 'Invited',
+  active: 'Active',
+  assigned: 'Assigned',
+};
+
+const PROGRAM_LABELS: Record<string, string> = {
+  on_program: 'On a program',
+  completed: 'Completed a program',
+  pre_program: 'Pre-program only',
+  not_assigned: 'Not assigned',
+};
+
+const LAST_ACTIVE_LABELS: Record<string, string> = {
+  '7d': 'Active in last 7 days',
+  '30d': 'Active in last 30 days',
+  '90d': 'Active in last 90 days',
+  never: 'Never signed in',
+};
+
+const JOINED_LABELS: Record<string, string> = {
+  month: 'Joined this month',
+  quarter: 'Joined this quarter',
+  year: 'Joined this year',
+};
+
+function buildSubtitle(users: ProfileWithStats[]): string {
+  const total = users.length;
+  const pending = users.filter((user) => user.status === 'pending').length;
+  const invited = users.filter((user) => user.status === 'invited').length;
+  const invites = pending + invited;
+  const orgCount = new Set(
+    users.flatMap((user) => user.orgMemberships?.map((org) => org.orgId) ?? []),
+  ).size;
+  const orgPart =
+    orgCount > 0 ? `${total} members across ${orgCount} groups` : `${total} members`;
+  return invites > 0
+    ? `${orgPart} · ${invites} invitation${invites !== 1 ? 's' : ''} pending`
+    : orgPart;
+}
+
+export function UsersPageUI({
+  initialUsers,
+  initialCounts,
+}: UsersPageUIProps): React.ReactElement {
+  const [searchValue, setSearchValue] = useState('');
+  const [teamNames, setTeamNames] = useState<Record<string, string>>({});
+  const debouncedSearch = useDebounce(searchValue, 300);
+
+  const {
+    applied: filters,
+    staged,
+    setStaged,
+    open: filtersOpen,
+    setOpen: setFiltersOpen,
+    apply: applyFilters,
+    clearAll: clearAllDraft,
+    removePill: removeFiltersPill,
+  } = useFilterDraft<MembersFilters>({
+    initial: DEFAULT_MEMBERS_FILTERS,
+    removeFilter: removeMembersFilter,
+  });
+
+  const { data: organizations } = useOrganizations();
+  const { data: counts } = useMemberFilterCounts(initialCounts);
+
+  // Seed the first paint with the SSR patient list while on default filters.
+  const isDefaultState =
+    !debouncedSearch.trim() && countActiveFilters(filters) === 0;
+
+  const {
+    data: members,
+    isLoading,
+  } = useMembersFiltered(
     {
+      search: debouncedSearch || undefined,
+      role: 'patient',
       organization_id: filters.organization_id,
       team_id: filters.team_id,
-      role: filters.role,
+      status: filters.status,
+      program: filters.program,
+      physiologist: filters.physiologist,
+      lastActive: filters.lastActive,
+      joined: filters.joined,
+      due: filters.due,
     },
-    // Only use initialData when filters match the default (role: 'patient', no org/team)
-    filters.role === 'patient' &&
-      !filters.organization_id &&
-      !filters.team_id
-      ? initialUsers
-      : undefined,
+    isDefaultState ? initialUsers : undefined,
   );
 
-  const displayUsers = users || [];
+  const displayUsers = useMemo(() => members ?? [], [members]);
+  const subtitle = useMemo(() => buildSubtitle(displayUsers), [displayUsers]);
 
-  const tableColumns = useMemo(
-    () =>
-      filters.role === 'admin'
-        ? columns.filter((col) => col.id !== 'program')
-        : columns,
-    [filters.role],
-  );
+  // Staged group selection helpers (names kept for pill + panel labels).
+  const handleStagedOrgSelect = (orgId?: string): void => {
+    const next: MembersFilters = { ...staged };
+    if (orgId) next.organization_id = orgId;
+    else delete next.organization_id;
+    delete next.team_id;
+    setStaged(next);
+  };
+
+  const handleStagedTeamSelect = (teamId?: string, teamName?: string): void => {
+    if (teamName && teamId) {
+      setTeamNames((prev) => ({ ...prev, [teamId]: teamName }));
+    }
+    const next: MembersFilters = { ...staged, team_id: teamId };
+    if (!teamId) delete next.team_id;
+    if (next.team_id && !next.organization_id) {
+      next.organization_id = staged.organization_id;
+    }
+    setStaged(next);
+  };
+
+  const stagedOrgName =
+    organizations?.find((o) => o.id === staged.organization_id)?.name;
+  const appliedOrgName =
+    organizations?.find((o) => o.id === filters.organization_id)?.name;
+
+  const activeFilters: ActiveFilter[] = useMemo(() => {
+    const pills: ActiveFilter[] = [];
+    const term = debouncedSearch.trim();
+    if (term) pills.push({ id: 'search', label: `"${term}"` });
+    if (filters.organization_id) {
+      pills.push({ id: 'org', label: appliedOrgName ?? 'Group' });
+    }
+    if (filters.team_id) {
+      pills.push({
+        id: 'team',
+        label: teamNames[filters.team_id] ?? 'Team',
+      });
+    }
+    if (filters.status !== 'all') {
+      pills.push({ id: 'status', label: STATUS_LABELS[filters.status] });
+    }
+    if (filters.program !== 'all') {
+      pills.push({ id: 'program', label: PROGRAM_LABELS[filters.program] });
+    }
+    if (filters.physiologist) {
+      pills.push({ id: 'physiologist', label: filters.physiologist });
+    }
+    if (filters.lastActive !== 'all') {
+      pills.push({ id: 'lastActive', label: LAST_ACTIVE_LABELS[filters.lastActive] });
+    }
+    if (filters.joined !== 'all') {
+      pills.push({ id: 'joined', label: JOINED_LABELS[filters.joined] });
+    }
+    if (filters.due !== 'all') {
+      pills.push({
+        id: 'due',
+        label: filters.due === 'overdue' ? 'Program overdue' : 'Program due later',
+      });
+    }
+    return pills;
+  }, [filters, debouncedSearch, appliedOrgName, teamNames]);
+
+  const handleRemovePill = (id: string): void => {
+    if (id === 'search') setSearchValue('');
+    else removeFiltersPill(id);
+  };
 
   return (
-    <Card className="gap-6">
-      <CardContent className="py-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-24">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-muted-foreground">Loading members...</span>
-            </div>
-          </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="table"
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <UsersTable
-                columns={tableColumns}
-                data={displayUsers}
-                filters={filters}
-                onFiltersChange={setFilters}
-              />
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <AppBar
+        crumbs={[{ label: 'Members' }]}
+        title="Members"
+        subtitle={subtitle}
+        actions={
+            <AddUserMenu role="patient" />
+        }
+      />
+      <div className="body">
+        <div style={{ position: 'relative' }}>
+          <UsersTableFilters
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            staged={staged}
+            onStagedChange={setStaged}
+            activeCount={countActiveFilters(filters)}
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            physiologistOptions={counts?.physiologists ?? []}
+            unassignedPhysiologist={counts?.unassigned_physiologist}
+            selectedOrgName={stagedOrgName}
+            selectedTeamName={
+              staged.team_id ? teamNames[staged.team_id] : undefined
+            }
+            onStagedOrgSelect={handleStagedOrgSelect}
+            onStagedTeamSelect={handleStagedTeamSelect}
+            onClearAll={clearAllDraft}
+            onApply={applyFilters}
+          />
+        </div>
+
+        <ActiveFilterPills
+          pills={activeFilters}
+          onRemove={handleRemovePill}
+          onClearAll={
+            activeFilters.length > 0
+              ? () => {
+                  setSearchValue('');
+                  clearAllDraft();
+                }
+              : undefined
+          }
+          meta={`${displayUsers.length} found`}
+        />
+
+        <UsersTable
+          columns={columns}
+          data={displayUsers}
+          isLoading={isLoading}
+        />
+      </div>
+    </>
   );
 }

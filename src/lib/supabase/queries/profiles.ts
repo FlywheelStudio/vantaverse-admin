@@ -11,8 +11,28 @@ import {
   type ProfileWithStats,
 } from '../schemas/profiles';
 import { MemberRole } from '../schemas/organization-members';
+import type { PaginatedResult } from './exercise-templates';
 
 export type SetOnboardingStateTarget = 'screening' | 'consultation';
+
+/** Shape returned by the `get_member_filter_counts` RPC. */
+export interface MemberFilterCounts {
+  roles: { patient: number; admin: number };
+  status: {
+    pending: number;
+    invited: number;
+    active: number;
+    assigned: number;
+  };
+  program: {
+    on_program: number;
+    completed: number;
+    pre_program: number;
+    not_assigned: number;
+  };
+  physiologists: Array<{ name: string; count: number }>;
+  unassigned_physiologist: number;
+}
 
 export type SetOnboardingStateResult = void;
 
@@ -88,7 +108,7 @@ export class ProfilesQuery extends SupabaseQuery {
   public async getUserById(
     id: string,
   ): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+    const supabase = await this.getClient('authenticated_user');
 
     // Fetch profile data
     const { data, error } = await supabase
@@ -844,21 +864,29 @@ export class ProfilesQuery extends SupabaseQuery {
     SupabaseSuccess<Set<string>> | SupabaseError
   > {
     const supabase = await this.getClient('service_role');
-    const { data, error } = await supabase.from('profiles').select('email');
+    const [{ data: patientEmails, error: patientError }, { data: adminEmails, error: adminError }] =
+      await Promise.all([
+        supabase.from('profiles').select('email'),
+        supabase.from('profiles_admins').select('email'),
+      ]);
 
-    if (error) {
+    if (patientError) {
       return this.parseResponsePostgresError(
-        error,
+        patientError,
         'Failed to get user emails for import',
+      );
+    }
+    if (adminError) {
+      return this.parseResponsePostgresError(
+        adminError,
+        'Failed to get admin emails for import',
       );
     }
 
     const emailSet = new Set<string>();
-    if (data) {
-      for (const profile of data) {
-        if (profile.email) {
-          emailSet.add(profile.email.toLowerCase());
-        }
+    for (const profile of [...(patientEmails ?? []), ...(adminEmails ?? [])]) {
+      if (profile.email) {
+        emailSet.add(profile.email.toLowerCase());
       }
     }
 
@@ -871,7 +899,7 @@ export class ProfilesQuery extends SupabaseQuery {
   /**
    * Get user profiles by email list (for import display)
    * NOTE: emails are matched case-sensitively by Supabase `in()`; callers should
-   * pass normalized lowercase emails.
+   * pass normalized lowercase emails. Scans both `profiles` and `profiles_admins`.
    */
   public async getByEmailsForImport(emails: string[]): Promise<
     | SupabaseSuccess<
@@ -891,21 +919,51 @@ export class ProfilesQuery extends SupabaseQuery {
       return { success: true, data: [] };
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, first_name, last_name, status')
-      .in('email', emails);
+    const [{ data: patients, error: patientError }, { data: admins, error: adminError }] =
+      await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, email, first_name, last_name, status')
+          .in('email', emails),
+        supabase
+          .from('profiles_admins')
+          .select('id, email, first_name, last_name, status')
+          .in('email', emails),
+      ]);
 
-    if (error) {
+    if (patientError) {
       return this.parseResponsePostgresError(
-        error,
+        patientError,
         'Failed to get users by emails for import',
       );
+    }
+    if (adminError) {
+      return this.parseResponsePostgresError(
+        adminError,
+        'Failed to get admins by emails for import',
+      );
+    }
+
+    const byEmail = new Map<
+      string,
+      {
+        id: string;
+        email: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        status: string | null;
+      }
+    >();
+    for (const row of [...(patients ?? []), ...(admins ?? [])]) {
+      const key = (row.email ?? '').toLowerCase();
+      if (key && !byEmail.has(key)) {
+        byEmail.set(key, row);
+      }
     }
 
     return {
       success: true,
-      data: data ?? [],
+      data: [...byEmail.values()],
     };
   }
 
@@ -1097,5 +1155,119 @@ export class ProfilesQuery extends SupabaseQuery {
     }
 
     return { success: true, data: data as unknown as SetOnboardingStateResult };
+  }
+
+  /**
+   * Get paginated members with multi-faceted filtering via
+   * the `list_profiles_filtered` RPC (search, role, org, team,
+   * status, program state, physiologist, last active, joined, due).
+   */
+  public async getListFiltered(params: {
+    search?: string;
+    role?: 'patient' | 'admin';
+    organizationId?: string;
+    teamId?: string;
+    status?: string;
+    program?: string;
+    physiologist?: string | null;
+    lastActive?: string;
+    joined?: string;
+    due?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<SupabaseSuccess<PaginatedResult<ProfileWithStats>> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase.rpc('list_profiles_filtered', {
+      p_search: params.search || undefined,
+      p_role: params.role ?? 'patient',
+      p_org_id: params.organizationId || undefined,
+      p_team_id: params.teamId || undefined,
+      p_status: params.status || 'all',
+      p_program: params.program || 'all',
+      p_physiologist: params.physiologist || undefined,
+      p_last_active: params.lastActive || 'all',
+      p_joined: params.joined || 'all',
+      p_due: params.due || 'all',
+      p_page: params.page ?? 1,
+      p_page_size: params.pageSize ?? 500,
+      p_sort_by: params.sortBy ?? 'created_at',
+      p_sort_order: params.sortOrder ?? 'desc',
+    });
+
+    if (error) {
+      return this.parseResponsePostgresError(error, 'Failed to get filtered members');
+    }
+
+    const payload = (data as { data: unknown[]; count: number }) || {
+      data: [],
+      count: 0,
+    };
+
+    const rows = payload.data ?? [];
+    if (rows.length === 0) {
+      const page = params.page ?? 1;
+      const pageSize = params.pageSize ?? 500;
+      return {
+        success: true,
+        data: {
+          data: [],
+          page,
+          pageSize,
+          total: payload.count ?? 0,
+          hasMore: false,
+        },
+      };
+    }
+
+    // RPC returns profiles_with_stats rows only — attach org names like getListWithStats.
+    const profileIds = rows.map(
+      (row) => (row as Record<string, unknown>).id as string,
+    );
+    const [superAdminData, membershipsData] = await Promise.all([
+      this.getSuperAdminData(),
+      this.getOrganizationMemberships(profileIds),
+    ]);
+    const enrichedProfiles = this.enrichProfilesWithMetadata(
+      rows,
+      superAdminData.userIds,
+      membershipsData.orgMembershipsMap,
+      membershipsData.userRoleMap,
+    );
+
+    const parsedData = profileWithStatsSchema.array().safeParse(enrichedProfiles);
+    if (!parsedData.success) {
+      return this.parseResponseZodError(parsedData.error);
+    }
+
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 500;
+    const total = payload.count ?? 0;
+
+    return {
+      success: true,
+      data: {
+        data: parsedData.data,
+        page,
+        pageSize,
+        total,
+        hasMore: page * pageSize < total,
+      },
+    };
+  }
+
+  /** Facet counts for the members filter panel via `get_member_filter_counts`. */
+  public async getFilterCounts(): Promise<SupabaseSuccess<MemberFilterCounts> | SupabaseError> {
+    const supabase = await this.getClient('authenticated_user');
+
+    const { data, error } = await supabase.rpc('get_member_filter_counts');
+
+    if (error) {
+      return this.parseResponsePostgresError(error, 'Failed to get member filter counts');
+    }
+
+    return { success: true, data: data as MemberFilterCounts };
   }
 }

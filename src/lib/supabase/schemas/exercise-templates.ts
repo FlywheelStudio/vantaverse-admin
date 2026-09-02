@@ -14,7 +14,6 @@ export const exerciseTemplateSchema = z.object({
   weight: z.string().nullable(),
   rest_time: z.number().nullable(),
   tempo: z.array(z.string()).length(4).nullable(),
-  equipment_ids: z.array(z.number()).nullable(),
   rep_override: z.array(z.number()).nullable(),
   time_override: z.array(z.number()).nullable(),
   distance_override: z.array(z.string()).nullable(),

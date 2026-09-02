@@ -44,3 +44,6 @@ next-env.d.ts
 
 # cursor
 .cursor/plans
+*storybook.log
+storybook-static
+.gstack/
