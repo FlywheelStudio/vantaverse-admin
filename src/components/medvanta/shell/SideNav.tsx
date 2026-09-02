@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
 import { useAuth } from '@/hooks/use-auth';
 import { useProfile } from '@/hooks/use-profile';
-import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import {
   DropdownMenu,
   DropdownMenuContent,
