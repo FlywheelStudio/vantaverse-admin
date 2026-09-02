@@ -23,6 +23,8 @@ import { Icon } from '@/components/medvanta';
 import { useBuilder } from '@/context/builder-context';
 import { CopyPasteButtons } from '@/components/ui/copy-paste-buttons';
 import { cn } from '@/lib/utils';
+import { useFormContext } from 'react-hook-form';
+import type { ProgramTemplateFormData } from '../../program/schemas';
 
 interface Week {
   id: string;
@@ -38,6 +40,7 @@ function DraggableWeekButton({
   dayCount,
   isCurrent,
   isDisabled,
+  isComingSoon,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -48,6 +51,7 @@ function DraggableWeekButton({
   dayCount: number;
   isCurrent: boolean;
   isDisabled: boolean;
+  isComingSoon: boolean;
   onClick: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -114,7 +118,11 @@ function DraggableWeekButton({
             ? 'Pasted!'
             : `Week ${week.number}`}
       </span>
-      <span className="wm">{dayCount} day{dayCount === 1 ? '' : 's'}</span>
+      <span className="wm">
+        {isComingSoon
+          ? 'Coming soon'
+          : `${dayCount} day${dayCount === 1 ? '' : 's'}`}
+      </span>
     </button>
   );
 }
@@ -131,6 +139,8 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
     programStartDate,
     schedule,
   } = useBuilder();
+  const programForm = useFormContext<ProgramTemplateFormData>();
+  const comingSoonWeeks = programForm.watch('coming_soon_weeks') ?? 0;
 
   // Parse date string to local date (avoiding timezone issues)
   const parseLocalDate = useCallback((dateString: string): Date => {
@@ -381,6 +391,9 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
                 const animationType = isAnimating ? animatingWeek.type : null;
                 const dayCount =
                   schedule[weekIndex]?.filter((day) => day.length > 0).length ?? 0;
+                const isComingSoon =
+                  comingSoonWeeks > 0 &&
+                  week.number > weekCount - comingSoonWeeks;
 
                 return (
                   <DraggableWeekButton
@@ -389,6 +402,7 @@ export function WeekNavigation({ initialWeeks }: WeekNavigationProps) {
                     dayCount={dayCount}
                     isCurrent={weekIndex === currentWeek}
                     isDisabled={isDisabled}
+                    isComingSoon={isComingSoon}
                     onClick={() => {
                       setCurrentWeek(weekIndex);
                     }}

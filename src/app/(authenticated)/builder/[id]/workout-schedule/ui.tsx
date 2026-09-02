@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
-import { Icon } from '@/components/medvanta';
+import { Icon, Tooltip } from '@/components/medvanta';
 import { HtmlActionsMenu } from '@/components/medvanta/shell/HtmlActionsMenu';
 import { useBuilder } from '@/context/builder-context';
 import {
@@ -73,6 +73,7 @@ export function BuildWorkoutSection({
   const scheduleBaselineRef = useRef<string | null>(null);
 
   const weeksValue = programForm.watch('weeks') ?? initialWeeks;
+  const comingSoonWeeksValue = programForm.watch('coming_soon_weeks') ?? 0;
   const programEndDate = useMemo(() => {
     if (!programStartDate || weeksValue < 1) return null;
     const end = calculateEndDate(new Date(`${programStartDate}T00:00:00`), weeksValue);
@@ -163,6 +164,7 @@ export function BuildWorkoutSection({
                 templateId: template.id,
                 name: isPreProgramTemplate ? template.name : values.name,
                 weeks: values.weeks,
+                coming_soon_weeks: values.coming_soon_weeks ?? 0,
                 startDate: isRegularTemplate || isPreProgramTemplate
                   ? undefined
                   : values.startDate,
@@ -325,6 +327,13 @@ export function BuildWorkoutSection({
   const handleDecreaseWeeks = (): void => {
     const next = Math.max(1, Number(weeksValue) - 1);
     programForm.setValue('weeks', next, { shouldDirty: true, shouldValidate: true });
+    const comingSoon = Number(programForm.getValues('coming_soon_weeks') ?? 0);
+    if (comingSoon > next) {
+      programForm.setValue('coming_soon_weeks', next, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
     resizeSchedule(next);
   };
 
@@ -332,6 +341,22 @@ export function BuildWorkoutSection({
     const next = Math.min(52, Number(weeksValue) + 1);
     programForm.setValue('weeks', next, { shouldDirty: true, shouldValidate: true });
     resizeSchedule(next);
+  };
+
+  const handleDecreaseComingSoon = (): void => {
+    const next = Math.max(0, Number(comingSoonWeeksValue) - 1);
+    programForm.setValue('coming_soon_weeks', next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const handleIncreaseComingSoon = (): void => {
+    const next = Math.min(Number(weeksValue), Number(comingSoonWeeksValue) + 1);
+    programForm.setValue('coming_soon_weeks', next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const weekHasContent = (weekIndex: number): boolean =>
@@ -410,6 +435,56 @@ export function BuildWorkoutSection({
                 aria-label="Increase"
                 disabled={Number(weeksValue) >= 52}
                 onClick={handleIncreaseWeeks}
+              >
+                <Icon name="Plus" size={15} />
+              </button>
+              <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+                weeks
+              </span>
+            </div>
+          </div>
+          <div>
+            <label className="lbl row" style={{ gap: 6, alignItems: 'center' }}>
+              Coming soon
+              <Tooltip
+                placement="top"
+                className="max-w-xs whitespace-normal"
+                label="Marks the last N weeks as Coming soon. Empty/rest days in those weeks show as coming soon in the app calendar so you can publish a partial program and finish the later weeks later. Workout days still work normally."
+              >
+                <button
+                  type="button"
+                  className="ib ib-ghost ib-sq ib-sm"
+                  aria-label="About Coming soon"
+                  style={{ width: 22, height: 22 }}
+                >
+                  <Icon name="CircleHelp" size={14} />
+                </button>
+              </Tooltip>
+            </label>
+            <div className="row" style={{ gap: 7 }}>
+              <button
+                type="button"
+                className="ib ib-sec ib-sq ib-sm"
+                aria-label="Decrease Coming soon"
+                disabled={Number(comingSoonWeeksValue) <= 0}
+                onClick={handleDecreaseComingSoon}
+              >
+                <Icon name="Minus" size={15} />
+              </button>
+              <span className="fld fld-sm" style={{ width: 66, placeContent: 'center' }}>
+                <input
+                  value={String(comingSoonWeeksValue)}
+                  readOnly
+                  className="mono"
+                  style={{ textAlign: 'center', fontWeight: 600 }}
+                />
+              </span>
+              <button
+                type="button"
+                className="ib ib-sec ib-sq ib-sm"
+                aria-label="Increase Coming soon"
+                disabled={Number(comingSoonWeeksValue) >= Number(weeksValue)}
+                onClick={handleIncreaseComingSoon}
               >
                 <Icon name="Plus" size={15} />
               </button>

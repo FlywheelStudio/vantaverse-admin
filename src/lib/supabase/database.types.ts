@@ -1492,6 +1492,7 @@ export type Database = {
       program_template: {
         Row: {
           active: boolean | null
+          coming_soon_weeks: number
           created_at: string | null
           description: string | null
           goals: string | null
@@ -1505,6 +1506,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          coming_soon_weeks?: number
           created_at?: string | null
           description?: string | null
           goals?: string | null
@@ -1518,6 +1520,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          coming_soon_weeks?: number
           created_at?: string | null
           description?: string | null
           goals?: string | null
