@@ -7,6 +7,7 @@ export const programTemplateFormSchema = z
   .object({
     name: z.string().min(1, 'Name is required').trim(),
     weeks: z.number().int().min(1, 'Weeks must be at least 1'),
+    coming_soon_weeks: z.number().int().min(0),
     description: z.string().trim().optional(),
     goals: z.string().trim().optional(),
     notes: z.string().trim().optional(),
@@ -27,6 +28,10 @@ export const programTemplateFormSchema = z
       message: 'End date must be after start date',
       path: ['endDate'],
     },
-  );
+  )
+  .refine((data) => data.coming_soon_weeks <= data.weeks, {
+    message: 'Coming soon cannot exceed Duration',
+    path: ['coming_soon_weeks'],
+  });
 
 export type ProgramTemplateFormData = z.infer<typeof programTemplateFormSchema>;

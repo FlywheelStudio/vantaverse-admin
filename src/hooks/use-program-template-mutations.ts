@@ -28,6 +28,7 @@ interface UpdateProgramTemplateData {
   templateId: string;
   name: string;
   weeks: number;
+  coming_soon_weeks?: number;
   startDate?: Date;
   endDate?: Date;
   description?: string | null;
@@ -160,6 +161,7 @@ export function useUpdateProgramTemplate(
         data.notes?.trim() || null,
         startDateString,
         endDateString,
+        data.coming_soon_weeks,
       );
 
       if (!updateResult.success) {
@@ -241,6 +243,10 @@ export function useUpdateProgramTemplate(
                         ...item.program_template,
                         name: variables.name,
                         weeks: variables.weeks,
+                        coming_soon_weeks: Math.min(
+                          Math.max(variables.coming_soon_weeks ?? 0, 0),
+                          variables.weeks,
+                        ),
                         description: variables.description || null,
                         goals: variables.goals || null,
                         notes: variables.notes || null,

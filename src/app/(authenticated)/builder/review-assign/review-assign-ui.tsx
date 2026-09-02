@@ -148,6 +148,7 @@ export function ReviewAssignUI({
                 templateId: template.id,
                 name: template.name,
                 weeks: template.weeks,
+                coming_soon_weeks: template.coming_soon_weeks ?? 0,
                 description: template.description ?? null,
                 goals: template.goals ?? null,
                 notes: template.notes ?? null,

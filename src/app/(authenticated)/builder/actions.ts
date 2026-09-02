@@ -288,13 +288,19 @@ export async function updateProgramTemplate(
   notes?: string | null,
   startDate?: string | null,
   endDate?: string | null,
+  comingSoonWeeks?: number,
 ) {
   const templateQuery = new ProgramTemplatesQuery();
+  const clampedComingSoon = Math.min(
+    Math.max(comingSoonWeeks ?? 0, 0),
+    Math.max(weeks, 0),
+  );
 
   // Update program_template
   const updateResult = await templateQuery.update(templateId, {
     name: name.trim(),
     weeks,
+    coming_soon_weeks: clampedComingSoon,
     description: description?.trim() || null,
     goals: goals?.trim() || null,
     notes: notes?.trim() || null,

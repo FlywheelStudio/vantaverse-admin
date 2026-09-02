@@ -51,6 +51,7 @@ export function WorkoutBuilder({
       name: template?.name || '',
       description: template?.description || '',
       weeks: template?.weeks || 4,
+      coming_soon_weeks: template?.coming_soon_weeks ?? 0,
       goals: template?.goals || '',
       notes: template?.notes || '',
       startDate:
