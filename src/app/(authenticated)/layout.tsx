@@ -1,14 +1,23 @@
-'use client';
+import { forbidden, redirect } from 'next/navigation';
+import { getAuthProfile } from './auth/actions';
+import { AuthenticatedShell } from './authenticated-shell';
 
-import { usePathname } from 'next/navigation';
-import { AppShell, navIdFromPathname } from '@/components/medvanta/shell';
-
-export default function AuthenticatedLayout({
+/**
+ * Server layout: require `profiles_admins` + active org admin membership.
+ */
+export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
-}): React.ReactElement {
-  const pathname = usePathname();
+}): Promise<React.ReactElement> {
+  const profile = await getAuthProfile();
 
-  return <AppShell active={navIdFromPathname(pathname)}>{children}</AppShell>;
+  if (!profile.success) {
+    if (profile.status === 401 || profile.error === 'Unauthenticated') {
+      redirect('/login');
+    }
+    forbidden();
+  }
+
+  return <AuthenticatedShell>{children}</AuthenticatedShell>;
 }

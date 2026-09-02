@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/core/server';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { resolveDisplayProfilesByIds } from '@/lib/supabase/queries/resolve-display-profiles';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import {
   DEFAULT_SCREENING_BASE,
@@ -179,13 +180,11 @@ export async function getUnassignedUsers() {
 }
 
 export async function getOrganizationAdmins(organizationId: string) {
-  const supabase = await createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('organization_members')
-    .select(
-      'user_id, profiles!inner(id, avatar_url, first_name, last_name, email)',
-    )
+    .select('user_id')
     .eq('organization_id', organizationId)
     .eq('role', 'admin')
     .eq('is_active', true);
@@ -197,10 +196,13 @@ export async function getOrganizationAdmins(organizationId: string) {
     };
   }
 
-  const admins: SuperAdminGroupUser[] = (data || []).map((m) => {
-    const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+  const userIds = (data || []).map((m) => m.user_id);
+  const profilesById = await resolveDisplayProfilesByIds(supabase, userIds);
+
+  const admins: SuperAdminGroupUser[] = userIds.map((userId) => {
+    const profile = profilesById.get(userId);
     return {
-      user_id: m.user_id,
+      user_id: userId,
       first_name: profile?.first_name ?? null,
       last_name: profile?.last_name ?? null,
       email: profile?.email ?? null,

@@ -1,17 +1,16 @@
 import type { Table } from '@tanstack/react-table';
 import { Icon } from '@/components/medvanta';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 
-interface UsersTablePaginationProps {
-  table: Table<ProfileWithStats>;
+interface UsersTablePaginationProps<TData> {
+  table: Table<TData>;
   /** Plural noun for the row count, e.g. "members" / "admins". */
   noun?: string;
 }
 
-export function UsersTablePagination({
+export function UsersTablePagination<TData>({
   table,
   noun = 'members',
-}: UsersTablePaginationProps): React.ReactElement {
+}: UsersTablePaginationProps<TData>): React.ReactElement {
   const pageIndex = table.getState().pagination.pageIndex;
   const pageSize = table.getState().pagination.pageSize;
   const pageCount = Math.max(table.getPageCount(), 1);

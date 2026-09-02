@@ -10,6 +10,7 @@ import type { Organization } from '@/lib/supabase/schemas/organizations';
 import { useOrganization } from '@/hooks/use-organizations';
 import {
   useGroupMembers,
+  useGroupAdmins,
   useGroupPhysiologist,
   useSuperAdminGroupUsers,
   type PhysicianInfo,
@@ -31,23 +32,25 @@ import type {
   SuperAdminGroupUser,
 } from './actions';
 
-type GroupDetailTab = 'members' | 'programs' | 'settings';
+type GroupDetailTab = 'patients' | 'admins' | 'programs' | 'settings';
 
 export function GroupDetailsPageUI({
   organization,
   physician,
   initialMembers,
   initialPrograms,
+  initialAdmins = [],
   consultation,
 }: {
   organization: Organization;
   physician: PhysicianInfo | null;
   initialMembers: Array<GroupMemberWithProgram | SuperAdminGroupUser>;
   initialPrograms: GroupProgramRowData[];
+  initialAdmins?: SuperAdminGroupUser[];
   consultation: { url: string | null; canEdit: boolean } | null;
 }): React.ReactElement | null {
   const { data: org } = useOrganization(organization.id, organization);
-  const [activeTab, setActiveTab] = useState<GroupDetailTab>('members');
+  const [activeTab, setActiveTab] = useState<GroupDetailTab>('patients');
 
   const safeInitialMembers = useMemo(
     () => (Array.isArray(initialMembers) ? initialMembers : []),
@@ -77,6 +80,10 @@ export function GroupDetailsPageUI({
     isSuperAdminOrg ? null : organization.id,
     initialPatients,
   );
+  const { data: adminsData } = useGroupAdmins(
+    isSuperAdminOrg ? null : organization.id,
+    initialAdmins,
+  );
   const { data: superAdminUsersData } = useSuperAdminGroupUsers(
     isSuperAdminOrg ? organization.id : null,
     initialSuperAdminUsers,
@@ -96,6 +103,11 @@ export function GroupDetailsPageUI({
     return Array.isArray(data) ? data : [];
   }, [isSuperAdminOrg, membersData, superAdminUsersData]);
 
+  const admins = useMemo(
+    () => (Array.isArray(adminsData) ? adminsData : []),
+    [adminsData],
+  );
+
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [membersModalRole, setMembersModalRole] =
     useState<MemberRole>('patient');
@@ -105,24 +117,33 @@ export function GroupDetailsPageUI({
   const addAdminMutation = useAddGroupAdmin(organization.id);
   const removeAdminMutation = useRemoveGroupAdmin(organization.id);
 
-  const memberRows: GroupMemberRow[] = useMemo(
+  const toMemberRows = (
+    rows: Array<GroupMemberWithProgram | SuperAdminGroupUser>,
+  ): GroupMemberRow[] =>
+    rows
+      .filter((m) => m && typeof m === 'object' && m.user_id)
+      .map((m) => ({
+        user_id: m.user_id,
+        first_name: m.first_name,
+        last_name: m.last_name,
+        email: m.email,
+        avatar_url: m.avatar_url,
+        program_name:
+          typeof m === 'object' && m !== null && 'program_name' in m
+            ? m.program_name
+            : null,
+        role: typeof m === 'object' && m !== null && 'role' in m ? m.role : null,
+      }));
+
+  const patientRows = useMemo(() => toMemberRows(members), [members]);
+  const adminRows = useMemo(
     () =>
-      members
-        .filter((m) => m && typeof m === 'object' && m.user_id)
-        .map((m) => ({
-          user_id: m.user_id,
-          first_name: m.first_name,
-          last_name: m.last_name,
-          email: m.email,
-          avatar_url: m.avatar_url,
-          program_name:
-            typeof m === 'object' && m !== null && 'program_name' in m
-              ? m.program_name
-              : null,
-          role:
-            typeof m === 'object' && m !== null && 'role' in m ? m.role : null,
-        })),
-    [members],
+      toMemberRows(
+        isSuperAdminOrg
+          ? members
+          : admins.map((a) => ({ ...a, role: 'physician' as const })),
+      ),
+    [admins, isSuperAdminOrg, members],
   );
 
   const openAddUsers = (): void => {
@@ -170,13 +191,24 @@ export function GroupDetailsPageUI({
         <div className="tabs" style={{ marginBottom: 18 }}>
           <button
             type="button"
-            className={activeTab === 'members' ? 'on' : undefined}
-            onClick={() => setActiveTab('members')}
+            className={activeTab === 'patients' ? 'on' : undefined}
+            onClick={() => setActiveTab('patients')}
           >
             <Icon name="UsersRound" size={16} />
-            Members
-            <span className="cnt">{members.length}</span>
+            Patients
+            <span className="cnt">{patientRows.length}</span>
           </button>
+          {!isSuperAdminOrg ? (
+            <button
+              type="button"
+              className={activeTab === 'admins' ? 'on' : undefined}
+              onClick={() => setActiveTab('admins')}
+            >
+              <Icon name="Shield" size={16} />
+              Admins
+              <span className="cnt">{adminRows.length}</span>
+            </button>
+          ) : null}
           <button
             type="button"
             className={activeTab === 'programs' ? 'on' : undefined}
@@ -196,9 +228,9 @@ export function GroupDetailsPageUI({
           </button>
         </div>
 
-        {activeTab === 'members' ? (
+        {activeTab === 'patients' ? (
           <MembersTable
-            data={memberRows}
+            data={patientRows}
             removeMemberMutation={removeMemberMutation}
             addAdminMutation={addAdminMutation}
             removeAdminMutation={removeAdminMutation}
@@ -206,11 +238,21 @@ export function GroupDetailsPageUI({
             organizationId={org.id}
           />
         ) : null}
+        {activeTab === 'admins' && !isSuperAdminOrg ? (
+          <MembersTable
+            data={adminRows}
+            removeMemberMutation={removeMemberMutation}
+            addAdminMutation={addAdminMutation}
+            removeAdminMutation={removeAdminMutation}
+            isSuperAdminOrg={false}
+            organizationId={org.id}
+          />
+        ) : null}
         {activeTab === 'programs' ? (
           <GroupProgramsPanel
             organizationId={org.id}
             groupName={org.name}
-            members={memberRows}
+            members={patientRows}
             programs={groupPrograms}
             isLoading={programsLoading}
           />

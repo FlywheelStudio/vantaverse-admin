@@ -45,7 +45,7 @@ export class MessagesQuery extends SupabaseQuery {
   public async setMessageLastSeenAtIfNull(
     messageId: string,
   ): Promise<SupabaseSuccess<{ updated: boolean }> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+    const supabase = await this.getClient('authenticated_user');
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -82,7 +82,7 @@ export class MessagesQuery extends SupabaseQuery {
     const supabase = await this.getClient('authenticated_user');
 
     const { data, error } = await supabase
-      .from('messages')
+      .from('messages_with_stats')
       .select('*')
       .eq('chat_id', chatId)
       .neq('message_type', 'system')
@@ -99,7 +99,26 @@ export class MessagesQuery extends SupabaseQuery {
       };
     }
 
-    const result = messageSchema.array().safeParse(data);
+    const normalized = data
+      .filter((row) => row.id && row.chat_id && row.message_type)
+      .map((row) => ({
+        id: row.id as string,
+        chat_id: row.chat_id as string,
+        user_id: row.user_id ?? row.sender_id,
+        content: row.content ?? '',
+        attachments: row.attachments,
+        message_type: row.message_type,
+        metadata: row.metadata,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        sender_id: row.sender_id,
+        sender_first_name: row.sender_first_name,
+        sender_last_name: row.sender_last_name,
+        sender_avatar_url: row.sender_avatar_url,
+        sender_is_admin: row.sender_is_admin,
+      }));
+
+    const result = messageSchema.array().safeParse(normalized);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);

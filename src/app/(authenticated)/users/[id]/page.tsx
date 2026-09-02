@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import { AdminsQuery } from '@/lib/supabase/queries/admins';
 import { AppointmentsQuery } from '@/lib/supabase/queries/appointments';
 import { HpPointsQuery } from '@/lib/supabase/queries/hp-points';
 import { IpPointsQuery } from '@/lib/supabase/queries/ip-points';
@@ -10,9 +11,7 @@ import { OrganizationMembers } from '@/lib/supabase/queries/organization-members
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { createParallelQueries } from '@/lib/supabase/query';
-import { getAuthProfile } from '@/app/(authenticated)/auth/actions';
 import { UserProfilePageUI } from './ui';
-import { AdminProfileView } from './partials/admin/profile-view';
 
 export default async function UserProfilePage({
   params,
@@ -28,54 +27,22 @@ export default async function UserProfilePage({
   const mcIntakeQuery = new McIntakeQuery();
   const habitPledgeQuery = new HabitPledgeQuery();
   const programAssignmentsQuery = new ProgramAssignmentsQuery();
+  const orgMembersQuery = new OrganizationMembers();
 
-  // First, validate that the user exists
+  // Patient path: profiles / profiles_with_stats only.
   const userResult = await profilesQuery.getUserById(id);
 
   if (!userResult.success) {
+    // Admin-only users live under /manage/[id].
+    const adminsQuery = new AdminsQuery();
+    const adminExists = await adminsQuery.exists(id);
+    if (adminExists.success && adminExists.data) {
+      redirect(`/manage/${id}`);
+    }
     notFound();
   }
 
   const user = userResult.data;
-
-  // If target user is admin, show org tabs with viewing admin's organizations
-  const isTargetUserAdmin = user.role === 'admin';
-
-  // Parallelize admin-related queries
-  const orgMembersQuery = new OrganizationMembers();
-  const adminData = await createParallelQueries({
-    currentUser: {
-      query: () => getAuthProfile(),
-      defaultValue: null,
-    },
-    organizations: {
-      condition: isTargetUserAdmin,
-      // Groups this admin *administers*, not merely belongs to.
-      query: () => orgMembersQuery.getOrganizationsWhereUserIsAdmin(id),
-      defaultValue: [],
-    },
-  });
-
-  const currentUserId = adminData.currentUser?.id ?? null;
-  const organizations = Array.isArray(adminData.organizations)
-    ? adminData.organizations.map((org) => ({
-        ...org,
-        is_active: null,
-        is_super_admin: null,
-        created_at: null,
-        updated_at: null,
-      }))
-    : [];
-
-  if (isTargetUserAdmin) {
-    return (
-      <AdminProfileView
-        user={user}
-        currentUserId={currentUserId}
-        organizations={organizations}
-      />
-    );
-  }
   
   // Bulk query remaining data in parallel
   const data = await createParallelQueries({

@@ -144,13 +144,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "appointments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       chats: {
@@ -204,27 +197,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -303,13 +275,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_tracker_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -666,13 +631,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "habit_contents_user_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       habit_pledges: {
@@ -717,13 +675,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "habit_pledges_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -911,13 +862,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "mc_intake_survey_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       message_reports: {
@@ -976,6 +920,13 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -1043,27 +994,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chats"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1140,29 +1070,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
-        ]
+        Relationships: []
       }
       organization_members: {
         Row: {
@@ -1199,27 +1107,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1435,6 +1322,63 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles_admins: {
+        Row: {
+          area_code: string | null
+          avatar_url: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          email_notifications: boolean
+          first_login: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          last_sign_in: string | null
+          phone: string | null
+          pushfire_subscriber_id: string | null
+          status: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_code?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          email_notifications?: boolean
+          first_login?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          last_sign_in?: string | null
+          phone?: string | null
+          pushfire_subscriber_id?: string | null
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_code?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          email_notifications?: boolean
+          first_login?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          last_sign_in?: string | null
+          phone?: string | null
+          pushfire_subscriber_id?: string | null
+          status?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       program_assignment: {
         Row: {
           acknowledged: boolean
@@ -1535,13 +1479,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "program_assignment_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
           {
             foreignKeyName: "program_assignment_workout_schedule_id_fkey"
@@ -1652,13 +1589,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "reminder_emails_sent_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       reminder_templates: {
@@ -1746,13 +1676,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "reminder_user_config_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       tags: {
@@ -1805,27 +1728,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_membership_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_membership_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_membership_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
           },
         ]
       }
@@ -1993,13 +1895,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "appointments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       exercises_with_stats: {
@@ -2093,12 +1988,33 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      messages_with_stats: {
+        Row: {
+          attachments: Json | null
+          chat_id: string | null
+          content: string | null
+          created_at: string | null
+          id: string | null
+          last_seen_at: string | null
+          message_type: string | null
+          metadata: Json | null
+          sender_avatar_url: string | null
+          sender_first_name: string | null
+          sender_id: string | null
+          sender_is_admin: boolean | null
+          sender_last_name: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "habit_contents_user_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "messages_chat_id_fkey"
+            columns: ["chat_id"]
             isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2208,13 +2124,6 @@ export type Database = {
             referencedRelation: "profiles_with_stats"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "program_assignment_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "program_with_stats"
-            referencedColumns: ["admin_id"]
-          },
         ]
       }
       reminder_user_config_groups: {
@@ -2318,6 +2227,7 @@ export type Database = {
         Args: { normalized_schedule: Json[] }
         Returns: Json
       }
+      get_admin_filter_counts: { Args: never; Returns: Json }
       get_dashboard_analytics: {
         Args: {
           p_bucket?: string
@@ -2409,9 +2319,25 @@ export type Database = {
         }
         Returns: Json[]
       }
+      hp_points_to_next_level: { Args: { p_balance: number }; Returns: number }
       is_pre_program_template_program_template: {
         Args: { p_program_template_id: string }
         Returns: boolean
+      }
+      list_admins_filtered: {
+        Args: {
+          p_joined?: string
+          p_last_active?: string
+          p_org_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
+          p_team_id?: string
+        }
+        Returns: Json
       }
       list_exercises_filtered: {
         Args: {
@@ -2832,12 +2758,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2861,11 +2787,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2886,11 +2812,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2911,11 +2837,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2928,11 +2854,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

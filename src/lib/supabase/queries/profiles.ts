@@ -108,7 +108,7 @@ export class ProfilesQuery extends SupabaseQuery {
   public async getUserById(
     id: string,
   ): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+    const supabase = await this.getClient('authenticated_user');
 
     // Fetch profile data
     const { data, error } = await supabase
@@ -864,21 +864,29 @@ export class ProfilesQuery extends SupabaseQuery {
     SupabaseSuccess<Set<string>> | SupabaseError
   > {
     const supabase = await this.getClient('service_role');
-    const { data, error } = await supabase.from('profiles').select('email');
+    const [{ data: patientEmails, error: patientError }, { data: adminEmails, error: adminError }] =
+      await Promise.all([
+        supabase.from('profiles').select('email'),
+        supabase.from('profiles_admins').select('email'),
+      ]);
 
-    if (error) {
+    if (patientError) {
       return this.parseResponsePostgresError(
-        error,
+        patientError,
         'Failed to get user emails for import',
+      );
+    }
+    if (adminError) {
+      return this.parseResponsePostgresError(
+        adminError,
+        'Failed to get admin emails for import',
       );
     }
 
     const emailSet = new Set<string>();
-    if (data) {
-      for (const profile of data) {
-        if (profile.email) {
-          emailSet.add(profile.email.toLowerCase());
-        }
+    for (const profile of [...(patientEmails ?? []), ...(adminEmails ?? [])]) {
+      if (profile.email) {
+        emailSet.add(profile.email.toLowerCase());
       }
     }
 
@@ -891,7 +899,7 @@ export class ProfilesQuery extends SupabaseQuery {
   /**
    * Get user profiles by email list (for import display)
    * NOTE: emails are matched case-sensitively by Supabase `in()`; callers should
-   * pass normalized lowercase emails.
+   * pass normalized lowercase emails. Scans both `profiles` and `profiles_admins`.
    */
   public async getByEmailsForImport(emails: string[]): Promise<
     | SupabaseSuccess<
@@ -911,21 +919,51 @@ export class ProfilesQuery extends SupabaseQuery {
       return { success: true, data: [] };
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, first_name, last_name, status')
-      .in('email', emails);
+    const [{ data: patients, error: patientError }, { data: admins, error: adminError }] =
+      await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, email, first_name, last_name, status')
+          .in('email', emails),
+        supabase
+          .from('profiles_admins')
+          .select('id, email, first_name, last_name, status')
+          .in('email', emails),
+      ]);
 
-    if (error) {
+    if (patientError) {
       return this.parseResponsePostgresError(
-        error,
+        patientError,
         'Failed to get users by emails for import',
       );
+    }
+    if (adminError) {
+      return this.parseResponsePostgresError(
+        adminError,
+        'Failed to get admins by emails for import',
+      );
+    }
+
+    const byEmail = new Map<
+      string,
+      {
+        id: string;
+        email: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        status: string | null;
+      }
+    >();
+    for (const row of [...(patients ?? []), ...(admins ?? [])]) {
+      const key = (row.email ?? '').toLowerCase();
+      if (key && !byEmail.has(key)) {
+        byEmail.set(key, row);
+      }
     }
 
     return {
       success: true,
-      data: data ?? [],
+      data: [...byEmail.values()],
     };
   }
 
@@ -1140,7 +1178,7 @@ export class ProfilesQuery extends SupabaseQuery {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<SupabaseSuccess<PaginatedResult<ProfileWithStats>> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+    const supabase = await this.getClient('authenticated_user');
 
     const { data, error } = await supabase.rpc('list_profiles_filtered', {
       p_search: params.search || undefined,
@@ -1222,7 +1260,7 @@ export class ProfilesQuery extends SupabaseQuery {
 
   /** Facet counts for the members filter panel via `get_member_filter_counts`. */
   public async getFilterCounts(): Promise<SupabaseSuccess<MemberFilterCounts> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+    const supabase = await this.getClient('authenticated_user');
 
     const { data, error } = await supabase.rpc('get_member_filter_counts');
 
