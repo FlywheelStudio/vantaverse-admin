@@ -11,19 +11,18 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { useDebounce } from '@/hooks/use-debounce';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { UsersTableFilters } from '../types';
 
-interface UseUsersTableParams {
-  columns: ColumnDef<ProfileWithStats>[];
-  data: ProfileWithStats[];
+interface UseUsersTableParams<TData> {
+  columns: ColumnDef<TData>[];
+  data: TData[];
   filters: UsersTableFilters;
 }
 
-export function useUsersTable({
+export function useUsersTable<TData>({
   columns,
   data,
-}: UseUsersTableParams) {
+}: UseUsersTableParams<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);

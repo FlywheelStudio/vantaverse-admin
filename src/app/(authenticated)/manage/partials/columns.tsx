@@ -14,7 +14,7 @@ import {
   HtmlStatusBadge,
 } from '../../users/html-helpers';
 import { removeAdminUser, sendBulkInvitations } from '../../users/actions';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,19 +26,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-function fullNameOf(profile: ProfileWithStats): string {
+function fullNameOf(profile: AdminProfile): string {
   const parts = [profile.first_name, profile.last_name].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : 'Unknown';
 }
 
-function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
+function NameEmailCell({ profile }: { profile: AdminProfile }) {
   const router = useRouter();
   const fullName = fullNameOf(profile);
 
   return (
     <div
       className="cellp cursor-pointer"
-      onClick={() => router.push(`/users/${profile.id}`)}
+      onClick={() => router.push(`/manage/${profile.id}`)}
     >
       <HtmlAvatar name={fullName} src={profile.avatar_url} size={36} />
       <span style={{ minWidth: 0 }}>
@@ -51,7 +51,7 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function GroupsCell({ profile }: { profile: ProfileWithStats }) {
+function GroupsCell({ profile }: { profile: AdminProfile }) {
   const router = useRouter();
   const orgs = profile.orgMemberships ?? [];
 
@@ -83,7 +83,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function AccessCell({ profile }: { profile: ProfileWithStats }) {
+function AccessCell({ profile }: { profile: AdminProfile }) {
   if (profile.is_super_admin) {
     return <span className="bdg bdg-b">Super admin</span>;
   }
@@ -98,7 +98,7 @@ function relativeLastActive(lastSignIn: string | null | undefined): string | nul
   return formatDistanceToNow(date, { addSuffix: true });
 }
 
-function LastActiveCell({ profile }: { profile: ProfileWithStats }) {
+function LastActiveCell({ profile }: { profile: AdminProfile }) {
   const relative = relativeLastActive(profile.last_sign_in);
 
   if (!relative) {
@@ -114,7 +114,7 @@ function LastActiveCell({ profile }: { profile: ProfileWithStats }) {
   );
 }
 
-function ActionsCell({ profile }: { profile: ProfileWithStats }) {
+function ActionsCell({ profile }: { profile: AdminProfile }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [sending, setSending] = React.useState(false);
@@ -142,7 +142,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
         return;
       }
       toast.success('Invitation sent');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['admins-filtered'] });
     } catch (error) {
       console.error('Error sending admin invitation:', error);
       toast.error('Failed to send invitation');
@@ -162,7 +162,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
       }
       toast.success(`${displayName} removed`);
       setConfirmOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['admins-filtered'] });
     } catch (error) {
       console.error('Error removing admin:', error);
       toast.error('Failed to remove admin');
@@ -178,7 +178,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
           {
             id: 'view',
             label: 'View profile',
-            onSelect: () => router.push(`/users/${profile.id}`),
+            onSelect: () => router.push(`/manage/${profile.id}`),
           },
           {
             id: 'resend',
@@ -225,7 +225,7 @@ function ActionsCell({ profile }: { profile: ProfileWithStats }) {
 
 // No select column: this table has no bulk actions, so a checkbox would select
 // rows that nothing can act on.
-export const adminColumns: ColumnDef<ProfileWithStats>[] = [
+export const adminColumns: ColumnDef<AdminProfile>[] = [
   {
     // `name` is the id the shared table hook filters on for search.
     accessorKey: 'name',

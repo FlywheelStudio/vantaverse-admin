@@ -98,6 +98,28 @@ export function useSuperAdminGroupUsers(
 }
 
 /**
+ * Org admins (physicians / admins tab) for a normal group.
+ */
+export function useGroupAdmins(
+  organizationId: string | null | undefined,
+  initialData?: SuperAdminGroupUser[],
+) {
+  return useQuery({
+    queryKey: [...groupsKeys.detail(organizationId), 'admins'] as const,
+    queryFn: async () => {
+      if (!organizationId) return [];
+      const result = await getOrganizationAdmins(organizationId);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    enabled: !!organizationId,
+    ...(initialData !== undefined && { initialData }),
+  });
+}
+
+/**
  * Query options factory for group physiologist
  */
 function groupPhysiologistQueryOptions(

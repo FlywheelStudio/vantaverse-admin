@@ -7,6 +7,7 @@ import {
   organizationSchema,
   type Organization,
 } from '../schemas/organizations';
+import { resolveDisplayProfilesByIds } from './resolve-display-profiles';
 
 export class OrganizationsQuery extends SupabaseQuery {
   /**
@@ -21,7 +22,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, role, profiles(id, avatar_url, first_name, last_name, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, role), teams(id)',
       )
       .or('is_super_admin.is.null,is_super_admin.eq.false')
       .order('created_at', { ascending: false });
@@ -40,19 +41,11 @@ export class OrganizationsQuery extends SupabaseQuery {
       };
     }
 
-    // Transform data: organization_members now includes profile data
     type RawOrganizationMember = {
       id: string;
       user_id: string;
       is_active: boolean | null;
       role: 'admin' | 'member' | 'patient';
-      profiles: {
-        id: string;
-        avatar_url: string | null;
-        first_name: string | null;
-        last_name: string | null;
-        email: string | null;
-      } | null;
     };
 
     type RawOrganization = Omit<
@@ -63,9 +56,16 @@ export class OrganizationsQuery extends SupabaseQuery {
       teams: { id: string }[] | null;
     };
 
-    const transformedData = (data as RawOrganization[]).map((org) => {
+    const orgs = data as RawOrganization[];
+    const allUserIds = orgs.flatMap((org) =>
+      (org.organization_members ?? [])
+        .filter((m) => m.is_active === true)
+        .map((m) => m.user_id),
+    );
+    const profilesById = await resolveDisplayProfilesByIds(supabase, allUserIds);
+
+    const transformedData = orgs.map((org) => {
       const { organization_members, teams, ...orgData } = org;
-      // Filter to only active members and transform to include profile data
       const members =
         Array.isArray(organization_members) && organization_members.length > 0
           ? organization_members
@@ -74,15 +74,7 @@ export class OrganizationsQuery extends SupabaseQuery {
                 id: m.id,
                 user_id: m.user_id,
                 role: m.role,
-                profile: m.profiles
-                  ? {
-                      id: m.profiles.id,
-                      avatar_url: m.profiles.avatar_url,
-                      first_name: m.profiles.first_name,
-                      last_name: m.profiles.last_name,
-                      email: m.profiles.email,
-                    }
-                  : null,
+                profile: profilesById.get(m.user_id) ?? null,
               }))
           : [];
       const memberIds = members.map((m) => m.id);
@@ -121,7 +113,7 @@ export class OrganizationsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('organizations')
       .select(
-        '*, organization_members(id, user_id, is_active, role, profiles(id, avatar_url, first_name, last_name, email)), teams(id)',
+        '*, organization_members(id, user_id, is_active, role), teams(id)',
       )
       .eq('id', id)
       .maybeSingle();
@@ -145,13 +137,6 @@ export class OrganizationsQuery extends SupabaseQuery {
       user_id: string;
       is_active: boolean | null;
       role: 'admin' | 'member' | 'patient';
-      profiles: {
-        id: string;
-        avatar_url: string | null;
-        first_name: string | null;
-        last_name: string | null;
-        email: string | null;
-      } | null;
     };
 
     type RawOrganization = Omit<
@@ -165,25 +150,20 @@ export class OrganizationsQuery extends SupabaseQuery {
     const org = data as RawOrganization;
     const { organization_members, teams, ...orgData } = org;
 
-    const members =
-      Array.isArray(organization_members) && organization_members.length > 0
-        ? organization_members
-            .filter((m) => m.is_active === true)
-            .map((m) => ({
-              id: m.id,
-              user_id: m.user_id,
-              role: m.role,
-              profile: m.profiles
-                ? {
-                    id: m.profiles.id,
-                    avatar_url: m.profiles.avatar_url,
-                    first_name: m.profiles.first_name,
-                    last_name: m.profiles.last_name,
-                    email: m.profiles.email,
-                  }
-                : null,
-            }))
-        : [];
+    const activeMembers = Array.isArray(organization_members)
+      ? organization_members.filter((m) => m.is_active === true)
+      : [];
+    const profilesById = await resolveDisplayProfilesByIds(
+      supabase,
+      activeMembers.map((m) => m.user_id),
+    );
+
+    const members = activeMembers.map((m) => ({
+      id: m.id,
+      user_id: m.user_id,
+      role: m.role,
+      profile: profilesById.get(m.user_id) ?? null,
+    }));
 
     const memberIds = members.map((m) => m.id);
     const teamsCount = Array.isArray(teams) ? teams.length : 0;

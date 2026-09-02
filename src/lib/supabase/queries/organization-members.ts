@@ -6,6 +6,7 @@ import {
 } from '../query';
 import { organizationMemberSchema } from '../schemas/organization-members';
 import { MemberRole } from '../schemas/organization-members';
+import { AdminsQuery } from './admins';
 
 export class OrganizationMembers extends SupabaseQuery {
   /**
@@ -18,31 +19,52 @@ export class OrganizationMembers extends SupabaseQuery {
     email: string,
     role: ClientRole = 'service_role',
   ): Promise<SupabaseSuccess<boolean> | SupabaseError> {
+    // Pre-auth lookup: resolve via profiles_admins (Q47), then active admin membership.
     const supabase = await this.getClient(role);
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select('role, profiles!inner(email)')
-      .eq('profiles.email', email)
-      .eq('role', 'admin')
-      .eq('is_active', true)
-      .limit(1)
+    const { data: adminProfile, error: profileError } = await supabase
+      .from('profiles_admins')
+      .select('id')
+      .eq('email', email)
       .maybeSingle();
 
-    if (error) {
+    if (profileError) {
       return this.parseResponsePostgresError(
-        error,
+        profileError,
         'Failed to check if user is admin by email',
       );
     }
 
-    if (!data) {
+    if (!adminProfile?.id) {
       return {
         success: true,
         data: false,
       };
     }
 
-    const result = organizationMemberSchema.safeParse(data);
+    const { data: membership, error: membershipError } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', adminProfile.id)
+      .eq('role', 'admin')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) {
+      return this.parseResponsePostgresError(
+        membershipError,
+        'Failed to check if user is admin by email',
+      );
+    }
+
+    if (!membership) {
+      return {
+        success: true,
+        data: false,
+      };
+    }
+
+    const result = organizationMemberSchema.safeParse(membership);
 
     if (!result.success) {
       return this.parseResponseZodError(result.error);
@@ -250,9 +272,7 @@ export class OrganizationMembers extends SupabaseQuery {
 
     const { data, error } = await supabase
       .from('organization_members')
-      .select(
-        'user_id, profiles!inner(first_name, last_name, email, avatar_url, description)',
-      )
+      .select('user_id')
       .eq('organization_id', organizationId)
       .eq('role', 'admin')
       .eq('is_active', true)
@@ -267,33 +287,22 @@ export class OrganizationMembers extends SupabaseQuery {
       );
     }
 
-    if (!data) {
+    if (!data?.user_id) {
       return {
         success: true,
         data: null,
       };
     }
 
-    // Handle profiles as potentially array or single object
-    const profilesData = Array.isArray(data.profiles)
-      ? data.profiles[0]
-      : (data.profiles as unknown);
-
-    if (!profilesData || Array.isArray(profilesData)) {
+    const adminResult = await new AdminsQuery().getById(data.user_id);
+    if (!adminResult.success) {
       return {
         success: true,
         data: null,
       };
     }
 
-    const profile = profilesData as {
-      first_name: string | null;
-      last_name: string | null;
-      email: string | null;
-      avatar_url: string | null;
-      description: string | null;
-    };
-
+    const profile = adminResult.data;
     return {
       success: true,
       data: {

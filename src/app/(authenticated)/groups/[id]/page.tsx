@@ -1,6 +1,7 @@
 import { getOrganizationById, getCurrentPhysiologist } from '../actions';
 import {
   getConsultationSettings,
+  getOrganizationAdmins,
   getOrganizationMembersWithPrograms,
   getOrganizationPrograms,
 } from './actions';
@@ -35,6 +36,10 @@ export default async function GroupDetailsPage({
       query: () => getOrganizationMembersWithPrograms(id),
       defaultValue: [],
     },
+    admins: {
+      query: () => getOrganizationAdmins(id),
+      defaultValue: [],
+    },
     programs: {
       query: () => getOrganizationPrograms(id),
       defaultValue: [],
@@ -47,6 +52,7 @@ export default async function GroupDetailsPage({
 
   const physician = result.physician ?? null;
   const members = result.members ?? [];
+  const admins = result.admins ?? [];
   const programs = result.programs ?? [];
   const consultation = result.consultation ?? null;
 
@@ -55,6 +61,7 @@ export default async function GroupDetailsPage({
       organization={organization.data}
       physician={physician}
       initialMembers={members}
+      initialAdmins={admins}
       initialPrograms={programs}
       consultation={consultation}
     />

@@ -2,16 +2,16 @@
 
 import { useMemo } from 'react';
 import { AppBar } from '@/components/medvanta/shell';
-import { useUsers } from '@/hooks/use-users';
+import { useAdminsFiltered } from '@/hooks/use-admins';
 import { AddUserMenu } from '../users/users-table/components/add-user-menu';
 import { AdminsTable } from './partials/admins-table';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 
 interface ManagePageUIProps {
-  initialAdmins: ProfileWithStats[];
+  initialAdmins: AdminProfile[];
 }
 
-function buildSubtitle(admins: ProfileWithStats[]): string {
+function buildSubtitle(admins: AdminProfile[]): string {
   const total = admins.length;
   const pending = admins.filter(
     (admin) => admin.status === 'pending' || admin.status === 'invited',
@@ -26,10 +26,7 @@ function buildSubtitle(admins: ProfileWithStats[]): string {
 export function ManagePageUI({
   initialAdmins,
 }: ManagePageUIProps): React.ReactElement {
-  const { data: admins, isLoading } = useUsers(
-    { role: 'admin' },
-    initialAdmins,
-  );
+  const { data: admins, isLoading } = useAdminsFiltered({}, initialAdmins);
 
   const rows = useMemo(() => admins ?? [], [admins]);
   const subtitle = useMemo(() => buildSubtitle(rows), [rows]);

@@ -4,6 +4,7 @@ import {
   type SupabaseError,
 } from '../query';
 import { teamSchema, type Team } from '../schemas/teams';
+import { resolveDisplayProfilesByIds } from './resolve-display-profiles';
 
 export class TeamsQuery extends SupabaseQuery {
   /**
@@ -19,7 +20,7 @@ export class TeamsQuery extends SupabaseQuery {
     const { data, error } = await supabase
       .from('teams')
       .select(
-        '*, team_membership(id, user_id, profiles!inner(id, avatar_url, first_name, last_name, email))',
+        '*, team_membership(id, user_id)',
       )
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
@@ -35,40 +36,29 @@ export class TeamsQuery extends SupabaseQuery {
       };
     }
 
-    // Transform data: team_membership now includes profile data
     type RawTeamMember = {
       id: string;
       user_id: string;
-      profiles: {
-        id: string;
-        avatar_url: string | null;
-        first_name: string | null;
-        last_name: string | null;
-        email: string | null;
-      } | null;
     };
 
     type RawTeam = Omit<Team, 'members_count' | 'member_ids' | 'members'> & {
       team_membership: RawTeamMember[] | null;
     };
 
-    const transformedData = (data as RawTeam[]).map((team) => {
+    const teams = data as RawTeam[];
+    const allUserIds = teams.flatMap((team) =>
+      (team.team_membership ?? []).map((m) => m.user_id),
+    );
+    const profilesById = await resolveDisplayProfilesByIds(supabase, allUserIds);
+
+    const transformedData = teams.map((team) => {
       const { team_membership, ...teamData } = team;
-      // Transform to include profile data
       const members =
         Array.isArray(team_membership) && team_membership.length > 0
           ? team_membership.map((m) => ({
               id: m.id,
               user_id: m.user_id,
-              profile: m.profiles
-                ? {
-                    id: m.profiles.id,
-                    avatar_url: m.profiles.avatar_url,
-                    first_name: m.profiles.first_name,
-                    last_name: m.profiles.last_name,
-                    email: m.profiles.email,
-                  }
-                : null,
+              profile: profilesById.get(m.user_id) ?? null,
             }))
           : [];
       const memberIds = members.map((m) => m.id);

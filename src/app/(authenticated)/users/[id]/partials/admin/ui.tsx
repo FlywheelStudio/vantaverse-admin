@@ -6,12 +6,12 @@ import { AppBar } from '@/components/medvanta/shell';
 import { UserProfileCard } from '@/components/users/user-profile-card';
 import { ManagementOverviewCard } from './management-overview-card';
 import { ComplianceCard } from './compliance-card';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
 
 interface AdminProfileViewUIProps {
-  user: ProfileWithStats;
+  user: AdminProfile;
   organizations: Organization[];
   currentUserId: string | null;
   totalMemberCount: number;
@@ -89,7 +89,7 @@ export function AdminProfileViewUI({
               avatarUrl={user.avatar_url}
               description={user.description}
               role={user.role}
-              programDueDate={user.program_due_date}
+              programDueDate={null}
             />
           </div>
         </div>

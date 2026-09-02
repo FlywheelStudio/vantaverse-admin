@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/core/server';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import { AdminsQuery } from '@/lib/supabase/queries/admins';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 /**
@@ -190,9 +190,9 @@ export async function serverVerifyOtp(email: string, token: string) {
 }
 
 /**
- * Get the authenticated user's profile
+ * Get the authenticated admin shell profile (`profiles_admins` + gate).
  */
 export async function getAuthProfile() {
-  const query = new ProfilesQuery();
+  const query = new AdminsQuery();
   return query.getAuthProfile();
 }

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
 import { useAuth } from '@/hooks/use-auth';
 import { useProfile } from '@/hooks/use-profile';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +25,7 @@ interface SideNavProps {
 function SideNavUser(): React.ReactElement {
   const router = useRouter();
   const { signOut } = useAuth();
-  const { data: profileData, isLoading } = useProfile();
-  const profile = profileData as ProfileWithStats | null | undefined;
+  const { data: profile, isLoading } = useProfile();
 
   const displayName =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
@@ -69,7 +68,7 @@ function SideNavUser(): React.ReactElement {
         <DropdownMenuItem
           disabled={!profile?.id}
           onSelect={() => {
-            if (profile?.id) router.push(`/users/${profile.id}`);
+            if (profile?.id) router.push(`/manage/${profile.id}`);
           }}
         >
           View profile

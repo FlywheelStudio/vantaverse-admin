@@ -17,15 +17,15 @@ import {
   type AdminsFilters,
 } from './admins-filter-panel';
 import { adminColumns } from './columns';
-import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 
 interface AdminsTableProps {
-  data: ProfileWithStats[];
+  data: AdminProfile[];
   isLoading?: boolean;
 }
 
 /** Client-side facet filtering for admins (kept outside render for purity). */
-function applyAdminsFilters(data: ProfileWithStats[], filters: AdminsFilters): ProfileWithStats[] {
+function applyAdminsFilters(data: AdminProfile[], filters: AdminsFilters): AdminProfile[] {
   return data.filter((admin) => {
     if (filters.status !== 'all' && admin.status !== filters.status) return false;
     if (filters.lastActive !== 'all') {

@@ -512,9 +512,13 @@ export function AddUserModal({
         setSelectedIds([]);
       } else if (failed.length === 0) {
         queryClient.invalidateQueries({ queryKey: ['users'] });
+        queryClient.invalidateQueries({ queryKey: ['admins-filtered'] });
+        queryClient.invalidateQueries({ queryKey: ['members-filtered'] });
         handleClose();
       } else {
         queryClient.invalidateQueries({ queryKey: ['users'] });
+        queryClient.invalidateQueries({ queryKey: ['admins-filtered'] });
+        queryClient.invalidateQueries({ queryKey: ['members-filtered'] });
       }
     } catch (error) {
       console.error('Error sending invitations:', error);
