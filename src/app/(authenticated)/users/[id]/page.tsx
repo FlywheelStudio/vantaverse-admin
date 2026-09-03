@@ -21,9 +21,9 @@ import {
   getActiveProgramAssignmentByUserId,
   getProgramAssignmentComplianceByUserId,
 } from '@/lib/supabase/queries/program-assignments';
+import { getExerciseTemplatesByIds } from '@/lib/supabase/queries/exercise-templates';
+import { getGroupsByIds } from '@/lib/supabase/queries/groups';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
-import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
@@ -99,8 +99,14 @@ async function fetchActiveProgramAssignmentData(
     (workoutSchedule?.exercise_template_ids as string[] | null) ?? [];
   const groupIds = (workoutSchedule?.group_ids as string[] | null) ?? [];
 
-  const groupsQuery = new GroupsQuery();
-  const groupsResult = await groupsQuery.getByIds(groupIds);
+  const [groupsResult, directTemplatesResult] = await Promise.all([
+    groupIds.length > 0
+      ? runAdminQuery(getGroupsByIds, groupIds)
+      : Promise.resolve({ success: true as const, data: {} }),
+    exerciseTemplateIds.length > 0
+      ? runSessionQuery(getExerciseTemplatesByIds, exerciseTemplateIds)
+      : Promise.resolve({ success: true as const, data: {} }),
+  ]);
 
   const exerciseTemplateIdsFromGroups: string[] = [];
   const groupsMap = new Map<
@@ -109,7 +115,7 @@ async function fetchActiveProgramAssignmentData(
   >();
 
   if (groupsResult.success) {
-    for (const [groupId, group] of groupsResult.data) {
+    for (const [groupId, group] of Object.entries(groupsResult.data)) {
       groupsMap.set(groupId, {
         exercise_template_ids: group.exercise_template_ids,
       });
@@ -119,20 +125,35 @@ async function fetchActiveProgramAssignmentData(
     }
   }
 
-  const allExerciseTemplateIds = [
-    ...new Set([...exerciseTemplateIds, ...exerciseTemplateIdsFromGroups]),
-  ];
-
-  const exerciseTemplatesQuery = new ExerciseTemplatesQuery();
-  const exerciseTemplatesResult = await exerciseTemplatesQuery.getByIds(
-    allExerciseTemplateIds,
-  );
-
   const exerciseNamesMap = new Map<string, string>();
-  if (exerciseTemplatesResult.success) {
-    for (const [templateId, template] of exerciseTemplatesResult.data) {
+  if (directTemplatesResult.success) {
+    for (const [templateId, template] of Object.entries(
+      directTemplatesResult.data,
+    )) {
       if (template.exercise_name) {
         exerciseNamesMap.set(templateId, template.exercise_name);
+      }
+    }
+  }
+
+  const groupOnlyTemplateIds = [
+    ...new Set(
+      exerciseTemplateIdsFromGroups.filter((id) => !exerciseNamesMap.has(id)),
+    ),
+  ];
+
+  if (groupOnlyTemplateIds.length > 0) {
+    const groupTemplatesResult = await runSessionQuery(
+      getExerciseTemplatesByIds,
+      groupOnlyTemplateIds,
+    );
+    if (groupTemplatesResult.success) {
+      for (const [templateId, template] of Object.entries(
+        groupTemplatesResult.data,
+      )) {
+        if (template.exercise_name) {
+          exerciseNamesMap.set(templateId, template.exercise_name);
+        }
       }
     }
   }
