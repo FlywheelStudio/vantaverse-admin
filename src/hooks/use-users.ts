@@ -9,7 +9,10 @@ import {
 } from '@/app/(authenticated)/users/actions';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
-import type { MemberFilterCounts } from '@/lib/supabase/queries/profiles';
+import type {
+  ListProfilesFilteredInput,
+  MemberFilterCounts,
+} from '@/lib/supabase/queries/profiles';
 
 export function useUsers(
   filters?: {
@@ -43,17 +46,9 @@ export function useUsers(
   });
 }
 
-export interface MembersQueryFilters {
-  search?: string;
-  role?: 'patient' | 'admin';
+export interface MembersQueryFilters extends ListProfilesFilteredInput {
   organization_id?: string;
   team_id?: string;
-  status?: string;
-  program?: string;
-  physiologist?: string | null;
-  lastActive?: string;
-  joined?: string;
-  due?: string;
 }
 
 /** Members fetched through the `list_profiles_filtered` RPC. */
