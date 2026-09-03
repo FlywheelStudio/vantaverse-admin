@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import type { UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
+import type { UserNeedingAttention } from './queries';
 import { DashboardUi } from './ui';
 
 const noop = (): void => undefined;

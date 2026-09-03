@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import type {
   DashboardStatusCounts,
   UserNeedingAttention,
-} from '@/lib/supabase/queries/dashboard';
-import type { DashboardAnalyticsPoint } from '@/lib/supabase/queries/dashboard';
+  DashboardAnalyticsPoint,
+} from './queries';
 import { DashboardUi, type DashboardDelta } from './ui';
 
 type DashboardStatusCountsProp = DashboardStatusCounts & {
