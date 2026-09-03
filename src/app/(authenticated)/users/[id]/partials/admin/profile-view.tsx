@@ -1,8 +1,12 @@
+import { query } from '@/lib/dal';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { DashboardQuery } from '@/lib/supabase/queries/dashboard';
+import {
+  getComplianceAndCompletionByOrganizationIdsQuery,
+  getUsersWithLowComplianceByOrganizationIdsQuery,
+  type UserNeedingAttention,
+} from '@/lib/supabase/queries/dashboard';
 import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import { createParallelQueries } from '@/lib/supabase/query';
 import { AdminProfileViewUI } from './ui';
 
 interface AdminProfileViewProps {
@@ -15,7 +19,7 @@ export async function AdminProfileView({
   user,
   currentUserId,
   organizations: providedOrganizations,
-}: AdminProfileViewProps) {
+}: AdminProfileViewProps): Promise<React.ReactElement> {
   let organizations = providedOrganizations;
 
   if (!organizations) {
@@ -35,36 +39,41 @@ export async function AdminProfileView({
   const orgList = organizations ?? [];
   const orgIds = orgList.map((o) => o.id);
 
-  const dashboardQuery = new DashboardQuery();
-  const orgMembersQuery = new OrganizationMembers();
+  let totalMemberCount = 0;
+  let memberCountsByOrg: Record<string, number> = {};
+  let complianceByOrg: Array<{
+    organizationId: string;
+    compliance: number;
+    programCompletion: number;
+  }> = [];
+  let lowComplianceUsers: UserNeedingAttention[] = [];
 
-  const overviewData = await createParallelQueries({
-    totalMemberCount: {
-      condition: orgIds.length > 0,
-      query: () => orgMembersQuery.getTotalMemberCountForOrganizations(orgIds),
-      defaultValue: 0,
-    },
-    memberCountsByOrg: {
-      condition: orgIds.length > 0,
-      query: () => orgMembersQuery.getMemberCountsByOrganizationIds(orgIds),
-      defaultValue: {} as Record<string, number>,
-    },
-    complianceByOrg: {
-      condition: orgIds.length > 0,
-      query: () => dashboardQuery.getComplianceAndCompletionByOrganizationIds(orgIds),
-      defaultValue: [] as Array<{ organizationId: string; compliance: number; programCompletion: number }>,
-    },
-    lowComplianceUsers: {
-      condition: orgIds.length > 0,
-      query: () => dashboardQuery.getUsersWithLowComplianceByOrganizationIds(orgIds, 70),
-      defaultValue: { users: [], total: 0 },
-    },
-  });
+  if (orgIds.length > 0) {
+    const orgMembersQuery = new OrganizationMembers();
 
-  const totalMemberCount = overviewData.totalMemberCount ?? 0;
-  const memberCountsByOrg = overviewData.memberCountsByOrg ?? {};
-  const complianceByOrg = overviewData.complianceByOrg ?? [];
-  const lowComplianceUsers = overviewData.lowComplianceUsers?.users ?? [];
+    const [
+      totalMemberCountResult,
+      memberCountsByOrgResult,
+      complianceByOrgResult,
+      lowComplianceUsersResult,
+    ] = await Promise.all([
+      orgMembersQuery.getTotalMemberCountForOrganizations(orgIds),
+      orgMembersQuery.getMemberCountsByOrganizationIds(orgIds),
+      query(getComplianceAndCompletionByOrganizationIdsQuery, orgIds),
+      query(getUsersWithLowComplianceByOrganizationIdsQuery, orgIds, 70),
+    ]);
+
+    totalMemberCount = totalMemberCountResult.success
+      ? totalMemberCountResult.data
+      : 0;
+    memberCountsByOrg = memberCountsByOrgResult.success
+      ? memberCountsByOrgResult.data
+      : {};
+    complianceByOrg = complianceByOrgResult[0] ? [] : complianceByOrgResult[1];
+    lowComplianceUsers = lowComplianceUsersResult[0]
+      ? []
+      : lowComplianceUsersResult[1].users;
+  }
 
   return (
     <AdminProfileViewUI
