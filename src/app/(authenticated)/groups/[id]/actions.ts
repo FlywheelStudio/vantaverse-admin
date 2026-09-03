@@ -8,7 +8,7 @@ import {
 } from '@/lib/supabase/queries/profiles';
 import { assignProgramToUser } from '@/lib/supabase/queries/program-assignments';
 import { resolveDisplayProfilesByIds } from '@/lib/supabase/queries/resolve-display-profiles';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import {
   DEFAULT_SCREENING_BASE,

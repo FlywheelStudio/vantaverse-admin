@@ -5,7 +5,7 @@ import { defineMutation, defineQuery, query, type DalResult } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
 import { exerciseSchema, type Exercise } from '../schemas/exercises';
 import type { PaginatedResult } from './exercise-templates';
-import type { SupabaseError, SupabaseSuccess } from '../query';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 
 const exerciseListSchema = z.array(exerciseSchema);
 

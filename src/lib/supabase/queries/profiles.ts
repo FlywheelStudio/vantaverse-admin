@@ -20,7 +20,7 @@ import {
   type ProfileWithStats,
 } from '../schemas/profiles';
 import { MemberRole, organizationMemberRoleSchema } from '../schemas/organization-members';
-import type { SupabaseError, SupabaseSuccess } from '../query';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 import type { PaginatedResult } from './exercise-templates';
 
 export type SetOnboardingStateTarget = 'screening' | 'consultation';

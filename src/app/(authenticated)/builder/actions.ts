@@ -43,7 +43,7 @@ import {
 } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { createClient } from '@/lib/supabase/core/server';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';

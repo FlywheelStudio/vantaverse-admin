@@ -10,7 +10,7 @@ import {
 } from '@/lib/supabase/queries/admins';
 import type { AdminFilterCounts, AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
   result: DalResult<T>,

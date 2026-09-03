@@ -11,7 +11,7 @@ import { queryWithSession } from '@/lib/dal/core/query.server';
 import type { Database } from '@/lib/supabase/database.types';
 import { createClient } from '@/lib/supabase/core/server';
 
-import { type SupabaseError, type SupabaseSuccess } from '../query';
+import { type SupabaseError, type SupabaseSuccess } from '../result';
 import {
   programTemplateSchema,
   type ProgramTemplate,

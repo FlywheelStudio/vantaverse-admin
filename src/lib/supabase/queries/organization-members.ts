@@ -14,7 +14,7 @@ import {
   organizationMemberRoleSchema,
   organizationMemberSchema,
 } from '../schemas/organization-members';
-import type { ClientRole, SupabaseError, SupabaseSuccess } from '../query';
+import type { ClientRole, SupabaseError, SupabaseSuccess } from '../result';
 import { getSuperAdminOrganizationId } from './organizations';
 
 const booleanSchema = z.boolean();

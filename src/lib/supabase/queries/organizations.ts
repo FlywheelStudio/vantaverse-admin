@@ -7,7 +7,7 @@ import {
   organizationSchema,
   type Organization,
 } from '../schemas/organizations';
-import type { SupabaseError, SupabaseSuccess } from '../query';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 import { resolveDisplayProfilesByIds, type DisplayProfile } from './resolve-display-profiles';
 
 const organizationListSchema = z.array(organizationSchema);

@@ -17,7 +17,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
   result: DalResult<T>,

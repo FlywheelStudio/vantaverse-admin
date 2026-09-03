@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/core/server';
 
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { formatScheduleDB } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { type SupabaseError, type SupabaseSuccess } from '../query';
+import { type SupabaseError, type SupabaseSuccess } from '../result';
 
 const workoutScheduleResultSchema = z.object({
   id: z.string().uuid(),

@@ -26,7 +26,7 @@ import { getGroupsByIds } from '@/lib/supabase/queries/groups';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { UserProfilePageUI } from './ui';
 

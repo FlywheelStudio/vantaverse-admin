@@ -25,7 +25,7 @@ import type {
   Tag,
   UpsertTagResult,
 } from '@/lib/supabase/schemas/tags';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
   result: DalResult<T>,

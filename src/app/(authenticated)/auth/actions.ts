@@ -5,7 +5,7 @@ import { OrganizationMembers } from '@/lib/supabase/queries/organization-members
 import { queryWithSession } from '@/lib/dal/core/query.server';
 import { getAuthProfileQuery } from '@/lib/supabase/queries/admins';
 import type { AdminProfile } from '@/lib/supabase/schemas/admins';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 /**

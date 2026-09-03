@@ -9,7 +9,7 @@ import {
   type AdminProfile,
 } from '../schemas/admins';
 import { MemberRole } from '../schemas/organization-members';
-import type { SupabaseError, SupabaseSuccess } from '../query';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 import type { PaginatedResult } from './exercise-templates';
 
 const adminProfileListSchema = z.array(adminProfileSchema);

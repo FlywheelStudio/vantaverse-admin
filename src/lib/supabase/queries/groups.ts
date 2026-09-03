@@ -13,7 +13,7 @@ import type { Database } from '@/lib/supabase/database.types';
 import {
   type SupabaseError,
   type SupabaseSuccess,
-} from '../query';
+} from '../result';
 import type { PaginatedResult } from './exercise-templates';
 
 export const groupSchema = z.object({

@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/core/server';
 import { calculateEndDate, formatDateForDB } from '@/lib/utils';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 
-import type { SupabaseError, SupabaseSuccess } from '../query';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 import {
   programAssignmentSchema,
   programAssignmentMemberSchema,
@@ -25,9 +25,9 @@ import {
   type ProgramAssignmentWithTemplate,
 } from '../schemas/program-assignments';
 import type { ProgramTemplate } from '../schemas/program-templates';
-import { GroupsQuery } from './groups';
-import { ExerciseTemplatesQuery } from './exercise-templates';
-import { ProgramTemplatesQuery } from './program-templates';
+import { getExerciseTemplatesByIds } from './exercise-templates';
+import { getGroupsByIds } from './groups';
+import { createProgramTemplate } from './program-templates';
 
 export const MIN_GATES_FOR_PROGRAM_ASSIGNMENT = 5;
 
@@ -1404,16 +1404,22 @@ export class ProgramAssignmentsQuery {
     }
 
     const template = source.program_template;
-    const templateQuery = new ProgramTemplatesQuery();
-
-    const templateResult = await templateQuery.create(
-      `${template.name} (clone)`,
-      template.weeks,
-      template.description ?? null,
-      template.goals ?? null,
-      template.notes ?? null,
-      source.organization_id ?? template.organization_id ?? null,
-      template.image_url != null ? String(template.image_url) : null,
+    const client = await createClient();
+    const templateResult = toLegacyResult(
+      await mutate(
+        createProgramTemplate,
+        {
+          name: `${template.name} (clone)`,
+          weeks: template.weeks,
+          description: template.description ?? null,
+          goals: template.goals ?? null,
+          notes: template.notes ?? null,
+          organizationId: source.organization_id ?? template.organization_id ?? null,
+          imageUrl:
+            template.image_url != null ? String(template.image_url) : null,
+        },
+        { client },
+      ),
     );
 
     if (!templateResult.success) return templateResult;
@@ -1582,8 +1588,11 @@ export class ProgramAssignmentsQuery {
       (workoutSchedule?.exercise_template_ids as string[] | null) ?? [];
     const groupIds = (workoutSchedule?.group_ids as string[] | null) ?? [];
 
-    const groupsQuery = new GroupsQuery();
-    const groupsResult = await groupsQuery.getByIds(groupIds);
+    const groupsDalResult = await query(getGroupsByIds, groupIds);
+    const [groupsErr, groupsData] = groupsDalResult;
+    const groupsResult = groupsErr
+      ? { success: false as const, error: formatDalError(groupsErr) }
+      : { success: true as const, data: new Map(Object.entries(groupsData)) };
 
     const exerciseTemplateIdsFromGroups: string[] = [];
     const groupsMap = new Map<
@@ -1606,10 +1615,18 @@ export class ProgramAssignmentsQuery {
       ...new Set([...exerciseTemplateIds, ...exerciseTemplateIdsFromGroups]),
     ];
 
-    const exerciseTemplatesQuery = new ExerciseTemplatesQuery();
-    const exerciseTemplatesResult = await exerciseTemplatesQuery.getByIds(
+    const exerciseTemplatesDalResult = await queryWithSession(
+      getExerciseTemplatesByIds,
       allExerciseTemplateIds,
     );
+    const [exerciseTemplatesErr, exerciseTemplatesData] =
+      exerciseTemplatesDalResult;
+    const exerciseTemplatesResult = exerciseTemplatesErr
+      ? { success: false as const, error: formatDalError(exerciseTemplatesErr) }
+      : {
+          success: true as const,
+          data: new Map(Object.entries(exerciseTemplatesData)),
+        };
 
     const exerciseNamesMap = new Map<string, string>();
     if (exerciseTemplatesResult.success) {

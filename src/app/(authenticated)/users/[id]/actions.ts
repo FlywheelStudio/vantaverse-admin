@@ -7,7 +7,7 @@ import {
 } from '@/lib/supabase/queries/program-assignments';
 import type { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
   result: DalResult<T>,

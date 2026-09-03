@@ -26,7 +26,7 @@ import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { Profile, ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
   result: DalResult<T>,

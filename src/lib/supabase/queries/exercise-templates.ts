@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/core/server';
 import {
   type SupabaseError,
   type SupabaseSuccess,
-} from '../query';
+} from '../result';
 import {
   exerciseTemplateSchema,
   type ExerciseTemplate,
