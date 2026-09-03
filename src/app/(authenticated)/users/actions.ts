@@ -1,9 +1,21 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { query } from '@/lib/dal';
+import { mutate, query, type DalResult } from '@/lib/dal';
+import { createClient } from '@/lib/supabase/core/server';
 import {
-  ProfilesQuery,
+  createQuickAddMutation,
+  deleteAuthUserMutation,
+  getAllEmailsForImportQuery,
+  getMemberFilterCountsQuery,
+  getProfileByIdQuery,
+  getProfilesByEmailsForImportQuery,
+  listProfilesFilteredQuery,
+  listProfilesWithStatsQuery,
+  setOnboardingStateMutation,
+  updateProfileMutation,
+  type ListProfilesFilteredInput,
+  type MemberFilterCounts,
   type SetOnboardingStateTarget,
 } from '@/lib/supabase/queries/profiles';
 import { getSuperAdminOrganizationId } from '@/lib/supabase/queries/organizations';
@@ -12,7 +24,19 @@ import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import * as XLSX from 'xlsx';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
-import type { Profile } from '@/lib/supabase/schemas/profiles';
+import type { Profile, ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 // ============================================================================
 // Types for Excel Import Validation
@@ -76,35 +100,44 @@ export async function getUsersWithStats(filters?: {
   team_id?: string;
   journey_phase?: string;
   role?: MemberRole;
-}) {
-  const query = new ProfilesQuery();
-  return query.getListWithStats(filters);
+}): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
+  return toSupabaseResult(
+    await query(listProfilesWithStatsQuery, filters ?? {}),
+  );
 }
 
 /**
  * Get members filtered via the `list_profiles_filtered` RPC.
  */
-export async function getMembersFiltered(params: Parameters<
-  ProfilesQuery['getListFiltered']
->[0]) {
-  const query = new ProfilesQuery();
-  return query.getListFiltered(params);
+export async function getMembersFiltered(
+  params: ListProfilesFilteredInput = {},
+): Promise<SupabaseSuccess<PaginatedResult<ProfileWithStats>> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await query(listProfilesFilteredQuery, params, { client }),
+  );
 }
 
 /**
  * Get facet counts for the members filter panel.
  */
-export async function getMemberFilterCounts() {
-  const query = new ProfilesQuery();
-  return query.getFilterCounts();
+export async function getMemberFilterCounts(): Promise<
+  SupabaseSuccess<MemberFilterCounts> | SupabaseError
+> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await query(getMemberFilterCountsQuery, { client }),
+  );
 }
 
 /**
  * Get user profile by ID
  */
-export async function getUserProfileById(id: string) {
-  const query = new ProfilesQuery();
-  return query.getUserById(id);
+export async function getUserProfileById(
+  id: string,
+): Promise<SupabaseSuccess<ProfileWithStats> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(await query(getProfileByIdQuery, id, { client }));
 }
 
 /**
@@ -116,9 +149,10 @@ export async function updateUserProfile(
     Partial<Profile>,
     'first_name' | 'last_name' | 'description' | 'avatar_url'
   >,
-) {
-  const query = new ProfilesQuery();
-  return query.update(userId, profileData);
+): Promise<SupabaseSuccess<Profile> | SupabaseError> {
+  return toSupabaseResult(
+    await mutate(updateProfileMutation, { id: userId, profileData }),
+  );
 }
 
 /**
@@ -187,9 +221,7 @@ export async function uploadUserAvatar(
     };
   }
 
-  // Update user's avatar_url
-  const query = new ProfilesQuery();
-  const updateResult = await query.update(userId, {
+  const updateResult = await updateUserProfile(userId, {
     avatar_url: signedUrlResult.data,
   });
 
@@ -209,9 +241,15 @@ export async function uploadUserAvatar(
 /**
  * Delete an auth user
  */
-export async function deleteAuthUser(userId: string) {
-  const query = new ProfilesQuery();
-  return query.deleteAuthUser(userId);
+export async function deleteAuthUser(
+  userId: string,
+): Promise<SupabaseSuccess<void> | SupabaseError> {
+  const result = await mutate(deleteAuthUserMutation, { id: userId });
+  const [err] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data: undefined };
 }
 
 /**
@@ -355,9 +393,9 @@ async function uploadUsersCSV(
       data.push(row.slice(0, 3)); // Take first 3 columns
     }
 
-    const profileQuery = new ProfilesQuery();
-
-    const emailResult = await profileQuery.getAllEmailsForImport();
+    const emailResult = toSupabaseResult(
+      await query(getAllEmailsForImportQuery),
+    );
     if (!emailResult.success)
       return { success: false, error: emailResult.error };
     const existingEmails = emailResult.data;
@@ -497,9 +535,9 @@ async function uploadUsersExcel(
       },
     );
 
-    const profileQuery = new ProfilesQuery();
-
-    const emailResult = await profileQuery.getAllEmailsForImport();
+    const emailResult = toSupabaseResult(
+      await query(getAllEmailsForImportQuery),
+    );
     if (!emailResult.success)
       return { success: false, error: emailResult.error };
     const existingEmails = emailResult.data;
@@ -630,15 +668,18 @@ async function createUserQuickAdd(data: {
   | { success: true; data: { userId: string } }
   | { success: false; error: string }
 > {
-  const query = new ProfilesQuery();
-  const result = await query.createQuickAdd(data);
+  const result = await mutate(createQuickAddMutation, data);
+  const [err, row] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
 
-  if (!result.success || data.role !== 'admin') {
-    return result;
+  if (data.role !== 'admin') {
+    return { success: true, data: { userId: row.id } };
   }
 
   const orgMembers = new OrganizationMembers();
-  const grant = await orgMembers.makeSuperAdmin(result.data.userId);
+  const grant = await orgMembers.makeSuperAdmin(row.id);
 
   if (!grant.success) {
     // Surface it rather than logging and continuing: a swallowed failure here
@@ -649,7 +690,7 @@ async function createUserQuickAdd(data: {
     };
   }
 
-  return result;
+  return { success: true, data: { userId: row.id } };
 }
 
 type SendBulkInvitationsResult =
@@ -756,20 +797,24 @@ async function stageImportRows(
 ): Promise<
   { success: true; data: ImportUsersResult } | { success: false; error: string }
 > {
-  const profileQuery = new ProfilesQuery();
   const existingEmails = parsed.existingUsers.map((u) =>
     u.email.toLowerCase().trim(),
   );
   const existingLookup =
     existingEmails.length > 0
-      ? await profileQuery.getByEmailsForImport(existingEmails)
-      : { success: true as const, data: [] as Array<{
-          id: string;
-          email: string | null;
-          first_name: string | null;
-          last_name: string | null;
-          status: string | null;
-        }> };
+      ? toSupabaseResult(
+          await query(getProfilesByEmailsForImportQuery, existingEmails),
+        )
+      : {
+          success: true as const,
+          data: [] as Array<{
+            id: string;
+            email: string | null;
+            first_name: string | null;
+            last_name: string | null;
+            status: string | null;
+          }>,
+        };
 
   if (!existingLookup.success) {
     return { success: false, error: existingLookup.error };
@@ -884,8 +929,9 @@ export async function sendInviteBatch(
 
       if (!createResult.success) {
         // Likely already exists — resolve by email and continue.
-        const profiles = new ProfilesQuery();
-        const lookup = await profiles.getByEmailsForImport([email]);
+        const lookup = toSupabaseResult(
+          await query(getProfilesByEmailsForImportQuery, [email]),
+        );
         if (!lookup.success || lookup.data.length === 0) {
           failed.push({ email, error: createResult.error });
           continue;
@@ -1011,22 +1057,26 @@ export async function setOnboardingStateForUsers(
       return { success: true, updatedCount: 0 };
     }
 
-    const profilesQuery = new ProfilesQuery();
     const BATCH_SIZE = 10;
     const batches = chunkArray(uniqueValidIds, BATCH_SIZE);
     let updatedCount = 0;
 
     for (const batch of batches) {
       const results = await Promise.all(
-        batch.map((userId) => profilesQuery.setOnboardingState(userId, target)),
+        batch.map((userId) =>
+          mutate(setOnboardingStateMutation, { userId, target }),
+        ),
       );
 
-      const firstError = results.find((r) => !r.success);
-      if (firstError && !firstError.success) {
-        return {
-          success: false,
-          error: firstError.error,
-        };
+      const firstError = results.find(([err]) => err !== null);
+      if (firstError) {
+        const [err] = firstError;
+        if (err) {
+          return {
+            success: false,
+            error: err.message,
+          };
+        }
       }
 
       updatedCount += results.length;
