@@ -2,7 +2,8 @@ import { notFound, redirect } from 'next/navigation';
 import { query, type DalResult, type QueryDef } from '@/lib/dal';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import { adminExistsQuery } from '@/lib/supabase/queries/admins';
 import { getAppointmentsByUserId } from '@/lib/supabase/queries/appointments';
 import {
   getHpLevelThresholdByLevel,
@@ -56,9 +57,8 @@ export default async function UserProfilePage({
 
   if (!userResult.success) {
     // Admin-only users live under /manage/[id].
-    const adminsQuery = new AdminsQuery();
-    const adminExists = await adminsQuery.exists(id);
-    if (adminExists.success && adminExists.data) {
+    const [, adminExists] = await queryWithSession(adminExistsQuery, id);
+    if (adminExists) {
       redirect(`/manage/${id}`);
     }
     notFound();

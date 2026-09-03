@@ -2,7 +2,10 @@
 
 import { createClient } from '@/lib/supabase/core/server';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import { getAuthProfileQuery } from '@/lib/supabase/queries/admins';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 /**
@@ -192,7 +195,12 @@ export async function serverVerifyOtp(email: string, token: string) {
 /**
  * Get the authenticated admin shell profile (`profiles_admins` + gate).
  */
-export async function getAuthProfile() {
-  const query = new AdminsQuery();
-  return query.getAuthProfile();
+export async function getAuthProfile(): Promise<
+  SupabaseSuccess<AdminProfile> | SupabaseError
+> {
+  const [err, data] = await queryWithSession(getAuthProfileQuery);
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
 }

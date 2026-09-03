@@ -1,29 +1,55 @@
 'use server';
 
-import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import { query, type DalResult } from '@/lib/dal';
+import { createClient } from '@/lib/supabase/core/server';
+import {
+  getAdminByIdQuery,
+  getAdminFilterCountsQuery,
+  listAdminsFilteredQuery,
+  type ListAdminsFilteredInput,
+} from '@/lib/supabase/queries/admins';
+import type { AdminFilterCounts, AdminProfile } from '@/lib/supabase/schemas/admins';
+import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 /**
  * List admins via `list_admins_filtered`.
  */
 export async function getAdminsFiltered(
-  params: Parameters<AdminsQuery['getListFiltered']>[0] = {},
-) {
-  const query = new AdminsQuery();
-  return query.getListFiltered(params);
+  params: ListAdminsFilteredInput = {},
+): Promise<SupabaseSuccess<PaginatedResult<AdminProfile>> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await query(listAdminsFilteredQuery, params, { client }),
+  );
 }
 
 /**
  * Facet counts via `get_admin_filter_counts`.
  */
-export async function getAdminFilterCounts() {
-  const query = new AdminsQuery();
-  return query.getFilterCounts();
+export async function getAdminFilterCounts(): Promise<
+  SupabaseSuccess<AdminFilterCounts> | SupabaseError
+> {
+  const client = await createClient();
+  return toSupabaseResult(await query(getAdminFilterCountsQuery, { client }));
 }
 
 /**
  * Load one admin profile by id.
  */
-export async function getAdminProfileById(id: string) {
-  const query = new AdminsQuery();
-  return query.getById(id);
+export async function getAdminProfileById(
+  id: string,
+): Promise<SupabaseSuccess<AdminProfile> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(await query(getAdminByIdQuery, id, { client }));
 }
