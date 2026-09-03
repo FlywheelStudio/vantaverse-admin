@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../database.types';
-import { AdminsQuery } from './admins';
 
 export interface DisplayProfile {
   id: string;
@@ -12,6 +11,9 @@ export interface DisplayProfile {
 }
 
 type DbClient = SupabaseClient<Database>;
+
+const displayProfileSelect =
+  'id, avatar_url, first_name, last_name, email, description' as const;
 
 /**
  * Resolve display PII for user ids after dual-role FKs → `auth.users`.
@@ -27,13 +29,14 @@ export async function resolveDisplayProfilesByIds(
     return map;
   }
 
-  const [{ data: patients }, adminsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, avatar_url, first_name, last_name, email, description')
-      .in('id', uniqueIds),
-    new AdminsQuery().getByIds(uniqueIds),
-  ]);
+  const [{ data: patients }, { data: admins, error: adminsError }] =
+    await Promise.all([
+      supabase.from('profiles').select(displayProfileSelect).in('id', uniqueIds),
+      supabase
+        .from('profiles_admins')
+        .select(displayProfileSelect)
+        .in('id', uniqueIds),
+    ]);
 
   for (const row of patients ?? []) {
     map.set(row.id, {
@@ -46,8 +49,8 @@ export async function resolveDisplayProfilesByIds(
     });
   }
 
-  if (adminsResult.success) {
-    for (const admin of adminsResult.data) {
+  if (!adminsError) {
+    for (const admin of admins ?? []) {
       map.set(admin.id, {
         id: admin.id,
         avatar_url: admin.avatar_url,
