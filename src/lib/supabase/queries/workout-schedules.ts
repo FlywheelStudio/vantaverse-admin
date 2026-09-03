@@ -1,112 +1,204 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
 import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+  defineMutation,
+  defineQuery,
+  formatDalError,
+  mutate,
+  type DalResult,
+} from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import type { Database } from '@/lib/supabase/database.types';
+import { createClient } from '@/lib/supabase/core/server';
+
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { formatScheduleDB } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
+import { type SupabaseError, type SupabaseSuccess } from '../query';
 
-export class WorkoutSchedulesQuery extends SupabaseQuery {
-  /**
-   * Upsert workout schedule via RPC function
-   * @param schedule - The database schedule
-   * @param notes - Optional notes
-   * @returns Success with result or error
-   */
+const workoutScheduleResultSchema = z.object({
+  id: z.string().uuid(),
+  schedule_hash: z.string(),
+});
+
+const schedulePayloadSchema = z.object({
+  schedule: z.unknown(),
+});
+
+const scheduleDataSchema = z.object({
+  schedule: z.unknown(),
+  patientOverride: z.unknown(),
+});
+
+const upsertWorkoutScheduleInputSchema = z.object({
+  schedule: z.custom<DatabaseSchedule>(),
+  notes: z.string().optional(),
+});
+
+export const workoutScheduleKeys = {
+  all: ['workout-schedules'] as const,
+  detail: (id: string) => [...workoutScheduleKeys.all, 'detail', id] as const,
+  byAssignment: (assignmentId: string) =>
+    [...workoutScheduleKeys.all, 'assignment', assignmentId] as const,
+};
+
+function parseRpcEnvelope(
+  result: unknown,
+  fallbackMessage: string,
+): { data: unknown; error: { message: string } | null } {
+  if (!result || (result as { success?: boolean }).success === false) {
+    const errorResult = result as { message?: string; error?: string };
+    return {
+      data: null,
+      error: {
+        message:
+          errorResult.message || errorResult.error || fallbackMessage,
+      },
+    };
+  }
+
+  return { data: result, error: null };
+}
+
+async function fetchScheduleById(
+  client: SupabaseClient<Database>,
+  id: string,
+): Promise<{
+  data: { schedule: unknown } | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data: workoutSchedule, error } = await client
+    .from('workout_schedules')
+    .select('schedule')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!workoutSchedule) {
+    return { data: null, error: null };
+  }
+
+  return {
+    data: { schedule: workoutSchedule.schedule as unknown },
+    error: null,
+  };
+}
+
+/** Workout schedule row by id. */
+export const getWorkoutScheduleById = defineQuery({
+  key: workoutScheduleKeys.detail,
+  schema: schedulePayloadSchema.nullable(),
+  execute: (client, id: string) => fetchScheduleById(client, id),
+});
+
+/** Assignment schedule + patient override (service role). */
+export const getWorkoutScheduleDataByAssignmentId = defineQuery({
+  key: workoutScheduleKeys.byAssignment,
+  schema: scheduleDataSchema,
+  client: 'admin',
+  execute: async (client, programAssignmentId: string) => {
+    const { data: assignment, error: assignmentError } = await client
+      .from('program_assignment')
+      .select('workout_schedule_id, patient_override')
+      .eq('id', programAssignmentId)
+      .maybeSingle();
+
+    if (assignmentError) {
+      return { data: null, error: assignmentError };
+    }
+
+    if (!assignment) {
+      return {
+        data: null,
+        error: { message: 'Program assignment not found' },
+      };
+    }
+
+    let schedule: unknown = null;
+    if (assignment.workout_schedule_id) {
+      const scheduleResult = await fetchScheduleById(
+        client,
+        assignment.workout_schedule_id,
+      );
+
+      if (scheduleResult.error) {
+        return { data: null, error: scheduleResult.error };
+      }
+
+      schedule = scheduleResult.data?.schedule ?? null;
+    }
+
+    return {
+      data: {
+        schedule,
+        patientOverride: assignment.patient_override as unknown,
+      },
+      error: null,
+    };
+  },
+});
+
+/** Upsert workout schedule via RPC. */
+export const upsertWorkoutScheduleMutation = defineMutation({
+  inputSchema: upsertWorkoutScheduleInputSchema,
+  schema: workoutScheduleResultSchema,
+  execute: async (client, input) => {
+    const schedule3D = formatScheduleDB(input.schedule);
+    type RpcArgs =
+      Database['public']['Functions']['upsert_workout_schedule']['Args'];
+    const { data: result, error } = await client.rpc('upsert_workout_schedule', {
+      p_schedule: schedule3D as RpcArgs['p_schedule'],
+      p_notes: input.notes,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return parseRpcEnvelope(result, 'Failed to upsert workout schedule');
+  },
+  targets: () => [workoutScheduleKeys.all],
+});
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
+
+/** Legacy facade for callers outside Wave B scope. */
+export class WorkoutSchedulesQuery {
   public async upsertWorkoutSchedule(
     schedule: DatabaseSchedule,
     notes?: string,
   ): Promise<
     SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
-
-    // Convert DatabaseSchedule to 3D array format expected by normalize_schedule_structure
-    const schedule3D = formatScheduleDB(schedule);
-    const scheduleJsonb = schedule3D as unknown;
-
-    const { data: result, error } = await supabase.rpc(
-      'upsert_workout_schedule',
-      {
-        p_schedule: scheduleJsonb,
-        p_notes: notes || null,
-      },
+    const client = await createClient();
+    return toLegacyResult(
+      await mutate(
+        upsertWorkoutScheduleMutation,
+        { schedule, notes },
+        { client },
+      ),
     );
-
-    if (error) {
-      console.error('Error calling upsert_workout_schedule RPC:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to upsert workout schedule',
-      };
-    }
-
-    if (!result || (result as { success?: boolean }).success === false) {
-      const errorResult = result as { error?: string; message?: string };
-      const errorMessage =
-        errorResult.message ||
-        errorResult.error ||
-        'Failed to upsert workout schedule';
-      console.error(
-        'Error from upsert_workout_schedule SQL function:',
-        errorResult,
-      );
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-
-    return {
-      success: true,
-      data: result as { id: string; schedule_hash: string },
-    };
   }
 
-  /**
-   * Get workout schedule by ID
-   * @param id - The workout schedule ID
-   * @returns Success with schedule or error
-   */
   public async getScheduleById(
     id: string,
-  ): Promise<SupabaseSuccess<{ schedule: unknown } | null> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data: workoutSchedule, error } = await supabase
-      .from('workout_schedules')
-      .select('schedule')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to fetch workout schedule',
-      );
-    }
-
-    if (!workoutSchedule) {
-      return {
-        success: true,
-        data: null,
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        schedule: workoutSchedule.schedule as unknown,
-      },
-    };
+  ): Promise<
+    SupabaseSuccess<{ schedule: unknown } | null> | SupabaseError
+  > {
+    return toLegacyResult(await queryWithSession(getWorkoutScheduleById, id));
   }
 
-  /**
-   * Get workout schedule data for a program assignment
-   * Fetches program_assignment with patient_override and workout_schedules.schedule
-   * @param programAssignmentId - The program assignment ID
-   * @returns Success with schedule data or error
-   */
   public async getScheduleDataByAssignmentId(
     programAssignmentId: string,
   ): Promise<
@@ -116,50 +208,11 @@ export class WorkoutSchedulesQuery extends SupabaseQuery {
       }>
     | SupabaseError
   > {
-    const supabase = await this.getClient('service_role');
-
-    // Fetch program assignment with workout_schedule_id and patient_override
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('program_assignment')
-      .select('workout_schedule_id, patient_override')
-      .eq('id', programAssignmentId)
-      .maybeSingle();
-
-    if (assignmentError) {
-      return this.parseResponsePostgresError(
-        assignmentError,
-        'Failed to fetch program assignment',
-      );
-    }
-
-    if (!assignment) {
-      return {
-        success: false,
-        error: 'Program assignment not found',
-      };
-    }
-
-    let schedule = null;
-
-    // If workout_schedule_id exists, fetch the schedule
-    if (assignment.workout_schedule_id) {
-      const scheduleResult = await this.getScheduleById(
-        assignment.workout_schedule_id,
-      );
-
-      if (!scheduleResult.success) {
-        return scheduleResult;
-      }
-
-      schedule = scheduleResult.data?.schedule || null;
-    }
-
-    return {
-      success: true,
-      data: {
-        schedule: schedule as unknown,
-        patientOverride: assignment.patient_override as unknown,
-      },
-    };
+    return toLegacyResult(
+      await queryWithSession(
+        getWorkoutScheduleDataByAssignmentId,
+        programAssignmentId,
+      ),
+    );
   }
 }

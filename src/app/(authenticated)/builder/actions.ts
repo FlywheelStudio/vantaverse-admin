@@ -1,20 +1,46 @@
 'use server';
 
-import { ProgramTemplatesQuery } from '@/lib/supabase/queries/program-templates';
+import { formatDalError, mutate, query, type DalResult } from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { ExercisesQuery } from '@/lib/supabase/queries/exercises';
-import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
+import {
+  editExerciseTemplateMutation,
+  getExerciseTemplatesByIds as getExerciseTemplatesByIdsQuery,
+  listExerciseTemplatesPaginated,
+  upsertExerciseTemplateMutation,
+} from '@/lib/supabase/queries/exercise-templates';
+import {
+  createProgramTemplate as createProgramTemplateMutation,
+  updateProgramTemplate as updateProgramTemplateMutation,
+} from '@/lib/supabase/queries/program-templates';
 import { GroupsQuery } from '@/lib/supabase/queries/groups';
-import { WorkoutSchedulesQuery } from '@/lib/supabase/queries/workout-schedules';
+import {
+  getWorkoutScheduleDataByAssignmentId,
+  upsertWorkoutScheduleMutation,
+} from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { createParallelQueries } from '@/lib/supabase/query';
+import { createClient } from '@/lib/supabase/core/server';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
-import type { Group as DbGroup } from '@/lib/supabase/queries/groups';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
+import type { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
+import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+
+type LegacySuccess<T> = { success: true; data: T };
+type LegacyError = { success: false; error: string };
+type LegacyResult<T> = LegacySuccess<T> | LegacyError;
+
+function fromDalResult<T>(result: DalResult<T>): LegacyResult<T> {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
 
 /**
  * Get paginated program assignments with status='template' (joined with program_template)
@@ -117,18 +143,29 @@ export async function createProgramTemplate(
   goals?: string | null,
   notes?: string | null,
   organizationId?: string | null,
-) {
-  const templateQuery = new ProgramTemplatesQuery();
+): Promise<
+  | LegacySuccess<{
+      template: ProgramTemplate;
+      assignment: ProgramAssignment;
+    }>
+  | LegacyError
+> {
   const assignmentQuery = new ProgramAssignmentsQuery();
+  const client = await createClient();
 
-  // Create program_template first
-  const templateResult = await templateQuery.create(
-    name,
-    weeks,
-    description,
-    goals,
-    notes,
-    organizationId,
+  const templateResult = fromDalResult(
+    await mutate(
+      createProgramTemplateMutation,
+      {
+        name,
+        weeks,
+        description,
+        goals,
+        notes,
+        organizationId,
+      },
+      { client },
+    ),
   );
 
   if (!templateResult.success) {
@@ -289,22 +326,28 @@ export async function updateProgramTemplate(
   startDate?: string | null,
   endDate?: string | null,
   comingSoonWeeks?: number,
-) {
-  const templateQuery = new ProgramTemplatesQuery();
+): Promise<LegacySuccess<ProgramTemplate> | LegacyError> {
   const clampedComingSoon = Math.min(
     Math.max(comingSoonWeeks ?? 0, 0),
     Math.max(weeks, 0),
   );
 
-  // Update program_template
-  const updateResult = await templateQuery.update(templateId, {
-    name: name.trim(),
-    weeks,
-    coming_soon_weeks: clampedComingSoon,
-    description: description?.trim() || null,
-    goals: goals?.trim() || null,
-    notes: notes?.trim() || null,
-  });
+  const updateResult = fromDalResult(
+    await mutate(
+      updateProgramTemplateMutation,
+      {
+        id: templateId,
+        data: {
+          name: name.trim(),
+          weeks,
+          coming_soon_weeks: clampedComingSoon,
+          description: description?.trim() || null,
+          goals: goals?.trim() || null,
+          notes: notes?.trim() || null,
+        },
+      },
+    ),
+  );
 
   if (!updateResult.success) {
     return updateResult;
@@ -342,16 +385,23 @@ export async function updateProgramTemplate(
 export async function updateProgramTemplateImage(
   templateId: string,
   imageUrl: string | null,
-) {
-  const query = new ProgramTemplatesQuery();
-  // Database constraint requires JSONB format: { image_url: string, blur_hash: string }
+): Promise<LegacySuccess<ProgramTemplate> | LegacyError> {
   const imageUrlData = imageUrl
     ? {
         image_url: imageUrl,
-        blur_hash: '', // Empty string for now, can be generated later if needed
+        blur_hash: '',
       }
     : null;
-  return query.update(templateId, { image_url: imageUrlData as unknown });
+
+  return fromDalResult(
+    await mutate(
+      updateProgramTemplateMutation,
+      {
+        id: templateId,
+        data: { image_url: imageUrlData as unknown },
+      },
+    ),
+  );
 }
 
 /**
@@ -394,8 +444,15 @@ export async function getExerciseTemplatesPaginated(
   sortBy: string = 'updated_at',
   sortOrder: 'asc' | 'desc' = 'desc',
 ) {
-  const query = new ExerciseTemplatesQuery();
-  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+  return fromDalResult(
+    await queryWithSession(listExerciseTemplatesPaginated, {
+      page,
+      pageSize,
+      search,
+      sortBy,
+      sortOrder,
+    }),
+  );
 }
 
 /**
@@ -415,9 +472,12 @@ export async function getGroupsPaginated(
 /**
  * Get multiple exercise templates by IDs
  */
-export async function getExerciseTemplatesByIds(ids: string[]) {
-  const query = new ExerciseTemplatesQuery();
-  const result = await query.getByIds(ids);
+export async function getExerciseTemplatesByIds(
+  ids: string[],
+): Promise<LegacySuccess<ExerciseTemplate[]> | LegacyError> {
+  const result = fromDalResult(
+    await queryWithSession(getExerciseTemplatesByIdsQuery, ids),
+  );
 
   if (!result.success) {
     return result;
@@ -425,7 +485,7 @@ export async function getExerciseTemplatesByIds(ids: string[]) {
 
   return {
     success: true as const,
-    data: Array.from(result.data.values()),
+    data: Object.values(result.data),
   };
 }
 
@@ -451,8 +511,10 @@ export async function upsertExerciseTemplate(data: {
   | { success: true; data: { id: string; template_hash: string } }
   | { success: false; error: string }
 > {
-  const query = new ExerciseTemplatesQuery();
-  const result = await query.upsertExerciseTemplate(data);
+  const client = await createClient();
+  const result = fromDalResult(
+    await mutate(upsertExerciseTemplateMutation, data, { client }),
+  );
 
   if (!result.success) {
     return result;
@@ -498,8 +560,10 @@ export async function editExerciseTemplate(data: {
   | { success: true; data: { id: string; template_hash: string } }
   | { success: false; error: string }
 > {
-  const query = new ExerciseTemplatesQuery();
-  const result = await query.editExerciseTemplate(data);
+  const client = await createClient();
+  const result = fromDalResult(
+    await mutate(editExerciseTemplateMutation, data, { client }),
+  );
 
   if (!result.success) {
     return result;
@@ -552,8 +616,10 @@ export async function upsertWorkoutSchedule(
   schedule: DatabaseSchedule,
   notes?: string,
 ) {
-  const query = new WorkoutSchedulesQuery();
-  return query.upsertWorkoutSchedule(schedule, notes);
+  const client = await createClient();
+  return fromDalResult(
+    await mutate(upsertWorkoutScheduleMutation, { schedule, notes }, { client }),
+  );
 }
 
 /**
@@ -561,8 +627,12 @@ export async function upsertWorkoutSchedule(
  * Fetches program_assignment with patient_override and workout_schedules.schedule
  */
 export async function getWorkoutScheduleData(programAssignmentId: string) {
-  const query = new WorkoutSchedulesQuery();
-  const result = await query.getScheduleDataByAssignmentId(programAssignmentId);
+  const result = fromDalResult(
+    await queryWithSession(
+      getWorkoutScheduleDataByAssignmentId,
+      programAssignmentId,
+    ),
+  );
 
   if (!result.success) {
     return result;
@@ -627,33 +697,59 @@ export async function convertScheduleToSelectedItems(
     }
   }
 
-  // Fetch all exercise templates and groups in parallel
-  const templatesQuery = new ExerciseTemplatesQuery();
+  const client = await createClient();
   const groupsQuery = new GroupsQuery();
 
-  const data = await createParallelQueries({
-    groups: {
-      // keep this query always present so dependent queries can rely on it
-      query: () => groupsQuery.getByIds(Array.from(groupIds)),
-      defaultValue: new Map<string, DbGroup>(),
-    },
-    templates: {
-      query: (deps: { groups: Map<string, DbGroup> }) => {
-        const allTemplateIds = new Set<string>(exerciseTemplateIds);
-        for (const group of deps.groups.values()) {
-          for (const id of group.exercise_template_ids ?? []) {
-            allTemplateIds.add(id);
-          }
-        }
-        return templatesQuery.getByIds(Array.from(allTemplateIds));
-      },
-      dependsOn: ['groups'] as const,
-      defaultValue: new Map<string, ExerciseTemplate>(),
-    },
-  });
+  const [directTemplatesResult, groupsResult] = await Promise.all([
+    query(
+      getExerciseTemplatesByIdsQuery,
+      Array.from(exerciseTemplateIds),
+      { client },
+    ),
+    groupsQuery.getByIds(Array.from(groupIds)),
+  ]);
 
-  const groupsMap = data.groups ?? new Map();
-  const templatesMap = data.templates ?? new Map();
+  const [directTemplatesErr, directTemplatesRecord] = directTemplatesResult;
+  if (directTemplatesErr) {
+    return { success: false, error: formatDalError(directTemplatesErr) };
+  }
+
+  if (!groupsResult.success) {
+    return { success: false, error: groupsResult.error };
+  }
+
+  const groupsMap = groupsResult.data;
+  const templatesMap = new Map<string, ExerciseTemplate>(
+    Object.entries(directTemplatesRecord) as [string, ExerciseTemplate][],
+  );
+
+  const groupOnlyTemplateIds = new Set<string>();
+  for (const group of groupsMap.values()) {
+    for (const id of group.exercise_template_ids ?? []) {
+      if (!templatesMap.has(id)) {
+        groupOnlyTemplateIds.add(id);
+      }
+    }
+  }
+
+  if (groupOnlyTemplateIds.size > 0) {
+    const [groupTemplatesErr, groupTemplatesRecord] = await query(
+      getExerciseTemplatesByIdsQuery,
+      Array.from(groupOnlyTemplateIds),
+      { client },
+    );
+
+    if (groupTemplatesErr) {
+      return { success: false, error: formatDalError(groupTemplatesErr) };
+    }
+
+    for (const [id, template] of Object.entries(groupTemplatesRecord) as [
+      string,
+      ExerciseTemplate,
+    ][]) {
+      templatesMap.set(id, template);
+    }
+  }
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];
