@@ -42,6 +42,72 @@ export type NextEmpowermentThreshold = z.infer<
   typeof nextEmpowermentThresholdSchema
 >;
 
+type IpTransactionRow = {
+  user_id: string;
+  created_at: string | null;
+  amount: number;
+  transaction_type: string;
+  metadata: unknown;
+};
+
+type IpTransactionsTable = {
+  Row: IpTransactionRow;
+  Insert: {
+    user_id: string;
+    created_at?: string | null;
+    amount: number;
+    transaction_type: string;
+    metadata?: unknown;
+  };
+  Update: {
+    user_id?: string;
+    created_at?: string | null;
+    amount?: number;
+    transaction_type?: string;
+    metadata?: unknown;
+  };
+  Relationships: [];
+};
+
+type GateUnlockStepRow = {
+  type: string;
+  gate: number;
+  title: string;
+  description: string | null;
+};
+
+type GateUnlockStepsTable = {
+  Row: GateUnlockStepRow;
+  Insert: {
+    type: string;
+    gate: number;
+    title: string;
+    description?: string | null;
+  };
+  Update: {
+    type?: string;
+    gate?: number;
+    title?: string;
+    description?: string | null;
+  };
+  Relationships: [];
+};
+
+type IpPointsDatabase = Database & {
+  public: Database['public'] & {
+    Tables: Database['public']['Tables'] & {
+      ip_transactions: IpTransactionsTable;
+      gate_unlock_steps: GateUnlockStepsTable;
+    };
+  };
+};
+
+function withIpPointsTables(
+  client: SupabaseClient<Database>,
+): SupabaseClient<IpPointsDatabase> {
+  return client as SupabaseClient<IpPointsDatabase>;
+}
+
 export const ipPointsKeys = {
   all: ['ip-points'] as const,
   empowermentThreshold: (id: number) =>
@@ -102,7 +168,7 @@ async function fetchIpTransactionsByUserId(
   data: IpTransaction[] | null;
   error: { message: string; code?: string } | null;
 }> {
-  const { data, error } = await (client as SupabaseClient)
+  const { data, error } = await withIpPointsTables(client)
     .from('ip_transactions')
     .select('created_at, amount, transaction_type, metadata')
     .eq('user_id', userId)
@@ -149,7 +215,7 @@ export const getCurrentGateInfo = defineQuery({
   schema: gateInfoSchema,
   client: 'admin',
   execute: async (client, gateType: string, gateNumber: number) => {
-    const { data, error } = await (client as SupabaseClient)
+    const { data, error } = await withIpPointsTables(client)
       .from('gate_unlock_steps')
       .select('title, description')
       .eq('type', gateType)

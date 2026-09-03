@@ -22,6 +22,45 @@ export type HpTransaction = z.infer<typeof hpTransactionSchema>;
 
 const hpTransactionListSchema = z.array(hpTransactionSchema);
 
+type HpTransactionsTable = {
+  Row: {
+    user_id: string;
+    created_at: string | null;
+    points_earned: number;
+    transaction_type: string;
+    description: string | null;
+  };
+  Insert: {
+    user_id: string;
+    created_at?: string | null;
+    points_earned: number;
+    transaction_type: string;
+    description?: string | null;
+  };
+  Update: {
+    user_id?: string;
+    created_at?: string | null;
+    points_earned?: number;
+    transaction_type?: string;
+    description?: string | null;
+  };
+  Relationships: [];
+};
+
+type HpPointsDatabase = Database & {
+  public: Database['public'] & {
+    Tables: Database['public']['Tables'] & {
+      hp_transactions: HpTransactionsTable;
+    };
+  };
+};
+
+function withHpPointsTables(
+  client: SupabaseClient<Database>,
+): SupabaseClient<HpPointsDatabase> {
+  return client as SupabaseClient<HpPointsDatabase>;
+}
+
 export const hpPointsKeys = {
   all: ['hp-points'] as const,
   levelThreshold: (level: number) =>
@@ -72,7 +111,7 @@ async function fetchHpTransactionsByUserId(
   data: HpTransaction[] | null;
   error: { message: string; code?: string } | null;
 }> {
-  const { data, error } = await (client as SupabaseClient)
+  const { data, error } = await withHpPointsTables(client)
     .from('hp_transactions')
     .select('created_at, points_earned, transaction_type, description')
     .eq('user_id', userId)
