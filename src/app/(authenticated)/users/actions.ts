@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { query } from '@/lib/dal';
 import {
   ProfilesQuery,
   type SetOnboardingStateTarget,
 } from '@/lib/supabase/queries/profiles';
+import { getSuperAdminOrganizationId } from '@/lib/supabase/queries/organizations';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
@@ -219,9 +221,6 @@ export async function removeAdminUser(
   userId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { createClient } = await import('@/lib/supabase/core/server');
-  const { OrganizationsQuery } = await import(
-    '@/lib/supabase/queries/organizations'
-  );
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -232,17 +231,18 @@ export async function removeAdminUser(
     return { success: false, error: 'You cannot remove yourself as admin' };
   }
 
-  const orgQuery = new OrganizationsQuery();
-  const orgResult = await orgQuery.getSuperAdminOrganizationId();
-  if (!orgResult.success) {
-    return { success: false, error: orgResult.error };
+  const [orgErr, orgId] = await query(getSuperAdminOrganizationId, {
+    client: supabase,
+  });
+  if (orgErr) {
+    return { success: false, error: orgErr.message };
   }
 
   const admin = await createAdminClient();
   const { count, error: countError } = await admin
     .from('organization_members')
     .select('id', { count: 'exact', head: true })
-    .eq('organization_id', orgResult.data)
+    .eq('organization_id', orgId)
     .eq('is_active', true)
     .eq('role', 'admin');
 
