@@ -2,9 +2,11 @@ import {
   mutationOptions,
   type QueryClient,
   type QueryKey,
+  type UseMutationOptions,
 } from '@tanstack/react-query';
 
 import type { DalEntity, MutationDef } from './defineMutation';
+import type { DalError } from './errors';
 import { mutate } from './mutate';
 import type { QueryCallOptions } from './query';
 import {
@@ -53,7 +55,10 @@ export function toMutationOptions<TInput, TData extends DalEntity>(
   def: MutationDef<TInput, TData>,
   queryClient: QueryClient,
   callOptions?: QueryCallOptions,
-) {
+): Omit<
+  UseMutationOptions<TData, DalError, TInput, MutationContext>,
+  'mutationKey'
+> {
   return mutationOptions({
     mutationFn: async (input: TInput) => {
       const [err, data] = await mutate(def, input, callOptions);

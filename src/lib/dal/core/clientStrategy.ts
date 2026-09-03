@@ -1,6 +1,6 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { createAnonymousClient as createRepoAnonymousClient } from '@/lib/supabase/core/anonymous';
 import type { Database } from '@/lib/supabase/database.types';
 
 import type { ClientStrategy } from './defineQuery';
@@ -11,54 +11,19 @@ type ResolveClientResult =
   | { success: true; client: SupabaseClient<Database> }
   | { success: false; error: DalError };
 
-function getSupabaseUrl(): string | undefined {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL;
-}
-
-function getAnonKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-}
-
-function missingEnvError(name: string): DalError {
-  return unknownError(`Missing required environment variable: ${name}`);
-}
-
-/** One browser/module instance — creating per-query triggers GoTrue multi-client warnings. */
+/** One module instance — creating per-query triggers GoTrue multi-client warnings. */
 let anonymousClient: SupabaseClient<Database> | undefined;
 
-function createAnonymousClient(): ResolveClientResult {
+function resolveAnonymousClient(): ResolveClientResult {
   if (anonymousClient) {
     return { success: true, client: anonymousClient };
   }
 
-  const url = getSupabaseUrl();
-  const anonKey = getAnonKey();
-
-  if (!url) {
-    return {
-      success: false,
-      error: missingEnvError('NEXT_PUBLIC_SUPABASE_URL'),
-    };
-  }
-
-  if (!anonKey) {
-    return {
-      success: false,
-      error: missingEnvError('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-    };
-  }
-
-  anonymousClient = createSupabaseClient<Database>(url, anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
+  anonymousClient = createRepoAnonymousClient() as SupabaseClient<Database>;
   return { success: true, client: anonymousClient };
 }
 
-async function createAdminClient(): Promise<ResolveClientResult> {
+async function resolveAdminClient(): Promise<ResolveClientResult> {
   if (typeof window !== 'undefined') {
     return {
       success: false,
@@ -70,34 +35,21 @@ async function createAdminClient(): Promise<ResolveClientResult> {
     };
   }
 
-  const url = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url) {
-    return {
-      success: false,
-      error: missingEnvError('NEXT_PUBLIC_SUPABASE_URL'),
-    };
-  }
-
-  if (!serviceRoleKey) {
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/core/admin');
+    const client = await createAdminClient();
+    return { success: true, client: client as SupabaseClient<Database> };
+  } catch (cause) {
     return {
       success: false,
       error: unknownError(
-        'Admin client requires SUPABASE_SERVICE_ROLE_KEY on the server',
+        cause instanceof Error
+          ? cause.message
+          : 'Failed to create admin Supabase client',
+        cause,
       ),
     };
   }
-
-  return {
-    success: true,
-    client: createSupabaseClient<Database>(url, serviceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }),
-  };
 }
 
 async function createAuthenticatedClient(): Promise<ResolveClientResult> {
@@ -158,9 +110,9 @@ export async function resolveClient(
 
   switch (strategy) {
     case 'anonymous':
-      return createAnonymousClient();
+      return resolveAnonymousClient();
     case 'admin':
-      return createAdminClient();
+      return resolveAdminClient();
     case 'authenticated':
     default:
       return createAuthenticatedClient();

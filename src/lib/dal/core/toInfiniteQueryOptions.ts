@@ -1,6 +1,10 @@
-import { infiniteQueryOptions } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  type UseInfiniteQueryOptions,
+} from '@tanstack/react-query';
 
 import type { InfiniteQueryDef } from './defineInfiniteQuery';
+import type { DalError } from './errors';
 import { queryInfinite } from './query';
 
 /**
@@ -18,7 +22,16 @@ export function toInfiniteQueryOptions<
   TArgs extends unknown[],
   TPage,
   TPageParam,
->(def: InfiniteQueryDef<TArgs, TPage, TPageParam>, ...args: TArgs) {
+>(
+  def: InfiniteQueryDef<TArgs, TPage, TPageParam>,
+  ...args: TArgs
+): UseInfiniteQueryOptions<
+  TPage,
+  DalError,
+  TPage,
+  ReturnType<InfiniteQueryDef<TArgs, TPage, TPageParam>['key']>,
+  TPageParam
+> {
   return infiniteQueryOptions({
     queryKey: def.key(...args),
     initialPageParam: def.initialPageParam,
