@@ -3,7 +3,7 @@ import { UnderConstruction } from '@/components/medvanta/feedback/UnderConstruct
 import type {
   DashboardStatusCounts,
   UserNeedingAttention,
-} from '@/lib/supabase/queries/dashboard';
+} from './queries';
 import { Avatar } from '@/components/widgets/avatar';
 import { StatTile } from '@/components/widgets/stat-tile';
 import { Donut } from '@/components/widgets/donut';
