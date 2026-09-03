@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { query, type DalResult, type QueryDef } from '@/lib/dal';
 import { createAdminClient } from '@/lib/supabase/core/admin';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import { getProfileByIdQuery } from '@/lib/supabase/queries/profiles';
 import { queryWithSession } from '@/lib/dal/core/query.server';
 import { adminExistsQuery } from '@/lib/supabase/queries/admins';
 import { getAppointmentsByUserId } from '@/lib/supabase/queries/appointments';
@@ -17,15 +17,17 @@ import {
 } from '@/lib/supabase/queries/ip-points';
 import { getSurveyByUserId } from '@/lib/supabase/queries/mc-intake';
 import { getPledgeByUserId } from '@/lib/supabase/queries/habit-pledge';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import {
+  getActiveProgramAssignmentByUserId,
+  getProgramAssignmentComplianceByUserId,
+} from '@/lib/supabase/queries/program-assignments';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { ExerciseTemplatesQuery } from '@/lib/supabase/queries/exercise-templates';
+import { GroupsQuery } from '@/lib/supabase/queries/groups';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import {
-  createParallelQueries,
-  type SupabaseError,
-  type SupabaseSuccess,
-} from '@/lib/supabase/query';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { UserProfilePageUI } from './ui';
 
 async function runAdminQuery<TArgs extends unknown[], TData>(
@@ -41,6 +43,110 @@ async function runAdminQuery<TArgs extends unknown[], TData>(
   return { success: true, data };
 }
 
+async function runSessionQuery<TArgs extends unknown[], TData>(
+  def: QueryDef<TArgs, TData>,
+  ...args: TArgs
+): Promise<SupabaseSuccess<TData> | SupabaseError> {
+  const result: DalResult<TData> = await queryWithSession(def, ...args);
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
+
+function unwrapResult<T>(
+  result: SupabaseSuccess<T> | SupabaseError,
+  defaultValue: T,
+): T {
+  return result.success ? result.data : defaultValue;
+}
+
+async function fetchActiveProgramAssignmentData(
+  userId: string,
+): Promise<
+  | SupabaseSuccess<{
+      assignment: ProgramAssignmentWithTemplate | null;
+      exerciseNamesMap: Map<string, string>;
+      groupsMap: Map<string, { exercise_template_ids: string[] | null }>;
+    }>
+  | SupabaseError
+> {
+  const assignmentResult = await runAdminQuery(
+    getActiveProgramAssignmentByUserId,
+    userId,
+  );
+
+  if (!assignmentResult.success) {
+    return assignmentResult;
+  }
+
+  const assignment = assignmentResult.data;
+
+  if (!assignment) {
+    return {
+      success: true,
+      data: {
+        assignment: null,
+        exerciseNamesMap: new Map(),
+        groupsMap: new Map(),
+      },
+    };
+  }
+
+  const workoutSchedule = assignment.workout_schedule;
+  const exerciseTemplateIds =
+    (workoutSchedule?.exercise_template_ids as string[] | null) ?? [];
+  const groupIds = (workoutSchedule?.group_ids as string[] | null) ?? [];
+
+  const groupsQuery = new GroupsQuery();
+  const groupsResult = await groupsQuery.getByIds(groupIds);
+
+  const exerciseTemplateIdsFromGroups: string[] = [];
+  const groupsMap = new Map<
+    string,
+    { exercise_template_ids: string[] | null }
+  >();
+
+  if (groupsResult.success) {
+    for (const [groupId, group] of groupsResult.data) {
+      groupsMap.set(groupId, {
+        exercise_template_ids: group.exercise_template_ids,
+      });
+      if (group.exercise_template_ids) {
+        exerciseTemplateIdsFromGroups.push(...group.exercise_template_ids);
+      }
+    }
+  }
+
+  const allExerciseTemplateIds = [
+    ...new Set([...exerciseTemplateIds, ...exerciseTemplateIdsFromGroups]),
+  ];
+
+  const exerciseTemplatesQuery = new ExerciseTemplatesQuery();
+  const exerciseTemplatesResult = await exerciseTemplatesQuery.getByIds(
+    allExerciseTemplateIds,
+  );
+
+  const exerciseNamesMap = new Map<string, string>();
+  if (exerciseTemplatesResult.success) {
+    for (const [templateId, template] of exerciseTemplatesResult.data) {
+      if (template.exercise_name) {
+        exerciseNamesMap.set(templateId, template.exercise_name);
+      }
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      assignment,
+      exerciseNamesMap,
+      groupsMap,
+    },
+  };
+}
+
 export default async function UserProfilePage({
   params,
 }: {
@@ -48,15 +154,11 @@ export default async function UserProfilePage({
 }) {
   const { id } = await params;
 
-  const profilesQuery = new ProfilesQuery();
-  const programAssignmentsQuery = new ProgramAssignmentsQuery();
   const orgMembersQuery = new OrganizationMembers();
 
-  // Patient path: profiles / profiles_with_stats only.
-  const userResult = await profilesQuery.getUserById(id);
+  const [profileErr, user] = await queryWithSession(getProfileByIdQuery, id);
 
-  if (!userResult.success) {
-    // Admin-only users live under /manage/[id].
+  if (profileErr || !user) {
     const [, adminExists] = await queryWithSession(adminExistsQuery, id);
     if (adminExists) {
       redirect(`/manage/${id}`);
@@ -64,89 +166,63 @@ export default async function UserProfilePage({
     notFound();
   }
 
-  const user = userResult.data;
-  
-  // Bulk query remaining data in parallel
-  const data = await createParallelQueries({
-    appointments: {
-      query: () => runAdminQuery(getAppointmentsByUserId, id),
-      defaultValue: [],
-    },
-    hpLevelThreshold: {
-      condition: user.current_level !== null,
-      query: () =>
-        runAdminQuery(getHpLevelThresholdByLevel, user.current_level!),
-      defaultValue: null,
-    },
-    hpTransactions: {
-      query: () => runAdminQuery(getHpTransactionsByUserId, id),
-      defaultValue: [],
-    },
-    empowermentThreshold: {
-      condition: user.empowerment_threshold !== null,
-      query: () =>
-        runAdminQuery(
-          getEmpowermentThresholdById,
-          user.empowerment_threshold!,
-        ),
-      defaultValue: null,
-    },
-    gateInfo: {
-      condition:
-        user.max_gate_type !== null && user.max_gate_unlocked !== null,
-      query: () =>
-        runAdminQuery(
+  const isPatient = user.role === 'patient';
+
+  const [
+    appointmentsResult,
+    hpLevelThresholdResult,
+    hpTransactionsResult,
+    empowermentThresholdResult,
+    gateInfoResult,
+    ipTransactionsResult,
+    nextThresholdResult,
+    mcIntakeSurveyResult,
+    habitPledgeResult,
+    programAssignmentDataResult,
+    complianceResult,
+    patientOrganizationsResult,
+  ] = await Promise.all([
+    runAdminQuery(getAppointmentsByUserId, id),
+    user.current_level !== null
+      ? runAdminQuery(getHpLevelThresholdByLevel, user.current_level)
+      : Promise.resolve({ success: true as const, data: null }),
+    runAdminQuery(getHpTransactionsByUserId, id),
+    user.empowerment_threshold !== null
+      ? runAdminQuery(getEmpowermentThresholdById, user.empowerment_threshold)
+      : Promise.resolve({ success: true as const, data: null }),
+    user.max_gate_type !== null && user.max_gate_unlocked !== null
+      ? runAdminQuery(
           getCurrentGateInfo,
-          user.max_gate_type!,
-          user.max_gate_unlocked!,
-        ),
-      defaultValue: null,
-    },
-    ipTransactions: {
-      query: () => runAdminQuery(getIpTransactionsByUserId, id),
-      defaultValue: [],
-    },
-    nextThreshold: {
-      condition: user.empowerment_threshold !== null,
-      query: () =>
-        runAdminQuery(
+          user.max_gate_type,
+          user.max_gate_unlocked,
+        )
+      : Promise.resolve({ success: true as const, data: null }),
+    runAdminQuery(getIpTransactionsByUserId, id),
+    user.empowerment_threshold !== null
+      ? runAdminQuery(
           getNextEmpowermentThreshold,
-          user.empowerment_threshold!,
-        ),
-      defaultValue: null,
-    },
-    mcIntakeSurvey: {
-      query: () => runAdminQuery(getSurveyByUserId, id),
-      defaultValue: null,
-    },
-    habitPledge: {
-      query: () => runAdminQuery(getPledgeByUserId, id),
-      defaultValue: null,
-    },
-    programAssignmentData: {
-      query: () => programAssignmentsQuery.getActiveByUserId(id),
-      defaultValue: null,
-    },
-    compliance: {
-      condition: user.role === 'patient',
-      query: () => programAssignmentsQuery.getComplianceByUserId(id),
-      defaultValue: null,
-    },
-    patientOrganizations: {
-      condition: user.role === 'patient',
-      query: () =>
-        orgMembersQuery.getOrganizationsByUserId(id),
-      defaultValue: [] as Array<{ id: string; name: string; description: string | null }>,
-    },
-  });
+          user.empowerment_threshold,
+        )
+      : Promise.resolve({ success: true as const, data: null }),
+    runAdminQuery(getSurveyByUserId, id),
+    runAdminQuery(getPledgeByUserId, id),
+    fetchActiveProgramAssignmentData(id),
+    isPatient
+      ? runSessionQuery(getProgramAssignmentComplianceByUserId, id)
+      : Promise.resolve({ success: true as const, data: null }),
+    isPatient
+      ? orgMembersQuery.getOrganizationsByUserId(id)
+      : Promise.resolve({ success: true as const, data: [] }),
+  ]);
 
-  const patientOrganizations = (data.patientOrganizations ?? []).map((o) => ({
-    id: o.id,
-    name: o.name,
-    description: o.description,
-  }));
+  const patientOrganizations = unwrapResult(patientOrganizationsResult, []).map(
+    (o) => ({
+      id: o.id,
+      name: o.name,
+      description: o.description,
+    }),
+  );
 
-  // Fetch physiologists for each organization
   const physiologistsByOrgId = new Map<
     string,
     | {
@@ -176,28 +252,28 @@ export default async function UserProfilePage({
     }
   }
 
-  const appointments = data.appointments;
-  const hpLevelThreshold = data.hpLevelThreshold;
-  const hpTransactions = data.hpTransactions;
-  const empowermentThreshold = data.empowermentThreshold;
-  const gateInfo = data.gateInfo;
-  const ipTransactions = data.ipTransactions;
-  const mcIntakeSurvey = data.mcIntakeSurvey;
-  const habitPledge = data.habitPledge;
-  const programAssignment = data.programAssignmentData?.assignment ?? null;
-  const compliance = data.compliance ?? null;
+  const appointments = unwrapResult(appointmentsResult, []);
+  const hpLevelThreshold = unwrapResult(hpLevelThresholdResult, null);
+  const hpTransactions = unwrapResult(hpTransactionsResult, []);
+  const empowermentThreshold = unwrapResult(empowermentThresholdResult, null);
+  const gateInfo = unwrapResult(gateInfoResult, null);
+  const ipTransactions = unwrapResult(ipTransactionsResult, []);
+  const nextThreshold = unwrapResult(nextThresholdResult, null);
+  const mcIntakeSurvey = unwrapResult(mcIntakeSurveyResult, null);
+  const habitPledge = unwrapResult(habitPledgeResult, null);
+  const programAssignmentData = unwrapResult(programAssignmentDataResult, null);
+  const programAssignment = programAssignmentData?.assignment ?? null;
+  const compliance = unwrapResult(complianceResult, null);
   const exerciseNamesMap =
-    data.programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
+    programAssignmentData?.exerciseNamesMap ?? new Map<string, string>();
   const groupsMap =
-    data.programAssignmentData?.groupsMap ??
+    programAssignmentData?.groupsMap ??
     new Map<string, { exercise_template_ids: string[] | null }>();
 
-  // Extract schedule and completion from program assignment
   let schedule: DatabaseSchedule | null = null;
   let completion: Array<Array<unknown>> | null | undefined = null;
 
   if (programAssignment) {
-    // Extract schedule from workout_schedule, merge with patient_override if exists
     const baseSchedule = programAssignment.workout_schedule?.schedule as
       | DatabaseSchedule
       | null
@@ -217,21 +293,16 @@ export default async function UserProfilePage({
       | undefined;
   }
 
-  // Calculate points missing for next level
   let pointsMissingForNextLevel: number | null = null;
-  if (
-    user.empowerment !== null &&
-    data.nextThreshold !== null
-  ) {
+  if (user.empowerment !== null && nextThreshold !== null) {
     const currentEmpowerment = user.empowerment;
-    const nextBasePower = data.nextThreshold.base_power;
+    const nextBasePower = nextThreshold.base_power;
     pointsMissingForNextLevel = Math.max(0, nextBasePower - currentEmpowerment);
   } else if (
     user.empowerment !== null &&
     empowermentThreshold &&
     empowermentThreshold.top_power < 999
   ) {
-    // If no next threshold but not at max, calculate based on current top_power
     pointsMissingForNextLevel = Math.max(
       0,
       empowermentThreshold.top_power - user.empowerment,
