@@ -19,7 +19,7 @@ import {
   type Profile,
   type ProfileWithStats,
 } from '../schemas/profiles';
-import { MemberRole } from '../schemas/organization-members';
+import { MemberRole, organizationMemberRoleSchema } from '../schemas/organization-members';
 import type { SupabaseError, SupabaseSuccess } from '../query';
 import type { PaginatedResult } from './exercise-templates';
 
@@ -85,6 +85,25 @@ export type ListProfilesFilteredInput = {
 };
 
 const profileListSchema = profileWithStatsSchema.array();
+const profileWithMembershipsListSchema = z.array(
+  profileSchema.extend({
+    orgMemberships: z.array(
+      z.object({
+        orgId: z.string(),
+        orgName: z.string(),
+        role: organizationMemberRoleSchema,
+      }),
+    ),
+    teamMemberships: z.array(
+      z.object({
+        teamId: z.string(),
+        teamName: z.string(),
+        orgId: z.string(),
+        orgName: z.string(),
+      }),
+    ),
+  }),
+);
 const paginatedProfileWithStatsSchema = z.object({
   data: profileListSchema,
   page: z.number(),
@@ -167,6 +186,7 @@ export const profileKeys = {
   importEmails: () => [...profileKeys.all, 'import-emails'] as const,
   byEmails: (emails: string[]) =>
     [...profileKeys.all, 'by-emails', ...[...emails].sort()] as const,
+  withMemberships: () => [...profileKeys.all, 'with-memberships'] as const,
 };
 
 type OrgMemberWithRole = {
@@ -741,6 +761,14 @@ export const getProfilesByEmailsForImportQuery = defineQuery({
   execute: (client, emails: string[]) => fetchByEmailsForImport(client, emails),
 });
 
+/** All profiles with org and team memberships (service role). */
+export const getAllWithMembershipsQuery = defineQuery({
+  key: profileKeys.withMemberships,
+  schema: profileWithMembershipsListSchema,
+  client: 'admin',
+  execute: (client) => fetchAllWithMemberships(client),
+});
+
 /** Update a profile row (service role). */
 export const updateProfileMutation = defineMutation({
   inputSchema: updateProfileInputSchema,
@@ -984,11 +1012,7 @@ export class ProfilesQuery {
     SupabaseSuccess<ProfileWithMemberships[]> | SupabaseError
   > {
     const client = await createAdminClient();
-    const result = await fetchAllWithMemberships(client);
-    if (result.error) {
-      return { success: false, error: result.error.message };
-    }
-    return { success: true, data: result.data ?? [] };
+    return toLegacyResult(await query(getAllWithMembershipsQuery, { client }));
   }
 
   public async getList(filters?: {
