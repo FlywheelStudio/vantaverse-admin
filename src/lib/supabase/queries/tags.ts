@@ -1,179 +1,236 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
 import {
   tagSchema,
-  tagCategorySchema,
   upsertTagResultSchema,
   setExerciseTagsResultSchema,
   type Tag,
-  type UpsertTagResult,
-  type SetExerciseTagsResult,
 } from '../schemas/tags';
 
-export class TagsQuery extends SupabaseQuery {
-  /**
-   * Distinct tag categories (includes empty seeded categories).
-   */
-  public async listCategories(): Promise<
-    SupabaseSuccess<string[]> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
+const tagListSchema = z.array(tagSchema);
+const tagCategoryListSchema = z.array(z.string());
 
-    const { data, error } = await supabase.rpc('list_tag_categories');
+const upsertTagInputSchema = z.object({
+  category: z.string().min(1),
+  name: z.string().min(1),
+});
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to list tag categories',
-      );
-    }
+export type UpsertTagInput = z.infer<typeof upsertTagInputSchema>;
 
-    const parsed = tagCategorySchema.array().safeParse(data ?? []);
-    if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
-    }
+export type SearchTagsInput = {
+  q?: string;
+  category?: string;
+  limit?: number;
+};
 
+const upsertTagMutationSchema = upsertTagResultSchema.extend({
+  id: z.string(),
+});
+
+const setExerciseTagsInputSchema = z.object({
+  exerciseId: z.number(),
+  tagIds: z.array(z.number()),
+});
+
+export type SetExerciseTagsInput = z.infer<typeof setExerciseTagsInputSchema>;
+
+const setExerciseTagsMutationSchema = setExerciseTagsResultSchema.extend({
+  id: z.string(),
+});
+
+export const tagKeys = {
+  all: ['tags'] as const,
+  categories: () => [...tagKeys.all, 'categories'] as const,
+  catalog: () => [...tagKeys.all, 'catalog'] as const,
+  search: (category: string, q: string) =>
+    [...tagKeys.all, 'search', category, q] as const,
+  exercise: (exerciseId: number) =>
+    [...tagKeys.all, 'exercise', exerciseId] as const,
+};
+
+async function fetchTagCategories(
+  client: SupabaseClient<Database>,
+): Promise<{
+  data: string[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client.rpc('list_tag_categories');
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const parsed = z
+    .array(z.object({ category: z.string() }))
+    .safeParse(data ?? []);
+
+  if (!parsed.success) {
     return {
-      success: true,
-      data: parsed.data.map((row) => row.category),
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
     };
   }
 
-  /**
-   * Search tags for autocomplete (excludes empty-category sentinel).
-   */
-  public async search(params: {
-    q?: string;
-    category?: string;
-    limit?: number;
-  }): Promise<SupabaseSuccess<Tag[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  return {
+    data: parsed.data.map((row) => row.category),
+    error: null,
+  };
+}
 
-    const { data, error } = await supabase.rpc('search_tags', {
-      p_q: params.q ?? undefined,
-      p_category: params.category ?? undefined,
-      p_limit: params.limit ?? 20,
+async function fetchAllTags(
+  client: SupabaseClient<Database>,
+): Promise<{
+  data: Tag[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('tags')
+    .select('*')
+    .neq('name', 'empty')
+    .order('category', { ascending: true })
+    .order('name', { ascending: true });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const parsed = tagListSchema.safeParse(data ?? []);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  return { data: parsed.data, error: null };
+}
+
+/** Distinct tag categories (includes empty seeded categories). */
+export const listTagCategories = defineQuery({
+  key: tagKeys.categories,
+  schema: tagCategoryListSchema,
+  execute: (client) => fetchTagCategories(client),
+});
+
+/** Search tags for autocomplete (excludes empty-category sentinel). */
+export const searchTags = defineQuery({
+  key: (input: SearchTagsInput) =>
+    tagKeys.search(input.category ?? '', input.q ?? ''),
+  schema: tagListSchema,
+  execute: async (client, input: SearchTagsInput) => {
+    const { data, error } = await client.rpc('search_tags', {
+      p_q: input.q ?? undefined,
+      p_category: input.category ?? undefined,
+      p_limit: input.limit ?? 20,
     });
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to search tags');
+      return { data: null, error };
     }
 
-    const parsed = tagSchema.array().safeParse(data ?? []);
+    const parsed = tagListSchema.safeParse(data ?? []);
     if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return { success: true, data: parsed.data };
-  }
+    return { data: parsed.data, error: null };
+  },
+});
 
-  /**
-   * Get all tags across all categories (excluding sentinel empty-category rows).
-   */
-  public async getAllTags(): Promise<SupabaseSuccess<Tag[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+/** All catalog tags across categories (excluding sentinel empty-category rows). */
+export const getAllTags = defineQuery({
+  key: tagKeys.catalog,
+  schema: tagListSchema,
+  execute: (client) => fetchAllTags(client),
+});
 
-    const { data, error } = await supabase
-      .from('tags')
-      .select('*')
-      .neq('name', 'empty')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
-
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get tags');
-    }
-
-    const parsed = tagSchema.array().safeParse(data ?? []);
-    if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
-    }
-
-    return { success: true, data: parsed.data };
-  }
-
-  /**
-   * Tags assigned to an exercise.
-   */
-  public async getExerciseTags(
-    exerciseId: number,
-  ): Promise<SupabaseSuccess<Tag[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase.rpc('get_exercise_tags', {
+/** Tags assigned to an exercise. */
+export const getExerciseTags = defineQuery({
+  key: tagKeys.exercise,
+  schema: tagListSchema,
+  execute: async (client, exerciseId: number) => {
+    const { data, error } = await client.rpc('get_exercise_tags', {
       p_exercise_id: exerciseId,
     });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise tags',
-      );
+      return { data: null, error };
     }
 
-    const parsed = tagSchema.array().safeParse(data ?? []);
+    const parsed = tagListSchema.safeParse(data ?? []);
     if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return { success: true, data: parsed.data };
-  }
+    return { data: parsed.data, error: null };
+  },
+});
 
-  /**
-   * Idempotent create/return existing tag.
-   */
-  public async upsertTag(params: {
-    category: string;
-    name: string;
-  }): Promise<SupabaseSuccess<UpsertTagResult> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase.rpc('upsert_tag', {
-      p_category: params.category,
-      p_name: params.name,
+/** Idempotent create or return existing tag. */
+export const upsertTag = defineMutation({
+  inputSchema: upsertTagInputSchema,
+  schema: upsertTagMutationSchema,
+  execute: async (client, input: UpsertTagInput) => {
+    const { data, error } = await client.rpc('upsert_tag', {
+      p_category: input.category,
+      p_name: input.name,
     });
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to upsert tag');
+      return { data: null, error };
     }
 
     const parsed = upsertTagResultSchema.safeParse(data);
     if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return { success: true, data: parsed.data };
-  }
+    return {
+      data: { ...parsed.data, id: String(parsed.data.id) },
+      error: null,
+    };
+  },
+  targets: () => [tagKeys.all],
+});
 
-  /**
-   * Replace-all tag assignment for an exercise. Empty array clears.
-   */
-  public async setExerciseTags(params: {
-    exerciseId: number;
-    tagIds: number[];
-  }): Promise<SupabaseSuccess<SetExerciseTagsResult> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase.rpc('set_exercise_tags', {
-      p_exercise_id: params.exerciseId,
-      p_tag_ids: params.tagIds,
+/** Replace-all tag assignment for an exercise. Empty array clears. */
+export const setExerciseTags = defineMutation({
+  inputSchema: setExerciseTagsInputSchema,
+  schema: setExerciseTagsMutationSchema,
+  execute: async (client, input: SetExerciseTagsInput) => {
+    const { data, error } = await client.rpc('set_exercise_tags', {
+      p_exercise_id: input.exerciseId,
+      p_tag_ids: input.tagIds,
     });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to set exercise tags',
-      );
+      return { data: null, error };
     }
 
     const parsed = setExerciseTagsResultSchema.safeParse(data);
     if (!parsed.success) {
-      return this.parseResponseZodError(parsed.error);
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return { success: true, data: parsed.data };
-  }
-}
+    return {
+      data: { ...parsed.data, id: String(parsed.data.exercise_id) },
+      error: null,
+    };
+  },
+  targets: (input) => [tagKeys.exercise(input.exerciseId), tagKeys.all],
+});
