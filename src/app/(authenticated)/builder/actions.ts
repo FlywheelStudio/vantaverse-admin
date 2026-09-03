@@ -327,7 +327,6 @@ export async function updateProgramTemplate(
   endDate?: string | null,
   comingSoonWeeks?: number,
 ): Promise<LegacySuccess<ProgramTemplate> | LegacyError> {
-  const client = await createClient();
   const clampedComingSoon = Math.min(
     Math.max(comingSoonWeeks ?? 0, 0),
     Math.max(weeks, 0),
@@ -347,7 +346,6 @@ export async function updateProgramTemplate(
           notes: notes?.trim() || null,
         },
       },
-      { client },
     ),
   );
 
@@ -388,7 +386,6 @@ export async function updateProgramTemplateImage(
   templateId: string,
   imageUrl: string | null,
 ): Promise<LegacySuccess<ProgramTemplate> | LegacyError> {
-  const client = await createClient();
   const imageUrlData = imageUrl
     ? {
         image_url: imageUrl,
@@ -403,7 +400,6 @@ export async function updateProgramTemplateImage(
         id: templateId,
         data: { image_url: imageUrlData as unknown },
       },
-      { client },
     ),
   );
 }
@@ -701,36 +697,59 @@ export async function convertScheduleToSelectedItems(
     }
   }
 
+  const client = await createClient();
   const groupsQuery = new GroupsQuery();
-  const groupsResult = await groupsQuery.getByIds(Array.from(groupIds));
+
+  const [directTemplatesResult, groupsResult] = await Promise.all([
+    query(
+      getExerciseTemplatesByIdsQuery,
+      Array.from(exerciseTemplateIds),
+      { client },
+    ),
+    groupsQuery.getByIds(Array.from(groupIds)),
+  ]);
+
+  const [directTemplatesErr, directTemplatesRecord] = directTemplatesResult;
+  if (directTemplatesErr) {
+    return { success: false, error: formatDalError(directTemplatesErr) };
+  }
 
   if (!groupsResult.success) {
     return { success: false, error: groupsResult.error };
   }
 
   const groupsMap = groupsResult.data;
+  const templatesMap = new Map<string, ExerciseTemplate>(
+    Object.entries(directTemplatesRecord) as [string, ExerciseTemplate][],
+  );
 
-  const allTemplateIds = new Set<string>(exerciseTemplateIds);
+  const groupOnlyTemplateIds = new Set<string>();
   for (const group of groupsMap.values()) {
     for (const id of group.exercise_template_ids ?? []) {
-      allTemplateIds.add(id);
+      if (!templatesMap.has(id)) {
+        groupOnlyTemplateIds.add(id);
+      }
     }
   }
 
-  const client = await createClient();
-  const [templatesErr, templatesRecord] = await query(
-    getExerciseTemplatesByIdsQuery,
-    Array.from(allTemplateIds),
-    { client },
-  );
+  if (groupOnlyTemplateIds.size > 0) {
+    const [groupTemplatesErr, groupTemplatesRecord] = await query(
+      getExerciseTemplatesByIdsQuery,
+      Array.from(groupOnlyTemplateIds),
+      { client },
+    );
 
-  if (templatesErr) {
-    return { success: false, error: formatDalError(templatesErr) };
+    if (groupTemplatesErr) {
+      return { success: false, error: formatDalError(groupTemplatesErr) };
+    }
+
+    for (const [id, template] of Object.entries(groupTemplatesRecord) as [
+      string,
+      ExerciseTemplate,
+    ][]) {
+      templatesMap.set(id, template);
+    }
   }
-
-  const templatesMap = new Map<string, ExerciseTemplate>(
-    Object.entries(templatesRecord) as [string, ExerciseTemplate][],
-  );
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];

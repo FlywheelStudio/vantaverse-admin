@@ -234,10 +234,7 @@ export class ProgramTemplatesQuery {
     id: string,
     data: Partial<ProgramTemplate>,
   ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
-    const client = await createClient();
-    return toLegacyResult(
-      await mutate(updateProgramTemplate, { id, data }, { client }),
-    );
+    return toLegacyResult(await mutate(updateProgramTemplate, { id, data }));
   }
 
   public async delete(
