@@ -1,17 +1,44 @@
 import { notFound, redirect } from 'next/navigation';
+import { query, type DalResult, type QueryDef } from '@/lib/dal';
+import { createAdminClient } from '@/lib/supabase/core/admin';
 import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { AdminsQuery } from '@/lib/supabase/queries/admins';
-import { AppointmentsQuery } from '@/lib/supabase/queries/appointments';
-import { HpPointsQuery } from '@/lib/supabase/queries/hp-points';
-import { IpPointsQuery } from '@/lib/supabase/queries/ip-points';
-import { McIntakeQuery } from '@/lib/supabase/queries/mc-intake';
-import { HabitPledgeQuery } from '@/lib/supabase/queries/habit-pledge';
+import { getAppointmentsByUserId } from '@/lib/supabase/queries/appointments';
+import {
+  getHpLevelThresholdByLevel,
+  getHpTransactionsByUserId,
+} from '@/lib/supabase/queries/hp-points';
+import {
+  getCurrentGateInfo,
+  getEmpowermentThresholdById,
+  getIpTransactionsByUserId,
+  getNextEmpowermentThreshold,
+} from '@/lib/supabase/queries/ip-points';
+import { getSurveyByUserId } from '@/lib/supabase/queries/mc-intake';
+import { getPledgeByUserId } from '@/lib/supabase/queries/habit-pledge';
 import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import { mergeScheduleWithOverride } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { createParallelQueries } from '@/lib/supabase/query';
+import {
+  createParallelQueries,
+  type SupabaseError,
+  type SupabaseSuccess,
+} from '@/lib/supabase/query';
 import { UserProfilePageUI } from './ui';
+
+async function runAdminQuery<TArgs extends unknown[], TData>(
+  def: QueryDef<TArgs, TData>,
+  ...args: TArgs
+): Promise<SupabaseSuccess<TData> | SupabaseError> {
+  const client = await createAdminClient();
+  const result: DalResult<TData> = await query(def, ...args, { client });
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 export default async function UserProfilePage({
   params,
@@ -21,11 +48,6 @@ export default async function UserProfilePage({
   const { id } = await params;
 
   const profilesQuery = new ProfilesQuery();
-  const appointmentsQuery = new AppointmentsQuery();
-  const hpPointsQuery = new HpPointsQuery();
-  const ipPointsQuery = new IpPointsQuery();
-  const mcIntakeQuery = new McIntakeQuery();
-  const habitPledgeQuery = new HabitPledgeQuery();
   const programAssignmentsQuery = new ProgramAssignmentsQuery();
   const orgMembersQuery = new OrganizationMembers();
 
@@ -47,51 +69,58 @@ export default async function UserProfilePage({
   // Bulk query remaining data in parallel
   const data = await createParallelQueries({
     appointments: {
-      query: () => appointmentsQuery.getAppointmentsByUserId(id),
+      query: () => runAdminQuery(getAppointmentsByUserId, id),
       defaultValue: [],
     },
     hpLevelThreshold: {
       condition: user.current_level !== null,
       query: () =>
-        hpPointsQuery.getHpLevelThresholdByLevel(user.current_level!),
+        runAdminQuery(getHpLevelThresholdByLevel, user.current_level!),
       defaultValue: null,
     },
     hpTransactions: {
-      query: () => hpPointsQuery.getHpTransactionsByUserId(id),
+      query: () => runAdminQuery(getHpTransactionsByUserId, id),
       defaultValue: [],
     },
     empowermentThreshold: {
       condition: user.empowerment_threshold !== null,
       query: () =>
-        ipPointsQuery.getEmpowermentThresholdById(user.empowerment_threshold!),
+        runAdminQuery(
+          getEmpowermentThresholdById,
+          user.empowerment_threshold!,
+        ),
       defaultValue: null,
     },
     gateInfo: {
       condition:
         user.max_gate_type !== null && user.max_gate_unlocked !== null,
       query: () =>
-        ipPointsQuery.getCurrentGateInfo(
+        runAdminQuery(
+          getCurrentGateInfo,
           user.max_gate_type!,
           user.max_gate_unlocked!,
         ),
       defaultValue: null,
     },
     ipTransactions: {
-      query: () => ipPointsQuery.getIpTransactionsByUserId(id),
+      query: () => runAdminQuery(getIpTransactionsByUserId, id),
       defaultValue: [],
     },
     nextThreshold: {
       condition: user.empowerment_threshold !== null,
       query: () =>
-        ipPointsQuery.getNextEmpowermentThreshold(user.empowerment_threshold!),
+        runAdminQuery(
+          getNextEmpowermentThreshold,
+          user.empowerment_threshold!,
+        ),
       defaultValue: null,
     },
     mcIntakeSurvey: {
-      query: () => mcIntakeQuery.getSurveyByUserId(id),
+      query: () => runAdminQuery(getSurveyByUserId, id),
       defaultValue: null,
     },
     habitPledge: {
-      query: () => habitPledgeQuery.getPledgeByUserId(id),
+      query: () => runAdminQuery(getPledgeByUserId, id),
       defaultValue: null,
     },
     programAssignmentData: {
