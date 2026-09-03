@@ -11,13 +11,13 @@ import {
   formatDashboardSubtitle,
   getGreeting,
 } from '@/components/widgets/utils';
-import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import { getAuthProfileQuery } from '@/lib/supabase/queries/admins';
 import {
   DashboardQuery,
   type DashboardAnalytics,
   type NeedsAttentionResult,
 } from '@/lib/supabase/queries/dashboard';
-import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
 
 function unwrap<T>(
@@ -53,7 +53,6 @@ async function DashboardContent({
   groupId?: string;
   range: ReturnType<typeof parseDashboardRange>;
 }): Promise<React.ReactElement> {
-  const adminsQuery = new AdminsQuery();
   const dashboardQuery = new DashboardQuery();
 
   const days = dashboardRangeDays(range);
@@ -64,8 +63,8 @@ async function DashboardContent({
       // eslint-disable-next-line react-hooks/purity -- async server component, not hook render
       : new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
-  const [profile, analytics, attention] = await Promise.all([
-    adminsQuery.getAuthProfile(),
+  const [profileResult, analytics, attention] = await Promise.all([
+    queryWithSession(getAuthProfileQuery),
     dashboardQuery.getDashboardAnalytics({
       organizationIds: groupId ? [groupId] : null,
       from,
@@ -77,7 +76,9 @@ async function DashboardContent({
     }),
   ]);
 
-  const profileData = unwrap<AdminProfile | null>(profile, null);
+  const profileData = profileResult[0]
+    ? null
+    : profileResult[1];
   const analyticsData = unwrap<DashboardAnalytics>(analytics, EMPTY_ANALYTICS);
   const attentionData = unwrap<NeedsAttentionResult>(attention, {
     users: [],
