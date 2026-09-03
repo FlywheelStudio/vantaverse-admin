@@ -1,115 +1,97 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+
 import { chatSchema, type Chat } from '../schemas/chats';
 
-export class ChatsQuery extends SupabaseQuery {
-  /**
-   * Get or create a chat for an organization and user
-   * @param organizationId - The organization ID
-   * @param userId - The user ID (patient)
-   * @returns Success with chat or error
-   */
-  public async getOrCreateChat(
-    organizationId: string,
-    userId: string,
-  ): Promise<SupabaseSuccess<Chat> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+export const chatKeys = {
+  all: ['chats'] as const,
+  byId: (chatId: string) => [...chatKeys.all, 'detail', chatId] as const,
+  byUser: (userId: string) => [...chatKeys.all, 'user', userId] as const,
+};
 
-    // Check if chat already exists (user chats don't have organization_id per constraint)
-    const { data: existingChat, error: fetchError } = await supabase
-      .from('chats')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('target_type', 'user')
-      .is('organization_id', null)
-      .is('deleted_at', null)
-      .maybeSingle();
+const chatListSchema = chatSchema.array();
 
-    if (fetchError) {
-      return this.parseResponsePostgresError(
-        fetchError,
-        'Failed to check for existing chat',
-      );
-    }
+const getOrCreateChatInputSchema = z.object({
+  organizationId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
 
-    // Return existing chat if found
-    if (existingChat) {
-      const result = chatSchema.safeParse(existingChat);
+async function fetchOrCreateChat(
+  client: SupabaseClient<Database>,
+  input: z.infer<typeof getOrCreateChatInputSchema>,
+): Promise<{ data: Chat | null; error: { message: string; code?: string } | null }> {
+  const { userId } = input;
 
-      if (!result.success) {
-        return this.parseResponseZodError(result.error);
-      }
+  const { data: existingChat, error: fetchError } = await client
+    .from('chats')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('target_type', 'user')
+    .is('organization_id', null)
+    .is('deleted_at', null)
+    .maybeSingle();
 
-      return {
-        success: true,
-        data: result.data,
-      };
-    }
+  if (fetchError) {
+    return { data: null, error: fetchError };
+  }
 
-    // Generate chat name from user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', userId)
-      .single();
+  if (existingChat) {
+    return { data: existingChat, error: null };
+  }
 
-    const firstName = profile?.first_name || 'User';
-    const lastName = profile?.last_name || '';
-    const chatName = `${firstName} ${lastName}`.trim();
+  const { data: profile } = await client
+    .from('profiles')
+    .select('first_name, last_name')
+    .eq('id', userId)
+    .single();
 
-    // Create new chat (user chats must have organization_id as NULL per constraint)
-    const { data, error } = await supabase
-      .from('chats')
-      .insert({
-        organization_id: null,
-        user_id: userId,
-        target_type: 'user',
-        name: chatName,
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+  const firstName = profile?.first_name || 'User';
+  const lastName = profile?.last_name || '';
+  const chatName = `${firstName} ${lastName}`.trim();
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to create chat',
-      );
-    }
+  const { data, error } = await client
+    .from('chats')
+    .insert({
+      organization_id: null,
+      user_id: userId,
+      target_type: 'user',
+      name: chatName,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
-    if (!data) {
-      return {
-        success: false,
-        error: 'Failed to create chat',
-      };
-    }
+  if (error) {
+    return { data: null, error };
+  }
 
-    const result = chatSchema.safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
+  if (!data) {
     return {
-      success: true,
-      data: result.data,
+      data: null,
+      error: { message: 'Failed to create chat' },
     };
   }
 
-  /**
-   * Get a chat by ID
-   * @param chatId - The chat ID
-   * @returns Success with chat or error
-   */
-  public async getChatById(
-    chatId: string,
-  ): Promise<SupabaseSuccess<Chat> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  return { data, error: null };
+}
 
-    const { data, error } = await supabase
+/** Get or create a user-target chat for a patient. */
+export const getOrCreateChat = defineMutation({
+  inputSchema: getOrCreateChatInputSchema,
+  schema: chatSchema,
+  execute: (client, input) => fetchOrCreateChat(client, input),
+  targets: (input) => [chatKeys.all, chatKeys.byUser(input.userId)],
+});
+
+/** Get a chat by id. */
+export const getChatById = defineQuery({
+  key: chatKeys.byId,
+  schema: chatSchema,
+  execute: async (client, chatId: string) => {
+    const { data, error } = await client
       .from('chats')
       .select('*')
       .eq('id', chatId)
@@ -117,39 +99,23 @@ export class ChatsQuery extends SupabaseQuery {
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get chat');
+      return { data: null, error };
     }
 
     if (!data) {
-      return {
-        success: false,
-        error: 'Chat not found',
-      };
+      return { data: null, error: { message: 'Chat not found' } };
     }
 
-    const result = chatSchema.safeParse(data);
+    return { data, error: null };
+  },
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-
-  /**
-   * Get all chats for a user
-   * @param userId - The user ID
-   * @returns Success with chats array or error
-   */
-  public async getChatsByUserId(
-    userId: string,
-  ): Promise<SupabaseSuccess<Chat[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
+/** List chats for a user. */
+export const getChatsByUserId = defineQuery({
+  key: chatKeys.byUser,
+  schema: chatListSchema,
+  execute: async (client, userId: string) => {
+    const { data, error } = await client
       .from('chats')
       .select('*')
       .eq('user_id', userId)
@@ -157,25 +123,11 @@ export class ChatsQuery extends SupabaseQuery {
       .order('last_updated_at', { ascending: false, nullsFirst: false });
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get chats');
+      return { data: null, error };
     }
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
+    return { data: data ?? [], error: null };
+  },
+});
 
-    const result = chatSchema.array().safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-}
+export type GetOrCreateChatInput = z.infer<typeof getOrCreateChatInputSchema>;
