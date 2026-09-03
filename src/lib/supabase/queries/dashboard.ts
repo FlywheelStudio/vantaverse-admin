@@ -1,10 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-import { defineQuery, query, type DalResult } from '@/lib/dal';
+import { defineQuery } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
 import type { Profile } from '../schemas/profiles';
-import type { SupabaseError, SupabaseSuccess } from '../query';
 
 const dashboardStatusCountsSchema = z.object({
   pending: z.number(),
@@ -222,16 +221,6 @@ export const dashboardKeys = {
   needsAttention: (params: DashboardNeedsAttentionParams) =>
     [...dashboardKeys.all, 'needs-attention', params] as const,
 };
-
-function toLegacyResult<T>(
-  result: DalResult<T>,
-): SupabaseSuccess<T> | SupabaseError {
-  const [err, data] = result;
-  if (err) {
-    return { success: false, error: err.message };
-  }
-  return { success: true, data };
-}
 
 function parseDashboardAnalytics(raw: DashboardAnalyticsRaw): DashboardAnalytics {
   const toPoints = (arr: unknown): DashboardAnalyticsPoint[] =>
@@ -827,100 +816,3 @@ export const getDashboardNeedsAttentionQuery = defineQuery({
     };
   },
 });
-
-/**
- * @deprecated Home page / admin profile slices — use DAL queries directly.
- * Retained until page.tsx and users admin partials migrate.
- */
-export class DashboardQuery {
-  public async getStatusCounts(): Promise<
-    SupabaseSuccess<DashboardStatusCounts> | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardStatusCounts));
-  }
-
-  public async getUsersByStatus(
-    status: 'pending' | 'invited' | 'active',
-  ): Promise<SupabaseSuccess<DashboardStatusUser[]> | SupabaseError> {
-    return toLegacyResult(await query(getDashboardUsersByStatus, status));
-  }
-
-  public async getUsersWithNoProgram(): Promise<
-    SupabaseSuccess<DashboardStatusUser[]> | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardUsersWithNoProgram));
-  }
-
-  public async getUsersInProgram(): Promise<
-    SupabaseSuccess<DashboardStatusUser[]> | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardUsersInProgram));
-  }
-
-  public async getAggregateCompliance(): Promise<
-    | SupabaseSuccess<{
-        compliance: number;
-        programCompletion: number;
-      }>
-    | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardAggregateCompliance));
-  }
-
-  public async getUsersNeedingAttention(): Promise<
-    SupabaseSuccess<NeedsAttentionResult> | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardUsersNeedingAttention));
-  }
-
-  public async getComplianceAndCompletionByOrganizationIds(
-    organizationIds: string[],
-  ): Promise<
-    | SupabaseSuccess<
-        Array<{
-          organizationId: string;
-          compliance: number;
-          programCompletion: number;
-        }>
-      >
-    | SupabaseError
-  > {
-    return toLegacyResult(
-      await query(
-        getComplianceAndCompletionByOrganizationIdsQuery,
-        organizationIds,
-      ),
-    );
-  }
-
-  public async getUsersWithLowComplianceByOrganizationIds(
-    organizationIds: string[],
-    threshold = 70,
-  ): Promise<SupabaseSuccess<NeedsAttentionResult> | SupabaseError> {
-    return toLegacyResult(
-      await query(
-        getUsersWithLowComplianceByOrganizationIdsQuery,
-        organizationIds,
-        threshold,
-      ),
-    );
-  }
-
-  public async getUsersProgramCompleted(): Promise<
-    SupabaseSuccess<NeedsAttentionResult> | SupabaseError
-  > {
-    return toLegacyResult(await query(getDashboardUsersProgramCompleted));
-  }
-
-  public async getDashboardAnalytics(
-    params: DashboardAnalyticsParams,
-  ): Promise<SupabaseSuccess<DashboardAnalytics> | SupabaseError> {
-    return toLegacyResult(await query(getDashboardAnalyticsQuery, params));
-  }
-
-  public async getNeedsAttention(
-    params: DashboardNeedsAttentionParams,
-  ): Promise<SupabaseSuccess<NeedsAttentionResult> | SupabaseError> {
-    return toLegacyResult(await query(getDashboardNeedsAttentionQuery, params));
-  }
-}
