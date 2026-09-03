@@ -1,9 +1,19 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+
+import {
+  defineMutation,
+  defineQuery,
+  formatDalError,
+  mutate,
+  query,
+  type DalResult,
+} from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+import {
+  type SupabaseError,
+  type SupabaseSuccess,
+} from '../query';
 import type { PaginatedResult } from './exercise-templates';
 
 export const groupSchema = z.object({
@@ -19,16 +29,257 @@ export const groupSchema = z.object({
 
 export type Group = z.infer<typeof groupSchema>;
 
-export class GroupsQuery extends SupabaseQuery {
-  /**
-   * Get paginated groups with search and sort
-   * @param page - Page number (1-indexed)
-   * @param pageSize - Number of items per page
-   * @param search - Search term for group title
-   * @param sortBy - Sort field (default: 'updated_at')
-   * @param sortOrder - Sort order ('asc' or 'desc', default: 'desc')
-   * @returns Success with paginated data or error
-   */
+const groupListSchema = groupSchema.array();
+const paginatedGroupSchema = z.object({
+  data: groupListSchema,
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+const groupsByIdSchema = z.record(z.string(), groupSchema);
+
+const upsertGroupInputSchema = z.object({
+  p_title: z.string(),
+  p_exercise_template_ids: z.array(z.string()).optional(),
+  p_is_superset: z.boolean().optional(),
+  p_note: z.string().optional(),
+});
+
+const upsertGroupResultSchema = z
+  .object({
+    id: z.string(),
+    group_hash: z.string(),
+    cloned: z.boolean(),
+    reference_count: z.number(),
+    original_id: z.string().optional(),
+  })
+  .passthrough();
+
+export type ListGroupsInput = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+export const groupKeys = {
+  all: ['groups'] as const,
+  list: (input: ListGroupsInput) =>
+    [
+      ...groupKeys.all,
+      'list',
+      input.page ?? 1,
+      input.pageSize ?? 20,
+      input.search ?? '',
+      input.sortBy ?? 'updated_at',
+      input.sortOrder ?? 'desc',
+    ] as const,
+  detail: (id: string) => [...groupKeys.all, 'detail', id] as const,
+  byIds: (ids: string[]) =>
+    [...groupKeys.all, 'byIds', ...[...ids].sort()] as const,
+};
+
+async function fetchGroupsPaginated(
+  client: SupabaseClient<Database>,
+  input: ListGroupsInput,
+): Promise<{
+  data: PaginatedResult<Group> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const page = input.page ?? 1;
+  const pageSize = input.pageSize ?? 20;
+  const search = input.search;
+  const sortBy = input.sortBy ?? 'updated_at';
+  const sortOrder = input.sortOrder ?? 'desc';
+
+  let request = client.from('groups').select('*', { count: 'exact' });
+
+  if (search) {
+    request = request.ilike('title', `%${search}%`);
+  }
+
+  const normalizedSortBy =
+    sortBy === 'exercise_name' ? 'title' : sortBy === 'name' ? 'title' : sortBy;
+
+  const allowedSortFields = new Set(['updated_at', 'created_at', 'title']);
+  const safeSortBy = allowedSortFields.has(normalizedSortBy)
+    ? normalizedSortBy
+    : 'updated_at';
+
+  request = request.order(safeSortBy, { ascending: sortOrder === 'asc' });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  request = request.range(from, to);
+
+  const { data, error, count } = await request;
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!data) {
+    return {
+      data: {
+        data: [],
+        page,
+        pageSize,
+        total: 0,
+        hasMore: false,
+      },
+      error: null,
+    };
+  }
+
+  const parsed = groupSchema.array().safeParse(data);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  const total = count ?? parsed.data.length;
+  const hasMore = from + parsed.data.length < total;
+
+  return {
+    data: {
+      data: parsed.data,
+      page,
+      pageSize,
+      total,
+      hasMore,
+    },
+    error: null,
+  };
+}
+
+async function fetchGroupsByIds(
+  client: SupabaseClient<Database>,
+  ids: string[],
+): Promise<{
+  data: Record<string, Group> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  if (ids.length === 0) {
+    return { data: {}, error: null };
+  }
+
+  const { data, error } = await client.from('groups').select('*').in('id', ids);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!data || data.length === 0) {
+    return { data: {}, error: null };
+  }
+
+  const lookup: Record<string, Group> = {};
+  for (const item of data) {
+    const parsed = groupSchema.safeParse(item);
+    if (parsed.success) {
+      lookup[String(item.id)] = parsed.data;
+    }
+  }
+
+  return { data: lookup, error: null };
+}
+
+function parseRpcEnvelope(
+  result: unknown,
+  fallbackMessage: string,
+): { data: unknown; error: { message: string } | null } {
+  if (!result || (result as { success?: boolean }).success === false) {
+    const errorResult = result as { message?: string; error?: string };
+    return {
+      data: null,
+      error: {
+        message:
+          errorResult.message || errorResult.error || fallbackMessage,
+      },
+    };
+  }
+
+  return { data: result, error: null };
+}
+
+/** Paginated groups with search and sort. */
+export const listGroupsPaginated = defineQuery({
+  key: (input: ListGroupsInput) => groupKeys.list(input),
+  schema: paginatedGroupSchema,
+  client: 'admin',
+  execute: (client, input: ListGroupsInput) =>
+    fetchGroupsPaginated(client, input),
+});
+
+/** Group by id. */
+export const getGroupById = defineQuery({
+  key: groupKeys.detail,
+  schema: groupSchema,
+  client: 'admin',
+  execute: async (client, id: string) => {
+    const { data, error } = await client
+      .from('groups')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    if (!data) {
+      return { data: null, error: { message: 'Group not found' } };
+    }
+
+    return { data, error: null };
+  },
+});
+
+/** Groups keyed by id. */
+export const getGroupsByIds = defineQuery({
+  key: (ids: string[]) => groupKeys.byIds(ids),
+  schema: groupsByIdSchema,
+  client: 'admin',
+  execute: (client, ids: string[]) => fetchGroupsByIds(client, ids),
+});
+
+/** Upsert group via RPC. */
+export const upsertGroupMutation = defineMutation({
+  inputSchema: upsertGroupInputSchema,
+  schema: upsertGroupResultSchema,
+  client: 'admin',
+  execute: async (client, input) => {
+    type RpcArgs = Database['public']['Functions']['upsert_group']['Args'];
+    const { data: result, error } = await client.rpc(
+      'upsert_group',
+      input as RpcArgs,
+    );
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return parseRpcEnvelope(result, 'Failed to upsert group');
+  },
+  targets: () => [groupKeys.all],
+});
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
+
+/** Legacy facade for callers outside Wave B scope (e.g. program-assignments). */
+export class GroupsQuery {
   public async getListPaginated(
     page: number = 1,
     pageSize: number = 20,
@@ -36,170 +287,37 @@ export class GroupsQuery extends SupabaseQuery {
     sortBy: string = 'updated_at',
     sortOrder: 'asc' | 'desc' = 'desc',
   ): Promise<SupabaseSuccess<PaginatedResult<Group>> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
-
-    let query = supabase.from('groups').select('*', { count: 'exact' });
-
-    if (search) {
-      query = query.ilike('title', `%${search}%`);
-    }
-
-    // Normalize/limit sort fields
-    const normalizedSortBy =
-      sortBy === 'exercise_name'
-        ? 'title'
-        : sortBy === 'name'
-          ? 'title'
-          : sortBy;
-
-    const allowedSortFields = new Set(['updated_at', 'created_at', 'title']);
-    const safeSortBy = allowedSortFields.has(normalizedSortBy)
-      ? normalizedSortBy
-      : 'updated_at';
-
-    query = query.order(safeSortBy, { ascending: sortOrder === 'asc' });
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get groups');
-    }
-
-    if (!data) {
-      return {
-        success: true,
-        data: {
-          data: [],
-          page,
-          pageSize,
-          total: 0,
-          hasMore: false,
-        },
-      };
-    }
-
-    const result = groupSchema.array().safeParse(data);
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    const total = count ?? result.data.length;
-    const hasMore = from + result.data.length < total;
-
-    return {
-      success: true,
-      data: {
-        data: result.data,
+    return toLegacyResult(
+      await query(listGroupsPaginated, {
         page,
         pageSize,
-        total,
-        hasMore,
-      },
-    };
+        search,
+        sortBy,
+        sortOrder,
+      }),
+    );
   }
 
-  /**
-   * Get group by ID
-   * @param id - The group ID
-   * @returns Success with group or error
-   */
   public async getById(
     id: string,
   ): Promise<SupabaseSuccess<Group> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
-
-    const { data, error } = await supabase
-      .from('groups')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get group');
-    }
-
-    if (!data) {
-      return {
-        success: false,
-        error: 'Group not found',
-      };
-    }
-
-    const result = groupSchema.safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
+    return toLegacyResult(await query(getGroupById, id));
   }
 
-  /**
-   * Get multiple groups by IDs
-   * @param ids - Array of group IDs
-   * @returns Success with groups map or error
-   */
   public async getByIds(
     ids: string[],
   ): Promise<SupabaseSuccess<Map<string, Group>> | SupabaseError> {
-    if (ids.length === 0) {
-      return {
-        success: true,
-        data: new Map(),
-      };
+    const result = await query(getGroupsByIds, ids);
+    const [err, data] = result;
+    if (err) {
+      return { success: false, error: formatDalError(err) };
     }
-
-    const supabase = await this.getClient('service_role');
-
-    const { data, error } = await supabase
-      .from('groups')
-      .select('*')
-      .in('id', ids);
-
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get groups');
-    }
-
-    if (!data || data.length === 0) {
-      return {
-        success: true,
-        data: new Map(),
-      };
-    }
-
-    // Create map
-    const groupsMap = new Map<string, Group>();
-    for (const item of data) {
-      const result = groupSchema.safeParse(item);
-      if (result.success) {
-        groupsMap.set(item.id, result.data);
-      }
-    }
-
-    return {
-      success: true,
-      data: groupsMap,
-    };
+    return { success: true, data: new Map(Object.entries(data)) };
   }
 
-  /**
-   * Upsert group via RPC function
-   * @param data - The group data
-   * @returns Success with group data or error
-   */
-  public async upsertGroup(data: {
-    p_title: string;
-    p_exercise_template_ids?: string[];
-    p_is_superset?: boolean;
-    p_note?: string;
-  }): Promise<
+  public async upsertGroup(
+    data: z.infer<typeof upsertGroupInputSchema>,
+  ): Promise<
     | {
         success: true;
         data: {
@@ -212,37 +330,18 @@ export class GroupsQuery extends SupabaseQuery {
       }
     | { success: false; error: string }
   > {
-    const supabase = await this.getClient('service_role');
-
-    const { data: result, error } = await supabase.rpc('upsert_group', data);
-
-    if (error) {
-      console.error('Error calling upsert_group RPC:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to upsert group',
-      };
+    const [err, rpcData] = await mutate(upsertGroupMutation, data);
+    if (err) {
+      return { success: false, error: formatDalError(err) };
     }
-
-    if (!result || (result as { success?: boolean }).success === false) {
-      const errorResult = result as { message?: string; error?: string };
-      const errorMessage =
-        errorResult.message || errorResult.error || 'Failed to upsert group';
-      console.error('Error from upsert_group SQL function:', result);
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-
     return {
       success: true,
       data: {
-        id: result.id,
-        group_hash: result.group_hash,
-        cloned: result.cloned,
-        reference_count: result.reference_count,
-        original_id: result.original_id,
+        id: rpcData.id,
+        group_hash: rpcData.group_hash,
+        cloned: rpcData.cloned,
+        reference_count: rpcData.reference_count,
+        original_id: rpcData.original_id,
       },
     };
   }

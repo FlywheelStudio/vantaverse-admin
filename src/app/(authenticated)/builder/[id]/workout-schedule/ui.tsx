@@ -16,15 +16,12 @@ import { useFormContext } from 'react-hook-form';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import type { ProgramTemplateFormData } from '../../program/schemas';
 import { cn, calculateEndDate, formatDateForDB } from '@/lib/utils';
-import { createParallelQueries } from '@/lib/supabase/query';
-import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { useDefaultValues } from '../default-values/use-default-values';
 import { UpdateDerivedDialog } from './update-derived-dialog';
 import { updateDerivedProgramSchedules, updateDerivedPreProgramSchedules } from '../../actions';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import { useQueryClient } from '@tanstack/react-query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
-import { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 
 type BuilderAssignmentStatus =
@@ -156,97 +153,56 @@ export function BuildWorkoutSection({
           : null;
 
     try {
-      const result = await createParallelQueries({
-        template: {
-          query: async (): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> => {
-            try {
-              const result = await updateProgramTemplateMutation.mutateAsync({
-                templateId: template.id,
-                name: isPreProgramTemplate ? template.name : values.name,
-                weeks: values.weeks,
-                coming_soon_weeks: values.coming_soon_weeks ?? 0,
-                startDate: isRegularTemplate || isPreProgramTemplate
-                  ? undefined
-                  : values.startDate,
-                endDate: isRegularTemplate || isPreProgramTemplate
-                  ? undefined
-                  : values.endDate,
-                description: isPreProgramTemplate
-                  ? template.description ?? null
-                  : values.description?.trim() || null,
-                goals: isPreProgramTemplate
-                  ? template.goals ?? null
-                  : values.goals?.trim() || null,
-                notes: isPreProgramTemplate
-                  ? template.notes ?? null
-                  : values.notes?.trim() || null,
-                imageFile: isPreProgramTemplate ? null : values.imageFile || null,
-                imagePreview: isPreProgramTemplate ? null : values.imagePreview || null,
-                oldImageUrl,
-                organizationId: template.organization_id || null,
-              });
-              return { success: true, data: result };
-            } catch (error) {
-              return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to update template',
-                status: 500,
-              };
-            }
-          },
-          required: true,
-        },
-        schedule: {
-          query: async (): Promise<
-            SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
-          > => {
-            try {
-              const scheduleResult = await upsertScheduleMutation.mutateAsync({
-                schedule,
-                assignmentId: programAssignmentId,
-                defaultValues,
-              });
-              return { success: true, data: scheduleResult };
-            } catch (error) {
-              return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to save schedule',
-                status: 500,
-              };
-            }
-          },
-          required: true,
-        },
-        assignment: {
-          query: async (
-            deps: {
-              template: ProgramTemplate;
-              schedule: { id: string; schedule_hash: string };
-            },
-          ): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> => {
-            try {
-              await updateProgramScheduleMutation.mutateAsync({
-                assignmentId: programAssignmentId,
-                workoutScheduleId: deps.schedule.id,
-              });
-              return { success: true, data: { id: programAssignmentId } as ProgramAssignment };
-            } catch (error) {
-              return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Failed to update assignment',
-                status: 500,
-              };
-            }
-          },
-          dependsOn: ['template', 'schedule'] as const,
-          required: false,
-        },
-      });
+      const [, scheduleResult] = await Promise.all([
+        (async (): Promise<ProgramTemplate> => {
+          return updateProgramTemplateMutation.mutateAsync({
+            templateId: template.id,
+            name: isPreProgramTemplate ? template.name : values.name,
+            weeks: values.weeks,
+            coming_soon_weeks: values.coming_soon_weeks ?? 0,
+            startDate: isRegularTemplate || isPreProgramTemplate
+              ? undefined
+              : values.startDate,
+            endDate: isRegularTemplate || isPreProgramTemplate
+              ? undefined
+              : values.endDate,
+            description: isPreProgramTemplate
+              ? template.description ?? null
+              : values.description?.trim() || null,
+            goals: isPreProgramTemplate
+              ? template.goals ?? null
+              : values.goals?.trim() || null,
+            notes: isPreProgramTemplate
+              ? template.notes ?? null
+              : values.notes?.trim() || null,
+            imageFile: isPreProgramTemplate ? null : values.imageFile || null,
+            imagePreview: isPreProgramTemplate ? null : values.imagePreview || null,
+            oldImageUrl,
+            organizationId: template.organization_id || null,
+          });
+        })(),
+        (async (): Promise<{ id: string; schedule_hash: string }> => {
+          return upsertScheduleMutation.mutateAsync({
+            schedule,
+            assignmentId: programAssignmentId,
+            defaultValues,
+          });
+        })(),
+      ]);
 
-      if (isPreProgramTemplate && result.schedule) {
+      try {
+        await updateProgramScheduleMutation.mutateAsync({
+          assignmentId: programAssignmentId,
+          workoutScheduleId: scheduleResult.id,
+        });
+      } catch {
+        // Assignment link is best-effort; template and schedule already saved.
+      }
+
+      if (isPreProgramTemplate) {
         const derivedResult = await updateDerivedPreProgramSchedules(
           programAssignmentId,
-          result.schedule.id,
+          scheduleResult.id,
         );
 
         if (derivedResult.success) {
@@ -266,10 +222,10 @@ export function BuildWorkoutSection({
         } else {
           toast.success('Template saved, but failed to update pre-program users');
         }
-      } else if (isRegularTemplate && updateDerived && result.schedule) {
+      } else if (isRegularTemplate && updateDerived) {
         const derivedResult = await updateDerivedProgramSchedules(
           programAssignmentId,
-          result.schedule.id,
+          scheduleResult.id,
         );
 
         if (derivedResult.success) {
