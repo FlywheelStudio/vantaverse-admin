@@ -9,12 +9,18 @@ import {
   getExerciseTemplatesByIds as getExerciseTemplatesByIdsQuery,
   listExerciseTemplatesPaginated,
   upsertExerciseTemplateMutation,
+  type PaginatedResult,
 } from '@/lib/supabase/queries/exercise-templates';
 import {
   createProgramTemplate as createProgramTemplateMutation,
   updateProgramTemplate as updateProgramTemplateMutation,
 } from '@/lib/supabase/queries/program-templates';
-import { GroupsQuery } from '@/lib/supabase/queries/groups';
+import {
+  getGroupsByIds as getGroupsByIdsQuery,
+  listGroupsPaginated,
+  upsertGroupMutation,
+  type Group as DbGroup,
+} from '@/lib/supabase/queries/groups';
 import {
   getWorkoutScheduleDataByAssignmentId,
   upsertWorkoutScheduleMutation,
@@ -464,9 +470,16 @@ export async function getGroupsPaginated(
   search?: string,
   sortBy: string = 'updated_at',
   sortOrder: 'asc' | 'desc' = 'desc',
-) {
-  const query = new GroupsQuery();
-  return query.getListPaginated(page, pageSize, search, sortBy, sortOrder);
+): Promise<LegacyResult<PaginatedResult<DbGroup>>> {
+  return fromDalResult(
+    await query(listGroupsPaginated, {
+      page,
+      pageSize,
+      search,
+      sortBy,
+      sortOrder,
+    }),
+  );
 }
 
 /**
@@ -605,8 +618,22 @@ export async function upsertGroup(data: {
     }
   | { success: false; error: string }
 > {
-  const query = new GroupsQuery();
-  return query.upsertGroup(data);
+  const result = fromDalResult(await mutate(upsertGroupMutation, data));
+
+  if (!result.success) {
+    return result;
+  }
+
+  return {
+    success: true,
+    data: {
+      id: result.data.id,
+      group_hash: result.data.group_hash,
+      cloned: result.data.cloned,
+      reference_count: result.data.reference_count,
+      original_id: result.data.original_id,
+    },
+  };
 }
 
 /**
@@ -698,7 +725,6 @@ export async function convertScheduleToSelectedItems(
   }
 
   const client = await createClient();
-  const groupsQuery = new GroupsQuery();
 
   const [directTemplatesResult, groupsResult] = await Promise.all([
     query(
@@ -706,7 +732,7 @@ export async function convertScheduleToSelectedItems(
       Array.from(exerciseTemplateIds),
       { client },
     ),
-    groupsQuery.getByIds(Array.from(groupIds)),
+    query(getGroupsByIdsQuery, Array.from(groupIds)),
   ]);
 
   const [directTemplatesErr, directTemplatesRecord] = directTemplatesResult;
@@ -714,11 +740,12 @@ export async function convertScheduleToSelectedItems(
     return { success: false, error: formatDalError(directTemplatesErr) };
   }
 
-  if (!groupsResult.success) {
-    return { success: false, error: groupsResult.error };
+  const [groupsErr, groupsRecord] = groupsResult;
+  if (groupsErr) {
+    return { success: false, error: formatDalError(groupsErr) };
   }
 
-  const groupsMap = groupsResult.data;
+  const groupsMap = new Map(Object.entries(groupsRecord));
   const templatesMap = new Map<string, ExerciseTemplate>(
     Object.entries(directTemplatesRecord) as [string, ExerciseTemplate][],
   );
