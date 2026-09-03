@@ -10,7 +10,11 @@ import {
   updateOrganization as updateOrganizationMutation,
 } from '@/lib/supabase/queries/organizations';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
+import {
+  getAllWithMembershipsQuery,
+  type ProfileWithMemberships,
+} from '@/lib/supabase/queries/profiles';
+import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
@@ -181,9 +185,11 @@ export async function deleteOrganization(
 /**
  * Get all profiles with their memberships
  */
-export async function getAllProfilesWithMemberships() {
-  const query = new ProfilesQuery();
-  return query.getAllWithMemberships();
+export async function getAllProfilesWithMemberships(): Promise<
+  SupabaseSuccess<ProfileWithMemberships[]> | SupabaseError
+> {
+  const client = await createAdminClient();
+  return toSupabaseResult(await query(getAllWithMembershipsQuery, { client }));
 }
 
 /**

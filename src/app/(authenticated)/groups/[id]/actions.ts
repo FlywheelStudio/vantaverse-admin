@@ -1,16 +1,30 @@
 'use server';
 
+import { mutate, query, type DalResult } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/core/server';
 import { createAdminClient } from '@/lib/supabase/core/admin';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import {
+  getAllWithMembershipsQuery,
+} from '@/lib/supabase/queries/profiles';
+import { assignProgramToUser } from '@/lib/supabase/queries/program-assignments';
 import { resolveDisplayProfilesByIds } from '@/lib/supabase/queries/resolve-display-profiles';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import {
   DEFAULT_SCREENING_BASE,
   buildBookingLink,
   normalizeCalendlyUrl,
 } from '@/lib/calendly';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 export type GroupMemberWithProgram = {
   user_id: string;
@@ -145,15 +159,16 @@ export async function getOrganizationMembersWithPrograms(
   };
 }
 
-export async function getUnassignedUsers() {
-  const query = new ProfilesQuery();
-  const profilesResult = await query.getAllWithMemberships();
+export async function getUnassignedUsers(): Promise<
+  SupabaseSuccess<SuperAdminGroupUser[]> | SupabaseError
+> {
+  const client = await createAdminClient();
+  const profilesResult = toSupabaseResult(
+    await query(getAllWithMembershipsQuery, { client }),
+  );
 
   if (!profilesResult.success) {
-    return {
-      success: false as const,
-      error: profilesResult.error,
-    };
+    return profilesResult;
   }
 
   const unassigned = profilesResult.data
@@ -639,14 +654,15 @@ export async function bulkAssignProgram(
     for (const s of skipped) s.name = nameById.get(s.user_id) ?? 'Unnamed';
   }
 
-  const query = new ProgramAssignmentsQuery();
   const failed: Array<{ user_id: string; error: string }> = [];
   let assignedCount = 0;
   for (const userId of assignees) {
-    const result = await query.assignToUser(
-      templateAssignmentId,
-      userId,
-      startDate,
+    const result = toSupabaseResult(
+      await mutate(
+        assignProgramToUser,
+        { templateAssignmentId, userId, startDate },
+        { client: supabase },
+      ),
     );
     if (result.success) assignedCount += 1;
     else failed.push({ user_id: userId, error: result.error });
@@ -681,8 +697,13 @@ export async function replaceMemberProgram(
     };
   }
 
-  const query = new ProgramAssignmentsQuery();
-  return query.assignToUser(templateAssignmentId, userId, startDate);
+  return toSupabaseResult(
+    await mutate(
+      assignProgramToUser,
+      { templateAssignmentId, userId, startDate },
+      { client: supabase },
+    ),
+  );
 }
 
 /** Soft-cancel one assignment (history preserved). */
