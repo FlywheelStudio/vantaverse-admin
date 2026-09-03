@@ -2,8 +2,24 @@
 
 import { formatDalError, mutate, query, type DalResult } from '@/lib/dal';
 import { queryWithSession } from '@/lib/dal/core/query.server';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
-import { ExercisesQuery } from '@/lib/supabase/queries/exercises';
+import {
+  assignProgramToUser,
+  clearProgramAssignmentDatesByTemplateId,
+  createProgramAssignment,
+  deleteProgramAssignment as deleteProgramAssignmentMutation,
+  getPreProgramTemplateAssignment,
+  getProgramAssignmentById as getProgramAssignmentByIdQuery,
+  getProgramAssignmentTemplatesPaginated,
+  updateDerivedProgramAssignmentSchedule,
+  updateProgramAssignmentDatesByIds,
+  updateProgramAssignmentDatesByTemplateId,
+  updateProgramAssignmentWorkoutScheduleId,
+} from '@/lib/supabase/queries/program-assignments';
+import {
+  getExerciseDistinctTypes,
+  listExercisesPaginated,
+} from '@/lib/supabase/queries/exercises';
+import { listProfilesWithStatsQuery } from '@/lib/supabase/queries/profiles';
 import {
   editExerciseTemplateMutation,
   getExerciseTemplatesByIds as getExerciseTemplatesByIdsQuery,
@@ -26,13 +42,15 @@ import {
   upsertWorkoutScheduleMutation,
 } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
 import { createClient } from '@/lib/supabase/core/server';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
-import type { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
+import type { ProgramAssignment, ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type { Exercise } from '@/lib/supabase/schemas/exercises';
+import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 
@@ -48,6 +66,26 @@ function fromDalResult<T>(result: DalResult<T>): LegacyResult<T> {
   return { success: true, data };
 }
 
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
+
+function voidFromDeleteResult(
+  result: DalResult<{ id: string }>,
+): SupabaseSuccess<void> | SupabaseError {
+  const mapped = toSupabaseResult(result);
+  if (!mapped.success) {
+    return mapped;
+  }
+  return { success: true, data: undefined };
+}
+
 /**
  * Get paginated program assignments with status='template' (joined with program_template)
  * Supports server-side filtering for search and weeks
@@ -58,14 +96,28 @@ export async function getProgramAssignmentsPaginated(
   search?: string,
   weeks?: number,
   showAssigned: boolean = false,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getTemplatesPaginated(
-    page,
-    pageSize,
-    search,
-    weeks,
-    showAssigned,
+): Promise<
+  | SupabaseSuccess<{
+      data: ProgramAssignmentWithTemplate[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+      memberStats: Record<
+        string,
+        { members: number; avgCompletion: number | null }
+      >;
+    }>
+  | SupabaseError
+> {
+  return toSupabaseResult(
+    await query(getProgramAssignmentTemplatesPaginated, {
+      page,
+      pageSize,
+      search,
+      weeks,
+      showAssigned,
+    }),
   );
 }
 
@@ -82,15 +134,16 @@ export async function bulkAssignProgramToUsers(
   assigned: number;
   failed: Array<{ userId: string; error: string }>;
 }> {
-  const query = new ProgramAssignmentsQuery();
   const failed: Array<{ userId: string; error: string }> = [];
   let assigned = 0;
 
   for (const userId of userIds) {
-    const result = await query.assignToUser(
-      templateAssignmentId,
-      userId,
-      startDate,
+    const result = toSupabaseResult(
+      await mutate(assignProgramToUser, {
+        templateAssignmentId,
+        userId,
+        startDate,
+      }),
     );
     if (result.success) {
       assigned += 1;
@@ -109,33 +162,48 @@ export async function updateAssignmentDates(
   assignmentIds: string[],
   startDate: string, // ISO date string (YYYY-MM-DD)
   endDate: string, // ISO date string (YYYY-MM-DD)
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.updateDatesByIds(assignmentIds, startDate, endDate);
+): Promise<SupabaseSuccess<void> | SupabaseError> {
+  return voidFromDeleteResult(
+    await mutate(updateProgramAssignmentDatesByIds, {
+      ids: assignmentIds,
+      startDate,
+      endDate,
+    }),
+  );
 }
 
 /**
  * Get all patients (role='patient') in an organization
  */
-export async function getOrganizationPatients(organizationId: string) {
-  const query = new ProfilesQuery();
-  return query.getPatientsByOrganization(organizationId);
+export async function getOrganizationPatients(
+  organizationId: string,
+): Promise<SupabaseSuccess<ProfileWithStats[]> | SupabaseError> {
+  return toSupabaseResult(
+    await query(listProfilesWithStatsQuery, {
+      organization_id: organizationId,
+      role: 'patient',
+    }),
+  );
 }
 
 /**
  * Get a single program assignment by ID (joined with program_template)
  */
-export async function getProgramAssignmentById(id: string) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getById(id);
+export async function getProgramAssignmentById(
+  id: string,
+): Promise<SupabaseSuccess<ProgramAssignmentWithTemplate> | SupabaseError> {
+  return toSupabaseResult(await query(getProgramAssignmentByIdQuery, id));
 }
 
 /**
  * Get the global pre-program template assignment for the pinned builder card.
  */
-export async function getPreProgramTemplate() {
-  const query = new ProgramAssignmentsQuery();
-  return query.getPreProgramTemplate();
+export async function getPreProgramTemplate(): Promise<
+  SupabaseSuccess<ProgramAssignmentWithTemplate | null> | SupabaseError
+> {
+  return toSupabaseResult(
+    await queryWithSession(getPreProgramTemplateAssignment),
+  );
 }
 
 /**
@@ -156,7 +224,6 @@ export async function createProgramTemplate(
     }>
   | LegacyError
 > {
-  const assignmentQuery = new ProgramAssignmentsQuery();
   const client = await createClient();
 
   const templateResult = fromDalResult(
@@ -180,12 +247,17 @@ export async function createProgramTemplate(
 
   const templateId = templateResult.data.id;
 
-  // Template assignments never have dates
-  const assignmentResult = await assignmentQuery.create(
-    templateId,
-    null,
-    null,
-    organizationId,
+  const assignmentResult = fromDalResult(
+    await mutate(
+      createProgramAssignment,
+      {
+        programTemplateId: templateId,
+        startDate: null,
+        endDate: null,
+        organizationId,
+      },
+      { client },
+    ),
   );
 
   if (!assignmentResult.success) {
@@ -284,38 +356,93 @@ export async function uploadProgramTemplateImage(
  * Delete a program assignment and its associated template
  * Deletes the template, which cascades to delete the assignment
  */
-export async function deleteProgramAssignment(assignmentId: string) {
-  const assignmentQuery = new ProgramAssignmentsQuery();
-
-  // Delete the assignment
-  const deleteAssignmentResult = await assignmentQuery.delete(assignmentId);
-
-  if (!deleteAssignmentResult.success) {
-    return deleteAssignmentResult;
-  }
-
-  return {
-    success: true as const,
-    data: undefined,
-  };
+export async function deleteProgramAssignment(
+  assignmentId: string,
+): Promise<SupabaseSuccess<void> | SupabaseError> {
+  const client = await createClient();
+  return voidFromDeleteResult(
+    await mutate(deleteProgramAssignmentMutation, { id: assignmentId }, { client }),
+  );
 }
 
 /**
  * Clone a program assignment into a new template (new program_template + program_assignment).
  * Returns the new assignment id for redirect.
  */
-export async function cloneProgramAssignment(assignmentId: string) {
-  const assignmentQuery = new ProgramAssignmentsQuery();
+export async function cloneProgramAssignment(
+  assignmentId: string,
+): Promise<
+  | SupabaseSuccess<{ assignmentId: string }>
+  | SupabaseError
+> {
+  const sourceResult = toSupabaseResult(
+    await query(getProgramAssignmentByIdQuery, assignmentId),
+  );
+  if (!sourceResult.success) {
+    return sourceResult;
+  }
 
-  const result = await assignmentQuery.cloneToTemplate(assignmentId);
+  const source = sourceResult.data;
+  if (!source.program_template) {
+    return {
+      success: false,
+      error: 'Program template not found',
+    };
+  }
 
-  if (!result.success) {
-    return result;
+  if (source.status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM_TEMPLATE) {
+    return {
+      success: false,
+      error: 'Cannot clone the Pre-Program template',
+    };
+  }
+
+  const template = source.program_template;
+  const client = await createClient();
+
+  const templateResult = fromDalResult(
+    await mutate(
+      createProgramTemplateMutation,
+      {
+        name: `${template.name} (clone)`,
+        weeks: template.weeks,
+        description: template.description ?? null,
+        goals: template.goals ?? null,
+        notes: template.notes ?? null,
+        organizationId:
+          source.organization_id ?? template.organization_id ?? null,
+        imageUrl:
+          template.image_url != null ? String(template.image_url) : null,
+      },
+      { client },
+    ),
+  );
+
+  if (!templateResult.success) {
+    return templateResult;
+  }
+
+  const assignmentResult = fromDalResult(
+    await mutate(
+      createProgramAssignment,
+      {
+        programTemplateId: templateResult.data.id,
+        startDate: null,
+        endDate: null,
+        organizationId: source.organization_id ?? null,
+        workoutScheduleId: source.workout_schedule_id ?? null,
+      },
+      { client },
+    ),
+  );
+
+  if (!assignmentResult.success) {
+    return assignmentResult;
   }
 
   return {
     success: true as const,
-    data: { assignmentId: result.data.assignment.id },
+    data: { assignmentId: assignmentResult.data.id },
   };
 }
 
@@ -359,24 +486,20 @@ export async function updateProgramTemplate(
     return updateResult;
   }
 
-  const assignmentQuery = new ProgramAssignmentsQuery();
-  if (startDate && endDate) {
-    const updateDatesResult = await assignmentQuery.updateDatesByTemplateId(
-      templateId,
-      startDate,
-      endDate,
-    );
+  const assignmentDateResult = startDate && endDate
+    ? voidFromDeleteResult(
+        await mutate(updateProgramAssignmentDatesByTemplateId, {
+          templateId,
+          startDate,
+          endDate,
+        }),
+      )
+    : voidFromDeleteResult(
+        await mutate(clearProgramAssignmentDatesByTemplateId, { templateId }),
+      );
 
-    if (!updateDatesResult.success) {
-      return updateDatesResult;
-    }
-  } else {
-    // Clear dates on template assignment when saving a template (no dates)
-    const clearResult =
-      await assignmentQuery.clearDatesByTemplateId(templateId);
-    if (!clearResult.success) {
-      return clearResult;
-    }
+  if (!assignmentDateResult.success) {
+    return assignmentDateResult;
   }
 
   return {
@@ -420,24 +543,37 @@ export async function getExercisesPaginated(
   sortBy: string = 'updated_at',
   sortOrder: 'asc' | 'desc' = 'desc',
   type?: string | null,
-) {
-  const query = new ExercisesQuery();
-  return query.getListPaginated(
-    page,
-    pageSize,
-    search,
-    sortBy,
-    sortOrder,
-    type,
+): Promise<
+  | SupabaseSuccess<{
+      data: Exercise[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+    }>
+  | SupabaseError
+> {
+  return toSupabaseResult(
+    await query(
+      listExercisesPaginated,
+      page,
+      pageSize,
+      search,
+      sortBy,
+      sortOrder,
+      type,
+    ),
   );
 }
 
 /**
  * Get distinct exercise types (sources) for filter dropdown
  */
-export async function getExerciseTypes() {
-  const query = new ExercisesQuery();
-  return query.getDistinctTypes();
+export async function getExerciseTypes(): Promise<
+  SupabaseSuccess<string[]> | SupabaseError
+> {
+  const client = await createClient();
+  return toSupabaseResult(await query(getExerciseDistinctTypes, { client }));
 }
 
 /**
@@ -680,9 +816,13 @@ export async function getWorkoutScheduleData(programAssignmentId: string) {
 export async function updateProgramSchedule(
   assignmentId: string,
   workoutScheduleId: string,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.updateWorkoutScheduleId(assignmentId, workoutScheduleId);
+): Promise<SupabaseSuccess<void> | SupabaseError> {
+  return voidFromDeleteResult(
+    await mutate(updateProgramAssignmentWorkoutScheduleId, {
+      assignmentId,
+      workoutScheduleId,
+    }),
+  );
 }
 
 /**
@@ -854,13 +994,17 @@ export async function convertScheduleToSelectedItems(
 export async function updateDerivedProgramSchedules(
   baseAssignmentId: string,
   workoutScheduleId: string,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.updateDerivedAssignmentsSchedule(
+): Promise<SupabaseSuccess<number> | SupabaseError> {
+  const result = await mutate(updateDerivedProgramAssignmentSchedule, {
     baseAssignmentId,
     workoutScheduleId,
-    PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
-  );
+    derivedStatus: PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+  });
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data: data.count };
 }
 
 /**
@@ -869,11 +1013,15 @@ export async function updateDerivedProgramSchedules(
 export async function updateDerivedPreProgramSchedules(
   baseAssignmentId: string,
   workoutScheduleId: string,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.updateDerivedAssignmentsSchedule(
+): Promise<SupabaseSuccess<number> | SupabaseError> {
+  const result = await mutate(updateDerivedProgramAssignmentSchedule, {
     baseAssignmentId,
     workoutScheduleId,
-    PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
-  );
+    derivedStatus: PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
+  });
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data: data.count };
 }
