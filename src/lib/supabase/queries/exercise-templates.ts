@@ -1,9 +1,15 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery, formatDalError, mutate, type DalResult } from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import type { Database } from '@/lib/supabase/database.types';
+import { createClient } from '@/lib/supabase/core/server';
+
 import {
-  SupabaseQuery,
-  type SupabaseSuccess,
   type SupabaseError,
+  type SupabaseSuccess,
 } from '../query';
-import type { Database } from '../database.types';
 import {
   exerciseTemplateSchema,
   type ExerciseTemplate,
@@ -17,16 +23,353 @@ export type PaginatedResult<T> = {
   hasMore: boolean;
 };
 
-export class ExerciseTemplatesQuery extends SupabaseQuery {
-  /**
-   * Get paginated exercise templates with search and sort
-   * @param page - Page number (1-indexed)
-   * @param pageSize - Number of items per page
-   * @param search - Search term for exercise name
-   * @param sortBy - Sort field (default: 'updated_at')
-   * @param sortOrder - Sort order ('asc' or 'desc', default: 'desc')
-   * @returns Success with paginated data or error
-   */
+const exerciseTemplateListSchema = exerciseTemplateSchema.array();
+const paginatedExerciseTemplateSchema = z.object({
+  data: exerciseTemplateListSchema,
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+
+const exerciseTemplatesByIdSchema = z.record(z.string(), exerciseTemplateSchema);
+
+const exerciseTemplateRpcResultSchema = z
+  .object({
+    id: z.string(),
+    template_hash: z.string().optional(),
+    success: z.boolean().optional(),
+    message: z.string().optional(),
+    error: z.string().optional(),
+  })
+  .passthrough();
+
+const upsertExerciseTemplateInputSchema = z.object({
+  p_exercise_id: z.number(),
+  p_sets: z.number().optional(),
+  p_rep: z.number().nullable().optional(),
+  p_time: z.number().nullable().optional(),
+  p_distance: z.string().nullable().optional(),
+  p_weight: z.string().nullable().optional(),
+  p_rest_time: z.number().nullable().optional(),
+  p_tempo: z.array(z.string()).nullable().optional(),
+  p_rep_override: z.array(z.number()).nullable().optional(),
+  p_time_override: z.array(z.number()).nullable().optional(),
+  p_distance_override: z.array(z.string()).nullable().optional(),
+  p_weight_override: z.array(z.string()).nullable().optional(),
+  p_rest_time_override: z.array(z.number()).nullable().optional(),
+  p_notes: z.string().optional(),
+});
+
+const editExerciseTemplateInputSchema = upsertExerciseTemplateInputSchema.extend({
+  p_template_id: z.string(),
+});
+
+export type ListExerciseTemplatesInput = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+export const exerciseTemplateKeys = {
+  all: ['exercise-templates'] as const,
+  list: (input: ListExerciseTemplatesInput) =>
+    [
+      ...exerciseTemplateKeys.all,
+      'list',
+      input.page ?? 1,
+      input.pageSize ?? 20,
+      input.search ?? '',
+      input.sortBy ?? 'updated_at',
+      input.sortOrder ?? 'desc',
+    ] as const,
+  detail: (id: string) => [...exerciseTemplateKeys.all, 'detail', id] as const,
+  byIds: (ids: string[]) =>
+    [...exerciseTemplateKeys.all, 'byIds', ...[...ids].sort()] as const,
+};
+
+type RawExerciseTemplateRow = Record<string, unknown> & {
+  exercises:
+    | {
+        exercise_name: string | null;
+        video_type: string | null;
+        video_url: string | null;
+        thumbnail_url: string | null;
+      }
+    | {
+        exercise_name: string | null;
+        video_type: string | null;
+        video_url: string | null;
+        thumbnail_url: string | null;
+      }[]
+    | null;
+};
+
+function transformExerciseTemplateRow(
+  item: RawExerciseTemplateRow,
+): Record<string, unknown> {
+  const exercise = Array.isArray(item.exercises)
+    ? item.exercises[0]
+    : item.exercises;
+
+  return {
+    ...item,
+    exercise_name: exercise?.exercise_name || '',
+    video_type: exercise?.video_type || undefined,
+    video_url: exercise?.video_url || undefined,
+    thumbnail_url: exercise?.thumbnail_url ?? undefined,
+  };
+}
+
+const exerciseTemplateSelect = `
+  *,
+  exercises!exercise_templates_exercise_id_fkey (
+    exercise_name,
+    video_type,
+    video_url,
+    thumbnail_url
+  )
+`;
+
+async function fetchExerciseTemplatesPaginated(
+  client: SupabaseClient<Database>,
+  input: ListExerciseTemplatesInput,
+): Promise<{
+  data: PaginatedResult<ExerciseTemplate> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const page = input.page ?? 1;
+  const pageSize = input.pageSize ?? 20;
+  const search = input.search;
+  const sortBy = input.sortBy ?? 'updated_at';
+  const sortOrder = input.sortOrder ?? 'desc';
+
+  let request = client
+    .from('exercise_templates')
+    .select(exerciseTemplateSelect, { count: 'exact' });
+
+  if (sortBy !== 'exercise_name') {
+    request = request.order(sortBy, { ascending: sortOrder === 'asc' });
+  } else {
+    request = request.order('updated_at', { ascending: false });
+  }
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  request = request.range(from, to);
+
+  const { data, error, count } = await request;
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!data) {
+    return {
+      data: {
+        data: [],
+        page,
+        pageSize,
+        total: 0,
+        hasMore: false,
+      },
+      error: null,
+    };
+  }
+
+  let transformedData = (data as RawExerciseTemplateRow[]).map(
+    transformExerciseTemplateRow,
+  );
+
+  if (search) {
+    transformedData = transformedData.filter((item) =>
+      String(item.exercise_name ?? '')
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    );
+  }
+
+  if (sortBy === 'exercise_name') {
+    transformedData.sort((left, right) => {
+      const leftName = String(left.exercise_name ?? '');
+      const rightName = String(right.exercise_name ?? '');
+      const comparison = leftName.localeCompare(rightName);
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  const parsed = exerciseTemplateSchema.array().safeParse(transformedData);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  const adjustedTotal = search ? parsed.data.length : count || 0;
+  const hasMore = search
+    ? false
+    : from + parsed.data.length < adjustedTotal;
+
+  return {
+    data: {
+      data: parsed.data,
+      page,
+      pageSize,
+      total: adjustedTotal,
+      hasMore,
+    },
+    error: null,
+  };
+}
+
+async function fetchExerciseTemplatesByIds(
+  client: SupabaseClient<Database>,
+  ids: string[],
+): Promise<{
+  data: Record<string, ExerciseTemplate> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  if (ids.length === 0) {
+    return { data: {}, error: null };
+  }
+
+  const { data, error } = await client
+    .from('exercise_templates')
+    .select(exerciseTemplateSelect)
+    .in('id', ids);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const lookup: Record<string, ExerciseTemplate> = {};
+  for (const item of (data ?? []) as RawExerciseTemplateRow[]) {
+    const transformed = transformExerciseTemplateRow(item);
+    const parsed = exerciseTemplateSchema.safeParse(transformed);
+    if (parsed.success) {
+      lookup[String(item.id)] = parsed.data;
+    }
+  }
+
+  return { data: lookup, error: null };
+}
+
+function parseRpcEnvelope(
+  result: unknown,
+  fallbackMessage: string,
+): { data: unknown; error: { message: string } | null } {
+  if (!result || (result as { success?: boolean }).success === false) {
+    const errorResult = result as { message?: string; error?: string };
+    return {
+      data: null,
+      error: {
+        message:
+          errorResult.message || errorResult.error || fallbackMessage,
+      },
+    };
+  }
+
+  return { data: result, error: null };
+}
+
+/** Paginated exercise templates with search and sort. */
+export const listExerciseTemplatesPaginated = defineQuery({
+  key: (input: ListExerciseTemplatesInput) => exerciseTemplateKeys.list(input),
+  schema: paginatedExerciseTemplateSchema,
+  execute: (client, input: ListExerciseTemplatesInput) =>
+    fetchExerciseTemplatesPaginated(client, input),
+});
+
+/** Exercise template by id. */
+export const getExerciseTemplateById = defineQuery({
+  key: exerciseTemplateKeys.detail,
+  schema: exerciseTemplateSchema,
+  execute: async (client, id: string) => {
+    const { data, error } = await client
+      .from('exercise_templates')
+      .select(exerciseTemplateSelect)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    if (!data) {
+      return { data: null, error: { message: 'Exercise template not found' } };
+    }
+
+    return {
+      data: transformExerciseTemplateRow(data as RawExerciseTemplateRow),
+      error: null,
+    };
+  },
+});
+
+/** Exercise templates keyed by id. */
+export const getExerciseTemplatesByIds = defineQuery({
+  key: (ids: string[]) => exerciseTemplateKeys.byIds(ids),
+  schema: exerciseTemplatesByIdSchema,
+  execute: (client, ids: string[]) => fetchExerciseTemplatesByIds(client, ids),
+});
+
+/** Upsert exercise template via RPC. */
+export const upsertExerciseTemplateMutation = defineMutation({
+  inputSchema: upsertExerciseTemplateInputSchema,
+  schema: exerciseTemplateRpcResultSchema,
+  execute: async (client, input) => {
+    type RpcArgs =
+      Database['public']['Functions']['upsert_exercise_template']['Args'];
+    const { data: result, error } = await client.rpc(
+      'upsert_exercise_template',
+      input as RpcArgs,
+    );
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return parseRpcEnvelope(result, 'Failed to upsert exercise template');
+  },
+  targets: () => [exerciseTemplateKeys.all],
+});
+
+/** Edit exercise template via RPC. */
+export const editExerciseTemplateMutation = defineMutation({
+  inputSchema: editExerciseTemplateInputSchema,
+  schema: exerciseTemplateRpcResultSchema,
+  execute: async (client, input) => {
+    type RpcArgs =
+      Database['public']['Functions']['edit_exercise_template']['Args'];
+    const { data: result, error } = await client.rpc(
+      'edit_exercise_template',
+      input as RpcArgs,
+    );
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return parseRpcEnvelope(result, 'Failed to edit exercise template');
+  },
+  targets: () => [exerciseTemplateKeys.all],
+});
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
+
+/** Legacy facade for callers outside Wave B scope (e.g. program-assignments). */
+export class ExerciseTemplatesQuery {
   public async getListPaginated(
     page: number = 1,
     pageSize: number = 20,
@@ -36,364 +379,57 @@ export class ExerciseTemplatesQuery extends SupabaseQuery {
   ): Promise<
     SupabaseSuccess<PaginatedResult<ExerciseTemplate>> | SupabaseError
   > {
-    const supabase = await this.getClient('authenticated_user');
-
-    let query = supabase.from('exercise_templates').select(
-      `
-        *,
-        exercises!exercise_templates_exercise_id_fkey (
-          exercise_name,
-          video_type,
-          video_url,
-          thumbnail_url
-        )
-      `,
-      { count: 'exact' },
-    );
-
-    // Note: Search filtering on joined table will be done in application layer
-
-    // Apply sorting (only for fields on exercise_templates table)
-    // For exercise_name, we'll sort in application layer
-    if (sortBy !== 'exercise_name') {
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-    } else {
-      // Default to updated_at for database query, then sort by name in app layer
-      query = query.order('updated_at', { ascending: false });
-    }
-
-    // Apply pagination
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise templates',
-      );
-    }
-
-    if (!data) {
-      return {
-        success: true,
-        data: {
-          data: [],
-          page,
-          pageSize,
-          total: 0,
-          hasMore: false,
-        },
-      };
-    }
-
-    // Transform data to include exercise_name, video_type, video_url, thumbnail_url and filter by search if needed
-    let transformedData = data.map((item) => {
-      const exercise = Array.isArray(item.exercises)
-        ? item.exercises[0]
-        : item.exercises;
-      return {
-        ...item,
-        exercise_name: exercise?.exercise_name || '',
-        video_type: exercise?.video_type || undefined,
-        video_url: exercise?.video_url || undefined,
-        thumbnail_url: exercise?.thumbnail_url ?? undefined,
-      };
-    });
-
-    // Apply search filter in application layer
-    if (search) {
-      transformedData = transformedData.filter((item) =>
-        item.exercise_name?.toLowerCase().includes(search.toLowerCase()),
-      );
-    }
-
-    // Apply sorting by exercise_name if needed (in application layer)
-    if (sortBy === 'exercise_name') {
-      transformedData.sort((a, b) => {
-        const aName = a.exercise_name || '';
-        const bName = b.exercise_name || '';
-        const comparison = aName.localeCompare(bName);
-        return sortOrder === 'asc' ? comparison : -comparison;
-      });
-    }
-
-    const result = exerciseTemplateSchema.array().safeParse(transformedData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    // Adjust total count if search was applied
-    const adjustedTotal = search ? result.data.length : count || 0;
-    const hasMore = search
-      ? false // Can't determine hasMore with client-side filtering
-      : from + result.data.length < adjustedTotal;
-
-    return {
-      success: true,
-      data: {
-        data: result.data,
+    return toLegacyResult(
+      await queryWithSession(listExerciseTemplatesPaginated, {
         page,
         pageSize,
-        total: adjustedTotal,
-        hasMore,
-      },
-    };
+        search,
+        sortBy,
+        sortOrder,
+      }),
+    );
   }
 
-  /**
-   * Get exercise template by ID
-   * @param id - The exercise template ID
-   * @returns Success with exercise template or error
-   */
   public async getById(
     id: string,
   ): Promise<SupabaseSuccess<ExerciseTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
-      .from('exercise_templates')
-      .select(
-        `
-        *,
-        exercises!exercise_templates_exercise_id_fkey (
-          exercise_name,
-          video_type,
-          video_url,
-          thumbnail_url
-        )
-      `,
-      )
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise template',
-      );
-    }
-
-    if (!data) {
-      return {
-        success: false,
-        error: 'Exercise template not found',
-      };
-    }
-
-    // Transform data to include exercise_name, video_type, video_url, thumbnail_url
-    const exercise = Array.isArray(data.exercises)
-      ? data.exercises[0]
-      : data.exercises;
-    const transformedData = {
-      ...data,
-      exercise_name: exercise?.exercise_name || '',
-      video_type: exercise?.video_type || undefined,
-      video_url: exercise?.video_url || undefined,
-      thumbnail_url: exercise?.thumbnail_url ?? undefined,
-    };
-
-    const result = exerciseTemplateSchema.safeParse(transformedData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
+    return toLegacyResult(await queryWithSession(getExerciseTemplateById, id));
   }
 
-  /**
-   * Get multiple exercise templates by IDs
-   * @param ids - Array of exercise template IDs
-   * @returns Success with exercise templates map or error
-   */
   public async getByIds(
     ids: string[],
   ): Promise<SupabaseSuccess<Map<string, ExerciseTemplate>> | SupabaseError> {
-    if (ids.length === 0) {
-      return {
-        success: true,
-        data: new Map(),
-      };
+    const result = await queryWithSession(getExerciseTemplatesByIds, ids);
+    const [err, data] = result;
+    if (err) {
+      return { success: false, error: formatDalError(err) };
     }
-
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
-      .from('exercise_templates')
-      .select(
-        `
-        *,
-        exercises!exercise_templates_exercise_id_fkey (
-          exercise_name,
-          video_type,
-          video_url,
-          thumbnail_url
-        )
-      `,
-      )
-      .in('id', ids);
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise templates',
-      );
-    }
-
-    if (!data || data.length === 0) {
-      return {
-        success: true,
-        data: new Map(),
-      };
-    }
-
-    // Transform data and create map
-    const templatesMap = new Map<string, ExerciseTemplate>();
-    for (const item of data) {
-      const exercise = Array.isArray(item.exercises)
-        ? item.exercises[0]
-        : item.exercises;
-      const transformedData = {
-        ...item,
-        exercise_name: exercise?.exercise_name || '',
-        video_type: exercise?.video_type || undefined,
-        video_url: exercise?.video_url || undefined,
-        thumbnail_url: exercise?.thumbnail_url ?? undefined,
-      };
-
-      const result = exerciseTemplateSchema.safeParse(transformedData);
-      if (result.success) {
-        templatesMap.set(item.id, result.data);
-      }
-    }
-
-    return {
-      success: true,
-      data: templatesMap,
-    };
+    return { success: true, data: new Map(Object.entries(data)) };
   }
 
-  /**
-   * Upsert exercise template via RPC function
-   * @param data - The exercise template data
-   * @returns Success with result or error
-   */
-  public async upsertExerciseTemplate(data: {
-    p_exercise_id: number;
-    p_sets?: number;
-    p_rep?: number | null;
-    p_time?: number | null;
-    p_distance?: string | null;
-    p_weight?: string | null;
-    p_rest_time?: number | null;
-    p_tempo?: string[] | null;
-    p_rep_override?: number[] | null;
-    p_time_override?: number[] | null;
-    p_distance_override?: string[] | null;
-    p_weight_override?: string[] | null;
-    p_rest_time_override?: number[] | null;
-    p_notes?: string;
-  }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    type RpcArgs = Database['public']['Functions']['upsert_exercise_template']['Args'];
-    const { data: result, error } = await supabase.rpc(
-      'upsert_exercise_template',
-      data as RpcArgs,
-    );
-
-    if (error) {
-      console.error('Error calling upsert_exercise_template RPC:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to upsert exercise template',
-      };
+  public async upsertExerciseTemplate(
+    data: z.infer<typeof upsertExerciseTemplateInputSchema>,
+  ): Promise<SupabaseSuccess<unknown> | SupabaseError> {
+    const client = await createClient();
+    const [err, rpcData] = await mutate(upsertExerciseTemplateMutation, data, {
+      client,
+    });
+    if (err) {
+      return { success: false, error: formatDalError(err) };
     }
-
-    if (!result || (result as { success?: boolean }).success === false) {
-      const errorResult = result as { message?: string; error?: string };
-      const errorMessage =
-        errorResult.message ||
-        errorResult.error ||
-        'Failed to upsert exercise template';
-      console.error(
-        'Error from upsert_exercise_template SQL function:',
-        result,
-      );
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-
-    return {
-      success: true,
-      data: result,
-    };
+    return { success: true, data: rpcData };
   }
 
-  /**
-   * Edit existing exercise template via RPC (updates the specific row by id)
-   */
-  public async editExerciseTemplate(data: {
-    p_template_id: string;
-    p_exercise_id: number;
-    p_sets?: number;
-    p_rep?: number | null;
-    p_time?: number | null;
-    p_distance?: string | null;
-    p_weight?: string | null;
-    p_rest_time?: number | null;
-    p_tempo?: string[] | null;
-    p_rep_override?: number[] | null;
-    p_time_override?: number[] | null;
-    p_distance_override?: string[] | null;
-    p_weight_override?: string[] | null;
-    p_rest_time_override?: number[] | null;
-    p_notes?: string;
-  }): Promise<SupabaseSuccess<unknown> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    type RpcArgs = Database['public']['Functions']['edit_exercise_template']['Args'];
-    const { data: result, error } = await supabase.rpc(
-      'edit_exercise_template',
-      data as RpcArgs,
-    );
-
-    if (error) {
-      console.error('Error calling edit_exercise_template RPC:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to edit exercise template',
-      };
+  public async editExerciseTemplate(
+    data: z.infer<typeof editExerciseTemplateInputSchema>,
+  ): Promise<SupabaseSuccess<unknown> | SupabaseError> {
+    const client = await createClient();
+    const [err, rpcData] = await mutate(editExerciseTemplateMutation, data, {
+      client,
+    });
+    if (err) {
+      return { success: false, error: formatDalError(err) };
     }
-
-    if (!result || (result as { success?: boolean }).success === false) {
-      const errorResult = result as { message?: string; error?: string };
-      const errorMessage =
-        errorResult.message ||
-        errorResult.error ||
-        'Failed to edit exercise template';
-      console.error(
-        'Error from edit_exercise_template SQL function:',
-        result,
-      );
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-
-    return {
-      success: true,
-      data: result,
-    };
+    return { success: true, data: rpcData };
   }
 }

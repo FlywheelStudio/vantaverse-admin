@@ -1,106 +1,208 @@
+import { z } from 'zod';
+
 import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+  defineMutation,
+  defineQuery,
+  formatDalError,
+  mutate,
+  type DalResult,
+} from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import type { Database } from '@/lib/supabase/database.types';
+import { createClient } from '@/lib/supabase/core/server';
+
+import { type SupabaseError, type SupabaseSuccess } from '../query';
 import {
   programTemplateSchema,
   type ProgramTemplate,
 } from '../schemas/program-templates';
 
-export class ProgramTemplatesQuery extends SupabaseQuery {
-  /**
-   * Get all program templates
-   * @returns Success with program templates array or error
-   */
-  public async getList(): Promise<
-    SupabaseSuccess<ProgramTemplate[]> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
+const programTemplateListSchema = programTemplateSchema.array();
 
-    const { data, error } = await supabase
+const createProgramTemplateInputSchema = z.object({
+  name: z.string().min(1),
+  weeks: z.number().int().positive(),
+  description: z.string().nullable().optional(),
+  goals: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  organizationId: z.string().uuid().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+
+const updateProgramTemplateInputSchema = z.object({
+  id: z.string().uuid(),
+  data: programTemplateSchema.partial(),
+});
+
+const deleteProgramTemplateInputSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const deleteProgramTemplateResultSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type CreateProgramTemplateInput = z.infer<
+  typeof createProgramTemplateInputSchema
+>;
+export type UpdateProgramTemplateInput = z.infer<
+  typeof updateProgramTemplateInputSchema
+>;
+
+export const programTemplateKeys = {
+  all: ['program-templates'] as const,
+  list: () => [...programTemplateKeys.all, 'list'] as const,
+  detail: (id: string) => [...programTemplateKeys.all, 'detail', id] as const,
+};
+
+/** All program templates. */
+export const listProgramTemplates = defineQuery({
+  key: programTemplateKeys.list,
+  schema: programTemplateListSchema,
+  execute: async (client) => {
+    const { data, error } = await client
       .from('program_template')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get program templates',
-      );
+      return { data: null, error };
     }
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
+    return { data: data ?? [], error: null };
+  },
+});
 
-    const result = programTemplateSchema.array().safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-
-  /**
-   * Get a single program template by ID
-   * @param id - The template ID
-   * @returns Success with program template or error
-   */
-  public async getById(
-    id: string,
-  ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
+/** Program template by id. */
+export const getProgramTemplateById = defineQuery({
+  key: programTemplateKeys.detail,
+  schema: programTemplateSchema,
+  execute: async (client, id: string) => {
+    const { data, error } = await client
       .from('program_template')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get program template',
-      );
+      return { data: null, error };
     }
 
     if (!data) {
-      return {
-        success: false,
-        error: 'Program template not found',
-      };
+      return { data: null, error: { message: 'Program template not found' } };
     }
 
-    const result = programTemplateSchema.safeParse(data);
+    return { data, error: null };
+  },
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+/** Create program template. */
+export const createProgramTemplate = defineMutation({
+  inputSchema: createProgramTemplateInputSchema,
+  schema: programTemplateSchema,
+  execute: async (client, input) => {
+    const { data, error } = await client
+      .from('program_template')
+      .insert({
+        name: input.name.trim(),
+        weeks: input.weeks,
+        description: input.description?.trim() || null,
+        goals: input.goals?.trim() || null,
+        notes: input.notes?.trim() || null,
+        organization_id: input.organizationId || null,
+        active: true,
+        image_url: input.imageUrl ? { image_url: input.imageUrl } : null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { data: null, error };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
+    if (!data) {
+      return { data: null, error: { message: 'Failed to create program template' } };
+    }
+
+    return { data, error: null };
+  },
+  targets: () => [programTemplateKeys.all],
+});
+
+/** Update program template (service role). */
+export const updateProgramTemplate = defineMutation({
+  inputSchema: updateProgramTemplateInputSchema,
+  schema: programTemplateSchema,
+  client: 'admin',
+  execute: async (client, input) => {
+    type ProgramTemplateUpdate =
+      Database['public']['Tables']['program_template']['Update'];
+    const { data, error } = await client
+      .from('program_template')
+      .update({
+        ...(input.data as ProgramTemplateUpdate),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', input.id)
+      .select()
+      .single();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    if (!data) {
+      return { data: null, error: { message: 'Failed to update program template' } };
+    }
+
+    return { data, error: null };
+  },
+  targets: (input) => [programTemplateKeys.all, programTemplateKeys.detail(input.id)],
+});
+
+/** Delete program template. */
+export const deleteProgramTemplate = defineMutation({
+  inputSchema: deleteProgramTemplateInputSchema,
+  schema: deleteProgramTemplateResultSchema,
+  execute: async (client, input) => {
+    const { error } = await client
+      .from('program_template')
+      .delete()
+      .eq('id', input.id);
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data: { id: input.id }, error: null };
+  },
+  targets: () => [programTemplateKeys.all],
+});
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
+
+/** Legacy facade for callers outside Wave B scope. */
+export class ProgramTemplatesQuery {
+  public async getList(): Promise<
+    SupabaseSuccess<ProgramTemplate[]> | SupabaseError
+  > {
+    return toLegacyResult(await queryWithSession(listProgramTemplates));
   }
 
-  /**
-   * Create a new program template
-   * @param name - The template name
-   * @param weeks - Number of weeks
-   * @param description - Optional description
-   * @param goals - Optional goals
-   * @param notes - Optional notes
-   * @param organizationId - Optional organization ID
-   * @returns Success with created template or error
-   */
+  public async getById(
+    id: string,
+  ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
+    return toLegacyResult(await queryWithSession(getProgramTemplateById, id));
+  }
+
   public async create(
     name: string,
     weeks: number,
@@ -110,122 +212,43 @@ export class ProgramTemplatesQuery extends SupabaseQuery {
     organizationId?: string | null,
     imageUrl?: string | null,
   ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
-      .from('program_template')
-      .insert({
-        name: name.trim(),
-        weeks,
-        description: description?.trim() || null,
-        goals: goals?.trim() || null,
-        notes: notes?.trim() || null,
-        organization_id: organizationId || null,
-        active: true,
-        image_url: imageUrl ? { image_url: imageUrl } : null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to create program template',
-      );
-    }
-
-    if (!data) {
-      return {
-        success: false,
-        error: 'Failed to create program template',
-      };
-    }
-
-    const result = programTemplateSchema.safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
+    const client = await createClient();
+    return toLegacyResult(
+      await mutate(
+        createProgramTemplate,
+        {
+          name,
+          weeks,
+          description,
+          goals,
+          notes,
+          organizationId,
+          imageUrl,
+        },
+        { client },
+      ),
+    );
   }
 
-  /**
-   * Update a program template
-   * @param id - The template id
-   * @param data - The data to update
-   * @returns Success with updated template or error
-   */
   public async update(
     id: string,
     data: Partial<ProgramTemplate>,
   ): Promise<SupabaseSuccess<ProgramTemplate> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
-
-    const { data: updatedData, error } = await supabase
-      .from('program_template')
-      .update({
-        ...data,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to update program template',
-      );
-    }
-
-    if (!updatedData) {
-      return {
-        success: false,
-        error: 'Failed to update program template',
-      };
-    }
-
-    const result = programTemplateSchema.safeParse(updatedData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
+    const client = await createClient();
+    return toLegacyResult(
+      await mutate(updateProgramTemplate, { id, data }, { client }),
+    );
   }
 
-  /**
-   * Delete a program template
-   * @param id - The template ID
-   * @returns Success or error
-   */
   public async delete(
     id: string,
   ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { error } = await supabase
-      .from('program_template')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to delete program template',
-      );
+    const client = await createClient();
+    const result = await mutate(deleteProgramTemplate, { id }, { client });
+    const mapped = toLegacyResult(result);
+    if (!mapped.success) {
+      return mapped;
     }
-
-    return {
-      success: true,
-      data: undefined,
-    };
+    return { success: true, data: undefined };
   }
 }
