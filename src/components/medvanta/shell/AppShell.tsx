@@ -1,4 +1,5 @@
-import { SideNav } from './SideNav';
+import { AppShellChrome } from './app-shell-chrome';
+import { MainColumnChrome } from './main-column-chrome';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -8,12 +9,9 @@ interface AppShellProps {
 export async function AppShell({
   children,
 }: AppShellProps): Promise<React.ReactElement> {
-  'use cache';
-
   return (
-    <div className="app" style={{ minHeight: '100vh', height: '100vh' }}>
-      <SideNav />
-      <div className="main">{children}</div>
-    </div>
+    <AppShellChrome
+      main={<MainColumnChrome>{children}</MainColumnChrome>}
+    />
   );
 }
