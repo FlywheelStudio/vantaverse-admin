@@ -12,7 +12,7 @@ export async function AppShellChrome({
 
   return (
     <div className="app" style={{ minHeight: '100vh', height: '100vh' }}>
-      <SideNav />
+      <SideNav key="side-nav" />
       {main}
     </div>
   );

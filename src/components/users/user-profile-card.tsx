@@ -215,8 +215,8 @@ export function UserProfileCard({
             <Avatar
               src={avatarUrl || undefined}
               name={displayName}
-              size="lg"
-              className="h-full w-full [&>span:first-child]:h-full [&>span:first-child]:w-full [&>span:first-child]:text-[length:var(--text-xl)]"
+              className="h-full w-full text-[length:var(--text-xl)]"
+              style={{ width: '100%', height: '100%' }}
             />
           </div>
           <AnimatePresence>

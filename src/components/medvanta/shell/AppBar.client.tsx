@@ -8,12 +8,13 @@ import {
 
 interface AppBarProps {
   crumbs: AppBarCrumb[];
-  title: string;
+  /** When omitted, only the breadcrumb ribbon renders (no title row). */
+  title?: string;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
 }
 
-/** HTML `.abar` header: ribbon breadcrumbs + title row (client-safe). */
+/** HTML `.abar` header: ribbon breadcrumbs + optional title row (client-safe). */
 export function AppBar({
   crumbs,
   title,
@@ -21,12 +22,13 @@ export function AppBar({
   actions,
 }: AppBarProps): React.ReactElement {
   const ribbon = renderAppBarRibbon(crumbs);
-  const titleSlot = (
-    <>
-      <h1>{title}</h1>
-      {subtitle ? <div className="abar-sub">{subtitle}</div> : null}
-    </>
-  );
+  const titleSlot =
+    title != null ? (
+      <>
+        <h1>{title}</h1>
+        {subtitle ? <div className="abar-sub">{subtitle}</div> : null}
+      </>
+    ) : null;
 
   return (
     <AppBarStructure

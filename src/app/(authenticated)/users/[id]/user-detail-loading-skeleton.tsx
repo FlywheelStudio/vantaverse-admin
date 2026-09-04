@@ -1,12 +1,11 @@
 import { AppBar } from '@/components/medvanta/shell';
 
-/** Member detail loading shell: AppBar + header card + tabs + onboarding grid. */
+/** Member detail loading shell: crumb ribbon + header card + tabs + onboarding grid. */
 export function UserDetailLoadingSkeleton(): React.ReactElement {
   return (
     <>
       <AppBar
         crumbs={[{ label: 'Members', href: '/users' }, { label: 'Member' }]}
-        title="Member"
       />
       <div className="body" aria-busy="true">
         <div className="card" style={{ marginBottom: 16, minHeight: 168 }} />

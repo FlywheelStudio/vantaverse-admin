@@ -8,7 +8,7 @@ export interface AppBarCrumb {
 
 interface AppBarStructureProps {
   ribbon: React.ReactNode;
-  titleSlot: React.ReactNode;
+  titleSlot?: React.ReactNode;
   actions?: React.ReactNode;
 }
 
@@ -18,13 +18,17 @@ export function AppBarStructure({
   titleSlot,
   actions,
 }: AppBarStructureProps): React.ReactElement {
+  const hasTitleRow = titleSlot != null || actions != null;
+
   return (
     <header className="abar">
       <nav className="ribbon" aria-label="Breadcrumb">{ribbon}</nav>
-      <div className="abar-row">
-        <div className="abar-id">{titleSlot}</div>
-        {actions ? <div className="abar-acts">{actions}</div> : null}
-      </div>
+      {hasTitleRow ? (
+        <div className="abar-row">
+          {titleSlot != null ? <div className="abar-id">{titleSlot}</div> : null}
+          {actions ? <div className="abar-acts">{actions}</div> : null}
+        </div>
+      ) : null}
     </header>
   );
 }

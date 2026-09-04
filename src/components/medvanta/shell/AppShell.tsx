@@ -11,7 +11,8 @@ export async function AppShell({
 }: AppShellProps): Promise<React.ReactElement> {
   return (
     <AppShellChrome
-      main={<MainColumnChrome>{children}</MainColumnChrome>}
+      // Cache-slot sibling of SideNav — Flight warns without a key on replay.
+      main={<MainColumnChrome key="main">{children}</MainColumnChrome>}
     />
   );
 }

@@ -1,12 +1,11 @@
 import { AppBar } from '@/components/medvanta/shell';
 
-/** Admin profile loading shell: AppBar + profile card + overview/compliance grid. */
+/** Admin profile loading shell: crumb ribbon + profile card + overview/compliance grid. */
 export function AdminProfileLoadingSkeleton(): React.ReactElement {
   return (
     <>
       <AppBar
         crumbs={[{ label: 'Manage', href: '/manage' }, { label: 'Admin' }]}
-        title="Admin profile"
       />
       <div className="body" aria-busy="true">
         <div className="card" style={{ marginBottom: 16, minHeight: 200 }} />

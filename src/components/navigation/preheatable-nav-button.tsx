@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import {
   usePreheat,
@@ -17,7 +17,10 @@ interface PreheatableNavButtonProps {
   children: React.ReactNode;
 }
 
-/** Sidebar nav row that prefetches route + optional queries on hover/focus. */
+/**
+ * Sidebar nav row as `<Link>` so App Router prefetch + client cache apply.
+ * Hover/focus still warms TanStack queries via `usePreheat`.
+ */
 export function PreheatableNavButton({
   href,
   active = false,
@@ -27,29 +30,32 @@ export function PreheatableNavButton({
   className,
   children,
 }: PreheatableNavButtonProps): React.ReactElement {
-  const router = useRouter();
   const { getPreheatHandlers } = usePreheat();
   const preheatHandlers = getPreheatHandlers(href, preheatQueries);
 
-  const handleClick = (): void => {
-    if (disabled) {
-      return;
-    }
-
-    router.push(href);
-  };
+  if (disabled) {
+    return (
+      <span
+        className={className}
+        title={title}
+        aria-disabled="true"
+        aria-current={active ? 'page' : undefined}
+      >
+        {children}
+      </span>
+    );
+  }
 
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
+      prefetch
       className={className}
       aria-current={active ? 'page' : undefined}
-      disabled={disabled}
       title={title}
-      onClick={handleClick}
       {...preheatHandlers}
     >
       {children}
-    </button>
+    </Link>
   );
 }

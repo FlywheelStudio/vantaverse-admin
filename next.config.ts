@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '5mb',
     },
     viewTransition: true,
+    /**
+     * Default `dynamic: 0` means SideNav push A→B→A always remounts the page and
+     * paints cached `loading.tsx` instead of the prior visit's RSC payload.
+     * Keep visited dynamic segments reusable briefly so sidebar revisits show content.
+     */
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
   },
   headers: async () => {
     const isDev = process.env.NODE_ENV === 'development';
