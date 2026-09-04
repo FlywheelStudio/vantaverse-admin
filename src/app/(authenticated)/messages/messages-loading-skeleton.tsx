@@ -134,7 +134,7 @@ export function MessagesLoadingSkeleton(): React.ReactElement {
                   }}
                 />
               </div>
-              <span className="seg" style={{ width: '100%' }}>
+              <div className="seg" style={{ width: '100%' }}>
                 <div
                   style={{
                     flex: 1,
@@ -152,7 +152,7 @@ export function MessagesLoadingSkeleton(): React.ReactElement {
                     borderRadius: 'var(--radius-sm)',
                   }}
                 />
-              </span>
+              </div>
             </div>
             <div className="conv-scroll">
               <ConversationListSkeleton />
