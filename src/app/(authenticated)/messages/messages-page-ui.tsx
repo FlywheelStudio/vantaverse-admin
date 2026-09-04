@@ -9,14 +9,12 @@ import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../users/html-helpers';
 import { HtmlMoreButton } from '../builder/partials/html-toolbar';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
-import {
-  getMessagesByChatId,
-  getOrCreateChatForPatient,
-} from '@/app/(authenticated)/users/[id]/chat-actions';
-import { chatKeys } from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
+import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
+import { getMessagesConversationPreheatQueries } from '@/components/navigation/list-row-preheat';
 import { getConversationsForAdmin } from './actions';
 import { MessagesChatThread } from './messages-chat-thread';
 import { useDebounce } from '@/hooks/use-debounce';
+import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
@@ -100,6 +98,7 @@ export function MessagesPageUI({
   const deepLinkHandledRef = useRef<string | null>(null);
   const missingUserToastRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
+  const { preheat, getPreheatHandlers } = usePreheat();
 
   const { data: conversationsData } = useQuery({
     queryKey: ['messages', 'conversations'],
@@ -161,22 +160,25 @@ export function MessagesPageUI({
 
   const activeFilterCount = orgFilter ? 1 : 0;
 
-  const prefetchMessages = useCallback(
+  const preheatConversationMessages = useCallback(
     (chatId: string | null): void => {
       if (!chatId) return;
-      void queryClient.prefetchQuery({
-        queryKey: chatKeys.messages(chatId),
-        queryFn: async () => {
-          const result = await getMessagesByChatId(chatId);
-          if (!result.success) {
-            throw new Error(result.error || 'Failed to load messages');
-          }
-          return result.data;
-        },
-        staleTime: MESSAGES_STALE_MS,
-      });
+      preheat('/messages', getMessagesConversationPreheatQueries(chatId));
     },
-    [queryClient],
+    [preheat],
+  );
+
+  const getConversationPreheatHandlers = useCallback(
+    (chatId: string | null): Partial<PreheatHandlers> => {
+      if (!chatId) {
+        return {};
+      }
+      return getPreheatHandlers(
+        '/messages',
+        getMessagesConversationPreheatQueries(chatId),
+      );
+    },
+    [getPreheatHandlers],
   );
 
   const handleSelectConversation = useCallback(
@@ -188,7 +190,7 @@ export function MessagesPageUI({
 
       if (conversation.chat_id) {
         setSelected(conversation);
-        prefetchMessages(conversation.chat_id);
+        preheatConversationMessages(conversation.chat_id);
         return;
       }
 
@@ -215,7 +217,7 @@ export function MessagesPageUI({
               item.user_id === conversation.user_id ? withChat : item,
             ),
         );
-        prefetchMessages(result.data.chatId);
+        preheatConversationMessages(result.data.chatId);
       } catch (error) {
         console.error(error);
         toast.error('Failed to open chat');
@@ -223,7 +225,7 @@ export function MessagesPageUI({
         setOpeningUserId(null);
       }
     },
-    [openingUserId, prefetchMessages, queryClient],
+    [openingUserId, preheatConversationMessages, queryClient],
   );
 
   // Deep-link from ?userId= (Message button / hard navigation) — once per id.
@@ -400,8 +402,7 @@ export function MessagesPageUI({
                       type="button"
                       className={`conv${isActive ? ' on' : ''}`}
                       onClick={() => void handleSelectConversation(conversation)}
-                      onMouseEnter={() => prefetchMessages(conversation.chat_id)}
-                      onFocus={() => prefetchMessages(conversation.chat_id)}
+                      {...getConversationPreheatHandlers(conversation.chat_id)}
                       disabled={isOpening}
                       style={{
                         width: '100%',

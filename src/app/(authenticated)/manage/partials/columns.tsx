@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { usePreheat } from '@/hooks/use-preheat';
 
 function fullNameOf(profile: AdminProfile): string {
   const parts = [profile.first_name, profile.last_name].filter(Boolean);
@@ -33,12 +34,16 @@ function fullNameOf(profile: AdminProfile): string {
 
 function NameEmailCell({ profile }: { profile: AdminProfile }) {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const fullName = fullNameOf(profile);
+  const adminHref = `/manage/${profile.id}`;
+  const preheatHandlers = getPreheatHandlers(adminHref);
 
   return (
     <div
       className="cellp cursor-pointer"
-      onClick={() => router.push(`/manage/${profile.id}`)}
+      onClick={() => router.push(adminHref)}
+      {...preheatHandlers}
     >
       <HtmlAvatar name={fullName} src={profile.avatar_url} size={36} />
       <span style={{ minWidth: 0 }}>
@@ -53,6 +58,7 @@ function NameEmailCell({ profile }: { profile: AdminProfile }) {
 
 function GroupsCell({ profile }: { profile: AdminProfile }) {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const orgs = profile.orgMemberships ?? [];
 
   if (orgs.length === 0) {
@@ -63,17 +69,21 @@ function GroupsCell({ profile }: { profile: AdminProfile }) {
 
   return (
     <div className="flex flex-wrap gap-1">
-      {orgs.slice(0, 2).map((org, index) => (
+      {orgs.slice(0, 2).map((org, index) => {
+        const groupHref = `/groups/${org.orgId}?from=manage`;
+        return (
         <button
           key={org.orgId}
           type="button"
           className="lnk"
-          onClick={() => router.push(`/groups/${org.orgId}?from=manage`)}
+          onClick={() => router.push(groupHref)}
+          {...getPreheatHandlers(groupHref)}
         >
           {org.orgName}
           {index < Math.min(orgs.length, 2) - 1 && ', '}
         </button>
-      ))}
+        );
+      })}
       {orgs.length > 2 ? (
         <span className="faint" title={orgs.map((o) => o.orgName).join(', ')}>
           +{orgs.length - 2} more

@@ -22,6 +22,7 @@ import {
 } from '@/hooks/use-passignments';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import { usePreheat } from '@/hooks/use-preheat';
 
 interface ProgramBuilderProps {
   onTemplateSelect?: (assignment: ProgramAssignmentWithTemplate) => void;
@@ -49,17 +50,20 @@ function ProgramTableRow({
   onDelete: () => void;
 }): React.ReactElement | null {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const template = assignment.program_template;
   if (!template) return null;
 
   const weeksLabel = `${template.weeks} week${template.weeks === 1 ? '' : 's'}`;
   const edited = formatRelativeEdited(template.updated_at);
   const assignmentId = assignment.id;
+  const builderHref = `/builder/${assignmentId}`;
+  const rowPreheatHandlers = getPreheatHandlers(builderHref);
   const membersOnIt = memberStats?.members ?? 0;
   const isTemplate = assignment.status === 'template';
 
   return (
-    <tr onClick={onClick} style={{ cursor: 'pointer' }}>
+    <tr onClick={onClick} style={{ cursor: 'pointer' }} {...rowPreheatHandlers}>
       <td>
         <div className="cellp">
           <span
@@ -102,6 +106,7 @@ function ProgramTableRow({
                     event.stopPropagation();
                     router.push(`/users/${assignment.profiles!.id}`);
                   }}
+                  {...getPreheatHandlers(`/users/${assignment.profiles.id}`)}
                 >
                   {assignment.profiles.email}
                 </a>
