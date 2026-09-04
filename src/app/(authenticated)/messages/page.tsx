@@ -8,6 +8,7 @@ import {
   type ConversationItem,
 } from '@/lib/supabase/queries/conversations';
 import { MessagesPageUI } from './messages-page-ui';
+import { MessagesLoadingSkeleton } from './messages-loading-skeleton';
 
 export default async function MessagesPage(): Promise<React.ReactElement> {
   const orgMembersQuery = new OrganizationMembers();
@@ -39,7 +40,7 @@ export default async function MessagesPage(): Promise<React.ReactElement> {
     conversationsErr || !conversationsData ? [] : conversationsData;
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<MessagesLoadingSkeleton />}>
       <MessagesPageUI
         organizations={adminOrgs}
         conversations={conversations}
