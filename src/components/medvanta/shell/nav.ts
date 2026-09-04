@@ -1,4 +1,4 @@
-export type ShellNavId =
+type ShellNavId =
   | 'dashboard'
   | 'messages'
   | 'members'

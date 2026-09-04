@@ -1,16 +1,18 @@
-import type { ShellNavId } from './nav';
 import { SideNav } from './SideNav';
 
 interface AppShellProps {
-  active: ShellNavId;
   children: React.ReactNode;
 }
 
 /** HTML `.app` shell: fixed side nav + scrollable main column. */
-export function AppShell({ active, children }: AppShellProps): React.ReactElement {
+export async function AppShell({
+  children,
+}: AppShellProps): Promise<React.ReactElement> {
+  'use cache';
+
   return (
     <div className="app" style={{ minHeight: '100vh', height: '100vh' }}>
-      <SideNav active={active} />
+      <SideNav />
       <div className="main">{children}</div>
     </div>
   );

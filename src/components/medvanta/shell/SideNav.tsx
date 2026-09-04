@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
@@ -15,11 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Icon } from '../actions/Icon';
 import { Avatar } from '../data-display/Avatar';
-import { SHELL_NAV, isShellNavSection, type ShellNavId } from './nav';
-
-interface SideNavProps {
-  active: ShellNavId;
-}
+import { SHELL_NAV, isShellNavSection, navIdFromPathname } from './nav';
 
 function SideNavUser(): React.ReactElement {
   const router = useRouter();
@@ -81,8 +77,10 @@ function SideNavUser(): React.ReactElement {
 }
 
 /** HTML `.side` navigation rail matching the MedVanta rebuild prototype. */
-export function SideNav({ active }: SideNavProps): React.ReactElement {
+export function SideNav(): React.ReactElement {
   const router = useRouter();
+  const pathname = usePathname();
+  const active = navIdFromPathname(pathname);
   const { data: hasUnreadMessages = false } = useQuery({
     queryKey: ['messages', 'has-unread-sidebar'],
     queryFn: async () => {
