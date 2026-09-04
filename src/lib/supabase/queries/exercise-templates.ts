@@ -1,15 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-import { defineMutation, defineQuery, formatDalError, mutate, type DalResult } from '@/lib/dal';
-import { queryWithSession } from '@/lib/dal/core/query.server';
+import { defineMutation, defineQuery } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
-import { createClient } from '@/lib/supabase/core/server';
 
-import {
-  type SupabaseError,
-  type SupabaseSuccess,
-} from '../result';
 import {
   exerciseTemplateSchema,
   type ExerciseTemplate,
@@ -44,7 +38,7 @@ const exerciseTemplateRpcResultSchema = z
   })
   .passthrough();
 
-const upsertExerciseTemplateInputSchema = z.object({
+export const upsertExerciseTemplateInputSchema = z.object({
   p_exercise_id: z.number(),
   p_sets: z.number().optional(),
   p_rep: z.number().nullable().optional(),
@@ -61,7 +55,7 @@ const upsertExerciseTemplateInputSchema = z.object({
   p_notes: z.string().optional(),
 });
 
-const editExerciseTemplateInputSchema = upsertExerciseTemplateInputSchema.extend({
+export const editExerciseTemplateInputSchema = upsertExerciseTemplateInputSchema.extend({
   p_template_id: z.string(),
 });
 
@@ -358,78 +352,3 @@ export const editExerciseTemplateMutation = defineMutation({
   targets: () => [exerciseTemplateKeys.all],
 });
 
-function toLegacyResult<T>(
-  result: DalResult<T>,
-): SupabaseSuccess<T> | SupabaseError {
-  const [err, data] = result;
-  if (err) {
-    return { success: false, error: formatDalError(err) };
-  }
-  return { success: true, data };
-}
-
-/** Legacy facade for callers outside Wave B scope (e.g. program-assignments). */
-export class ExerciseTemplatesQuery {
-  public async getListPaginated(
-    page: number = 1,
-    pageSize: number = 20,
-    search?: string,
-    sortBy: string = 'updated_at',
-    sortOrder: 'asc' | 'desc' = 'desc',
-  ): Promise<
-    SupabaseSuccess<PaginatedResult<ExerciseTemplate>> | SupabaseError
-  > {
-    return toLegacyResult(
-      await queryWithSession(listExerciseTemplatesPaginated, {
-        page,
-        pageSize,
-        search,
-        sortBy,
-        sortOrder,
-      }),
-    );
-  }
-
-  public async getById(
-    id: string,
-  ): Promise<SupabaseSuccess<ExerciseTemplate> | SupabaseError> {
-    return toLegacyResult(await queryWithSession(getExerciseTemplateById, id));
-  }
-
-  public async getByIds(
-    ids: string[],
-  ): Promise<SupabaseSuccess<Map<string, ExerciseTemplate>> | SupabaseError> {
-    const result = await queryWithSession(getExerciseTemplatesByIds, ids);
-    const [err, data] = result;
-    if (err) {
-      return { success: false, error: formatDalError(err) };
-    }
-    return { success: true, data: new Map(Object.entries(data)) };
-  }
-
-  public async upsertExerciseTemplate(
-    data: z.infer<typeof upsertExerciseTemplateInputSchema>,
-  ): Promise<SupabaseSuccess<unknown> | SupabaseError> {
-    const client = await createClient();
-    const [err, rpcData] = await mutate(upsertExerciseTemplateMutation, data, {
-      client,
-    });
-    if (err) {
-      return { success: false, error: formatDalError(err) };
-    }
-    return { success: true, data: rpcData };
-  }
-
-  public async editExerciseTemplate(
-    data: z.infer<typeof editExerciseTemplateInputSchema>,
-  ): Promise<SupabaseSuccess<unknown> | SupabaseError> {
-    const client = await createClient();
-    const [err, rpcData] = await mutate(editExerciseTemplateMutation, data, {
-      client,
-    });
-    if (err) {
-      return { success: false, error: formatDalError(err) };
-    }
-    return { success: true, data: rpcData };
-  }
-}

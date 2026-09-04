@@ -4,17 +4,11 @@ import { z } from 'zod';
 import {
   defineMutation,
   defineQuery,
-  formatDalError,
-  mutate,
-  type DalResult,
 } from '@/lib/dal';
-import { queryWithSession } from '@/lib/dal/core/query.server';
 import type { Database } from '@/lib/supabase/database.types';
-import { createClient } from '@/lib/supabase/core/server';
 
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
 import { formatScheduleDB } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { type SupabaseError, type SupabaseSuccess } from '../result';
 
 const workoutScheduleResultSchema = z.object({
   id: z.string().uuid(),
@@ -163,56 +157,3 @@ export const upsertWorkoutScheduleMutation = defineMutation({
   targets: () => [workoutScheduleKeys.all],
 });
 
-function toLegacyResult<T>(
-  result: DalResult<T>,
-): SupabaseSuccess<T> | SupabaseError {
-  const [err, data] = result;
-  if (err) {
-    return { success: false, error: formatDalError(err) };
-  }
-  return { success: true, data };
-}
-
-/** Legacy facade for callers outside Wave B scope. */
-export class WorkoutSchedulesQuery {
-  public async upsertWorkoutSchedule(
-    schedule: DatabaseSchedule,
-    notes?: string,
-  ): Promise<
-    SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
-  > {
-    const client = await createClient();
-    return toLegacyResult(
-      await mutate(
-        upsertWorkoutScheduleMutation,
-        { schedule, notes },
-        { client },
-      ),
-    );
-  }
-
-  public async getScheduleById(
-    id: string,
-  ): Promise<
-    SupabaseSuccess<{ schedule: unknown } | null> | SupabaseError
-  > {
-    return toLegacyResult(await queryWithSession(getWorkoutScheduleById, id));
-  }
-
-  public async getScheduleDataByAssignmentId(
-    programAssignmentId: string,
-  ): Promise<
-    | SupabaseSuccess<{
-        schedule: unknown;
-        patientOverride: unknown;
-      }>
-    | SupabaseError
-  > {
-    return toLegacyResult(
-      await queryWithSession(
-        getWorkoutScheduleDataByAssignmentId,
-        programAssignmentId,
-      ),
-    );
-  }
-}

@@ -26,7 +26,7 @@ import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/as
 import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assign-group-modal';
 import Link from 'next/link';
 import { sendBulkInvitations } from '../../actions';
-import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/constants/program-assignment-status';
 import toast from 'react-hot-toast';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 
