@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { hasUnreadMessagesForAdmin } from '@/app/(authenticated)/messages/actions';
+import { PreheatableNavButton } from '@/components/navigation/preheatable-nav-button';
+import { getShellNavPreheatQueries } from '@/components/navigation/shell-nav-preheat';
 import { useAuth } from '@/hooks/use-auth';
 import { useProfile } from '@/hooks/use-profile';
 import {
@@ -78,7 +80,6 @@ function SideNavUser(): React.ReactElement {
 
 /** HTML `.side` navigation rail matching the MedVanta rebuild prototype. */
 export function SideNav(): React.ReactElement {
-  const router = useRouter();
   const pathname = usePathname();
   const active = navIdFromPathname(pathname);
   const { data: hasUnreadMessages = false } = useQuery({
@@ -122,28 +123,30 @@ export function SideNav(): React.ReactElement {
         const showBadge = Boolean(entry.badge && hasUnreadMessages);
 
         return (
-          <button
+          <PreheatableNavButton
             key={entry.id}
-            type="button"
+            href={entry.href}
+            active={isActive}
+            preheatQueries={getShellNavPreheatQueries(entry.id)}
             className={`nav-i${isActive ? ' on' : ''}`}
-            onClick={() => router.push(entry.href)}
           >
             <Icon name={entry.icon} size={18} />
             <span className="l">{entry.label}</span>
             {showBadge ? <span className="nav-b">•</span> : null}
-          </button>
+          </PreheatableNavButton>
         );
       })}
 
       <div className="side-foot">
-        <button
-          type="button"
+        <PreheatableNavButton
+          href="/manage"
+          active={active === 'manage'}
+          preheatQueries={getShellNavPreheatQueries('manage')}
           className={`nav-i${active === 'manage' ? ' on' : ''}`}
-          onClick={() => router.push('/manage')}
         >
           <Icon name="Settings" size={18} />
           <span className="l">Manage</span>
-        </button>
+        </PreheatableNavButton>
         <button type="button" className="nav-i" disabled title="Placeholder">
           <Icon name="CircleHelp" size={18} />
           <span className="l">Help & docs</span>
