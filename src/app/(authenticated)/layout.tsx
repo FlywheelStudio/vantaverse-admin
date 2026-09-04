@@ -1,8 +1,10 @@
 import { Suspense } from 'react';
+import { AppShell } from '@/components/medvanta/shell/AppShell';
 import { AuthenticatedGate } from './authenticated-gate';
+import { AuthenticatedMainFallback } from './authenticated-main-fallback';
 
 /**
- * Server layout: require `profiles_admins` + active org admin membership.
+ * Server layout: cached shell chrome mounts first; auth gate suspends only the main column.
  */
 export default function AuthenticatedLayout({
   children,
@@ -10,8 +12,10 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <Suspense fallback={null}>
-      <AuthenticatedGate>{children}</AuthenticatedGate>
-    </Suspense>
+    <AppShell>
+      <Suspense fallback={<AuthenticatedMainFallback />}>
+        <AuthenticatedGate>{children}</AuthenticatedGate>
+      </Suspense>
+    </AppShell>
   );
 }

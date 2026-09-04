@@ -1,8 +1,6 @@
-/** Route-level fallback while authenticated segment data resolves. */
+import { AuthenticatedMainFallback } from './authenticated-main-fallback';
+
+/** Route-level fallback while authenticated segment data resolves (main column only). */
 export default function AuthenticatedLoading(): React.ReactElement {
-  return (
-    <div className="main body" aria-busy="true">
-      <div className="card" style={{ minHeight: 240 }} />
-    </div>
-  );
+  return <AuthenticatedMainFallback />;
 }

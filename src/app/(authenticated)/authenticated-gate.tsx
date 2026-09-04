@@ -1,5 +1,4 @@
 import { forbidden, redirect } from 'next/navigation';
-import { AppShell } from '@/components/medvanta/shell/AppShell';
 import { getAuthProfile } from './auth/actions';
 
 interface AuthenticatedGateProps {
@@ -7,8 +6,8 @@ interface AuthenticatedGateProps {
 }
 
 /**
- * Server auth gate for authenticated routes. Wrapped in Suspense by the parent layout
- * so Cache Components can prerender the static shell while profile loads.
+ * Server auth gate for authenticated routes. Parent layout mounts AppShell outside this
+ * component so SideNav stays visible while profile auth resolves.
  */
 export async function AuthenticatedGate({
   children,
@@ -22,5 +21,5 @@ export async function AuthenticatedGate({
     forbidden();
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <>{children}</>;
 }
