@@ -1,5 +1,6 @@
 import { BuilderDetailUI } from '../builder-detail-ui';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { query, formatDalError } from '@/lib/dal';
+import { getProgramAssignmentById } from '@/lib/supabase/queries/program-assignments';
 import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 
@@ -15,14 +16,12 @@ export default async function BuilderIdPage({
   const collapsed =
     resolvedSearchParams?.collapsed === '1' || resolvedSearchParams?.collapsed === 'true';
 
-  const programAssignmentsQuery = new ProgramAssignmentsQuery();
-  const result = await programAssignmentsQuery.getById(id);
+  const [assignmentErr, programAssignment] = await query(getProgramAssignmentById, id);
 
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to load program assignment');
+  if (assignmentErr) {
+    throw new Error(formatDalError(assignmentErr));
   }
 
-  const programAssignment = result.data;
   const dbSchedule = programAssignment?.workout_schedule?.schedule;
   let convertedSchedule: SelectedItem[][][] | null = null;
 

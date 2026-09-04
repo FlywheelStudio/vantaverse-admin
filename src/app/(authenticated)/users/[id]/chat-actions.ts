@@ -1,37 +1,56 @@
 'use server';
 
-import { ChatsQuery } from '@/lib/supabase/queries/chats';
-import { MessagesQuery } from '@/lib/supabase/queries/messages';
+import { formatDalError, mutate, type DalResult } from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import { getOrCreateChat } from '@/lib/supabase/queries/chats';
+import {
+  createMessage,
+  getLastUserMessageIdByCreatedAt,
+  getMessagesByChatId as getMessagesByChatIdQuery,
+  setMessageLastSeenAtIfNull,
+} from '@/lib/supabase/queries/messages';
 import {
   type Message,
   type MessageAttachment,
 } from '@/lib/supabase/schemas/messages';
+import { createClient } from '@/lib/supabase/core/server';
 
+type LegacySuccess<T> = { success: true; data: T };
+type LegacyError = { success: false; error: string };
+type LegacyResult<T> = LegacySuccess<T> | LegacyError;
+
+function fromDalResult<T>(result: DalResult<T>): LegacyResult<T> {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: formatDalError(err) };
+  }
+  return { success: true, data };
+}
 
 /**
  * Get or create a chat for a patient
  * @param organizationId - The organization ID
  * @param patientId - The patient user ID
- * @param adminId - The admin user ID (current admin viewing)
  * @returns Success with chat ID or error
  */
 export async function getOrCreateChatForPatient(
   organizationId: string,
   patientId: string,
-): Promise<
-  | { success: true; data: { chatId: string } }
-  | { success: false; error: string }
-> {
-  const chatsQuery = new ChatsQuery();
-  const result = await chatsQuery.getOrCreateChat(organizationId, patientId);
-
-  if (!result.success) {
-    return result;
+): Promise<LegacyResult<{ chatId: string }>> {
+  const client = await createClient();
+  const result = await mutate(
+    getOrCreateChat,
+    { organizationId, userId: patientId },
+    { client },
+  );
+  const mapped = fromDalResult(result);
+  if (!mapped.success) {
+    return mapped;
   }
 
   return {
     success: true,
-    data: { chatId: result.data.id },
+    data: { chatId: mapped.data.id },
   };
 }
 
@@ -42,20 +61,8 @@ export async function getOrCreateChatForPatient(
  */
 export async function getMessagesByChatId(
   chatId: string,
-): Promise<
-  { success: true; data: Message[] } | { success: false; error: string }
-> {
-  const messagesQuery = new MessagesQuery();
-  const result = await messagesQuery.getMessagesByChatId(chatId);
-
-  if (!result.success) {
-    return result;
-  }
-
-  return {
-    success: true,
-    data: result.data,
-  };
+): Promise<LegacyResult<Message[]>> {
+  return fromDalResult(await queryWithSession(getMessagesByChatIdQuery, chatId));
 }
 
 /**
@@ -64,14 +71,10 @@ export async function getMessagesByChatId(
  */
 export async function markLastUserMessageSeen(
   chatId: string,
-): Promise<
-  | { success: true; data: { updated: boolean } }
-  | { success: false; error: string }
-> {
-  const messagesQuery = new MessagesQuery();
-
-  const lastUserMessageResult =
-    await messagesQuery.getLastUserMessageIdByCreatedAt(chatId);
+): Promise<LegacyResult<{ updated: boolean }>> {
+  const lastUserMessageResult = fromDalResult(
+    await queryWithSession(getLastUserMessageIdByCreatedAt, chatId),
+  );
   if (!lastUserMessageResult.success) {
     return lastUserMessageResult;
   }
@@ -83,8 +86,13 @@ export async function markLastUserMessageSeen(
     };
   }
 
-  const updateResult = await messagesQuery.setMessageLastSeenAtIfNull(
-    lastUserMessageResult.data,
+  const client = await createClient();
+  const updateResult = fromDalResult(
+    await mutate(
+      setMessageLastSeenAtIfNull,
+      { messageId: lastUserMessageResult.data },
+      { client },
+    ),
   );
   if (!updateResult.success) {
     return updateResult;
@@ -92,7 +100,7 @@ export async function markLastUserMessageSeen(
 
   return {
     success: true,
-    data: updateResult.data,
+    data: { updated: updateResult.data.updated },
   };
 }
 
@@ -108,17 +116,20 @@ export async function sendMessage(
   content: string,
   userId: string,
   attachment: MessageAttachment | null = null,
-): Promise<
-  | { success: true; data: { messageId: string } }
-  | { success: false; error: string }
-> {
-  const messagesQuery = new MessagesQuery();
-  const result = await messagesQuery.createMessage(
-    chatId,
-    content,
-    userId,
-    'admin',
-    attachment,
+): Promise<LegacyResult<{ messageId: string }>> {
+  const client = await createClient();
+  const result = fromDalResult(
+    await mutate(
+      createMessage,
+      {
+        chatId,
+        content,
+        userId,
+        messageType: 'admin' as const,
+        attachments: attachment,
+      },
+      { client },
+    ),
   );
 
   if (!result.success) {
@@ -130,4 +141,3 @@ export async function sendMessage(
     data: { messageId: result.data.id },
   };
 }
-

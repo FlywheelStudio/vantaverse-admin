@@ -1,316 +1,371 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+
 import { teamSchema, type Team } from '../schemas/teams';
 import { resolveDisplayProfilesByIds } from './resolve-display-profiles';
 
-export class TeamsQuery extends SupabaseQuery {
-  /**
-   * Get all teams for an organization
-   * @param organizationId - The organization id
-   * @returns Success with teams array or error
-   */
-  public async getByOrganizationId(
-    organizationId: string,
-  ): Promise<SupabaseSuccess<Team[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+const teamListSchema = teamSchema.array();
+const memberUserIdsSchema = z.array(z.string().uuid());
 
-    const { data, error } = await supabase
-      .from('teams')
-      .select(
-        '*, team_membership(id, user_id)',
-      )
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false });
+const teamImportLookupSchema = z.record(
+  z.string(),
+  z.object({
+    id: z.string().uuid(),
+    organizationId: z.string().uuid(),
+  }),
+);
 
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get teams');
-    }
+export type TeamImportLookup = z.infer<typeof teamImportLookupSchema>;
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
+const createTeamInputSchema = z.object({
+  organizationId: z.string().uuid(),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
 
-    type RawTeamMember = {
-      id: string;
-      user_id: string;
-    };
+const updateTeamInputSchema = z.object({
+  id: z.string().uuid(),
+  data: z
+    .object({
+      name: z.string().optional(),
+      description: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
+    })
+    .partial(),
+});
 
-    type RawTeam = Omit<Team, 'members_count' | 'member_ids' | 'members'> & {
-      team_membership: RawTeamMember[] | null;
-    };
+const deleteTeamInputSchema = z.object({
+  id: z.string().uuid(),
+});
 
-    const teams = data as RawTeam[];
-    const allUserIds = teams.flatMap((team) =>
-      (team.team_membership ?? []).map((m) => m.user_id),
-    );
-    const profilesById = await resolveDisplayProfilesByIds(supabase, allUserIds);
+const deleteTeamResultSchema = z.object({
+  id: z.string().uuid(),
+});
 
-    const transformedData = teams.map((team) => {
-      const { team_membership, ...teamData } = team;
-      const members =
-        Array.isArray(team_membership) && team_membership.length > 0
-          ? team_membership.map((m) => ({
-              id: m.id,
-              user_id: m.user_id,
-              profile: profilesById.get(m.user_id) ?? null,
-            }))
-          : [];
-      const memberIds = members.map((m) => m.id);
-      return {
-        ...teamData,
-        members_count: members.length,
-        member_ids: memberIds.length > 0 ? memberIds : undefined,
-        members: members.length > 0 ? members : undefined,
-      };
-    });
+const addUserToTeamInputSchema = z.object({
+  userId: z.string().uuid(),
+  teamId: z.string().uuid(),
+});
 
-    const result = teamSchema.array().safeParse(transformedData);
+const addUserToTeamResultSchema = z.object({
+  id: z.string().uuid(),
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
+const updateTeamMembersInputSchema = z.object({
+  teamId: z.string().uuid(),
+  userIds: z.array(z.string().uuid()),
+});
 
-    return {
-      success: true,
-      data: result.data,
-    };
+const updateTeamMembersResultSchema = z.object({
+  id: z.string().uuid(),
+  added: z.number().int().nonnegative(),
+  removed: z.number().int().nonnegative(),
+});
+
+export type CreateTeamInput = z.infer<typeof createTeamInputSchema>;
+export type UpdateTeamInput = z.infer<typeof updateTeamInputSchema>;
+export type UpdateTeamMembersInput = z.infer<typeof updateTeamMembersInputSchema>;
+
+export const teamKeys = {
+  all: ['teams'] as const,
+  byOrganization: (organizationId: string) =>
+    [...teamKeys.all, 'organization', organizationId] as const,
+  detail: (teamId: string) => [...teamKeys.all, 'detail', teamId] as const,
+  members: (teamId: string) => [...teamKeys.all, 'members', teamId] as const,
+  importLookup: () => [...teamKeys.all, 'import'] as const,
+};
+
+type RawTeamMember = {
+  id: string;
+  user_id: string;
+};
+
+type RawTeam = Omit<Team, 'members_count' | 'member_ids' | 'members'> & {
+  team_membership: RawTeamMember[] | null;
+};
+
+async function fetchTeamsByOrganizationId(
+  client: SupabaseClient<Database>,
+  organizationId: string,
+): Promise<{
+  data: Team[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('teams')
+    .select('*, team_membership(id, user_id)')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return { data: null, error };
   }
 
-  /**
-   * Create a new team
-   * @param organizationId - The organization id
-   * @param name - The team name
-   * @param description - Optional team description
-   * @param notes - Optional team notes
-   * @returns Success with created team or error
-   */
-  public async create(
-    organizationId: string,
-    name: string,
-    description?: string | null,
-    notes?: string | null,
-  ): Promise<SupabaseSuccess<Team> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  if (!data) {
+    return { data: [], error: null };
+  }
 
-    const { data, error } = await supabase
+  const teams = data as RawTeam[];
+  const allUserIds = teams.flatMap((team) =>
+    (team.team_membership ?? []).map((member) => member.user_id),
+  );
+  const profilesById = await resolveDisplayProfilesByIds(client, allUserIds);
+
+  const transformedData = teams.map((team) => {
+    const { team_membership, ...teamData } = team;
+    const members =
+      Array.isArray(team_membership) && team_membership.length > 0
+        ? team_membership.map((member) => ({
+            id: member.id,
+            user_id: member.user_id,
+            profile: profilesById.get(member.user_id) ?? null,
+          }))
+        : [];
+    const memberIds = members.map((member) => member.id);
+
+    return {
+      ...teamData,
+      members_count: members.length,
+      member_ids: memberIds.length > 0 ? memberIds : undefined,
+      members: members.length > 0 ? members : undefined,
+    };
+  });
+
+  return { data: transformedData, error: null };
+}
+
+/** Teams for an organization with member profiles. */
+export const listTeamsByOrganizationId = defineQuery({
+  key: teamKeys.byOrganization,
+  schema: teamListSchema,
+  execute: (client, organizationId: string) =>
+    fetchTeamsByOrganizationId(client, organizationId),
+});
+
+/** Create a team in an organization. */
+export const createTeam = defineMutation({
+  inputSchema: createTeamInputSchema,
+  schema: teamSchema,
+  execute: async (client, input) => {
+    const { data, error } = await client
       .from('teams')
       .insert({
-        organization_id: organizationId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        notes: notes?.trim() || null,
+        organization_id: input.organizationId,
+        name: input.name.trim(),
+        description: input.description?.trim() || null,
+        notes: input.notes?.trim() || null,
       })
       .select()
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to create team');
+      return { data: null, error };
     }
 
     if (!data) {
-      return {
-        success: false,
-        error: 'Failed to create team',
-      };
-    }
-
-    const result = teamSchema.safeParse({
-      ...data,
-      members_count: 0,
-      members: [],
-    });
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+      return { data: null, error: { message: 'Failed to create team' } };
     }
 
     return {
-      success: true,
-      data: result.data,
+      data: {
+        ...data,
+        members_count: 0,
+        members: [],
+      },
+      error: null,
     };
-  }
+  },
+  targets: (input) => [
+    teamKeys.all,
+    teamKeys.byOrganization(input.organizationId),
+  ],
+});
 
-  /**
-   * Update a team
-   * @param id - The team id
-   * @param data - The data to update
-   * @returns Success with updated team or error
-   */
-  public async update(
-    id: string,
-    data: Partial<Team>,
-  ): Promise<SupabaseSuccess<Team> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data: updatedData, error } = await supabase
+/** Update team fields. */
+export const updateTeam = defineMutation({
+  inputSchema: updateTeamInputSchema,
+  schema: teamSchema,
+  execute: async (client, input) => {
+    const { data, error } = await client
       .from('teams')
       .update({
-        ...data,
+        ...input.data,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq('id', input.id)
       .select()
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to update team');
+      return { data: null, error };
     }
 
-    if (!updatedData) {
-      return {
-        success: false,
-        error: 'Failed to update team',
-      };
+    if (!data) {
+      return { data: null, error: { message: 'Failed to update team' } };
     }
 
-    const result = teamSchema.safeParse(updatedData);
+    return { data, error: null };
+  },
+  targets: (input) => [teamKeys.all, teamKeys.detail(input.id)],
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-
-  /**
-   * Delete a team
-   * @param id - The team id
-   * @returns Success or error
-   */
-  public async delete(
-    id: string,
-  ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { error } = await supabase.from('teams').delete().eq('id', id);
+/** Delete a team by id. */
+export const deleteTeam = defineMutation({
+  inputSchema: deleteTeamInputSchema,
+  schema: deleteTeamResultSchema,
+  execute: async (client, input) => {
+    const { error } = await client.from('teams').delete().eq('id', input.id);
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to delete team');
+      return { data: null, error };
     }
 
-    return {
-      success: true,
-      data: undefined,
-    };
-  }
+    return { data: { id: input.id }, error: null };
+  },
+  targets: () => [teamKeys.all],
+});
 
-  /**
-   * Get current member user IDs for a team
-   * @param teamId - The team ID
-   * @returns Success with array of user IDs or error
-   */
-  public async getMemberUserIds(
-    teamId: string,
-  ): Promise<SupabaseSuccess<string[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
+/** Current member user ids for a team. */
+export const getTeamMemberUserIds = defineQuery({
+  key: teamKeys.members,
+  schema: memberUserIdsSchema,
+  execute: async (client, teamId: string) => {
+    const { data, error } = await client
       .from('team_membership')
       .select('user_id')
       .eq('team_id', teamId);
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get team member user IDs',
-      );
+      return { data: null, error };
     }
 
-    const userIds = (data || []).map((member) => member.user_id);
-
     return {
-      success: true,
-      data: userIds,
+      data: (data ?? []).map((member) => member.user_id),
+      error: null,
     };
-  }
+  },
+});
 
-  /**
-   * Get all teams with their names and organization IDs for case-sensitive lookup (for import validation)
-   * @returns Success with Map of "orgId:teamName" to team data or error
-   */
-  public async getAllForImport(): Promise<
-    | SupabaseSuccess<Map<string, { id: string; organizationId: string }>>
-    | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
-    const { data, error } = await supabase
+/** Case-sensitive orgId:teamName lookup map for import validation. */
+export const getTeamsForImport = defineQuery({
+  key: teamKeys.importLookup,
+  schema: teamImportLookupSchema,
+  execute: async (client) => {
+    const { data, error } = await client
       .from('teams')
       .select('id, name, organization_id');
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get teams for import',
-      );
+      return { data: null, error };
     }
 
-    const teamMap = new Map<string, { id: string; organizationId: string }>();
-    if (data) {
-      for (const team of data) {
-        const key = `${team.organization_id}:${team.name}`;
-        teamMap.set(key, { id: team.id, organizationId: team.organization_id });
-      }
-    }
-
-    return {
-      success: true,
-      data: teamMap,
-    };
-  }
-
-  /**
-   * Add user to team (idempotent - skips if already a member)
-   * @param userId - The user ID
-   * @param teamId - The team ID
-   * @returns Success or error
-   */
-  public async addUserToTeam(
-    userId: string,
-    teamId: string,
-  ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
-
-    // Check if user is already a member
-    const { data: existingMembership } = await supabase
-      .from('team_membership')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('team_id', teamId)
-      .maybeSingle();
-
-    if (existingMembership) {
-      // Already a member, skip
-      return {
-        success: true,
-        data: undefined,
+    const lookup: TeamImportLookup = {};
+    for (const team of data ?? []) {
+      lookup[`${team.organization_id}:${team.name}`] = {
+        id: team.id,
+        organizationId: team.organization_id,
       };
     }
 
-    // Add to team
-    const { error } = await supabase.from('team_membership').insert({
-      user_id: userId,
-      team_id: teamId,
+    return { data: lookup, error: null };
+  },
+});
+
+/** Idempotent add user to team (service role). */
+export const addUserToTeam = defineMutation({
+  inputSchema: addUserToTeamInputSchema,
+  schema: addUserToTeamResultSchema,
+  client: 'admin',
+  execute: async (client, input) => {
+    const { data: existingMembership } = await client
+      .from('team_membership')
+      .select('id')
+      .eq('user_id', input.userId)
+      .eq('team_id', input.teamId)
+      .maybeSingle();
+
+    if (existingMembership) {
+      return { data: { id: input.teamId }, error: null };
+    }
+
+    const { error } = await client.from('team_membership').insert({
+      user_id: input.userId,
+      team_id: input.teamId,
     });
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to add user to team',
+      return { data: null, error };
+    }
+
+    return { data: { id: input.teamId }, error: null };
+  },
+  targets: (input) => [teamKeys.members(input.teamId), teamKeys.all],
+});
+
+/** Replace team membership with the given user ids. */
+export const updateTeamMembers = defineMutation({
+  inputSchema: updateTeamMembersInputSchema,
+  schema: updateTeamMembersResultSchema,
+  execute: async (client, input) => {
+    const { data: currentMembers, error: fetchError } = await client
+      .from('team_membership')
+      .select('user_id')
+      .eq('team_id', input.teamId);
+
+    if (fetchError) {
+      return { data: null, error: fetchError };
+    }
+
+    const currentUserIds = (currentMembers ?? []).map((member) => member.user_id);
+    const currentUserIdsSet = new Set(currentUserIds);
+    const newUserIdsSet = new Set(input.userIds);
+    const toAdd = input.userIds.filter((id) => !currentUserIdsSet.has(id));
+    const toRemove = currentUserIds.filter((id) => !newUserIdsSet.has(id));
+
+    let added = 0;
+    let removed = 0;
+
+    if (toAdd.length > 0) {
+      const { error: insertError } = await client.from('team_membership').insert(
+        toAdd.map((user_id) => ({
+          team_id: input.teamId,
+          user_id,
+        })),
       );
+
+      if (insertError) {
+        return { data: null, error: insertError };
+      }
+
+      added = toAdd.length;
+    }
+
+    if (toRemove.length > 0) {
+      const { error: deleteError } = await client
+        .from('team_membership')
+        .delete()
+        .eq('team_id', input.teamId)
+        .in('user_id', toRemove);
+
+      if (deleteError) {
+        return { data: null, error: deleteError };
+      }
+
+      removed = toRemove.length;
     }
 
     return {
-      success: true,
-      data: undefined,
+      data: {
+        id: input.teamId,
+        added,
+        removed,
+      },
+      error: null,
     };
-  }
-}
+  },
+  targets: (input) => [teamKeys.members(input.teamId), teamKeys.all],
+});

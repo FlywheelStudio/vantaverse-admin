@@ -9,7 +9,9 @@ export default async function AuthLayout({
   children,
 }: {
   children: ReactNode;
-}) {
+}): Promise<React.ReactElement> {
+  'use cache';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted px-4">
       <div className="w-full max-w-md bg-card rounded-lg shadow p-8">

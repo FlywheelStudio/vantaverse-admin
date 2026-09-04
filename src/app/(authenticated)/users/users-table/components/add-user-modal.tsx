@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 import { Avatar, Icon, Tooltip } from '@/components/medvanta';
@@ -9,10 +9,8 @@ import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-surv
 import { Combobox } from '@/components/ui/combobox';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import {
-  searchOrganizations,
-  type OrganizationOption,
-} from '@/lib/supabase/queries/organization-search';
+import { toPaginatedQueryOptions } from '@/lib/dal';
+import { searchOrganizations } from '@/lib/supabase/queries/organization-search';
 import { MemberRole } from '@/lib/supabase/schemas/organization-members';
 
 import {
@@ -34,6 +32,8 @@ import {
   type InviteRole,
   type Invitee,
 } from './invite-mock-data';
+
+const ORG_SEARCH_LIMIT = 20;
 
 interface AddUserModalProps {
   open: boolean;
@@ -87,18 +87,15 @@ function OrgPicker({
   placeholder?: string;
 }): React.ReactElement {
   const [searchInput, setSearchInput] = useState('');
-  const [options, setOptions] = useState<OrganizationOption[]>([]);
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  useEffect(() => {
-    let cancelled = false;
-    void searchOrganizations(debouncedSearch).then((orgs) => {
-      if (!cancelled) setOptions(orgs);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSearch]);
+  const { data: options = [] } = useQuery(
+    toPaginatedQueryOptions(
+      searchOrganizations,
+      debouncedSearch,
+      ORG_SEARCH_LIMIT,
+    ),
+  );
 
   const comboboxOptions = useMemo(() => {
     const mapped = options.map((o) => ({ value: o.id, label: o.name }));

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import { usePreheat } from '@/hooks/use-preheat';
 
 interface PreProgramCardProps {
   assignment: ProgramAssignmentWithTemplate;
@@ -10,6 +11,7 @@ interface PreProgramCardProps {
 
 export function PreProgramCard({ assignment }: PreProgramCardProps): React.ReactElement | null {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const template = assignment.program_template;
 
   if (!template) {
@@ -17,6 +19,8 @@ export function PreProgramCard({ assignment }: PreProgramCardProps): React.React
   }
 
   const weeksLabel = `${template.weeks} ${template.weeks === 1 ? 'week' : 'weeks'}`;
+  const builderHref = `/builder/${assignment.id}`;
+  const preheatHandlers = getPreheatHandlers(builderHref);
 
   return (
     <div
@@ -73,7 +77,8 @@ export function PreProgramCard({ assignment }: PreProgramCardProps): React.React
         <button
           type="button"
           className="btn btn-sec"
-          onClick={() => router.push(`/builder/${assignment.id}`)}
+          onClick={() => router.push(builderHref)}
+          {...preheatHandlers}
         >
           <Icon name="SquarePen" size={17} />
           Edit pre-program

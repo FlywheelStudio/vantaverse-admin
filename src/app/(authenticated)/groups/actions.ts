@@ -1,26 +1,54 @@
 'use server';
 
-import { OrganizationsQuery } from '@/lib/supabase/queries/organizations';
-import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { SupabaseStorage } from '@/lib/supabase/storage';
+import { mutate, query, type DalResult } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/core/server';
+import {
+  createOrganization as createOrganizationMutation,
+  deleteOrganization as deleteOrganizationMutation,
+  getOrganizationById as getOrganizationByIdQuery,
+  listOrganizations,
+  updateOrganization as updateOrganizationMutation,
+} from '@/lib/supabase/queries/organizations';
+import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import {
+  getAllWithMembershipsQuery,
+  type ProfileWithMemberships,
+} from '@/lib/supabase/queries/profiles';
+import { createAdminClient } from '@/lib/supabase/core/admin';
+import { SupabaseStorage } from '@/lib/supabase/storage';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 /**
  * Get all organizations
  */
-export async function getOrganizations() {
-  const query = new OrganizationsQuery();
-  return query.getList();
+export async function getOrganizations(): Promise<
+  SupabaseSuccess<Organization[]> | SupabaseError
+> {
+  const client = await createClient();
+  return toSupabaseResult(await query(listOrganizations, { client }));
 }
 
 /**
  * Get organization by ID
  */
-export async function getOrganizationById(id: string) {
-  const query = new OrganizationsQuery();
-  return query.getById(id);
+export async function getOrganizationById(
+  id: string,
+): Promise<SupabaseSuccess<Organization> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await query(getOrganizationByIdQuery, id, { client }),
+  );
 }
 
 /**
@@ -30,9 +58,15 @@ export async function createOrganization(
   name: string,
   description?: string | null,
   screeningUrl?: string | null,
-) {
-  const query = new OrganizationsQuery();
-  return query.create(name, description, screeningUrl);
+): Promise<SupabaseSuccess<Organization> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await mutate(
+      createOrganizationMutation,
+      { name, description, screeningUrl },
+      { client },
+    ),
+  );
 }
 
 /**
@@ -41,9 +75,11 @@ export async function createOrganization(
 export async function updateOrganization(
   id: string,
   data: Partial<Organization>,
-) {
-  const query = new OrganizationsQuery();
-  return query.update(id, data);
+): Promise<SupabaseSuccess<Organization> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await mutate(updateOrganizationMutation, { id, data }, { client }),
+  );
 }
 
 /**
@@ -121,25 +157,39 @@ export async function uploadOrganizationPicture(
 export async function updateOrganizationPicture(
   organizationId: string,
   pictureUrl: string | null,
-) {
-  const query = new OrganizationsQuery();
-  return query.update(organizationId, { picture_url: pictureUrl });
+): Promise<SupabaseSuccess<Organization> | SupabaseError> {
+  const client = await createClient();
+  return toSupabaseResult(
+    await mutate(
+      updateOrganizationMutation,
+      { id: organizationId, data: { picture_url: pictureUrl } },
+      { client },
+    ),
+  );
 }
 
 /**
  * Delete an organization
  */
-export async function deleteOrganization(id: string) {
-  const query = new OrganizationsQuery();
-  return query.delete(id);
+export async function deleteOrganization(
+  id: string,
+): Promise<SupabaseSuccess<void> | SupabaseError> {
+  const client = await createClient();
+  const [err] = await mutate(deleteOrganizationMutation, { id }, { client });
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data: undefined };
 }
 
 /**
  * Get all profiles with their memberships
  */
-export async function getAllProfilesWithMemberships() {
-  const query = new ProfilesQuery();
-  return query.getAllWithMemberships();
+export async function getAllProfilesWithMemberships(): Promise<
+  SupabaseSuccess<ProfileWithMemberships[]> | SupabaseError
+> {
+  const client = await createAdminClient();
+  return toSupabaseResult(await query(getAllWithMembershipsQuery, { client }));
 }
 
 /**

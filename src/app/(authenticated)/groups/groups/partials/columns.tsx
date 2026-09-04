@@ -10,6 +10,7 @@ import { TeamsCell } from '../../teams/partials/teams-cell';
 import { useRouter } from 'next/navigation';
 import { Icon, IconButton } from '@/components/medvanta';
 import { avatarTone } from '@/components/widgets/utils';
+import { usePreheat } from '@/hooks/use-preheat';
 
 function groupInitials(name: string): string {
   return name
@@ -23,6 +24,9 @@ function groupInitials(name: string): string {
 
 function GroupCell({ org }: { org: Organization }): React.ReactElement {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
+  const groupHref = `/groups/${org.id}`;
+  const preheatHandlers = getPreheatHandlers(groupHref);
 
   return (
     <div className="cellp">
@@ -32,7 +36,8 @@ function GroupCell({ org }: { org: Organization }): React.ReactElement {
           type="button"
           className="nm"
           style={{ display: 'block', cursor: 'pointer', border: 'none', background: 'transparent', padding: 0, textAlign: 'left' }}
-          onClick={() => router.push(`/groups/${org.id}`)}
+          onClick={() => router.push(groupHref)}
+          {...preheatHandlers}
         >
           {org.name}
         </button>

@@ -1,3 +1,6 @@
+/** Minimum gates unlocked before a program can be assigned to a user. */
+export const MIN_GATES_FOR_PROGRAM_ASSIGNMENT = 5;
+
 export const PROGRAM_ASSIGNMENT_STATUS = {
   TEMPLATE: 'template',
   PRE_PROGRAM_TEMPLATE: 'pre_program_template',

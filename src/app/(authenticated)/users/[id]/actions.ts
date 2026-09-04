@@ -1,6 +1,23 @@
 'use server';
 
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { mutate, query, type DalResult } from '@/lib/dal';
+import {
+  assignProgramToUser as assignProgramToUserMutation,
+  getProgramAssignmentListPaginated,
+} from '@/lib/supabase/queries/program-assignments';
+import type { ProgramAssignment } from '@/lib/supabase/schemas/program-assignments';
+import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 /**
  * Get paginated program assignments with search and status filtering
@@ -10,9 +27,24 @@ export async function getProgramAssignmentsPaginated(
   pageSize: number = 25,
   search?: string,
   showAssigned: boolean = false,
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.getListPaginated(page, pageSize, search, showAssigned);
+): Promise<
+  | SupabaseSuccess<{
+      data: ProgramAssignmentWithTemplate[];
+      page: number;
+      pageSize: number;
+      total: number;
+      hasMore: boolean;
+    }>
+  | SupabaseError
+> {
+  return toSupabaseResult(
+    await query(getProgramAssignmentListPaginated, {
+      page,
+      pageSize,
+      search,
+      showAssigned,
+    }),
+  );
 }
 
 /**
@@ -21,9 +53,13 @@ export async function getProgramAssignmentsPaginated(
 export async function assignProgramToUser(
   templateAssignmentId: string,
   userId: string,
-  startDate: string, // ISO date string (YYYY-MM-DD)
-) {
-  const query = new ProgramAssignmentsQuery();
-  return query.assignToUser(templateAssignmentId, userId, startDate);
+  startDate: string,
+): Promise<SupabaseSuccess<ProgramAssignment> | SupabaseError> {
+  return toSupabaseResult(
+    await mutate(assignProgramToUserMutation, {
+      templateAssignmentId,
+      userId,
+      startDate,
+    }),
+  );
 }
-

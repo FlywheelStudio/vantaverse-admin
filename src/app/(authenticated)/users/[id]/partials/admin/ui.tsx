@@ -69,10 +69,9 @@ export function AdminProfileViewUI({
             ? [{ label: 'Your profile' }]
             : [{ label: 'Manage', href: '/manage' }, { label: displayName }]
         }
-        title={isYourself ? 'Your profile' : `${displayName}'s profile`}
       />
       <div className="body">
-        <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+        <div className="card" style={{ marginBottom: 16, overflow: 'hidden', padding: 0 }}>
           <div
             style={{
               borderBottom: '1px solid var(--border-subtle)',

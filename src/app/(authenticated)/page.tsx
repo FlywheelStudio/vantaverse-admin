@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { AppBar } from '@/components/medvanta/shell';
 import { Dashboard } from '@/components/widgets';
-import { DashboardSkeleton } from '@/components/widgets/dashboard/skeleton';
+import { DashboardLoadingShell } from '@/components/widgets/dashboard/skeleton';
 import {
   dashboardRangeDays,
   parseDashboardRange,
@@ -11,21 +11,14 @@ import {
   formatDashboardSubtitle,
   getGreeting,
 } from '@/components/widgets/utils';
-import { AdminsQuery } from '@/lib/supabase/queries/admins';
+import { query } from '@/lib/dal';
+import { queryWithSession } from '@/lib/dal/core/query.server';
+import { getAuthProfileQuery } from '@/lib/supabase/queries/admins';
 import {
-  DashboardQuery,
+  getDashboardAnalyticsQuery,
+  getDashboardNeedsAttentionQuery,
   type DashboardAnalytics,
-  type NeedsAttentionResult,
 } from '@/lib/supabase/queries/dashboard';
-import type { AdminProfile } from '@/lib/supabase/schemas/admins';
-import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/query';
-
-function unwrap<T>(
-  result: SupabaseSuccess<T> | SupabaseError,
-  fallback: T,
-): T {
-  return result.success ? result.data : fallback;
-}
 
 const EMPTY_ANALYTICS: DashboardAnalytics = {
   statusCounts: {
@@ -53,9 +46,6 @@ async function DashboardContent({
   groupId?: string;
   range: ReturnType<typeof parseDashboardRange>;
 }): Promise<React.ReactElement> {
-  const adminsQuery = new AdminsQuery();
-  const dashboardQuery = new DashboardQuery();
-
   const days = dashboardRangeDays(range);
   const to = new Date().toISOString().slice(0, 10);
   const from =
@@ -64,25 +54,26 @@ async function DashboardContent({
       // eslint-disable-next-line react-hooks/purity -- async server component, not hook render
       : new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
-  const [profile, analytics, attention] = await Promise.all([
-    adminsQuery.getAuthProfile(),
-    dashboardQuery.getDashboardAnalytics({
-      organizationIds: groupId ? [groupId] : null,
+  const organizationIds = groupId ? [groupId] : null;
+
+  const [profileResult, analyticsResult, attentionResult] = await Promise.all([
+    queryWithSession(getAuthProfileQuery),
+    query(getDashboardAnalyticsQuery, {
+      organizationIds,
       from,
       to,
       bucket: range === 'all' ? 'month' : range === '90d' ? 'week' : 'day',
     }),
-    dashboardQuery.getNeedsAttention({
-      organizationIds: groupId ? [groupId] : null,
-    }),
+    query(getDashboardNeedsAttentionQuery, { organizationIds }),
   ]);
 
-  const profileData = unwrap<AdminProfile | null>(profile, null);
-  const analyticsData = unwrap<DashboardAnalytics>(analytics, EMPTY_ANALYTICS);
-  const attentionData = unwrap<NeedsAttentionResult>(attention, {
-    users: [],
-    total: 0,
-  });
+  const profileData = profileResult[0] ? null : profileResult[1];
+  const analyticsData = analyticsResult[0]
+    ? EMPTY_ANALYTICS
+    : analyticsResult[1];
+  const attentionData = attentionResult[0]
+    ? { users: [], total: 0 }
+    : attentionResult[1];
 
   const firstName = profileData?.first_name ?? undefined;
   const greeting = getGreeting();
@@ -126,7 +117,7 @@ export default async function HomePage({
   const viewKey = `${groupId ?? 'all'}-${range}`;
 
   return (
-    <Suspense key={viewKey} fallback={<DashboardSkeleton />}>
+    <Suspense key={viewKey} fallback={<DashboardLoadingShell />}>
       <DashboardContent groupId={groupId} range={range} />
     </Suspense>
   );

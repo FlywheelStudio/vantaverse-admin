@@ -1,23 +1,21 @@
-import { forbidden, redirect } from 'next/navigation';
-import { getAuthProfile } from './auth/actions';
-import { AuthenticatedShell } from './authenticated-shell';
+import { Suspense } from 'react';
+import { AppShell } from '@/components/medvanta/shell/AppShell';
+import { AuthenticatedGate } from './authenticated-gate';
+import { AuthenticatedMainFallback } from './authenticated-main-fallback';
 
 /**
- * Server layout: require `profiles_admins` + active org admin membership.
+ * Server layout: cached shell chrome mounts first; auth gate suspends only the main column.
  */
-export default async function AuthenticatedLayout({
+export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
-}): Promise<React.ReactElement> {
-  const profile = await getAuthProfile();
-
-  if (!profile.success) {
-    if (profile.status === 401 || profile.error === 'Unauthenticated') {
-      redirect('/login');
-    }
-    forbidden();
-  }
-
-  return <AuthenticatedShell>{children}</AuthenticatedShell>;
+}): React.ReactElement {
+  return (
+    <AppShell>
+      <Suspense fallback={<AuthenticatedMainFallback />}>
+        <AuthenticatedGate>{children}</AuthenticatedGate>
+      </Suspense>
+    </AppShell>
+  );
 }

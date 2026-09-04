@@ -5,7 +5,6 @@ import {
   getOrganizationMembersWithPrograms,
   getOrganizationPrograms,
 } from './actions';
-import { createParallelQueries } from '@/lib/supabase/query';
 import { GroupDetailsPageUI } from './ui';
 import { notFound } from 'next/navigation';
 
@@ -27,34 +26,25 @@ export default async function GroupDetailsPage({
     notFound();
   }
 
-  const result = await createParallelQueries({
-    physician: {
-      query: () => getCurrentPhysiologist(id),
-      defaultValue: null,
-    },
-    members: {
-      query: () => getOrganizationMembersWithPrograms(id),
-      defaultValue: [],
-    },
-    admins: {
-      query: () => getOrganizationAdmins(id),
-      defaultValue: [],
-    },
-    programs: {
-      query: () => getOrganizationPrograms(id),
-      defaultValue: [],
-    },
-    consultation: {
-      query: () => getConsultationSettings(),
-      defaultValue: null,
-    },
-  });
+  const [
+    physicianResult,
+    membersResult,
+    adminsResult,
+    programsResult,
+    consultationResult,
+  ] = await Promise.all([
+    getCurrentPhysiologist(id),
+    getOrganizationMembersWithPrograms(id),
+    getOrganizationAdmins(id),
+    getOrganizationPrograms(id),
+    getConsultationSettings(),
+  ]);
 
-  const physician = result.physician ?? null;
-  const members = result.members ?? [];
-  const admins = result.admins ?? [];
-  const programs = result.programs ?? [];
-  const consultation = result.consultation ?? null;
+  const physician = physicianResult.success ? physicianResult.data : null;
+  const members = membersResult.success ? membersResult.data : [];
+  const admins = adminsResult.success ? adminsResult.data : [];
+  const programs = programsResult.success ? programsResult.data : [];
+  const consultation = consultationResult.success ? consultationResult.data : null;
 
   return (
     <GroupDetailsPageUI

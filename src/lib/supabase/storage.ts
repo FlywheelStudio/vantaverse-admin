@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { createAdminClient } from './core/admin';
-import { SupabaseError, SupabaseSuccess } from './query';
+import { SupabaseError, SupabaseSuccess } from './result';
 
 /**
  * The result of an upload to Supabase Storage.
