@@ -1,7 +1,7 @@
 import { AppBar } from '@/components/medvanta/shell';
 
 /** Loading fallback mirroring the dashboard layout so tiles don't jump. */
-export function DashboardSkeleton(): React.ReactElement {
+function DashboardSkeleton(): React.ReactElement {
   return (
     <div className="body" aria-busy="true">
       <div className="g g4" style={{ marginBottom: 16 }}>
