@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { AppBar } from '@/components/medvanta/shell';
 import { Dashboard } from '@/components/widgets';
-import { DashboardSkeleton } from '@/components/widgets/dashboard/skeleton';
+import { DashboardLoadingShell } from '@/components/widgets/dashboard/skeleton';
 import {
   dashboardRangeDays,
   parseDashboardRange,
@@ -117,7 +117,7 @@ export default async function HomePage({
   const viewKey = `${groupId ?? 'all'}-${range}`;
 
   return (
-    <Suspense key={viewKey} fallback={<DashboardSkeleton />}>
+    <Suspense key={viewKey} fallback={<DashboardLoadingShell />}>
       <DashboardContent groupId={groupId} range={range} />
     </Suspense>
   );

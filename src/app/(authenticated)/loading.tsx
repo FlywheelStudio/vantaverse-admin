@@ -1,6 +1,6 @@
-import { AuthenticatedMainFallback } from './authenticated-main-fallback';
+import { DashboardLoadingShell } from '@/components/widgets/dashboard/skeleton';
 
-/** Route-level fallback while authenticated segment data resolves (main column only). */
+/** Route-level fallback while the dashboard segment resolves (main column only). */
 export default function AuthenticatedLoading(): React.ReactElement {
-  return <AuthenticatedMainFallback />;
+  return <DashboardLoadingShell />;
 }

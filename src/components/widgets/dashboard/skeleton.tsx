@@ -1,3 +1,5 @@
+import { AppBar } from '@/components/medvanta/shell';
+
 /** Loading fallback mirroring the dashboard layout so tiles don't jump. */
 export function DashboardSkeleton(): React.ReactElement {
   return (
@@ -25,5 +27,15 @@ export function DashboardSkeleton(): React.ReactElement {
         <div className="card" style={{ minHeight: 180 }} />
       </div>
     </div>
+  );
+}
+
+/** AppBar + dashboard body skeleton for route and in-page Suspense fallbacks. */
+export function DashboardLoadingShell(): React.ReactElement {
+  return (
+    <>
+      <AppBar crumbs={[{ label: 'Dashboard' }]} title="Dashboard" />
+      <DashboardSkeleton />
+    </>
   );
 }
