@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Icon } from '@/components/medvanta';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { HtmlMoreButton } from './html-toolbar';
 import {
   cloneProgramAssignment,
@@ -177,17 +176,6 @@ export function BuilderSaveBar({
             Unsaved changes
           </span>
         ) : null}
-        <div className="tip">
-          <button
-            type="button"
-            className="ib ib-sec"
-            aria-label="Preview as member"
-            onClick={() => toastUnavailable('Preview as member')}
-          >
-            <Icon name="Eye" size={18} />
-          </button>
-          <span className="tt">Preview as a member sees it</span>
-        </div>
         <button
           type="button"
           className="btn btn-acc"
