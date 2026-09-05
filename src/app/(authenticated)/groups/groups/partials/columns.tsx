@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { Icon, IconButton } from '@/components/medvanta';
 import { avatarTone } from '@/components/widgets/utils';
 import { usePreheat } from '@/hooks/use-preheat';
+import { GroupLogoMark } from '../../partials/group-logo-mark';
 
 function groupInitials(name: string): string {
   return name
@@ -89,31 +90,7 @@ function GroupLogo({ org }: { org: Organization }): React.ReactElement {
           padding: 0,
         }}
       >
-        {org.picture_url ? (
-          <Image
-            src={org.picture_url}
-            alt=""
-            width={38}
-            height={38}
-            className="size-full object-cover"
-          />
-        ) : (
-          <span
-            className={`av ${avatarTone(org.name)}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%',
-              fontSize: 12,
-              fontWeight: 'var(--fw-bold)',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            {groupInitials(org.name)}
-          </span>
-        )}
+        <GroupLogoMark name={org.name} pictureUrl={org.picture_url} size={38} />
       </button>
     </>
   );

@@ -26,9 +26,11 @@ interface DashboardAttentionRow {
 
 export type DashboardDelta = { text: string; trend: 'up' | 'down' | 'flat' };
 
- interface DashboardUiProps {
+interface DashboardUiProps {
   statusCounts: DashboardStatusCountsProp;
   compliancePct: number;
+  /** Headcount: program completed ÷ in a program. */
+  programCompletionPct: number;
   attentionCount: number;
   rows: DashboardAttentionRow[];
   overdueCount: number;
@@ -48,6 +50,7 @@ export type DashboardDelta = { text: string; trend: 'up' | 'down' | 'flat' };
 export function DashboardUi({
   statusCounts,
   compliancePct,
+  programCompletionPct,
   attentionCount,
   rows,
   overdueCount,
@@ -191,15 +194,17 @@ export function DashboardUi({
           <div className="ch">
             <div>
               <div className="ch-t">Program completion</div>
-              <div className="ch-s">Sets and exercises finished vs. assigned</div>
+              <div className="ch-s">Members who finished vs. in a program</div>
             </div>
           </div>
           <div className="row" style={{ justifyContent: 'center', marginBottom: 16 }}>
             <Donut
-              pct={Math.round(compliancePct)}
+              pct={Math.round(programCompletionPct)}
               size={158}
-              label={`${Math.round(compliancePct)}%`}
-              sub="aggregate"
+              label={`${Math.round(programCompletionPct)}%`}
+              sub="completed"
+              color="var(--navy-600)"
+              trackColor="var(--cyan-500)"
             />
           </div>
           {legend.map((row) => (

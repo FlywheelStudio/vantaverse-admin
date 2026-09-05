@@ -7,15 +7,18 @@ import { Loader2 } from 'lucide-react';
 import { AppBar } from '@/components/medvanta/shell';
 import { Icon } from '@/components/medvanta';
 import { HtmlAvatar } from '../users/html-helpers';
-import { HtmlMoreButton } from '../builder/partials/html-toolbar';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { getOrCreateChatForPatient } from '@/app/(authenticated)/users/[id]/chat-actions';
 import { getMessagesConversationPreheatQueries } from '@/components/navigation/list-row-preheat';
 import { getConversationsForAdmin } from './actions';
 import { MessagesChatThread } from './messages-chat-thread';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useAuth } from '@/hooks/use-auth';
 import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
 import type { ConversationItem } from '@/lib/supabase/queries/conversations';
+import {
+  ConversationUpdatesRealtime,
+  type LastMessageUpdatedPayload,
+} from '@/lib/supabase/realtime/conversation-updates';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 
@@ -40,6 +43,46 @@ function syncUserIdInUrl(userId: string | null): void {
 }
 
 type ConvFilter = 'all' | 'unread';
+
+const sortConversations = (items: ConversationItem[]): ConversationItem[] =>
+  [...items].sort((left, right) => {
+    const leftAt = left.last_message_at ?? '';
+    const rightAt = right.last_message_at ?? '';
+    if (leftAt && rightAt) return rightAt.localeCompare(leftAt);
+    if (leftAt) return -1;
+    if (rightAt) return 1;
+    return 0;
+  });
+
+const applyLastMessageUpdate = (
+  items: ConversationItem[],
+  payload: LastMessageUpdatedPayload,
+  currentUserId: string | undefined,
+  selectedChatId: string | null,
+): ConversationItem[] => {
+  const next = items.map((item) => {
+    if (item.user_id !== payload.user_id) return item;
+
+    const isOwn =
+      payload.sender_id != null && payload.sender_id === currentUserId;
+    const isOpen =
+      selectedChatId != null && selectedChatId === payload.chat_id;
+    const shouldBumpUnread =
+      payload.message_type === 'user' && !isOwn && !isOpen;
+
+    return {
+      ...item,
+      chat_id: item.chat_id ?? payload.chat_id,
+      last_message_content: payload.content,
+      last_message_at: payload.created_at,
+      unread_count: shouldBumpUnread
+        ? item.unread_count + 1
+        : item.unread_count,
+    };
+  });
+
+  return sortConversations(next);
+};
 
 function formatConvTime(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -98,7 +141,10 @@ export function MessagesPageUI({
   const deepLinkHandledRef = useRef<string | null>(null);
   const missingUserToastRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const { preheat, getPreheatHandlers } = usePreheat();
+  const selectedChatIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef<string | undefined>(undefined);
 
   const { data: conversationsData } = useQuery({
     queryKey: ['messages', 'conversations'],
@@ -112,6 +158,8 @@ export function MessagesPageUI({
   });
 
   const conversationsList = conversationsData ?? conversations;
+  selectedChatIdRef.current = selected?.chat_id ?? null;
+  currentUserIdRef.current = currentUser?.id;
   const subtitle = useMemo(
     () => buildSubtitle(conversationsList),
     [conversationsList],
@@ -254,43 +302,41 @@ export function MessagesPageUI({
     void handleSelectConversation(match);
   }, [deepLinkUserId, conversationsList, selected?.user_id, handleSelectConversation]);
 
+  const organizationIds = useMemo(
+    () => organizations.map((organization) => organization.id).join(','),
+    [organizations],
+  );
+
+  useEffect(() => {
+    if (organizations.length === 0) return;
+
+    const realtime = new ConversationUpdatesRealtime();
+    for (const organization of organizations) {
+      realtime.subscribeToOrg(organization.id, (payload) => {
+        queryClient.setQueryData<ConversationItem[]>(
+          ['messages', 'conversations'],
+          (prev) =>
+            applyLastMessageUpdate(
+              prev ?? [],
+              payload,
+              currentUserIdRef.current,
+              selectedChatIdRef.current,
+            ),
+        );
+      });
+    }
+
+    return () => {
+      realtime.cleanup();
+    };
+  }, [organizationIds, organizations, queryClient]);
+
   return (
     <>
       <AppBar
         crumbs={[{ label: 'Messages' }]}
         title="Messages"
         subtitle={subtitle}
-        actions={
-          <>
-            <button
-              type="button"
-              className="btn btn-acc"
-              onClick={() => toastUnavailable('New message')}
-            >
-              <Icon name="Send" size={17} />
-              New message
-            </button>
-            <HtmlMoreButton
-              items={[
-                {
-                  id: 'group',
-                  label: 'Message a group',
-                  onSelect: () => toastUnavailable('Message a group'),
-                },
-                {
-                  id: 'replies',
-                  label: 'Saved replies',
-                  onSelect: () => toastUnavailable('Saved replies'),
-                },
-                {
-                  id: 'read',
-                  label: 'Mark all read',
-                  onSelect: () => toastUnavailable('Mark all read'),
-                },
-              ]}
-            />
-          </>
-        }
       />
 
       <div className="body-flush">

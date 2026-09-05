@@ -27,6 +27,7 @@ import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assi
 import Link from 'next/link';
 import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/constants/program-assignment-status';
+import { getOnboardingPathProgress } from '@/lib/onboarding-path';
 import toast from 'react-hot-toast';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
@@ -256,8 +257,17 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
     return <span className="faint">—</span>;
   }
 
+  const canResend = status === 'invited' || status === 'pending';
+  if (!canResend) {
+    return <HtmlStatusBadge status={status} />;
+  }
+
   const handleSendInvitation = async (): Promise<void> => {
-    if (!profile.email || sending) return;
+    if (!profile.email) {
+      toast.error('This member has no email address');
+      return;
+    }
+    if (sending) return;
     
     setSending(true);
     try {
@@ -465,7 +475,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   },
   {
     id: 'onboarding',
-    accessorFn: (row) => row.max_gate_unlocked ?? 0,
+    accessorFn: (row) => getOnboardingPathProgress(row).cleared,
     header: ({ column }) => (
       <HtmlSortHeader
         label="Onboarding"
@@ -475,9 +485,10 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
         }
       />
     ),
-    cell: ({ row }) => (
-      <HtmlGate unlocked={row.original.max_gate_unlocked} total={4} />
-    ),
+    cell: ({ row }) => {
+      const path = getOnboardingPathProgress(row.original);
+      return <HtmlGate unlocked={path.cleared} total={path.total} />;
+    },
     enableSorting: true,
   },
   {

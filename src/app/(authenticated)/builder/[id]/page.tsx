@@ -2,6 +2,7 @@ import { BuilderDetailUI } from '../builder-detail-ui';
 import { query, formatDalError } from '@/lib/dal';
 import { getProgramAssignmentById } from '@/lib/supabase/queries/program-assignments';
 import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
+import { isBuilderWorkoutTab } from '@/app/(authenticated)/builder/partials/html-utils';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 
 export default async function BuilderIdPage({
@@ -14,7 +15,9 @@ export default async function BuilderIdPage({
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const collapsed =
-    resolvedSearchParams?.collapsed === '1' || resolvedSearchParams?.collapsed === 'true';
+    isBuilderWorkoutTab(resolvedSearchParams?.tab) ||
+    resolvedSearchParams?.collapsed === '1' ||
+    resolvedSearchParams?.collapsed === 'true';
 
   const [assignmentErr, programAssignment] = await query(getProgramAssignmentById, id);
 

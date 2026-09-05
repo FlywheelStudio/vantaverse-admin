@@ -699,6 +699,7 @@ type SendBulkInvitationsResult =
 
 interface BulkInvitationResponse {
   success: boolean;
+  error?: string;
   total: number;
   validated: number;
   successful: number;
@@ -712,6 +713,9 @@ interface BulkInvitationResponse {
   }>;
 }
 
+/**
+ * Send or retrigger invitation emails via Resend (`send_bulk_invitations`).
+ */
 export async function sendBulkInvitations(
   emails: string[],
   isAdmin: boolean,
@@ -726,10 +730,12 @@ export async function sendBulkInvitations(
       body: { emails, is_admin: isAdmin },
     },
   );
-  if (error) {
-    return { success: false, error: error.message };
-  }
   const body = data as BulkInvitationResponse | null;
+  if (error) {
+    const remoteError =
+      body && typeof body.error === 'string' ? body.error : null;
+    return { success: false, error: remoteError ?? error.message };
+  }
   if (!body || typeof body.success !== 'boolean') {
     return { success: false, error: 'Invalid response from invite service' };
   }

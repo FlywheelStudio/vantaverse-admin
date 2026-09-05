@@ -1,5 +1,9 @@
 import { toQueryOptions } from '@/lib/dal';
-import { listExercises } from '@/lib/supabase/queries/exercises';
+import {
+  DEFAULT_EXERCISES_FILTERED_INPUT,
+  getExerciseAssignmentCounts,
+  listExercisesFiltered,
+} from '@/lib/supabase/queries/exercises';
 import { listOrganizations } from '@/lib/supabase/queries/organizations';
 import { getMemberFilterCountsQuery } from '@/lib/supabase/queries/profiles';
 
@@ -22,7 +26,12 @@ export function getShellNavPreheatQueries(
     case 'groups':
       return [asPreheatQuery(toQueryOptions(listOrganizations))];
     case 'exercises':
-      return [asPreheatQuery(toQueryOptions(listExercises))];
+      return [
+        asPreheatQuery(
+          toQueryOptions(listExercisesFiltered, DEFAULT_EXERCISES_FILTERED_INPUT),
+        ),
+        asPreheatQuery(toQueryOptions(getExerciseAssignmentCounts)),
+      ];
     default:
       return [];
   }

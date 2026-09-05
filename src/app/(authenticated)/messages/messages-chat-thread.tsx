@@ -1,20 +1,30 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { Icon } from '@/components/medvanta';
-import { HtmlAvatar, HtmlRowMenu } from '../users/html-helpers';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import { HtmlAvatar } from '../users/html-helpers';
 import { MessagesRealtime } from '@/lib/supabase/realtime/messages';
 import type { Message } from '@/lib/supabase/schemas/messages';
 import {
-  getMessagesByChatId,
+  getMessagesPage,
   markLastUserMessageSeen,
 } from '@/app/(authenticated)/users/[id]/chat-actions';
-import { useSendMessage } from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { chatKeys } from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
+import {
+  appendChatMessage,
+  chatKeys,
+  useSendMessage,
+} from '@/app/(authenticated)/users/[id]/hooks/use-chat-mutations';
+import {
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
+import {
+  MESSAGES_PAGE_SIZE,
+  type MessagesPage,
+} from '@/lib/supabase/queries/messages';
 import { useAuth } from '@/hooks/use-auth';
 import { format, isToday, isYesterday } from 'date-fns';
 import Image from 'next/image';
@@ -64,21 +74,39 @@ export function MessagesChatThread({
 
   const messagesKey = chatKeys.messages(chatId);
 
-  const { data: messages = [], isLoading } = useQuery<Message[]>({
+  const {
+    data,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
     queryKey: messagesKey,
-    queryFn: async () => {
-      const result = await getMessagesByChatId(chatId);
+    initialPageParam: 0,
+    enabled: !!chatId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    queryFn: async ({ pageParam }) => {
+      const result = await getMessagesPage(chatId, pageParam, MESSAGES_PAGE_SIZE);
       if (!result.success) {
         throw new Error(result.error || 'Failed to load messages');
       }
       return result.data;
     },
-    enabled: !!chatId,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      lastPage.hasMore ? lastPageParam + MESSAGES_PAGE_SIZE : undefined,
   });
 
+  const messages = useMemo(
+    () =>
+      data
+        ? [...data.pages].reverse().flatMap((page) => page.messages)
+        : [],
+    [data],
+  );
+
   const showMessagesSpinner = isLoading && messages.length === 0;
+  const newestMessageId = messages.at(-1)?.id ?? null;
 
   const markLastUserMessageAsSeen = useCallback(async (): Promise<void> => {
     if (!chatId) return;
@@ -143,19 +171,10 @@ export function MessagesChatThread({
 
     realtime.subscribeToChat(chatId, (newMessage) => {
       if (!isMounted) return;
-      queryClient.setQueryData<Message[]>(messagesKey, (old) => {
-        if (!old) return [newMessage];
-        if (old.some((msg) => msg.id === newMessage.id)) return old;
-        const filtered = old.filter((msg) => {
-          const isTemp = msg.id.startsWith('temp-');
-          if (!isTemp) return true;
-          return !(
-            msg.content.trim() === newMessage.content.trim() &&
-            msg.message_type === newMessage.message_type
-          );
-        });
-        return [...filtered, newMessage];
-      });
+      queryClient.setQueryData<InfiniteData<MessagesPage, number>>(
+        messagesKey,
+        (old) => appendChatMessage(old, newMessage),
+      );
     });
 
     realtimeRef.current = realtime;
@@ -168,10 +187,24 @@ export function MessagesChatThread({
   }, [chatId, showMessagesSpinner, messagesKey, queryClient]);
 
   useEffect(() => {
+    if (showMessagesSpinner || !newestMessageId) return;
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [newestMessageId, showMessagesSpinner]);
+
+  const handleThreadScroll = (): void => {
+    const element = scrollRef.current;
+    if (!element || !hasNextPage || isFetchingNextPage) return;
+    if (element.scrollTop > 64) return;
+
+    const previousHeight = element.scrollHeight;
+    void fetchNextPage().then(() => {
+      const next = scrollRef.current;
+      if (!next) return;
+      next.scrollTop = next.scrollHeight - previousHeight;
+    });
+  };
 
   const handleSend = async (): Promise<void> => {
     if (!messageContent.trim() || sendMessage.isPending || !currentUser) {
@@ -279,33 +312,9 @@ export function MessagesChatThread({
           <Icon name="CircleUser" size={15} />
           Open profile
         </Link>
-        <HtmlRowMenu
-          items={[
-            {
-              id: 'view-program',
-              label: 'View program',
-              onSelect: () => toastUnavailable('View program'),
-            },
-            {
-              id: 'assign',
-              label: 'Assign program',
-              onSelect: () => toastUnavailable('Assign program'),
-            },
-            {
-              id: 'unread',
-              label: 'Mark unread',
-              onSelect: () => toastUnavailable('Mark unread'),
-            },
-            {
-              id: 'mute',
-              label: 'Mute',
-              onSelect: () => toastUnavailable('Mute'),
-            },
-          ]}
-        />
       </div>
 
-      <div ref={scrollRef} className="th-body">
+      <div ref={scrollRef} className="th-body" onScroll={handleThreadScroll}>
         {showMessagesSpinner ? (
           <div className="empty">
             <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
@@ -321,6 +330,11 @@ export function MessagesChatThread({
           </div>
         ) : (
           <>
+            {isFetchingNextPage ? (
+              <div className="es" style={{ textAlign: 'center', padding: 8 }}>
+                Loading older messages…
+              </div>
+            ) : null}
             <div className="th-day">
               <i />
               <span>Today</span>
@@ -355,30 +369,6 @@ export function MessagesChatThread({
             style={{ fontSize: 'var(--text-md)' }}
           />
         </span>
-        <div className="tip">
-          <button
-            type="button"
-            className="ib ib-sec ib-sq"
-            aria-label="Insert template"
-            disabled
-            title="Saved replies coming soon"
-          >
-            <Icon name="FileText" size={17} />
-          </button>
-          <span className="tt">Insert a saved reply</span>
-        </div>
-        <div className="tip">
-          <button
-            type="button"
-            className="ib ib-sec ib-sq"
-            aria-label="Attach"
-            disabled
-            title="Attachments coming soon"
-          >
-            <Icon name="Paperclip" size={17} />
-          </button>
-          <span className="tt">Attach a file</span>
-        </div>
         <button
           type="button"
           className="btn btn-acc"

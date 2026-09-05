@@ -2,26 +2,39 @@
 
 import { AppBar } from '@/components/medvanta/shell';
 import { ExerciseLibrary } from './exercise-library/ui';
+import { useExerciseTypes } from '@/hooks/use-exercises';
+import type { ExerciseAssignmentCounts } from '@/lib/supabase/queries/exercises';
+import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
 interface ExercisesUIProps {
-  initialExercises: Exercise[];
+  initialPage?: PaginatedResult<Exercise>;
+  initialCounts?: ExerciseAssignmentCounts;
 }
 
-export function ExercisesUI({ initialExercises }: ExercisesUIProps): React.ReactElement {
-  const total = initialExercises.length;
-  const unassigned = initialExercises.filter((e) => (e.assigned_count ?? 0) === 0).length;
-  const sources = new Set(initialExercises.map((e) => e.type).filter(Boolean)).size;
+export function ExercisesUI({
+  initialPage,
+  initialCounts,
+}: ExercisesUIProps): React.ReactElement {
+  const { data: exerciseTypes = [] } = useExerciseTypes();
+  const total = initialCounts?.all ?? initialPage?.total ?? 0;
+  const unassigned = initialCounts?.unassigned ?? 0;
+  const sources = exerciseTypes.length;
+  const subtitleParts = [`${total} exercises`];
+  if (sources > 0) {
+    subtitleParts.push(`${sources} source${sources === 1 ? '' : 's'}`);
+  }
+  subtitleParts.push(`${unassigned} unassigned`);
 
   return (
     <>
       <AppBar
         crumbs={[{ label: 'Exercises' }]}
         title="Exercise library"
-        subtitle={`${total} exercises · ${sources} source${sources === 1 ? '' : 's'} · ${unassigned} unassigned`}
+        subtitle={subtitleParts.join(' · ')}
       />
       <div className="body">
-        <ExerciseLibrary initialExercises={initialExercises} />
+        <ExerciseLibrary initialPage={initialPage} initialCounts={initialCounts} />
       </div>
     </>
   );

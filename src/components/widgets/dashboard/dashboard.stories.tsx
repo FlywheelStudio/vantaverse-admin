@@ -22,7 +22,7 @@ const statusCounts = {
 
 const legend = [
   { label: 'In a program', value: 45, color: 'var(--cyan-500)' },
-  { label: 'Program completed', value: 12, color: 'var(--navy-700)' },
+  { label: 'Program completed', value: 12, color: 'var(--navy-600)' },
   { label: 'No program yet', value: 61, color: 'var(--slate-300)' },
   { label: 'Invited, not started', value: 22, color: 'var(--slate-200)' },
 ];
@@ -45,6 +45,7 @@ const meta = {
   args: {
     statusCounts,
     compliancePct: 68,
+    programCompletionPct: Math.round((12 / 45) * 100),
     attentionCount: 0,
     rows: [],
     overdueCount: 0,

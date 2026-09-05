@@ -24,6 +24,7 @@ import { GroupHeroCard } from './partials/group-hero-card';
 import { GroupProgramsPanel } from './partials/group-programs-panel';
 import { useGroupPrograms } from './hooks/use-group-programs';
 import { GroupSettingsPanel } from './partials/group-settings-panel';
+import { GroupLogoMark } from '../partials/group-logo-mark';
 import { MembersTable } from './partials/members-table';
 import type { GroupMemberRow } from './partials/members-table-columns';
 import type {
@@ -169,6 +170,13 @@ export function GroupDetailsPageUI({
       <AppBar
         crumbs={[{ label: 'Groups', href: '/groups' }, { label: org.name }]}
         title={org.name}
+        leading={
+          <GroupLogoMark
+            name={org.name}
+            pictureUrl={org.picture_url}
+            size={36}
+          />
+        }
       />
       <div className="body">
         {isSuperAdminOrg ? (

@@ -5,6 +5,10 @@ import { DonutUi } from './ui';
   size?: number;
   label: string;
   sub?: string;
+  /** Completed / filled arc. */
+  color?: string;
+  /** Remaining / in-progress track. */
+  trackColor?: string;
 }
 
 /** HTML `donut()` SVG ring matching the prototype. */
@@ -13,6 +17,8 @@ export function Donut({
   size = 158,
   label,
   sub = 'aggregate',
+  color = 'var(--navy-600)',
+  trackColor = 'var(--cyan-500)',
 }: DonutProps): React.ReactElement {
   const clamped = Math.max(0, Math.min(100, pct));
   const radius = size / 2 - 13;
@@ -27,6 +33,8 @@ export function Donut({
       offset={offset}
       label={label}
       sub={sub}
+      color={color}
+      trackColor={trackColor}
     />
   );
 }

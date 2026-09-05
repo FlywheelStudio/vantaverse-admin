@@ -191,15 +191,6 @@ type OrgMemberWithRole = {
   } | null;
 };
 
-type RawOrgMember = {
-  organization_id: string;
-  role: MemberRole;
-  organizations: {
-    id: string;
-    name: string;
-  } | null;
-};
-
 type RawTeamMember = {
   team_id: string;
   teams: {
@@ -212,12 +203,6 @@ type RawTeamMember = {
     } | null;
   } | null;
 };
-
-type RawProfile = Profile & {
-  organization_members: RawOrgMember[] | null;
-  team_membership: RawTeamMember[] | null;
-};
-
 
 async function getUnassignedUserIds(
   client: SupabaseClient<Database>,
@@ -908,49 +893,83 @@ async function fetchAllWithMemberships(
 }> {
   const { data, error } = await client
     .from('profiles')
-    .select(
-      '*, organization_members(organization_id, role, organizations!inner(id, name)), team_membership(team_id, teams!inner(id, name, organization_id, organizations!inner(id, name)))',
-    )
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (error) return { data: null, error };
   if (!data) return { data: [], error: null };
 
-  const transformedData = (data as unknown as RawProfile[]).map((profile) => {
-    const { organization_members, team_membership, ...profileData } = profile;
+  const profileIds = data.map((profile) => profile.id);
+  if (profileIds.length === 0) {
+    return { data: [], error: null };
+  }
 
-    const orgMemberships =
-      Array.isArray(organization_members) && organization_members.length > 0
-        ? organization_members
-            .filter((om) => om.organizations !== null)
-            .map((om) => ({
-              orgId: om.organization_id,
-              orgName: om.organizations!.name,
-              role: om.role,
-            }))
-        : [];
+  const [orgMembersResult, teamMembersResult] = await Promise.all([
+    client
+      .from('organization_members')
+      .select('user_id, organization_id, role, organizations!inner(id, name)')
+      .in('user_id', profileIds)
+      .eq('is_active', true),
+    client
+      .from('team_membership')
+      .select(
+        'user_id, team_id, teams!inner(id, name, organization_id, organizations!inner(id, name))',
+      )
+      .in('user_id', profileIds),
+  ]);
 
-    const teamMemberships =
-      Array.isArray(team_membership) && team_membership.length > 0
-        ? team_membership
-            .filter(
-              (tm) => tm.teams !== null && tm.teams.organizations !== null,
-            )
-            .map((tm) => ({
-              teamId: tm.team_id,
-              teamName: tm.teams!.name,
-              orgId: tm.teams!.organization_id,
-              orgName: tm.teams!.organizations!.name,
-            }))
-        : [];
+  if (orgMembersResult.error) {
+    return { data: null, error: orgMembersResult.error };
+  }
+  if (teamMembersResult.error) {
+    return { data: null, error: teamMembersResult.error };
+  }
 
-    return {
-      ...profileData,
-      orgMemberships,
-      teamMemberships,
-    };
-  });
+  const orgMembershipsByUser = new Map<
+    string,
+    ProfileWithMemberships['orgMemberships']
+  >();
+  for (const row of (orgMembersResult.data ??
+    []) as unknown as OrgMemberWithRole[]) {
+    if (!row.organizations) continue;
+    const list = orgMembershipsByUser.get(row.user_id) ?? [];
+    list.push({
+      orgId: row.organization_id,
+      orgName: row.organizations.name,
+      role: row.role,
+    });
+    orgMembershipsByUser.set(row.user_id, list);
+  }
 
-  return { data: transformedData, error: null };
+  const teamMembershipsByUser = new Map<
+    string,
+    ProfileWithMemberships['teamMemberships']
+  >();
+  for (const row of (teamMembersResult.data ?? []) as unknown as Array<
+    RawTeamMember & { user_id: string }
+  >) {
+    if (!row.teams?.organizations) continue;
+    const list = teamMembershipsByUser.get(row.user_id) ?? [];
+    list.push({
+      teamId: row.team_id,
+      teamName: row.teams.name,
+      orgId: row.teams.organization_id,
+      orgName: row.teams.organizations.name,
+    });
+    teamMembershipsByUser.set(row.user_id, list);
+  }
+
+  const transformedData = data.map((profile) => ({
+    ...profile,
+    orgMemberships: orgMembershipsByUser.get(profile.id) ?? [],
+    teamMemberships: teamMembershipsByUser.get(profile.id) ?? [],
+  }));
+
+  const parsed = profileWithMembershipsListSchema.safeParse(transformedData);
+  if (!parsed.success) {
+    return { data: null, error: { message: parsed.error.message } };
+  }
+
+  return { data: parsed.data, error: null };
 }
 

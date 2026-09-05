@@ -6,13 +6,12 @@ import { getOrCreateChat } from '@/lib/supabase/queries/chats';
 import {
   createMessage,
   getLastUserMessageIdByCreatedAt,
-  getMessagesByChatId as getMessagesByChatIdQuery,
+  getMessagesPage as getMessagesPageQuery,
+  MESSAGES_PAGE_SIZE,
   setMessageLastSeenAtIfNull,
+  type MessagesPage,
 } from '@/lib/supabase/queries/messages';
-import {
-  type Message,
-  type MessageAttachment,
-} from '@/lib/supabase/schemas/messages';
+import { type MessageAttachment } from '@/lib/supabase/schemas/messages';
 import { createClient } from '@/lib/supabase/core/server';
 
 type LegacySuccess<T> = { success: true; data: T };
@@ -55,14 +54,19 @@ export async function getOrCreateChatForPatient(
 }
 
 /**
- * Get messages for a chat
- * @param chatId - The chat ID
- * @returns Success with messages array or error
+ * Load one page of messages for a chat (newest-first RPC, returned chronological).
+ * @param chatId - Chat UUID
+ * @param skip - Offset into newest-first order
+ * @param pageSize - Page size (capped by the RPC at 100)
  */
-export async function getMessagesByChatId(
+export async function getMessagesPage(
   chatId: string,
-): Promise<LegacyResult<Message[]>> {
-  return fromDalResult(await queryWithSession(getMessagesByChatIdQuery, chatId));
+  skip: number,
+  pageSize: number = MESSAGES_PAGE_SIZE,
+): Promise<LegacyResult<MessagesPage>> {
+  return fromDalResult(
+    await queryWithSession(getMessagesPageQuery, { chatId, skip, pageSize }),
+  );
 }
 
 /**

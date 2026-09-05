@@ -83,6 +83,10 @@ export function useExercisesFilteredInfinite(params: {
   pageSize?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  initialData?: {
+    pages: PaginatedResult<Exercise>[];
+    pageParams: number[];
+  };
 }) {
   const {
     search,
@@ -92,6 +96,7 @@ export function useExercisesFilteredInfinite(params: {
     pageSize = 20,
     sortBy = 'created_at',
     sortOrder = 'desc',
+    initialData,
   } = params;
 
   return useInfiniteQuery<PaginatedResult<Exercise>, Error>({
@@ -129,6 +134,7 @@ export function useExercisesFilteredInfinite(params: {
       }
       return lastPage.page + 1;
     },
+    ...(initialData && { initialData }),
   });
 }
 
@@ -145,7 +151,9 @@ export function useExerciseTypes() {
   });
 }
 
-export function useExerciseAssignmentCounts() {
+export function useExerciseAssignmentCounts(
+  initialData?: { all: number; assigned: number; unassigned: number },
+) {
   return useQuery<
     { all: number; assigned: number; unassigned: number },
     Error
@@ -156,6 +164,7 @@ export function useExerciseAssignmentCounts() {
       if (!result.success) throw new Error(result.error);
       return result.data;
     },
+    ...(initialData && { initialData }),
   });
 }
 

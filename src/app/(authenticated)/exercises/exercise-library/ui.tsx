@@ -15,7 +15,11 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { ActiveFilterPills, useFilterDraft } from '@/components/filters';
 import type { ActiveFilter } from '@/components/filters';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import {
+  EXERCISES_LIBRARY_PAGE_SIZE,
+  type ExerciseAssignmentCounts,
+} from '@/lib/supabase/queries/exercises';
+import type { PaginatedResult } from '@/lib/supabase/queries/exercise-templates';
 import {
   ExercisesFilterPanel,
   type AssignmentFilter,
@@ -51,10 +55,14 @@ function removeFilter(state: ExercisesFilters, id: string): ExercisesFilters {
 }
 
 interface ExerciseLibraryProps {
-  initialExercises?: Exercise[];
+  initialPage?: PaginatedResult<Exercise>;
+  initialCounts?: ExerciseAssignmentCounts;
 }
 
-export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): React.ReactElement {
+export function ExerciseLibrary({
+  initialPage,
+  initialCounts,
+}: ExerciseLibraryProps): React.ReactElement {
   const [searchValue, setSearchValue] = useState('');
   const {
     applied: filters,
@@ -66,7 +74,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
     clearAll: clearAllDraft,
     removePill: removeFiltersPill,
   } = useFilterDraft<ExercisesFilters>({ initial: DEFAULT_EXERCISES_FILTERS, removeFilter });
-  const pageSize = 20;
+  const pageSize = EXERCISES_LIBRARY_PAGE_SIZE;
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearch = useDebounce(searchValue, 300);
@@ -78,7 +86,7 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   const tagsMap = useMemo(() => new Map(allTags.map((t) => [t.id, t])), [allTags]);
 
   // Real assignment counts + source types for the filter panel
-  const { data: countsData } = useExerciseAssignmentCounts();
+  const { data: countsData } = useExerciseAssignmentCounts(initialCounts);
   const { data: exerciseTypes = [] } = useExerciseTypes();
 
   // Paginated + filtered exercises query
@@ -96,6 +104,14 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
     pageSize,
     sortBy: 'created_at',
     sortOrder: 'desc',
+    initialData:
+      !debouncedSearch &&
+      filters.assignment === 'all' &&
+      filters.type === 'all' &&
+      filters.tagIds.length === 0 &&
+      initialPage
+        ? { pages: [initialPage], pageParams: [1] }
+        : undefined,
   });
 
   useEffect(() => {
@@ -116,11 +132,11 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const exercises = useMemo(() => {
-    if (!queryResult) return initialExercises ?? [];
+    if (!queryResult) return initialPage?.data ?? [];
     return queryResult.pages.flatMap((p) => p.data);
-  }, [queryResult, initialExercises]);
+  }, [queryResult, initialPage]);
 
-  const totalCount = queryResult?.pages[0]?.total ?? initialExercises?.length ?? exercises.length;
+  const totalCount = queryResult?.pages[0]?.total ?? initialPage?.total ?? exercises.length;
 
   const assignmentCounts = useMemo(
     () => ({
@@ -198,6 +214,14 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
     if (!open) setSelectedExercise(null);
   };
 
+  const liveSelectedExercise = useMemo((): Exercise | null => {
+    if (!selectedExercise) return null;
+    return (
+      exercises.find((exercise) => exercise.id === selectedExercise.id) ??
+      selectedExercise
+    );
+  }, [exercises, selectedExercise]);
+
   return (
     <>
       <div className="tbar">
@@ -234,18 +258,6 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
             onApply={handleApplyFilters}
           />
         </div>
-        <span className="sp seg">
-          <button type="button" className="on" aria-label="Grid view">
-            <Icon name="LayoutGrid" size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="List view"
-            onClick={() => toastUnavailable('List view')}
-          >
-            <Icon name="List" size={16} />
-          </button>
-        </span>
       </div>
 
       <ActiveFilterPills
@@ -299,11 +311,11 @@ export function ExerciseLibrary({ initialExercises }: ExerciseLibraryProps): Rea
         </>
       )}
 
-      {selectedExercise && (
+      {liveSelectedExercise && (
         <ExerciseModal
           open={isModalOpen}
           onOpenChange={handleModalClose}
-          exercise={selectedExercise}
+          exercise={liveSelectedExercise}
         />
       )}
     </>

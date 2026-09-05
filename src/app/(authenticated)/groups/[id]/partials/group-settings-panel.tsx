@@ -1,14 +1,19 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Icon, Tooltip } from '@/components/medvanta';
+import { organizationDetailKey } from '@/hooks/use-organizations';
+import { organizationsKeys } from '../../groups/hooks/use-groups-mutations';
+import { GroupLogoMark } from '../../partials/group-logo-mark';
+import type { Organization } from '@/lib/supabase/schemas/organizations';
 import {
   getScreeningTestLink,
   updateOrganizationScreeningUrl,
   updateOrganizationDescription,
+  updateOrganizationName,
   getConsultationTestLink,
   updateOrganizationConsultationUrl,
 } from '../actions';
@@ -37,9 +42,13 @@ export function GroupSettingsPanel({
   canEditConsultation?: boolean;
 }): React.ReactElement {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initialScreeningUrl ?? '');
   const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(groupName);
+  const [savedName, setSavedName] = useState(groupName);
+  const [savingName, setSavingName] = useState(false);
   const [description, setDescription] = useState(initialDescription ?? '');
   const [savingDescription, setSavingDescription] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -88,7 +97,27 @@ export function GroupSettingsPanel({
         throw new Error(update.error || 'Failed to save logo');
       }
 
-      setLogoPreview(upload.data);
+      const nextPictureUrl: string = upload.data;
+      setLogoPreview(nextPictureUrl);
+      queryClient.setQueryData<Organization | null>(
+        organizationDetailKey(organizationId),
+        (old) => (old ? { ...old, picture_url: nextPictureUrl } : old),
+      );
+      queryClient.setQueryData<Organization[]>(
+        organizationsKeys.all,
+        (old) => {
+          if (!old) return old;
+          return old.map((org) =>
+            org.id === organizationId
+              ? { ...org, picture_url: nextPictureUrl }
+              : org,
+          );
+        },
+      );
+      await queryClient.invalidateQueries({
+        queryKey: organizationDetailKey(organizationId),
+      });
+      await queryClient.invalidateQueries({ queryKey: organizationsKeys.all });
       toast.success('Logo updated');
       router.refresh();
     } catch (error) {
@@ -96,6 +125,41 @@ export function GroupSettingsPanel({
       toast.error(error instanceof Error ? error.message : 'Upload failed');
     } finally {
       setUploadingLogo(false);
+    }
+  }
+
+  const patchOrganizationCaches = (patch: Partial<Organization>): void => {
+    queryClient.setQueryData<Organization | null>(
+      organizationDetailKey(organizationId),
+      (old) => (old ? { ...old, ...patch } : old),
+    );
+    queryClient.setQueryData<Organization[]>(organizationsKeys.all, (old) => {
+      if (!old) return old;
+      return old.map((org) =>
+        org.id === organizationId ? { ...org, ...patch } : org,
+      );
+    });
+  };
+
+  async function handleSaveName(): Promise<void> {
+    setSavingName(true);
+    try {
+      const result = await updateOrganizationName(organizationId, name);
+      if (result.success) {
+        setName(result.data);
+        setSavedName(result.data);
+        patchOrganizationCaches({ name: result.data });
+        await queryClient.invalidateQueries({
+          queryKey: organizationDetailKey(organizationId),
+        });
+        await queryClient.invalidateQueries({ queryKey: organizationsKeys.all });
+        toast.success('Group name saved');
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -196,25 +260,25 @@ export function GroupSettingsPanel({
             <label className="lbl">
               Group name<span className="req">*</span>
             </label>
-            <span className="fld ro">
-              <input value={groupName} readOnly disabled />
-            </span>
-          </div>
-          <div className="ff">
-            <label className="lbl">Email domain</label>
-            <span className="fld ro">
-              <Icon name="AtSign" size={16} />
+            <span className="fld">
               <input
-                className="mono"
-                value=""
-                placeholder="Not configured"
-                readOnly
-                disabled
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Group name"
               />
             </span>
-            <div className="hint">
-              Domain-based auto-assignment is not available in this build.
-            </div>
+          </div>
+          <div className="row" style={{ gap: 10, marginBottom: 16 }}>
+            <button
+              type="button"
+              className="btn btn-acc btn-sm"
+              disabled={
+                savingName || name.trim() === savedName.trim() || !name.trim()
+              }
+              onClick={handleSaveName}
+            >
+              {savingName ? 'Saving…' : 'Save name'}
+            </button>
           </div>
           <div style={{ marginBottom: 0 }}>
             <label className="lbl">Description</label>
@@ -251,31 +315,11 @@ export function GroupSettingsPanel({
             </div>
           </div>
           <div className="row" style={{ gap: 14, marginBottom: 0 }}>
-            <span
-              className="thmb gr"
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 'var(--radius-sm)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              {logoPreview ? (
-                <Image
-                  src={logoPreview}
-                  alt="Group logo"
-                  width={56}
-                  height={56}
-                  unoptimized
-                  className="size-full object-cover"
-                />
-              ) : (
-                <Icon name="Building2" size={24} />
-              )}
-            </span>
+            <GroupLogoMark
+              name={name.trim() || groupName}
+              pictureUrl={logoPreview}
+              size={56}
+            />
             <span>
               <button
                 type="button"

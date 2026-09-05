@@ -2266,6 +2266,14 @@ export type Database = {
         Returns: string
       }
       get_member_filter_counts: { Args: never; Returns: Json }
+      get_messages_paginated: {
+        Args: {
+          p_chat_id?: string
+          p_page_size?: number
+          p_skip?: number
+        }
+        Returns: Json
+      }
       get_next_workout_date: {
         Args: {
           p_patient_override?: Json[]

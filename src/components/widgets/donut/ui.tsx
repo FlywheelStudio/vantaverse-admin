@@ -5,6 +5,8 @@ interface DonutUiProps {
   offset: number;
   label: string;
   sub: string;
+  color: string;
+  trackColor: string;
 }
 
 /** HTML `donut()` SVG ring matching the prototype. */
@@ -15,6 +17,8 @@ export function DonutUi({
   offset,
   label,
   sub,
+  color,
+  trackColor,
 }: DonutUiProps): React.ReactElement {
   return (
     <div
@@ -32,7 +36,7 @@ export function DonutUi({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--slate-200)"
+          stroke={trackColor}
           strokeWidth={18}
         />
         <circle
@@ -40,7 +44,7 @@ export function DonutUi({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--cyan-500)"
+          stroke={color}
           strokeWidth={18}
           strokeLinecap="round"
           strokeDasharray={circumference.toFixed(1)}

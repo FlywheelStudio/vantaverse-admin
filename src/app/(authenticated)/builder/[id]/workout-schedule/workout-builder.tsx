@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
 import { useBuilder } from '@/context/builder-context';
+import { BUILDER_WORKOUT_TAB } from '../../partials/html-utils';
 import { ProgramDetailsSection } from '../../program/ui';
 import { BuildWorkoutSection } from './ui';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -30,14 +32,17 @@ export function WorkoutBuilder({
   initialAssignment,
   programDetailsCollapsed = false,
 }: WorkoutBuilderProps): React.ReactElement {
+  const router = useRouter();
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
-  const [activeStep, setActiveStep] = useState<1 | 2>(() => {
-    // Deep link (`/builder/<id>#build-workout`) opens the Workout Schedule tab.
-    if (typeof window !== 'undefined' && window.location.hash === '#build-workout') {
-      return 2;
-    }
-    return programDetailsCollapsed ? 2 : 1;
-  });
+  const locationHash = useSyncExternalStore(
+    subscribeLocationHash,
+    getLocationHash,
+    getServerLocationHash,
+  );
+  const [userStep, setUserStep] = useState<1 | 2 | null>(null);
+  const activeStep: 1 | 2 =
+    userStep ??
+    (locationHash === '#build-workout' || programDetailsCollapsed ? 2 : 1);
   const [saveTrigger, setSaveTrigger] = useState(0);
   const [saveState, setSaveState] = useState({ disabled: true, loading: false });
   const [scheduleDirty, setScheduleDirty] = useState(false);
@@ -110,9 +115,31 @@ export function WorkoutBuilder({
     programForm.reset(programForm.getValues());
   }, [initialAssignment, template, programForm]);
 
-  const handleStepClick = useCallback((step: 1 | 2): void => {
-    setActiveStep(step);
-  }, []);
+  const replaceBuilderStep = useCallback(
+    (step: 1 | 2): void => {
+      if (typeof window === 'undefined') return;
+      const url = new URL(window.location.href);
+      if (step === 2) url.searchParams.set('tab', BUILDER_WORKOUT_TAB);
+      else url.searchParams.delete('tab');
+      url.hash = '';
+      router.replace(`${url.pathname}${url.search}`, { scroll: false });
+    },
+    [router],
+  );
+
+  // Legacy `#build-workout` links: hash is not on searchParams, so migrate after mount.
+  useEffect(() => {
+    if (locationHash !== '#build-workout') return;
+    replaceBuilderStep(2);
+  }, [locationHash, replaceBuilderStep]);
+
+  const handleStepClick = useCallback(
+    (step: 1 | 2): void => {
+      setUserStep(step);
+      replaceBuilderStep(step);
+    },
+    [replaceBuilderStep],
+  );
 
   const handleScheduleDirtyChange = useCallback((dirty: boolean): void => {
     setScheduleDirty(dirty);
@@ -184,3 +211,14 @@ export function WorkoutBuilder({
     </div>
   );
 }
+
+const subscribeLocationHash = (onStoreChange: () => void): (() => void) => {
+  window.addEventListener('hashchange', onStoreChange);
+  return (): void => {
+    window.removeEventListener('hashchange', onStoreChange);
+  };
+};
+
+const getLocationHash = (): string => window.location.hash;
+
+const getServerLocationHash = (): string => '';

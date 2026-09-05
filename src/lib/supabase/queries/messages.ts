@@ -19,8 +19,21 @@ export const messageKeys = {
     [...messageKeys.byChat(chatId), 'lastUser'] as const,
 };
 
+/** Page size for `get_messages_paginated` in the admin thread. */
+export const MESSAGES_PAGE_SIZE = 20;
+
 const lastUserMessageIdSchema = z.string().uuid().nullable();
 const messageListSchema = messageSchema.array();
+const messagesPageSchema = z.object({
+  messages: messageListSchema,
+  hasMore: z.boolean(),
+});
+
+const getMessagesPageInputSchema = z.object({
+  chatId: z.string().uuid(),
+  skip: z.number().int().nonnegative(),
+  pageSize: z.number().int().positive(),
+});
 
 const setLastSeenResultSchema = z.object({
   id: z.string().uuid(),
@@ -75,26 +88,10 @@ async function fetchLastUserMessageIdByCreatedAt(
   return { data: data?.[0]?.id ?? null, error: null };
 }
 
-async function fetchMessagesByChatId(
-  client: SupabaseClient<Database>,
-  chatId: string,
-): Promise<{ data: Message[]; error: { message: string; code?: string } | null }> {
-  const { data, error } = await client
-    .from('messages_with_stats')
-    .select('*')
-    .eq('chat_id', chatId)
-    .neq('message_type', 'system')
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    return { data: [], error };
-  }
-
-  if (!data) {
-    return { data: [], error: null };
-  }
-
-  const normalized = (data as MessagesWithStatsRow[])
+const normalizeMessagesWithStatsRows = (
+  rows: MessagesWithStatsRow[],
+): Message[] =>
+  rows
     .filter((row) => row.id && row.chat_id && row.message_type)
     .map((row) => ({
       id: row.id as string,
@@ -113,7 +110,46 @@ async function fetchMessagesByChatId(
       sender_is_admin: row.sender_is_admin,
     }));
 
-  return { data: normalized, error: null };
+async function fetchMessagesPage(
+  client: SupabaseClient<Database>,
+  input: z.infer<typeof getMessagesPageInputSchema>,
+): Promise<{
+  data: z.infer<typeof messagesPageSchema> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { chatId, skip, pageSize } = getMessagesPageInputSchema.parse(input);
+  const { data, error } = await client.rpc('get_messages_paginated', {
+    p_chat_id: chatId,
+    p_skip: skip,
+    p_page_size: pageSize,
+  });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const envelope = data as {
+    success?: boolean;
+    data?: MessagesWithStatsRow[];
+    hasMore?: boolean;
+    error?: string;
+  } | null;
+
+  if (!envelope || envelope.success !== true || !Array.isArray(envelope.data)) {
+    return {
+      data: null,
+      error: { message: envelope?.error ?? 'Failed to load messages' },
+    };
+  }
+
+  const newestFirst = normalizeMessagesWithStatsRows(envelope.data);
+  return {
+    data: {
+      messages: [...newestFirst].reverse(),
+      hasMore: envelope.hasMore === true,
+    },
+    error: null,
+  };
 }
 
 /** Latest user message id in a chat (by created_at desc). */
@@ -124,11 +160,13 @@ export const getLastUserMessageIdByCreatedAt = defineQuery({
     fetchLastUserMessageIdByCreatedAt(client, chatId),
 });
 
-/** All non-system messages for a chat. */
-export const getMessagesByChatId = defineQuery({
-  key: messageKeys.byChat,
-  schema: messageListSchema,
-  execute: (client, chatId: string) => fetchMessagesByChatId(client, chatId),
+/** One page of chat messages (chronological), via get_messages_paginated. */
+export const getMessagesPage = defineQuery({
+  key: (input: z.infer<typeof getMessagesPageInputSchema>) =>
+    [...messageKeys.byChat(input.chatId), 'page', input.skip, input.pageSize],
+  schema: messagesPageSchema,
+  execute: (client, input: z.infer<typeof getMessagesPageInputSchema>) =>
+    fetchMessagesPage(client, input),
 });
 
 /** Set message last_seen_at when currently null. */
@@ -207,3 +245,5 @@ export type CreateMessageInput = z.infer<typeof createMessageInputSchema>;
 export type SetMessageLastSeenInput = z.infer<
   typeof setMessageLastSeenInputSchema
 >;
+export type MessagesPage = z.infer<typeof messagesPageSchema>;
+export type GetMessagesPageInput = z.infer<typeof getMessagesPageInputSchema>;

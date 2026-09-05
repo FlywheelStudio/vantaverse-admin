@@ -18,23 +18,16 @@ interface ExerciseModalProps {
 
 const NAME_MAX = 80;
 const TIP_MAX = 400;
-const CHECK_IN_MAX = 140;
-
-/** A check-in question asks the member to confirm their own form or effort. */
-const CHECK_IN_PLACEHOLDER =
-  'Example: Did you keep your hips in line with your knees through the whole squat?';
 
 interface Draft {
   exercise_name: string;
   library_tip: string;
-  library_check_in_question: string;
 }
 
 function toDraft(exercise: Exercise): Draft {
   return {
     exercise_name: exercise.exercise_name ?? '',
     library_tip: exercise.library_tip ?? '',
-    library_check_in_question: exercise.library_check_in_question ?? '',
   };
 }
 
@@ -181,10 +174,6 @@ function ExerciseModalContent({
     }
     if (isDirty('library_tip')) {
       updateData.library_tip = draft.library_tip.trim() || null;
-    }
-    if (isDirty('library_check_in_question')) {
-      updateData.library_check_in_question =
-        draft.library_check_in_question.trim() || null;
     }
 
     updateExerciseMutation.mutate({ id: exercise.id, data: updateData });
@@ -438,18 +427,6 @@ function ExerciseModalContent({
           emptyNote="Empty — members see the video with no written guidance."
           dirty={isDirty('library_tip')}
           onChange={(value) => setField('library_tip', value)}
-        />
-
-        <CopyField
-          id="exercise-check-in"
-          label="Check-in question"
-          value={draft.library_check_in_question}
-          max={CHECK_IN_MAX}
-          rows={2}
-          placeholder={CHECK_IN_PLACEHOLDER}
-          emptyNote="Empty — nothing is asked after a set."
-          dirty={isDirty('library_check_in_question')}
-          onChange={(value) => setField('library_check_in_question', value)}
         />
       </div>
 

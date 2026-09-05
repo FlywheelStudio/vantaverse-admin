@@ -36,6 +36,8 @@ const exerciseEntitySchema = exerciseSchema.extend({
   id: z.string(),
 });
 
+export const EXERCISES_LIBRARY_PAGE_SIZE = 20;
+
 export type ListExercisesFilteredInput = {
   search?: string;
   type?: string | null;
@@ -45,6 +47,14 @@ export type ListExercisesFilteredInput = {
   pageSize?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+};
+
+/** Default first page for the exercise library (SSR + infinite scroll). */
+export const DEFAULT_EXERCISES_FILTERED_INPUT: ListExercisesFilteredInput = {
+  page: 1,
+  pageSize: EXERCISES_LIBRARY_PAGE_SIZE,
+  sortBy: 'created_at',
+  sortOrder: 'desc',
 };
 
 export const exerciseKeys = {
@@ -367,7 +377,7 @@ export const listExercisesFiltered = defineQuery({
       assignment = 'all',
       tagIds,
       page = 1,
-      pageSize = 20,
+      pageSize = EXERCISES_LIBRARY_PAGE_SIZE,
       sortBy = 'created_at',
       sortOrder = 'desc',
     } = input;

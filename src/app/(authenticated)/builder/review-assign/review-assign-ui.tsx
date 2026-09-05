@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useQueryClient } from '@tanstack/react-query';
 import { HtmlAvatar } from '../../users/html-helpers';
 import { BuilderSaveBar } from '../partials/html-save-bar';
+import { builderWorkoutHref } from '../partials/html-utils';
 import {
   calculateEndDate,
   formatDateForDB,
@@ -280,7 +281,7 @@ export function ReviewAssignUI({
         <BuilderSaveBar
           activeStep={3}
           detailsHref={builderHref}
-          workoutHref={`${builderHref}#build-workout`}
+          workoutHref={builderWorkoutHref(assignmentId)}
           onSave={handleSaveTriggered}
           saveDisabled={!datesDirty || isSaving}
           saveLoading={isSaving}
@@ -301,7 +302,7 @@ export function ReviewAssignUI({
               <div className="cs">
                 <span className="cs-t">The {weeks} weeks at a glance</span>
                 <span className="sp">
-                  <Link href={`${builderHref}#build-workout`} className="btn btn-ghost btn-sm">
+                  <Link href={builderWorkoutHref(assignmentId)} className="btn btn-ghost btn-sm">
                     <Icon name="SquarePen" size={15} />
                     Edit the schedule
                   </Link>
@@ -357,7 +358,7 @@ export function ReviewAssignUI({
                         </td>
                         <td style={{ textAlign: 'right', width: 52 }}>
                           <Link
-                            href={`${builderHref}#build-workout`}
+                            href={builderWorkoutHref(assignmentId)}
                             className="ib ib-ghost ib-sm"
                             aria-label={`Edit week ${index + 1}`}
                           >

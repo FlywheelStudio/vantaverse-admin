@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
 import { HtmlRowMenu } from '../partials/html-toolbar';
-import { formatRelativeEdited } from '../partials/html-utils';
+import { builderWorkoutHref, formatRelativeEdited } from '../partials/html-utils';
 import {
   useCloneProgramAssignment,
   useDeleteProgramAssignment,
@@ -158,7 +158,7 @@ function ProgramTableRow({
               label: 'Edit workout schedule',
               onSelect: assignmentId
                 ? () => {
-                    router.push(`/builder/${assignmentId}#build-workout`);
+                    router.push(builderWorkoutHref(assignmentId));
                   }
                 : undefined,
             },

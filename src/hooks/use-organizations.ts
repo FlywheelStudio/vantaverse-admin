@@ -7,6 +7,11 @@ import {
 } from '@/app/(authenticated)/groups/actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 
+/** Detail key — list uploads must patch this or the group header stays stale. */
+export const organizationDetailKey = (
+  id: string,
+): readonly ['organization', string] => ['organization', id] as const;
+
 export function useOrganizations(initialData?: Organization[]) {
   return useQuery<Organization[], Error>({
     queryKey: ['organizations'],
@@ -31,7 +36,7 @@ export function organizationQueryOptions(
   initialData?: Organization | null,
 ) {
   return queryOptions({
-    queryKey: ['organization', id],
+    queryKey: id ? organizationDetailKey(id) : ['organization', id],
     queryFn: async () => {
       if (!id) return null;
       const result = await getOrganizationById(id);
@@ -43,7 +48,13 @@ export function organizationQueryOptions(
       return result.data;
     },
     enabled: !!id,
-    ...(initialData !== undefined && initialData !== null && { initialData }),
+    ...(initialData !== undefined &&
+      initialData !== null && {
+        initialData,
+        ...(initialData.updated_at
+          ? { initialDataUpdatedAt: Date.parse(initialData.updated_at) }
+          : {}),
+      }),
   });
 }
 

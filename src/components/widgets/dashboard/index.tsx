@@ -76,24 +76,27 @@ export function Dashboard({
     [needingAttention],
   );
 
+  const inProgram = statusCounts.inProgram ?? 0;
+  const programCompleted = statusCounts.programCompleted ?? 0;
+  const programCompletionPct =
+    inProgram > 0 ? (programCompleted / inProgram) * 100 : 0;
+
   const legend = useMemo(() => {
-    const inProgram = statusCounts.inProgram ?? 0;
     const invited = statusCounts.invited ?? 0;
     const active = statusCounts.active ?? 0;
     const noProgram =
       statusCounts.noProgram ?? Math.max(active - inProgram, 0);
-    const programCompleted = statusCounts.programCompleted ?? 0;
     return [
       { label: 'In a program', value: inProgram, color: 'var(--cyan-500)' },
       {
         label: 'Program completed',
         value: programCompleted,
-        color: 'var(--navy-700)',
+        color: 'var(--navy-600)',
       },
       { label: 'No program yet', value: noProgram, color: 'var(--slate-300)' },
       { label: 'Invited, not started', value: invited, color: 'var(--slate-200)' },
     ];
-  }, [statusCounts]);
+  }, [statusCounts, inProgram, programCompleted]);
 
   // "In a program" and "overdue" count members; a decrease is the good direction.
   const memberDeltaTrend = (value: number): DashboardDelta['trend'] =>
@@ -119,6 +122,7 @@ export function Dashboard({
     <DashboardUi
       statusCounts={statusCounts}
       compliancePct={compliancePct}
+      programCompletionPct={programCompletionPct}
       attentionCount={needingAttention.length}
       rows={rows}
       overdueCount={overdueCount}

@@ -9,7 +9,6 @@ export function ExercisesLoadingSkeleton(): React.ReactElement {
         <div className="tbar" style={{ marginBottom: 14 }}>
           <div className="card" style={{ flex: 1, minHeight: 36 }} />
           <div className="card" style={{ width: 96, minHeight: 36 }} />
-          <div className="card" style={{ width: 72, minHeight: 36 }} />
         </div>
         <div
           className="card"

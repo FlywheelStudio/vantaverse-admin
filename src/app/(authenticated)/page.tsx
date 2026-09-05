@@ -89,10 +89,16 @@ async function DashboardContent({
           <DashboardAppBarActions groupId={groupId} range={range} />
         }
       />
-      {/* Latest completion bucket = current aggregate completion. */}
+      {/* Headcount: completed ÷ in a program (not calendar-elapsed). */}
       <Dashboard
         statusCounts={analyticsData.statusCounts}
-        compliancePct={analyticsData.series.completion.at(-1)?.value ?? 0}
+        compliancePct={
+          analyticsData.statusCounts.inProgram > 0
+            ? (analyticsData.statusCounts.programCompleted /
+                analyticsData.statusCounts.inProgram) *
+              100
+            : 0
+        }
         needingAttention={attentionData.users}
         overdueCount={analyticsData.series.overdue.at(-1)?.value ?? 0}
         series={analyticsData.series}

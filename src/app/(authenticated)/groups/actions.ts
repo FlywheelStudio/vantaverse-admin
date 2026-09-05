@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { mutate, query, type DalResult } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/core/server';
 import {
@@ -10,6 +11,7 @@ import {
   updateOrganization as updateOrganizationMutation,
 } from '@/lib/supabase/queries/organizations';
 import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
+import { listAdminsFilteredQuery } from '@/lib/supabase/queries/admins';
 import {
   getAllWithMembershipsQuery,
   type ProfileWithMemberships,
@@ -17,6 +19,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/core/admin';
 import { SupabaseStorage } from '@/lib/supabase/storage';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
 import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 
 function toSupabaseResult<T>(
@@ -159,13 +162,18 @@ export async function updateOrganizationPicture(
   pictureUrl: string | null,
 ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
   const client = await createClient();
-  return toSupabaseResult(
+  const result = toSupabaseResult(
     await mutate(
       updateOrganizationMutation,
       { id: organizationId, data: { picture_url: pictureUrl } },
       { client },
     ),
   );
+  if (result.success) {
+    revalidatePath('/groups');
+    revalidatePath(`/groups/${organizationId}`);
+  }
+  return result;
 }
 
 /**
@@ -190,6 +198,20 @@ export async function getAllProfilesWithMemberships(): Promise<
 > {
   const client = await createAdminClient();
   return toSupabaseResult(await query(getAllWithMembershipsQuery, { client }));
+}
+
+/**
+ * Staff admins eligible to be assigned as a group physiologist.
+ */
+export async function getAssignablePhysiologists(): Promise<
+  SupabaseSuccess<AdminProfile[]> | SupabaseError
+> {
+  const client = await createClient();
+  const result = toSupabaseResult(
+    await query(listAdminsFilteredQuery, { pageSize: 500 }, { client }),
+  );
+  if (!result.success) return result;
+  return { success: true, data: result.data.data };
 }
 
 /**
@@ -301,6 +323,22 @@ export async function assignPhysiologist(
 ) {
   const membersQuery = new OrganizationMembers();
   const supabase = await createClient();
+
+  const { data: adminProfile, error: adminError } = await supabase
+    .from('profiles_admins')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (adminError) {
+    return { success: false as const, error: adminError.message };
+  }
+  if (!adminProfile) {
+    return {
+      success: false as const,
+      error: 'Only admins can be assigned as a group physiologist',
+    };
+  }
 
   // Get current physiologist
   const currentPhysiologistResult =
