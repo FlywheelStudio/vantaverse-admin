@@ -14,8 +14,11 @@
   display:flex;align-items:center;gap:11px;width:100%;padding:9px 12px;border:none;cursor:pointer;
   border-radius:var(--radius-md);text-align:left;font-family:var(--font-sans);font-size:var(--text-md);
   font-weight:var(--fw-medium);color:var(--navy-200);background:transparent;
+  text-decoration:none;box-sizing:border-box;
   transition:background var(--dur-fast),color var(--dur-fast);
 }
+a.nav-i:visited{color:var(--navy-200)}
+a.nav-i.on:visited{color:var(--white)}
 .nav-i:hover{background:rgba(255,255,255,.07);color:var(--white)}
 .nav-i.on{background:var(--cyan-600);color:var(--white);font-weight:var(--fw-semibold)}
 .nav-i span.l{flex:1}

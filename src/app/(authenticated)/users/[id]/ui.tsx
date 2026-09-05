@@ -151,7 +151,6 @@ export function UserProfilePageUI({
             { label: 'Members', href: '/users' },
             { label: displayName },
           ]}
-          title={displayName}
         />
         <div className="body">{header}</div>
         <ChangeOnboardingDialog
@@ -176,7 +175,6 @@ export function UserProfilePageUI({
           { label: 'Members', href: '/users' },
           { label: displayName },
         ]}
-        title={displayName}
       />
       <div className="body">
         {header}

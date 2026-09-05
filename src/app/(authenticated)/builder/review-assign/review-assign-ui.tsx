@@ -12,13 +12,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { useQueryClient } from '@tanstack/react-query';
 import { HtmlAvatar } from '../../users/html-helpers';
 import { BuilderSaveBar } from '../partials/html-save-bar';
+import { builderWorkoutHref } from '../partials/html-utils';
 import {
   calculateEndDate,
   formatDateForDB,
   parseLocalDateString,
 } from '@/lib/utils';
-import { createParallelQueries } from '@/lib/supabase/query';
-import type { SupabaseSuccess, SupabaseError } from '@/lib/supabase/query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
 import { useUpsertWorkoutSchedule, useUpdateProgramSchedule } from '@/hooks/use-workout-schedule-mutations';
 import { useUpdateProgramTemplate } from '@/hooks/use-program-template-mutations';
@@ -140,90 +139,38 @@ export function ReviewAssignUI({
     propagateIds?: string[],
   ): Promise<void> => {
     try {
-      const result = await createParallelQueries({
-        template: {
-          query: async (): Promise<SupabaseSuccess<unknown> | SupabaseError> => {
-            try {
-              const saved = await updateProgramTemplateMutation.mutateAsync({
-                templateId: template.id,
-                name: template.name,
-                weeks: template.weeks,
-                coming_soon_weeks: template.coming_soon_weeks ?? 0,
-                description: template.description ?? null,
-                goals: template.goals ?? null,
-                notes: template.notes ?? null,
-                imageFile: null,
-                imagePreview: null,
-                oldImageUrl:
-                  typeof template.image_url === 'string'
-                    ? template.image_url
-                    : null,
-                organizationId: template.organization_id || null,
-              });
-              return { success: true, data: saved };
-            } catch (error) {
-              return {
-                success: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Failed to update template',
-                status: 500,
-              };
-            }
-          },
-          required: true,
-        },
-        schedule: {
-          query: async (): Promise<
-            SupabaseSuccess<{ id: string; schedule_hash: string }> | SupabaseError
-          > => {
-            try {
-              const scheduleResult = await upsertScheduleMutation.mutateAsync({
-                schedule,
-                assignmentId,
-                defaultValues,
-              });
-              return { success: true, data: scheduleResult };
-            } catch (error) {
-              return {
-                success: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Failed to save schedule',
-                status: 500,
-              };
-            }
-          },
-          required: true,
-        },
-        assignment: {
-          query: async (deps: {
-            template: unknown;
-            schedule: { id: string; schedule_hash: string };
-          }): Promise<SupabaseSuccess<unknown> | SupabaseError> => {
-            try {
-              await updateProgramScheduleMutation.mutateAsync({
-                assignmentId,
-                workoutScheduleId: deps.schedule.id,
-              });
-              return { success: true, data: { id: assignmentId } };
-            } catch (error) {
-              return {
-                success: false,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Failed to update assignment',
-                status: 500,
-              };
-            }
-          },
-          dependsOn: ['template', 'schedule'] as const,
-          required: false,
-        },
-      });
+      const [, scheduleResult] = await Promise.all([
+        updateProgramTemplateMutation.mutateAsync({
+          templateId: template.id,
+          name: template.name,
+          weeks: template.weeks,
+          coming_soon_weeks: template.coming_soon_weeks ?? 0,
+          description: template.description ?? null,
+          goals: template.goals ?? null,
+          notes: template.notes ?? null,
+          imageFile: null,
+          imagePreview: null,
+          oldImageUrl:
+            typeof template.image_url === 'string'
+              ? template.image_url
+              : null,
+          organizationId: template.organization_id || null,
+        }),
+        upsertScheduleMutation.mutateAsync({
+          schedule,
+          assignmentId,
+          defaultValues,
+        }),
+      ]);
+
+      try {
+        await updateProgramScheduleMutation.mutateAsync({
+          assignmentId,
+          workoutScheduleId: scheduleResult.id,
+        });
+      } catch {
+        // Assignment link is best-effort; template and schedule already saved.
+      }
 
       if (propagateIds) {
         if (!(startDate && endDate)) {
@@ -239,10 +186,10 @@ export function ReviewAssignUI({
         }
       }
 
-      if (isUnassigned && updateDerived && result.schedule) {
+      if (isUnassigned && updateDerived && scheduleResult) {
         const derivedResult = await updateDerivedProgramSchedules(
           assignmentId,
-          result.schedule.id,
+          scheduleResult.id,
         );
         if (derivedResult.success) {
           const count = derivedResult.data;
@@ -334,7 +281,7 @@ export function ReviewAssignUI({
         <BuilderSaveBar
           activeStep={3}
           detailsHref={builderHref}
-          workoutHref={`${builderHref}#build-workout`}
+          workoutHref={builderWorkoutHref(assignmentId)}
           onSave={handleSaveTriggered}
           saveDisabled={!datesDirty || isSaving}
           saveLoading={isSaving}
@@ -355,7 +302,7 @@ export function ReviewAssignUI({
               <div className="cs">
                 <span className="cs-t">The {weeks} weeks at a glance</span>
                 <span className="sp">
-                  <Link href={`${builderHref}#build-workout`} className="btn btn-ghost btn-sm">
+                  <Link href={builderWorkoutHref(assignmentId)} className="btn btn-ghost btn-sm">
                     <Icon name="SquarePen" size={15} />
                     Edit the schedule
                   </Link>
@@ -411,7 +358,7 @@ export function ReviewAssignUI({
                         </td>
                         <td style={{ textAlign: 'right', width: 52 }}>
                           <Link
-                            href={`${builderHref}#build-workout`}
+                            href={builderWorkoutHref(assignmentId)}
                             className="ib ib-ghost ib-sm"
                             aria-label={`Edit week ${index + 1}`}
                           >

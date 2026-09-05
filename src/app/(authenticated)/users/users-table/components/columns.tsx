@@ -26,12 +26,17 @@ import { AssignProgramModal } from '@/app/(authenticated)/users/[id]/partials/as
 import { AssignGroupModal } from '@/app/(authenticated)/users/[id]/partials/assign-group-modal';
 import Link from 'next/link';
 import { sendBulkInvitations } from '../../actions';
-import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/supabase/queries/program-assignments';
+import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/constants/program-assignment-status';
+import { getOnboardingPathProgress } from '@/lib/onboarding-path';
 import toast from 'react-hot-toast';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
+import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
+  const userHref = `/users/${profile.id}`;
+  const preheatHandlers = getPreheatHandlers(userHref);
   const fullName =
     profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
@@ -41,8 +46,9 @@ function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
     <div
       className="cellp cursor-pointer"
       onClick={() => {
-        router.push(`/users/${profile.id}`);
+        router.push(userHref);
       }}
+      {...preheatHandlers}
     >
       <HtmlAvatar name={fullName} src={profile.avatar_url} size={36} />
       <span style={{ minWidth: 0 }}>
@@ -82,6 +88,7 @@ function LastLoginCell({ profile }: { profile: ProfileWithStats }) {
 function GroupsCell({ profile }: { profile: ProfileWithStats }) {
   const orgs = profile.orgMemberships || [];
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const [modalOpen, setModalOpen] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -114,9 +121,14 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
     );
   }
 
-  const handleGroupClick = (orgId: string) => {
+  const handleGroupClick = (orgId: string): void => {
     router.push(`/groups/${orgId}?from=users`);
   };
+
+  const getGroupPreheatHandlers = (
+    orgId: string,
+  ): PreheatHandlers =>
+    getPreheatHandlers(`/groups/${orgId}?from=users`);
 
   const orgNames = orgs.map((org) => org.orgName);
   const displayText =
@@ -132,6 +144,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
         onClick={() => handleGroupClick(orgs[0].orgId)}
         className="lnk"
         title={orgNames.join(', ')}
+        {...getGroupPreheatHandlers(orgs[0].orgId)}
       >
         {displayText}
       </button>
@@ -147,6 +160,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
           type="button"
           onClick={() => handleGroupClick(org.orgId)}
           className="lnk"
+          {...getGroupPreheatHandlers(org.orgId)}
         >
           {org.orgName}
           {index < Math.min(orgs.length, 2) - 1 && ', '}
@@ -160,6 +174,7 @@ function GroupsCell({ profile }: { profile: ProfileWithStats }) {
 }
 
 function ProgramCell({ profile }: { profile: ProfileWithStats }) {
+  const { getPreheatHandlers } = usePreheat();
   const [modalOpen, setModalOpen] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -176,8 +191,13 @@ function ProgramCell({ profile }: { profile: ProfileWithStats }) {
   };
 
   if (hasProgram) {
+    const programHref = `/builder/${profile.program_assignment_id}?from=users`;
     return (
-      <Link href={`/builder/${profile.program_assignment_id}?from=users`} className="lnk">
+      <Link
+        href={programHref}
+        className="lnk"
+        {...getPreheatHandlers(programHref)}
+      >
         {profile.program_assignment_name}
       </Link>
     );
@@ -237,8 +257,17 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
     return <span className="faint">—</span>;
   }
 
+  const canResend = status === 'invited' || status === 'pending';
+  if (!canResend) {
+    return <HtmlStatusBadge status={status} />;
+  }
+
   const handleSendInvitation = async (): Promise<void> => {
-    if (!profile.email || sending) return;
+    if (!profile.email) {
+      toast.error('This member has no email address');
+      return;
+    }
+    if (sending) return;
     
     setSending(true);
     try {
@@ -446,7 +475,7 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   },
   {
     id: 'onboarding',
-    accessorFn: (row) => row.max_gate_unlocked ?? 0,
+    accessorFn: (row) => getOnboardingPathProgress(row).cleared,
     header: ({ column }) => (
       <HtmlSortHeader
         label="Onboarding"
@@ -456,9 +485,10 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
         }
       />
     ),
-    cell: ({ row }) => (
-      <HtmlGate unlocked={row.original.max_gate_unlocked} total={4} />
-    ),
+    cell: ({ row }) => {
+      const path = getOnboardingPathProgress(row.original);
+      return <HtmlGate unlocked={path.cleared} total={path.total} />;
+    },
     enableSorting: true,
   },
   {

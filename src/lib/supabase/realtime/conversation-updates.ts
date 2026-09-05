@@ -15,6 +15,8 @@ export type LastMessageUpdatedPayload = {
   chat_id: string;
   content: string;
   created_at: string | null;
+  sender_id: string | null;
+  message_type: 'admin' | 'user' | 'system';
 };
 
 /**
@@ -34,7 +36,7 @@ export class ConversationUpdatesRealtime extends SupabaseRealtime {
    * Subscribe to last-message updates for an organization. Call once per org the admin belongs to.
    * Topic: org:{organizationId}:conversation_updates, event: last_message_updated.
    * @param organizationId - Organization UUID
-   * @param callback - Called with user_id, chat_id, content, created_at
+   * @param callback - Called with last-message fields plus sender_id and message_type
    */
   public subscribeToOrg(
     organizationId: string,

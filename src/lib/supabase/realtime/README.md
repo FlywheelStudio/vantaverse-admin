@@ -38,7 +38,7 @@ import { ConversationUpdatesRealtime } from '@/lib/supabase/realtime/conversatio
 const realtime = new ConversationUpdatesRealtime();
 for (const org of adminOrgs) {
   realtime.subscribeToOrg(org.id, (payload) => {
-    // payload: { user_id, chat_id, content, created_at }
+    // payload: { user_id, chat_id, content, created_at, sender_id, message_type }
     updateConversationLastMessage(payload.user_id, payload);
   });
 }
@@ -48,7 +48,7 @@ realtime.cleanup();
 
 - **Topic:** `org:{organizationId}:conversation_updates`
 - **Event:** `last_message_updated`
-- **Payload:** `{ user_id, chat_id, content, created_at }`.
+- **Payload:** `{ user_id, chat_id, content, created_at, sender_id, message_type }`.
 
 ---
 
@@ -138,7 +138,9 @@ BEGIN
         'user_id',   v_user_id,
         'chat_id',   NEW.chat_id,
         'content',   NEW.content,
-        'created_at', NEW.created_at
+        'created_at', NEW.created_at,
+        'sender_id', NEW.user_id,
+        'message_type', NEW.message_type
       ),
       'last_message_updated',
       'org:' || v_org_id::text || ':conversation_updates',

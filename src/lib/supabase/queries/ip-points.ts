@@ -1,76 +1,221 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 
-export class IpPointsQuery extends SupabaseQuery {
-  /**
-   * Get empowerment threshold by ID
-   * @param id - The threshold ID to fetch
-   * @returns Success with threshold data or error
-   */
-  public async getEmpowermentThresholdById(id: number): Promise<
-    | SupabaseSuccess<{
-        title: string;
-        base_power: number;
-        top_power: number;
-        effects: string | null;
-      }>
-    | SupabaseError
-  > {
-    const supabase = await this.getClient('service_role');
+import { defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
 
-    const { data, error } = await supabase
-      .from('empowerment_threshold')
-      .select('title, base_power, top_power, effects')
-      .eq('id', id)
-      .maybeSingle();
+const empowermentThresholdSchema = z.object({
+  title: z.string(),
+  base_power: z.number(),
+  top_power: z.number(),
+  effects: z.string().nullable(),
+});
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get empowerment threshold',
-      );
-    }
+export type EmpowermentThreshold = z.infer<typeof empowermentThresholdSchema>;
 
-    if (!data) {
-      return {
-        success: false,
-        error: 'Empowerment threshold not found',
-      };
-    }
+const gateInfoSchema = z.object({
+  title: z.string(),
+  description: z.string().nullable(),
+});
 
+export type GateInfo = z.infer<typeof gateInfoSchema>;
+
+const ipTransactionSchema = z.object({
+  created_at: z.string().nullable(),
+  amount: z.number(),
+  transaction_type: z.string(),
+  description: z.string().nullable(),
+});
+
+export type IpTransaction = z.infer<typeof ipTransactionSchema>;
+
+const ipTransactionListSchema = z.array(ipTransactionSchema);
+
+const nextEmpowermentThresholdSchema = z
+  .object({
+    base_power: z.number(),
+    top_power: z.number(),
+  })
+  .nullable();
+
+export type NextEmpowermentThreshold = z.infer<
+  typeof nextEmpowermentThresholdSchema
+>;
+
+type IpTransactionRow = {
+  user_id: string;
+  created_at: string | null;
+  amount: number;
+  transaction_type: string;
+  metadata: unknown;
+};
+
+type IpTransactionsTable = {
+  Row: IpTransactionRow;
+  Insert: {
+    user_id: string;
+    created_at?: string | null;
+    amount: number;
+    transaction_type: string;
+    metadata?: unknown;
+  };
+  Update: {
+    user_id?: string;
+    created_at?: string | null;
+    amount?: number;
+    transaction_type?: string;
+    metadata?: unknown;
+  };
+  Relationships: [];
+};
+
+type GateUnlockStepRow = {
+  type: string;
+  gate: number;
+  title: string;
+  description: string | null;
+};
+
+type GateUnlockStepsTable = {
+  Row: GateUnlockStepRow;
+  Insert: {
+    type: string;
+    gate: number;
+    title: string;
+    description?: string | null;
+  };
+  Update: {
+    type?: string;
+    gate?: number;
+    title?: string;
+    description?: string | null;
+  };
+  Relationships: [];
+};
+
+type IpPointsDatabase = Database & {
+  public: Database['public'] & {
+    Tables: Database['public']['Tables'] & {
+      ip_transactions: IpTransactionsTable;
+      gate_unlock_steps: GateUnlockStepsTable;
+    };
+  };
+};
+
+function withIpPointsTables(
+  client: SupabaseClient<Database>,
+): SupabaseClient<IpPointsDatabase> {
+  return client as SupabaseClient<IpPointsDatabase>;
+}
+
+export const ipPointsKeys = {
+  all: ['ip-points'] as const,
+  empowermentThreshold: (id: number) =>
+    [...ipPointsKeys.all, 'empowerment-threshold', id] as const,
+  gateInfo: (gateType: string, gateNumber: number) =>
+    [...ipPointsKeys.all, 'gate', gateType, gateNumber] as const,
+  transactionsByUser: (userId: string) =>
+    [...ipPointsKeys.all, 'transactions', userId] as const,
+  nextEmpowermentThreshold: (currentThresholdId: number) =>
+    [...ipPointsKeys.all, 'next-threshold', currentThresholdId] as const,
+};
+
+async function fetchEmpowermentThresholdById(
+  client: SupabaseClient<Database>,
+  id: number,
+): Promise<{
+  data: EmpowermentThreshold | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('empowerment_threshold')
+    .select('title, base_power, top_power, effects')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!data) {
     return {
-      success: true,
-      data: {
-        title: data.title,
-        base_power: Number(data.base_power),
-        top_power: Number(data.top_power),
-        effects: data.effects,
-      },
+      data: null,
+      error: { message: 'Empowerment threshold not found', code: 'P0404' },
     };
   }
 
-  /**
-   * Get current gate information
-   * @param gateType - The gate type enum value
-   * @param gateNumber - The gate number
-   * @returns Success with gate data or error
-   */
-  public async getCurrentGateInfo(
-    gateType: string,
-    gateNumber: number,
-  ): Promise<
-    | SupabaseSuccess<{
-        title: string;
-        description: string | null;
-      }>
-    | SupabaseError
-  > {
-    const supabase = await this.getClient('service_role');
+  const parsed = empowermentThresholdSchema.safeParse({
+    title: data.title,
+    base_power: Number(data.base_power),
+    top_power: Number(data.top_power),
+    effects: data.effects,
+  });
 
-    const { data, error } = await supabase
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  return { data: parsed.data, error: null };
+}
+
+async function fetchIpTransactionsByUserId(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{
+  data: IpTransaction[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await withIpPointsTables(client)
+    .from('ip_transactions')
+    .select('created_at, amount, transaction_type, metadata')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const transactions = (data ?? []).map((tx) => ({
+    created_at: tx.created_at,
+    amount: tx.amount,
+    transaction_type: tx.transaction_type,
+    description:
+      tx.metadata &&
+      typeof tx.metadata === 'object' &&
+      'description' in tx.metadata
+        ? String(tx.metadata.description)
+        : null,
+  }));
+
+  const parsed = ipTransactionListSchema.safeParse(transactions);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  return { data: parsed.data, error: null };
+}
+
+/** Empowerment threshold by id (service role). */
+export const getEmpowermentThresholdById = defineQuery({
+  key: ipPointsKeys.empowermentThreshold,
+  schema: empowermentThresholdSchema,
+  client: 'admin',
+  execute: (client, id: number) => fetchEmpowermentThresholdById(client, id),
+});
+
+/** Gate unlock step title and description (service role). */
+export const getCurrentGateInfo = defineQuery({
+  key: ipPointsKeys.gateInfo,
+  schema: gateInfoSchema,
+  client: 'admin',
+  execute: async (client, gateType: string, gateNumber: number) => {
+    const { data, error } = await withIpPointsTables(client)
       .from('gate_unlock_steps')
       .select('title, description')
       .eq('type', gateType)
@@ -78,116 +223,69 @@ export class IpPointsQuery extends SupabaseQuery {
       .maybeSingle();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get current gate information',
-      );
+      return { data: null, error };
     }
 
     if (!data) {
       return {
-        success: false,
-        error: 'Gate information not found',
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        title: data.title,
-        description: data.description,
-      },
-    };
-  }
-
-  /**
-   * Get IP transactions for a user
-   * @param userId - The user ID to fetch transactions for
-   * @returns Success with transactions array or error
-   */
-  public async getIpTransactionsByUserId(userId: string): Promise<
-    | SupabaseSuccess<
-        Array<{
-          created_at: string | null;
-          amount: number;
-          transaction_type: string;
-          description: string | null;
-        }>
-      >
-    | SupabaseError
-  > {
-    const supabase = await this.getClient('service_role');
-
-    const { data, error } = await supabase
-      .from('ip_transactions')
-      .select('created_at, amount, transaction_type, metadata')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get IP transactions',
-      );
-    }
-
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
-
-    return {
-      success: true,
-      data: data.map((tx) => ({
-        created_at: tx.created_at,
-        amount: tx.amount,
-        transaction_type: tx.transaction_type,
-        description:
-          tx.metadata &&
-          typeof tx.metadata === 'object' &&
-          'description' in tx.metadata
-            ? String(tx.metadata.description)
-            : null,
-      })),
-    };
-  }
-
-  /**
-   * Get next empowerment threshold for calculating missing points
-   * @param currentThresholdId - The current threshold ID
-   * @returns Success with next threshold data or error
-   */
-  public async getNextEmpowermentThreshold(currentThresholdId: number): Promise<
-    | SupabaseSuccess<{
-        base_power: number;
-        top_power: number;
-      } | null>
-    | SupabaseError
-  > {
-    const supabase = await this.getClient('service_role');
-
-    // First get current threshold to find its top_power
-    const currentThresholdResult =
-      await this.getEmpowermentThresholdById(currentThresholdId);
-
-    if (!currentThresholdResult.success) {
-      return currentThresholdResult;
-    }
-
-    const currentTopPower = currentThresholdResult.data.top_power;
-
-    // If current top_power is 999, user is at max level
-    if (currentTopPower >= 999) {
-      return {
-        success: true,
         data: null,
+        error: { message: 'Gate information not found', code: 'P0404' },
       };
     }
 
-    // Get next threshold where base_power > current top_power
-    const { data, error } = await supabase
+    const parsed = gateInfoSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
+    }
+
+    return { data: parsed.data, error: null };
+  },
+});
+
+/** IP transactions for a user (service role). */
+export const getIpTransactionsByUserId = defineQuery({
+  key: ipPointsKeys.transactionsByUser,
+  schema: ipTransactionListSchema,
+  client: 'admin',
+  execute: (client, userId: string) =>
+    fetchIpTransactionsByUserId(client, userId),
+});
+
+/** Next empowerment threshold after the current one (service role). */
+export const getNextEmpowermentThreshold = defineQuery({
+  key: ipPointsKeys.nextEmpowermentThreshold,
+  schema: nextEmpowermentThresholdSchema,
+  client: 'admin',
+  execute: async (client, currentThresholdId: number) => {
+    const current = await fetchEmpowermentThresholdById(
+      client,
+      currentThresholdId,
+    );
+
+    if (current.error) {
+      return { data: null, error: current.error };
+    }
+
+    if (!current.data) {
+      return {
+        data: null,
+        error: {
+          message: 'Empowerment threshold not found',
+          code: 'P0404',
+        },
+      };
+    }
+
+    const currentTopPower = current.data.top_power;
+
+    if (currentTopPower >= 999) {
+      return { data: null, error: null };
+    }
+
+    const { data, error } = await client
       .from('empowerment_threshold')
       .select('base_power, top_power')
       .gt('base_power', currentTopPower)
@@ -196,25 +294,30 @@ export class IpPointsQuery extends SupabaseQuery {
       .maybeSingle();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get next empowerment threshold',
-      );
+      return { data: null, error };
     }
 
     if (!data) {
+      return { data: null, error: null };
+    }
+
+    const parsed = z
+      .object({
+        base_power: z.number(),
+        top_power: z.number(),
+      })
+      .safeParse({
+        base_power: Number(data.base_power),
+        top_power: Number(data.top_power),
+      });
+
+    if (!parsed.success) {
       return {
-        success: true,
         data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
       };
     }
 
-    return {
-      success: true,
-      data: {
-        base_power: Number(data.base_power),
-        top_power: Number(data.top_power),
-      },
-    };
-  }
-}
+    return { data: parsed.data, error: null };
+  },
+});

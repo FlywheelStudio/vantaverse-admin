@@ -10,6 +10,7 @@ import {
   updateOrganizationPicture,
 } from '../../actions';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
+import { organizationDetailKey } from '@/hooks/use-organizations';
 
 /**
  * Query key factory for organizations
@@ -231,7 +232,6 @@ export function useUploadOrganizationPicture() {
       toast.error(error.message || 'Failed to upload image');
     },
     onSuccess: (pictureUrl, { organizationId }) => {
-      // Optimistically update picture_url
       queryClient.setQueryData<Organization[]>(
         organizationsKeys.all,
         (old) => {
@@ -243,8 +243,15 @@ export function useUploadOrganizationPicture() {
           );
         },
       );
+      queryClient.setQueryData<Organization | null>(
+        organizationDetailKey(organizationId),
+        (old) => (old ? { ...old, picture_url: pictureUrl } : old),
+      );
 
       queryClient.invalidateQueries({ queryKey: organizationsKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: organizationDetailKey(organizationId),
+      });
       toast.success('Image uploaded successfully');
     },
   });

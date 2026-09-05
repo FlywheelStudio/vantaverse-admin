@@ -43,26 +43,29 @@ export function Avatar({
 
   return (
     <span
-      className={cn('relative inline-flex shrink-0', className)}
-      style={style}
+      className={cn(
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-pill)] bg-[var(--navy-100)] font-[var(--fw-bold)] text-[var(--navy-700)]',
+        className,
+      )}
+      style={{
+        width: dimension,
+        height: dimension,
+        fontSize: dimension * 0.38,
+        ...style,
+      }}
     >
-      <span
-        className="inline-flex items-center justify-center overflow-hidden rounded-[var(--radius-pill)] bg-[var(--navy-100)] font-[var(--fw-bold)] text-[var(--navy-700)]"
-        style={{ width: dimension, height: dimension, fontSize: dimension * 0.38 }}
-      >
-        {src ? (
-          <Image
-            src={src}
-            alt={name}
-            width={dimension}
-            height={dimension}
-            unoptimized
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          initials
-        )}
-      </span>
+      {src ? (
+        <Image
+          src={src}
+          alt={name}
+          width={dimension}
+          height={dimension}
+          unoptimized
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        initials
+      )}
       {statusColor ? (
         <span
           className="absolute rounded-full border-2 border-[var(--surface-card)]"

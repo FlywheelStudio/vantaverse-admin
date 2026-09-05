@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
-import {
-  searchOrganizations,
-  type OrganizationOption,
-} from '@/lib/supabase/queries/organization-search';
+import { toPaginatedQueryOptions } from '@/lib/dal';
+import { searchOrganizations } from '@/lib/supabase/queries/organization-search';
 import type { DashboardRangeKey } from './ranges';
 import { DashboardAppBarActionsUi } from './ui';
+
+const ORG_SEARCH_LIMIT = 20;
 
 export function DashboardAppBarActions({
   groupId,
@@ -19,18 +20,15 @@ export function DashboardAppBarActions({
 }): React.ReactElement {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState('');
-  const [options, setOptions] = useState<OrganizationOption[]>([]);
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  useEffect(() => {
-    let cancelled = false;
-    void searchOrganizations(debouncedSearch).then((orgs) => {
-      if (!cancelled) setOptions(orgs);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSearch]);
+  const { data: options = [] } = useQuery(
+    toPaginatedQueryOptions(
+      searchOrganizations,
+      debouncedSearch,
+      ORG_SEARCH_LIMIT,
+    ),
+  );
 
   const navigate = useCallback(
     (nextGroupId: string | undefined, nextRange: DashboardRangeKey) => {

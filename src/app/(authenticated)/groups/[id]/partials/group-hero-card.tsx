@@ -6,6 +6,7 @@ import { Icon } from '@/components/medvanta';
 import type { Organization } from '@/lib/supabase/schemas/organizations';
 import type { PhysicianInfo } from '../hooks/use-groups';
 import { avatarTone } from '@/components/widgets/utils';
+import { GroupLogoMark } from '../../partials/group-logo-mark';
 
 function groupInitials(name: string): string {
   return name
@@ -52,41 +53,11 @@ export function GroupHeroCard({
   return (
     <div className="card" style={{ marginBottom: 16, padding: 22 }}>
       <div className="row" style={{ gap: 18, alignItems: 'flex-start' }}>
-        <div
-          className="thmb gr"
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: 'var(--radius-sm)',
-            flex: '0 0 auto',
-            overflow: 'hidden',
-          }}
-        >
-          {organization.picture_url ? (
-            <Image
-              src={organization.picture_url}
-              alt=""
-              width={60}
-              height={60}
-              className="size-full object-cover"
-            />
-          ) : (
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                fontSize: 'var(--text-lg)',
-                fontWeight: 'var(--fw-bold)',
-                color: 'var(--navy-700)',
-              }}
-            >
-              {groupInitials(organization.name)}
-            </span>
-          )}
-        </div>
+        <GroupLogoMark
+          name={organization.name}
+          pictureUrl={organization.picture_url}
+          size={60}
+        />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="row" style={{ gap: 10 }}>

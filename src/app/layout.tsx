@@ -4,6 +4,7 @@ import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
+import { Suspense } from 'react';
 import './globals.css';
 
 const satoshi = localFont({
@@ -116,7 +117,9 @@ export default function RootLayout({
         </div>
         <QueryProvider>
           <AuthProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              <Suspense fallback={null}>{children}</Suspense>
+            </ThemeProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

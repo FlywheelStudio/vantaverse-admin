@@ -1,327 +1,323 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery, query, type DalResult } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
 import {
   organizationSchema,
   type Organization,
 } from '../schemas/organizations';
-import { resolveDisplayProfilesByIds } from './resolve-display-profiles';
+import type { SupabaseError, SupabaseSuccess } from '../result';
+import { resolveDisplayProfilesByIds, type DisplayProfile } from './resolve-display-profiles';
 
-export class OrganizationsQuery extends SupabaseQuery {
-  /**
-   * Get all organizations
-   * @returns Success with organizations array or error
-   */
-  public async getList(): Promise<
-    SupabaseSuccess<Organization[]> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
+const organizationListSchema = z.array(organizationSchema);
 
-    const { data, error } = await supabase
-      .from('organizations')
-      .select(
-        '*, organization_members(id, user_id, is_active, role), teams(id)',
-      )
-      .or('is_super_admin.is.null,is_super_admin.eq.false')
-      .order('created_at', { ascending: false });
+const ORGANIZATION_WITH_RELATIONS_SELECT =
+  '*, organization_members(id, user_id, is_active, role), teams(id)';
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get organizations',
-      );
-    }
+type RawOrganizationMember = {
+  id: string;
+  user_id: string;
+  is_active: boolean | null;
+  role: 'admin' | 'member' | 'patient';
+};
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
+type RawOrganization = Omit<
+  Organization,
+  'members_count' | 'member_ids' | 'members' | 'teams_count' | 'teams'
+> & {
+  organization_members: RawOrganizationMember[] | null;
+  teams: { id: string }[] | null;
+};
 
-    type RawOrganizationMember = {
-      id: string;
-      user_id: string;
-      is_active: boolean | null;
-      role: 'admin' | 'member' | 'patient';
-    };
+const createOrganizationInputSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().nullable().optional(),
+  screeningUrl: z.string().nullable().optional(),
+});
 
-    type RawOrganization = Omit<
-      Organization,
-      'members_count' | 'member_ids' | 'members' | 'teams_count'
-    > & {
-      organization_members: RawOrganizationMember[] | null;
-      teams: { id: string }[] | null;
-    };
+export type CreateOrganizationInput = z.infer<
+  typeof createOrganizationInputSchema
+>;
 
-    const orgs = data as RawOrganization[];
-    const allUserIds = orgs.flatMap((org) =>
-      (org.organization_members ?? [])
-        .filter((m) => m.is_active === true)
-        .map((m) => m.user_id),
-    );
-    const profilesById = await resolveDisplayProfilesByIds(supabase, allUserIds);
+const updateOrganizationInputSchema = z.object({
+  id: z.uuid(),
+  data: organizationSchema.partial(),
+});
 
-    const transformedData = orgs.map((org) => {
-      const { organization_members, teams, ...orgData } = org;
-      const members =
-        Array.isArray(organization_members) && organization_members.length > 0
-          ? organization_members
-              .filter((m) => m.is_active === true)
-              .map((m) => ({
-                id: m.id,
-                user_id: m.user_id,
-                role: m.role,
-                profile: profilesById.get(m.user_id) ?? null,
-              }))
-          : [];
-      const memberIds = members.map((m) => m.id);
-      const teamsCount = Array.isArray(teams) ? teams.length : 0;
-      return {
-        ...orgData,
-        members_count: members.length,
-        member_ids: memberIds.length > 0 ? memberIds : undefined,
-        members: members.length > 0 ? members : undefined,
-        teams_count: teamsCount,
-      };
-    });
+export type UpdateOrganizationInput = z.infer<
+  typeof updateOrganizationInputSchema
+>;
 
-    const result = organizationSchema.array().safeParse(transformedData);
+const deleteOrganizationInputSchema = z.object({
+  id: z.uuid(),
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
+const deleteOrganizationResultSchema = z.object({
+  id: z.string(),
+});
 
+const superAdminOrganizationIdSchema = z.string().uuid();
+
+const organizationImportMapSchema = z.map(z.string(), z.string());
+
+export const organizationKeys = {
+  all: ['organizations'] as const,
+  list: () => [...organizationKeys.all, 'list'] as const,
+  detail: (id: string) => [...organizationKeys.all, 'detail', id] as const,
+  superAdminId: () => [...organizationKeys.all, 'super-admin-id'] as const,
+  importMap: () => [...organizationKeys.all, 'import-map'] as const,
+};
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
+
+async function transformOrganization(
+  client: SupabaseClient<Database>,
+  org: RawOrganization,
+  profilesById?: Map<string, DisplayProfile>,
+): Promise<Organization> {
+  const { organization_members, teams, ...orgData } = org;
+  const activeMembers = Array.isArray(organization_members)
+    ? organization_members.filter((member) => member.is_active === true)
+    : [];
+
+  const resolvedProfiles =
+    profilesById ??
+    (await resolveDisplayProfilesByIds(
+      client,
+      activeMembers.map((member) => member.user_id),
+    ));
+
+  const members = activeMembers.map((member) => ({
+    id: member.id,
+    user_id: member.user_id,
+    role: member.role,
+    profile: resolvedProfiles.get(member.user_id) ?? null,
+  }));
+
+  const memberIds = members.map((member) => member.id);
+  const teamsCount = Array.isArray(teams) ? teams.length : 0;
+
+  return {
+    ...orgData,
+    members_count: members.length,
+    member_ids: memberIds.length > 0 ? memberIds : undefined,
+    members: members.length > 0 ? members : undefined,
+    teams_count: teamsCount,
+  };
+}
+
+async function fetchOrganizationsList(
+  client: SupabaseClient<Database>,
+): Promise<{
+  data: Organization[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('organizations')
+    .select(ORGANIZATION_WITH_RELATIONS_SELECT)
+    .or('is_super_admin.is.null,is_super_admin.eq.false')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const orgs = (data ?? []) as RawOrganization[];
+  const allUserIds = orgs.flatMap((org) =>
+    (org.organization_members ?? [])
+      .filter((member) => member.is_active === true)
+      .map((member) => member.user_id),
+  );
+  const profilesById = await resolveDisplayProfilesByIds(client, allUserIds);
+
+  const transformed = await Promise.all(
+    orgs.map((org) => transformOrganization(client, org, profilesById)),
+  );
+
+  const parsed = organizationListSchema.safeParse(transformed);
+  if (!parsed.success) {
     return {
-      success: true,
-      data: result.data,
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
     };
   }
 
-  /**
-   * Get a single organization by ID (with members + teams_count)
-   * @param id - The organization id
-   * @returns Success with organization or error
-   */
-  public async getById(
-    id: string,
-  ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  return { data: parsed.data, error: null };
+}
 
-    const { data, error } = await supabase
-      .from('organizations')
-      .select(
-        '*, organization_members(id, user_id, is_active, role), teams(id)',
-      )
-      .eq('id', id)
-      .maybeSingle();
+async function fetchOrganizationById(
+  client: SupabaseClient<Database>,
+  id: string,
+): Promise<{
+  data: Organization | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('organizations')
+    .select(ORGANIZATION_WITH_RELATIONS_SELECT)
+    .eq('id', id)
+    .maybeSingle();
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get organization',
-      );
-    }
+  if (error) {
+    return { data: null, error };
+  }
 
-    if (!data) {
-      return {
-        success: false,
-        error: 'Organization not found',
-      };
-    }
-
-    type RawOrganizationMember = {
-      id: string;
-      user_id: string;
-      is_active: boolean | null;
-      role: 'admin' | 'member' | 'patient';
-    };
-
-    type RawOrganization = Omit<
-      Organization,
-      'members_count' | 'member_ids' | 'members' | 'teams_count'
-    > & {
-      organization_members: RawOrganizationMember[] | null;
-      teams: { id: string }[] | null;
-    };
-
-    const org = data as RawOrganization;
-    const { organization_members, teams, ...orgData } = org;
-
-    const activeMembers = Array.isArray(organization_members)
-      ? organization_members.filter((m) => m.is_active === true)
-      : [];
-    const profilesById = await resolveDisplayProfilesByIds(
-      supabase,
-      activeMembers.map((m) => m.user_id),
-    );
-
-    const members = activeMembers.map((m) => ({
-      id: m.id,
-      user_id: m.user_id,
-      role: m.role,
-      profile: profilesById.get(m.user_id) ?? null,
-    }));
-
-    const memberIds = members.map((m) => m.id);
-    const teamsCount = Array.isArray(teams) ? teams.length : 0;
-
-    const transformed = {
-      ...orgData,
-      members_count: members.length,
-      member_ids: memberIds.length > 0 ? memberIds : undefined,
-      members: members.length > 0 ? members : undefined,
-      teams_count: teamsCount,
-    };
-
-    const result = organizationSchema.safeParse(transformed);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
+  if (!data) {
     return {
-      success: true,
-      data: result.data,
+      data: null,
+      error: { message: 'Organization not found', code: 'P0404' },
     };
   }
 
-  /**
-   * Create a new organization
-   * @param name - The organization name
-   * @param description - Optional organization description
-   * @returns Success with created organization or error
-   */
-  public async create(
-    name: string,
-    description?: string | null,
-    screeningUrl?: string | null,
-  ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  const transformed = await transformOrganization(
+    client,
+    data as RawOrganization,
+  );
+  const parsed = organizationSchema.safeParse(transformed);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
 
-    const { data, error } = await supabase
+  return { data: parsed.data, error: null };
+}
+
+/** All non-super-admin organizations with member and team counts. */
+export const listOrganizations = defineQuery({
+  key: organizationKeys.list,
+  schema: organizationListSchema,
+  execute: (client) => fetchOrganizationsList(client),
+});
+
+/** Single organization by id with members and team count. */
+export const getOrganizationById = defineQuery({
+  key: organizationKeys.detail,
+  schema: organizationSchema,
+  execute: (client, id: string) => fetchOrganizationById(client, id),
+});
+
+/** Create a new organization. */
+export const createOrganization = defineMutation({
+  inputSchema: createOrganizationInputSchema,
+  schema: organizationSchema,
+  execute: async (client, input: CreateOrganizationInput) => {
+    const { data, error } = await client
       .from('organizations')
       .insert({
-        name: name.trim(),
-        description: description?.trim() || null,
-        screening_url: screeningUrl?.trim() || null,
+        name: input.name.trim(),
+        description: input.description?.trim() || null,
+        screening_url: input.screeningUrl?.trim() || null,
       })
       .select()
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to create organization',
-      );
+      return { data: null, error };
     }
 
     if (!data) {
       return {
-        success: false,
-        error: 'Failed to create organization',
+        data: null,
+        error: { message: 'Failed to create organization', code: 'P0500' },
       };
     }
 
-    const result = organizationSchema.safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    const parsed = organizationSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
+    return { data: parsed.data, error: null };
+  },
+  targets: () => [organizationKeys.all],
+});
 
-  /**
-   * Update an organization
-   * @param id - The organization id
-   * @param data - The data to update
-   * @returns Success with updated organization or error
-   */
-  public async update(
-    id: string,
-    data: Partial<Organization>,
-  ): Promise<SupabaseSuccess<Organization> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data: updatedData, error } = await supabase
+/** Update an organization. */
+export const updateOrganization = defineMutation({
+  inputSchema: updateOrganizationInputSchema,
+  schema: organizationSchema,
+  execute: async (client, input: UpdateOrganizationInput) => {
+    const { data, error } = await client
       .from('organizations')
       .update({
-        ...data,
+        ...input.data,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq('id', input.id)
       .select()
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to update organization',
-      );
+      return { data: null, error };
     }
 
-    if (!updatedData) {
+    if (!data) {
       return {
-        success: false,
-        error: 'Failed to update organization',
+        data: null,
+        error: { message: 'Failed to update organization', code: 'P0500' },
       };
     }
 
-    const result = organizationSchema.safeParse(updatedData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    const parsed = organizationSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
+    return { data: parsed.data, error: null };
+  },
+  targets: (input) => [
+    organizationKeys.all,
+    organizationKeys.detail(input.id),
+    organizationKeys.list(),
+  ],
+});
 
-  /**
-   * Delete an organization
-   * @param id - The organization id
-   * @returns Success or error
-   */
-  public async delete(
-    id: string,
-  ): Promise<SupabaseSuccess<void> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { error } = await supabase
+/** Delete an organization. */
+export const deleteOrganization = defineMutation({
+  inputSchema: deleteOrganizationInputSchema,
+  schema: deleteOrganizationResultSchema,
+  execute: async (client, input: z.infer<typeof deleteOrganizationInputSchema>) => {
+    const { error } = await client
       .from('organizations')
       .delete()
-      .eq('id', id);
+      .eq('id', input.id);
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to delete organization',
-      );
+      return { data: null, error };
     }
 
-    return {
-      success: true,
-      data: undefined,
-    };
-  }
+    return { data: { id: input.id }, error: null };
+  },
+  targets: (input) => [
+    organizationKeys.all,
+    organizationKeys.detail(input.id),
+    organizationKeys.list(),
+  ],
+});
 
-  /**
-   * Get super admin organization ID
-   * @returns Success with organization ID or error
-   */
-  public async getSuperAdminOrganizationId(): Promise<
-    SupabaseSuccess<string> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
-    const { data, error } = await supabase
+/** Super-admin organization id. */
+export const getSuperAdminOrganizationId = defineQuery({
+  key: organizationKeys.superAdminId,
+  schema: superAdminOrganizationIdSchema,
+  execute: async (client) => {
+    const { data, error } = await client
       .from('organizations')
       .select('id')
       .eq('is_super_admin', true)
@@ -329,46 +325,59 @@ export class OrganizationsQuery extends SupabaseQuery {
 
     if (error || !data) {
       return {
-        success: false,
-        error: 'Super admin organization not found',
+        data: null,
+        error: {
+          message: 'Super admin organization not found',
+          code: 'P0404',
+        },
       };
     }
 
-    return {
-      success: true,
-      data: data.id,
-    };
-  }
+    return { data: data.id, error: null };
+  },
+});
 
-  /**
-   * Get all organizations with their names for case-sensitive lookup (for import validation)
-   * @returns Success with Map of organization name to ID or error
-   */
-  public async getAllForImport(): Promise<
-    SupabaseSuccess<Map<string, string>> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
-    const { data, error } = await supabase
+/** Organization name → id map for import validation. */
+export const getOrganizationsForImport = defineQuery({
+  key: organizationKeys.importMap,
+  schema: organizationImportMapSchema,
+  execute: async (client) => {
+    const { data, error } = await client
       .from('organizations')
       .select('id, name');
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get organizations for import',
-      );
+      return { data: null, error };
     }
 
     const orgMap = new Map<string, string>();
-    if (data) {
-      for (const org of data) {
-        orgMap.set(org.name, org.id);
-      }
+    for (const org of data ?? []) {
+      orgMap.set(org.name, org.id);
     }
 
-    return {
-      success: true,
-      data: orgMap,
-    };
+    return { data: orgMap, error: null };
+  },
+});
+
+/**
+ * @deprecated organization-members slice — use DAL queries directly.
+ */
+export class OrganizationsQuery {
+  public async getSuperAdminOrganizationId(): Promise<
+    SupabaseSuccess<string> | SupabaseError
+  > {
+    const { createClient } = await import('@/lib/supabase/core/server');
+    const client = await createClient();
+    return toLegacyResult(await query(getSuperAdminOrganizationId, { client }));
+  }
+
+  public async getAllForImport(): Promise<
+    SupabaseSuccess<Map<string, string>> | SupabaseError
+  > {
+    const { createClient } = await import('@/lib/supabase/core/server');
+    const client = await createClient();
+    return toLegacyResult(
+      await query(getOrganizationsForImport, { client }),
+    );
   }
 }

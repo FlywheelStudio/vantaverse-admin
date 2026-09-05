@@ -1,11 +1,9 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-// Appointment schema based on database structure
+import { defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+
 export const appointmentSchema = z.object({
   id: z.number(),
   user_id: z.string().uuid(),
@@ -25,53 +23,53 @@ export const appointmentSchema = z.object({
   cancel_url: z.string().nullable(),
   location_type: z.string().nullable(),
   location_value: z.string().nullable(),
-  raw_payload: z.any().nullable(),
+  raw_payload: z.unknown().nullable(),
   created_at: z.string(),
   updated_at: z.string().nullable(),
 });
 
 export type Appointment = z.infer<typeof appointmentSchema>;
 
-export class AppointmentsQuery extends SupabaseQuery {
-  /**
-   * Get all appointments for a user by ID
-   * @param userId - The user ID to fetch appointments for
-   * @returns Success with appointments array or error
-   */
-  public async getAppointmentsByUserId(
-    userId: string,
-  ): Promise<SupabaseSuccess<Appointment[]> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+const appointmentListSchema = z.array(appointmentSchema);
 
-    const { data, error } = await supabase
-      .from('appointments')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+export const appointmentKeys = {
+  all: ['appointments'] as const,
+  byUser: (userId: string) => [...appointmentKeys.all, 'user', userId] as const,
+};
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get appointments',
-      );
-    }
+async function fetchAppointmentsByUserId(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{
+  data: Appointment[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('appointments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
+  if (error) {
+    return { data: null, error };
+  }
 
-    const result = appointmentSchema.array().safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
+  const parsed = appointmentListSchema.safeParse(data ?? []);
+  if (!parsed.success) {
     return {
-      success: true,
-      data: result.data,
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
     };
   }
+
+  return { data: parsed.data, error: null };
 }
+
+/** All appointments for a user (service role). */
+export const getAppointmentsByUserId = defineQuery({
+  key: appointmentKeys.byUser,
+  schema: appointmentListSchema,
+  client: 'admin',
+  execute: (client, userId: string) =>
+    fetchAppointmentsByUserId(client, userId),
+});

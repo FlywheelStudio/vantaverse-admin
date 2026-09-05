@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getAllProfilesWithMemberships,
+  getAssignablePhysiologists,
   getOrganizationMemberUserIds,
   getCurrentPhysiologist,
 } from '../../actions';
@@ -18,6 +19,12 @@ export function useMemberData(
     queryKey: ['profiles-with-memberships'],
     queryFn: getAllProfilesWithMemberships,
     enabled: open,
+  });
+
+  const { data: adminsData, isLoading: adminsLoading } = useQuery({
+    queryKey: ['assignable-physiologists'],
+    queryFn: getAssignablePhysiologists,
+    enabled: open && type === 'organization',
   });
 
   const { data: currentMembersData, isLoading: membersLoading } = useQuery({
@@ -73,9 +80,10 @@ export function useMemberData(
   return {
     profilesData,
     profilesLoading,
-    membersLoading,
+    membersLoading: membersLoading || adminsLoading,
     initialMemberIds,
     initialPhysiologistId,
     currentPhysiologist: currentPhysiologistData || null,
+    adminProfiles: adminsData?.success ? adminsData.data : [],
   };
 }

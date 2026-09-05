@@ -1,16 +1,30 @@
 'use server';
 
+import { mutate, query, type DalResult } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/core/server';
 import { createAdminClient } from '@/lib/supabase/core/admin';
-import { ProfilesQuery } from '@/lib/supabase/queries/profiles';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import {
+  getAllWithMembershipsQuery,
+} from '@/lib/supabase/queries/profiles';
+import { assignProgramToUser } from '@/lib/supabase/queries/program-assignments';
 import { resolveDisplayProfilesByIds } from '@/lib/supabase/queries/resolve-display-profiles';
+import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import {
   DEFAULT_SCREENING_BASE,
   buildBookingLink,
   normalizeCalendlyUrl,
 } from '@/lib/calendly';
+
+function toSupabaseResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
 
 export type GroupMemberWithProgram = {
   user_id: string;
@@ -60,6 +74,10 @@ export type BulkAssignResult = {
   skipped: BulkAssignSkip[];
 };
 
+/**
+ * Active patient members of a group, with display names from `profiles`.
+ * Cannot embed `profiles` from `organization_members` — user_id FKs auth.users.
+ */
 export async function getOrganizationMembersWithPrograms(
   organizationId: string,
 ) {
@@ -67,9 +85,7 @@ export async function getOrganizationMembersWithPrograms(
 
   const { data: membersData, error: membersError } = await supabase
     .from('organization_members')
-    .select(
-      'user_id, profiles!inner(id, avatar_url, first_name, last_name, email)',
-    )
+    .select('user_id')
     .eq('organization_id', organizationId)
     .eq('role', 'patient')
     .eq('is_active', true);
@@ -81,10 +97,13 @@ export async function getOrganizationMembersWithPrograms(
     };
   }
 
-  const members = (membersData || []).map((m) => {
-    const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+  const userIds = (membersData || []).map((m) => m.user_id);
+  const profilesById = await resolveDisplayProfilesByIds(supabase, userIds);
+
+  const members = userIds.map((userId) => {
+    const profile = profilesById.get(userId);
     return {
-      user_id: m.user_id,
+      user_id: userId,
       first_name: profile?.first_name ?? null,
       last_name: profile?.last_name ?? null,
       email: profile?.email ?? null,
@@ -92,7 +111,6 @@ export async function getOrganizationMembersWithPrograms(
     };
   });
 
-  const userIds = members.map((m) => m.user_id);
   const programByUserId = new Map<string, string>();
 
   if (userIds.length > 0) {
@@ -145,15 +163,16 @@ export async function getOrganizationMembersWithPrograms(
   };
 }
 
-export async function getUnassignedUsers() {
-  const query = new ProfilesQuery();
-  const profilesResult = await query.getAllWithMemberships();
+export async function getUnassignedUsers(): Promise<
+  SupabaseSuccess<SuperAdminGroupUser[]> | SupabaseError
+> {
+  const client = await createAdminClient();
+  const profilesResult = toSupabaseResult(
+    await query(getAllWithMembershipsQuery, { client }),
+  );
 
   if (!profilesResult.success) {
-    return {
-      success: false as const,
-      error: profilesResult.error,
-    };
+    return profilesResult;
   }
 
   const unassigned = profilesResult.data
@@ -352,6 +371,37 @@ export async function updateOrganizationScreeningUrl(
   return { success: true as const, data: undefined };
 }
 
+/** Persist organization display name. */
+export async function updateOrganizationName(
+  organizationId: string,
+  rawName: string,
+): Promise<
+  { success: true; data: string } | { success: false; error: string }
+> {
+  const name = rawName.trim();
+  if (!name) {
+    return {
+      success: false as const,
+      error: 'Group name is required.',
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('organizations')
+    .update({ name })
+    .eq('id', organizationId);
+
+  if (error) {
+    return {
+      success: false as const,
+      error: `Failed to save group name: ${error.message}`,
+    };
+  }
+
+  return { success: true as const, data: name };
+}
+
 export async function updateOrganizationDescription(
   organizationId: string,
   rawDescription: string,
@@ -494,10 +544,9 @@ export async function getOrganizationPrograms(organizationId: string) {
     .eq('organization_id', organizationId)
     .in('status', [
       PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
-      'completed',
-      'paused',
-      'cancelled',
       PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
+      'completed',
+      'cancelled',
     ])
     .order('created_at', { ascending: false });
 
@@ -639,14 +688,15 @@ export async function bulkAssignProgram(
     for (const s of skipped) s.name = nameById.get(s.user_id) ?? 'Unnamed';
   }
 
-  const query = new ProgramAssignmentsQuery();
   const failed: Array<{ user_id: string; error: string }> = [];
   let assignedCount = 0;
   for (const userId of assignees) {
-    const result = await query.assignToUser(
-      templateAssignmentId,
-      userId,
-      startDate,
+    const result = toSupabaseResult(
+      await mutate(
+        assignProgramToUser,
+        { templateAssignmentId, userId, startDate },
+        { client: supabase },
+      ),
     );
     if (result.success) assignedCount += 1;
     else failed.push({ user_id: userId, error: result.error });
@@ -681,8 +731,13 @@ export async function replaceMemberProgram(
     };
   }
 
-  const query = new ProgramAssignmentsQuery();
-  return query.assignToUser(templateAssignmentId, userId, startDate);
+  return toSupabaseResult(
+    await mutate(
+      assignProgramToUser,
+      { templateAssignmentId, userId, startDate },
+      { client: supabase },
+    ),
+  );
 }
 
 /** Soft-cancel one assignment (history preserved). */
@@ -699,7 +754,10 @@ export async function cancelMemberProgram(
     .update({ status: 'cancelled' })
     .eq('id', assignmentId)
     .eq('organization_id', organizationId)
-    .in('status', ['active', 'paused']);
+    .in('status', [
+      PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+      PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
+    ]);
 
   if (error) {
     return { success: false as const, error: error.message };

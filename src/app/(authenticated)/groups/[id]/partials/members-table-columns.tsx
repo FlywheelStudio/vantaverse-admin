@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { Dialog } from '@/components/medvanta';
 import { avatarTone } from '@/components/widgets/utils';
+import { usePreheat } from '@/hooks/use-preheat';
 
 export type GroupMemberRow = {
   user_id: string;
@@ -44,11 +45,13 @@ function NameEmailCell({
   organizationId: string;
 }): React.ReactElement {
   const router = useRouter();
+  const { getPreheatHandlers } = usePreheat();
   const fullName = memberDisplayName(member);
+  const userHref = `/users/${member.user_id}?from=${encodeURIComponent(`/groups/${organizationId}`)}`;
+  const preheatHandlers = getPreheatHandlers(userHref);
 
   const handleClick = (): void => {
-    const fromParam = encodeURIComponent(`/groups/${organizationId}`);
-    router.push(`/users/${member.user_id}?from=${fromParam}`);
+    router.push(userHref);
   };
 
   return (
@@ -57,6 +60,7 @@ function NameEmailCell({
       className="cellp"
       style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left' }}
       onClick={handleClick}
+      {...preheatHandlers}
     >
       <span
         className={`av ${avatarTone(fullName)} av-32`}

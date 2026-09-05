@@ -8,25 +8,40 @@ import { useCancelGroupMemberProgram } from '../hooks/use-group-programs';
 import {
   AssignGroupProgramModal,
 } from './assign-group-program-modal';
+import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
 import type { GroupProgramRowData } from '../actions';
 
-type Pill = 'all' | 'active' | 'completed' | 'paused' | 'cancelled';
+type Pill = 'all' | 'active' | 'pre_program' | 'completed' | 'cancelled';
 
 const PILLS: Array<{ id: Pill; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
+  { id: 'pre_program', label: 'Pre-program' },
   { id: 'completed', label: 'Completed' },
-  { id: 'paused', label: 'Paused' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
 const STATUS_TONE: Record<string, 'success' | 'neutral' | 'warning' | 'danger' | 'brand'> = {
   active: 'success',
   completed: 'neutral',
-  paused: 'warning',
   cancelled: 'danger',
   pre_program: 'brand',
 };
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Active',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  pre_program: 'Pre-program',
+};
+
+const formatAssignmentStatus = (status: string): string =>
+  STATUS_LABEL[status] ??
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+const canManageAssignment = (status: string): boolean =>
+  status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ||
+  status === PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM;
 
 type MemberRow = {
   user_id: string;
@@ -308,9 +323,9 @@ function ProgramRow({
                     ) : null}
                   </span>
                   <Badge tone={STATUS_TONE[member.status] ?? 'neutral'} dot>
-                    {member.status}
+                    {formatAssignmentStatus(member.status)}
                   </Badge>
-                  {(member.status === 'active' || member.status === 'paused') ? (
+                  {canManageAssignment(member.status) ? (
                     <>
                       {confirmingId === member.assignment_id ? (
                         <>

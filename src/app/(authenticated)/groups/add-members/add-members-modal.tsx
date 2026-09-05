@@ -20,9 +20,42 @@ import {
 import type { AddMembersModalProps } from './types';
 import type { MemberRole } from '@/lib/supabase/schemas/organization-members';
 import type { ProfileWithMemberships } from '@/lib/supabase/queries/profiles';
+import type { AdminProfile } from '@/lib/supabase/schemas/admins';
+
+interface SelectableMember {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  orgMemberships?: Array<{
+    orgId: string;
+    orgName: string;
+    role?: MemberRole;
+  }>;
+  teamMemberships?: Array<{
+    teamId: string;
+    teamName: string;
+    orgId: string;
+    orgName: string;
+  }>;
+}
+
+const toSelectableAdmin = (admin: AdminProfile): SelectableMember => ({
+  id: admin.id,
+  first_name: admin.first_name,
+  last_name: admin.last_name,
+  email: admin.email,
+  avatar_url: admin.avatar_url,
+  orgMemberships: (admin.orgMemberships ?? []).map((om) => ({
+    orgId: om.orgId,
+    orgName: om.orgName,
+    role: 'admin' as const,
+  })),
+});
 
 interface MemberSelectRowProps {
-  profile: ProfileWithMemberships;
+  profile: SelectableMember;
   isSelected: boolean;
   isCurrentMember: boolean;
   groupLabel: string | null;
@@ -31,7 +64,7 @@ interface MemberSelectRowProps {
 }
 
 function getProfileGroupLabel(
-  profile: ProfileWithMemberships,
+  profile: SelectableMember,
   type: 'organization' | 'team',
   currentId: string,
 ): string | null {
@@ -60,7 +93,7 @@ function getProfileGroupLabel(
  * Returns another-group name when the profile belongs elsewhere (move warning).
  */
 function getConflictGroupName(
-  profile: ProfileWithMemberships,
+  profile: SelectableMember,
   type: 'organization' | 'team',
   currentId: string,
 ): string | null {
@@ -122,24 +155,14 @@ function MemberSelectRow({
   );
 }
 
-function filterByRole(
+function filterPatients(
   profiles: ProfileWithMemberships[],
-  role: MemberRole,
 ): ProfileWithMemberships[] {
-  if (role === 'patient') {
-    return profiles.filter((profile) => {
-      const hasAdminRole = (profile.orgMemberships ?? []).some(
-        (om) => om.role === 'admin',
-      );
-      return !hasAdminRole;
-    });
-  }
-
   return profiles.filter((profile) => {
     const hasAdminRole = (profile.orgMemberships ?? []).some(
       (om) => om.role === 'admin',
     );
-    return hasAdminRole;
+    return !hasAdminRole;
   });
 }
 
@@ -180,6 +203,7 @@ export function AddMembersModal({
     initialMemberIds,
     initialPhysiologistId,
     currentPhysiologist,
+    adminProfiles,
   } = useMemberData(open, type, id, organizationId);
 
   const {
@@ -225,9 +249,17 @@ export function AddMembersModal({
     return profilesData.data;
   }, [profilesData]);
 
+  const selectableAdmins = useMemo(
+    () => adminProfiles.map(toSelectableAdmin),
+    [adminProfiles],
+  );
+
   const roleFilteredProfiles = useMemo(
-    () => filterByRole(allProfiles, selectedRole),
-    [allProfiles, selectedRole],
+    (): SelectableMember[] =>
+      selectedRole === 'admin'
+        ? selectableAdmins
+        : filterPatients(allProfiles),
+    [allProfiles, selectableAdmins, selectedRole],
   );
 
   const filteredProfiles = useMemo(() => {
@@ -250,15 +282,9 @@ export function AddMembersModal({
   );
 
   const currentPhysiologistProfile = useMemo(() => {
-    if (
-      selectedRole === 'admin' &&
-      currentPhysiologist &&
-      allProfiles.length > 0
-    ) {
-      return allProfiles.find((p) => p.id === currentPhysiologist.userId);
-    }
-    return null;
-  }, [selectedRole, currentPhysiologist, allProfiles]);
+    if (selectedRole !== 'admin' || !currentPhysiologist) return null;
+    return selectableAdmins.find((p) => p.id === currentPhysiologist.userId) ?? null;
+  }, [selectedRole, currentPhysiologist, selectableAdmins]);
 
   const selectedCount =
     selectedRole === 'patient'
@@ -331,7 +357,18 @@ export function AddMembersModal({
       ? selectedMemberIds.size > 0
       : selectedPhysiologistId !== null);
 
-  const inviteTitle = `Add members to ${name}`;
+  // Physiologist-assignment invocations lock the modal to the admin role.
+  const isPhysiologistIntent = initialRole === 'admin';
+  const isMemberRole = selectedRole === 'patient';
+  const isPhysiologistRole = selectedRole === 'admin';
+
+  const inviteTitle = isPhysiologistRole
+    ? `Assign physiologist to ${name}`
+    : `Add members to ${name}`;
+
+  const inviteSubtitle = isPhysiologistRole
+    ? 'Only admins can be assigned as the group physiologist.'
+    : "They inherit the group's physiologist and can be assigned its programs.";
 
   const saveLabel =
     isPending || membersLoading
@@ -344,16 +381,11 @@ export function AddMembersModal({
           ? 'Replace physiologist'
           : 'Assign physiologist';
 
-  // Physiologist-assignment invocations lock the modal to the admin role.
-  const isPhysiologistIntent = initialRole === 'admin';
-  const isMemberRole = selectedRole === 'patient';
-  const isPhysiologistRole = selectedRole === 'admin';
-
   return (
     <HtmlModal
       open={open}
       title={inviteTitle}
-      subtitle="They inherit the group's physiologist and can be assigned its programs."
+      subtitle={inviteSubtitle}
       onClose={handleCancel}
       width={620}
       footerInfo={`${selectedCount} selected`}
@@ -438,6 +470,8 @@ export function AddMembersModal({
         </>
       ) : null}
 
+      {!isPhysiologistRole ? (
+        <>
       <div className="ff" style={{ marginBottom: 12 }}>
         <label className="lbl" htmlFor="add-members-invite-email">
           Invite by email
@@ -493,6 +527,8 @@ export function AddMembersModal({
             </div>
           ))}
         </div>
+      ) : null}
+        </>
       ) : null}
 
       <div className="row" style={{ gap: 9, marginBottom: 12 }}>
@@ -577,7 +613,7 @@ export function AddMembersModal({
               padding: '12px 0',
             }}
           >
-            No users found
+            {selectedRole === 'admin' ? 'No admins found' : 'No users found'}
           </p>
         ) : (
           <>

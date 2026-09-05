@@ -1,62 +1,76 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 
-export type ImageAsset = {
-  blur_hash: string;
-  image_url: string;
+import { defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+
+const imageAssetSchema = z.object({
+  blur_hash: z.string(),
+  image_url: z.string(),
+});
+
+export type ImageAsset = z.infer<typeof imageAssetSchema>;
+
+const habitPledgeSchema = z.object({
+  pledge: z.string(),
+  photo: imageAssetSchema,
+  signature: imageAssetSchema,
+  created_at: z.string(),
+});
+
+export type HabitPledge = z.infer<typeof habitPledgeSchema>;
+
+const habitPledgeNullableSchema = habitPledgeSchema.nullable();
+
+export const habitPledgeKeys = {
+  all: ['habit-pledge'] as const,
+  byUser: (userId: string) => [...habitPledgeKeys.all, 'user', userId] as const,
 };
 
-export type HabitPledge = {
-  pledge: string;
-  photo: ImageAsset;
-  signature: ImageAsset;
-  created_at: string;
-};
+async function fetchPledgeByUserId(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{
+  data: HabitPledge | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data: pledge, error } = await client
+    .from('habit_pledges')
+    .select('pledge, photo, signature, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-export class HabitPledgeQuery extends SupabaseQuery {
-  /**
-   * Get most recent habit pledge by user ID
-   * @param userId - The user ID to fetch pledge for
-   * @returns Success with pledge data or error
-   */
-  public async getPledgeByUserId(
-    userId: string,
-  ): Promise<SupabaseSuccess<HabitPledge | null> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+  if (error) {
+    return { data: null, error };
+  }
 
-    const { data: pledge, error: pledgeError } = await supabase
-      .from('habit_pledges')
-      .select('pledge, photo, signature, created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  if (!pledge) {
+    return { data: null, error: null };
+  }
 
-    if (pledgeError) {
-      return this.parseResponsePostgresError(
-        pledgeError,
-        'Failed to get habit pledge',
-      );
-    }
+  const parsed = habitPledgeSchema.safeParse({
+    pledge: pledge.pledge,
+    photo: pledge.photo,
+    signature: pledge.signature,
+    created_at: pledge.created_at,
+  });
 
-    if (!pledge) {
-      return {
-        success: true,
-        data: null,
-      };
-    }
-
+  if (!parsed.success) {
     return {
-      success: true,
-      data: {
-        pledge: pledge.pledge,
-        photo: pledge.photo as ImageAsset,
-        signature: pledge.signature as ImageAsset,
-        created_at: pledge.created_at,
-      },
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
     };
   }
+
+  return { data: parsed.data, error: null };
 }
+
+/** Most recent habit pledge for a user (service role). */
+export const getPledgeByUserId = defineQuery({
+  key: habitPledgeKeys.byUser,
+  schema: habitPledgeNullableSchema,
+  client: 'admin',
+  execute: (client, userId: string) => fetchPledgeByUserId(client, userId),
+});

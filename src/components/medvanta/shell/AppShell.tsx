@@ -1,17 +1,18 @@
-import type { ShellNavId } from './nav';
-import { SideNav } from './SideNav';
+import { AppShellChrome } from './app-shell-chrome';
+import { MainColumnChrome } from './main-column-chrome';
 
 interface AppShellProps {
-  active: ShellNavId;
   children: React.ReactNode;
 }
 
 /** HTML `.app` shell: fixed side nav + scrollable main column. */
-export function AppShell({ active, children }: AppShellProps): React.ReactElement {
+export async function AppShell({
+  children,
+}: AppShellProps): Promise<React.ReactElement> {
   return (
-    <div className="app" style={{ minHeight: '100vh', height: '100vh' }}>
-      <SideNav active={active} />
-      <div className="main">{children}</div>
-    </div>
+    <AppShellChrome
+      // Cache-slot sibling of SideNav — Flight warns without a key on replay.
+      main={<MainColumnChrome key="main">{children}</MainColumnChrome>}
+    />
   );
 }

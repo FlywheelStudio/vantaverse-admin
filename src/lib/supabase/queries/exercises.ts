@@ -1,346 +1,388 @@
-import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
-import { exerciseSchema, type Exercise } from '../schemas/exercises';
-import type { PaginatedResult } from './exercise-templates';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-export class ExercisesQuery extends SupabaseQuery {
-  /**
-   * Get all exercises with video (youtube with video_url or file with video_url)
-   * @returns Success with exercises array or error
-   */
-  public async getList(): Promise<SupabaseSuccess<Exercise[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+import { defineMutation, defineQuery, query, type DalResult } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+import { exerciseSchema, type Exercise } from '../schemas/exercises';
+import type { PaginatedResult } from './exercise-templates';
+import type { SupabaseError, SupabaseSuccess } from '../result';
 
-    // Query: (video_type = 'youtube' AND video_url IS NOT NULL)
-    //     OR (video_type = 'file' AND video_url IS NOT NULL)
-    // Fetch exercises with video_url not null, then filter by video_type
-    const { data, error } = await supabase
+const exerciseListSchema = z.array(exerciseSchema);
+
+const assignmentCountsSchema = z.object({
+  all: z.number(),
+  assigned: z.number(),
+  unassigned: z.number(),
+});
+
+export type ExerciseAssignmentCounts = z.infer<typeof assignmentCountsSchema>;
+
+const paginatedExerciseSchema = z.object({
+  data: z.array(exerciseSchema),
+  page: z.number(),
+  pageSize: z.number(),
+  total: z.number(),
+  hasMore: z.boolean(),
+});
+
+const updateExerciseInputSchema = z.object({
+  id: z.number(),
+  data: exerciseSchema.partial(),
+});
+
+export type UpdateExerciseInput = z.infer<typeof updateExerciseInputSchema>;
+
+const exerciseEntitySchema = exerciseSchema.extend({
+  id: z.string(),
+});
+
+export const EXERCISES_LIBRARY_PAGE_SIZE = 20;
+
+export type ListExercisesFilteredInput = {
+  search?: string;
+  type?: string | null;
+  assignment?: 'all' | 'unassigned' | 'assigned';
+  tagIds?: number[];
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+/** Default first page for the exercise library (SSR + infinite scroll). */
+export const DEFAULT_EXERCISES_FILTERED_INPUT: ListExercisesFilteredInput = {
+  page: 1,
+  pageSize: EXERCISES_LIBRARY_PAGE_SIZE,
+  sortBy: 'created_at',
+  sortOrder: 'desc',
+};
+
+export const exerciseKeys = {
+  all: ['exercises'] as const,
+  list: () => [...exerciseKeys.all, 'list'] as const,
+  detail: (id: number) => [...exerciseKeys.all, 'detail', id] as const,
+  paginated: (filters: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    type?: string | null;
+  }) => [...exerciseKeys.list(), 'paginated', filters] as const,
+  filtered: (filters: ListExercisesFilteredInput) =>
+    [...exerciseKeys.list(), 'filtered', filters] as const,
+  types: () => [...exerciseKeys.all, 'types'] as const,
+  assignmentCounts: () => [...exerciseKeys.all, 'assignment-counts'] as const,
+};
+
+function toExerciseEntity(exercise: Exercise): z.infer<typeof exerciseEntitySchema> {
+  return { ...exercise, id: String(exercise.id) };
+}
+
+function toLegacyResult<T>(
+  result: DalResult<T>,
+): SupabaseSuccess<T> | SupabaseError {
+  const [err, data] = result;
+  if (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: true, data };
+}
+
+async function resolveUpdatedByName(
+  adminClient: SupabaseClient<Database>,
+): Promise<string | null> {
+  try {
+    const { createClient } = await import('@/lib/supabase/core/server');
+    const authClient = await createClient();
+    const {
+      data: { user },
+    } = await authClient.auth.getUser();
+
+    if (!user) {
+      return null;
+    }
+
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return null;
+    }
+
+    const fullName = [profile.first_name, profile.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    return fullName || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Exercises with video (youtube or file) and a non-null video_url. */
+export const listExercises = defineQuery({
+  key: exerciseKeys.list,
+  schema: exerciseListSchema,
+  execute: async (client) => {
+    const { data, error } = await client
       .from('exercises_with_stats')
       .select('*')
       .not('video_url', 'is', null)
       .order('created_at', { ascending: false });
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get exercises');
+      return { data: null, error };
     }
 
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
-
-    // Filter by video_type (youtube or file)
-    const filteredData = data.filter(
+    const filteredData = (data ?? []).filter(
       (exercise) =>
         exercise.video_type === 'youtube' || exercise.video_type === 'file',
     );
 
-    const result = exerciseSchema.array().safeParse(filteredData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    const parsed = exerciseListSchema.safeParse(filteredData);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
+    return { data: parsed.data, error: null };
+  },
+});
 
-  /**
-   * Get exercise by ID
-   * @param id - The exercise id
-   * @returns Success with exercise data or error
-   */
-  public async getById(
-    id: number,
-  ): Promise<SupabaseSuccess<Exercise> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
-
-    const { data, error } = await supabase
+/** Exercise by id (service role). */
+export const getExerciseById = defineQuery({
+  key: exerciseKeys.detail,
+  schema: exerciseSchema,
+  client: 'admin',
+  execute: async (client, id: number) => {
+    const { data, error } = await client
       .from('exercises')
       .select('*')
       .eq('id', id)
       .maybeSingle();
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get exercise');
+      return { data: null, error };
     }
 
     if (!data) {
       return {
-        success: false,
-        error: 'Exercise not found',
+        data: null,
+        error: { message: 'Exercise not found', code: 'P0404' },
       };
     }
 
-    const result = exerciseSchema.safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    const parsed = exerciseSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
+    return { data: parsed.data, error: null };
+  },
+});
 
-  /**
-   * Update an exercise
-   * @param id - The exercise id
-   * @param data - The data to update
-   * @returns Success with updated exercise or error
-   */
-  public async update(
-    id: number,
-    data: Partial<Exercise>,
-  ): Promise<SupabaseSuccess<Exercise> | SupabaseError> {
-    const supabase = await this.getClient('service_role');
+/** Update an exercise (service role). */
+export const updateExercise = defineMutation({
+  inputSchema: updateExerciseInputSchema,
+  schema: exerciseEntitySchema,
+  client: 'admin',
+  execute: async (client, input: UpdateExerciseInput) => {
+    const adminName = await resolveUpdatedByName(client);
 
-    let adminName: string | null = null;
-    try {
-      const user = await this.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profile) {
-          const fullName = [profile.first_name, profile.last_name]
-            .filter(Boolean)
-            .join(' ')
-            .trim();
-          adminName = fullName || null;
-        }
-      }
-    } catch {
-      // If user retrieval fails, proceed with update without admin name
-    }
-
-    const { data: updatedData, error } = await supabase
+    const { data, error } = await client
       .from('exercises')
       .update({
-        ...data,
+        ...input.data,
         ...(adminName ? { updated_by: adminName } : {}),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq('id', input.id)
       .select()
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to update exercise',
-      );
+      return { data: null, error };
     }
 
-    if (!updatedData) {
+    if (!data) {
       return {
-        success: false,
-        error: 'Failed to update exercise',
+        data: null,
+        error: { message: 'Failed to update exercise', code: 'P0500' },
       };
     }
 
-    const result = exerciseSchema.safeParse(updatedData);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    const parsed = exerciseSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
+    return { data: toExerciseEntity(parsed.data), error: null };
+  },
+  targets: (input) => [
+    exerciseKeys.all,
+    exerciseKeys.detail(input.id),
+    exerciseKeys.list(),
+  ],
+});
 
-  /**
-   * Get distinct exercise types (sources) for filtering
-   */
-  public async getDistinctTypes(): Promise<
-    SupabaseSuccess<string[]> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
-    const { data, error } = await supabase
+/** Distinct exercise types (sources) for filtering. */
+export const getExerciseDistinctTypes = defineQuery({
+  key: exerciseKeys.types,
+  schema: z.array(z.string()),
+  execute: async (client) => {
+    const { data, error } = await client
       .from('exercises')
       .select('type')
       .not('video_url', 'is', null)
       .not('type', 'is', null);
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get exercise types',
-      );
+      return { data: null, error };
     }
+
     const types = [
-      ...new Set((data ?? []).map((r) => r.type as string).filter(Boolean)),
+      ...new Set(
+        (data ?? [])
+          .map((row) => row.type)
+          .filter((type): type is string => Boolean(type)),
+      ),
     ].sort((a, b) => a.localeCompare(b));
-    return { success: true, data: types };
-  }
 
-  /**
-   * Get assignment status counts for the exercise library filter panel
-   * @returns Success with {all, assigned, unassigned} counts or error
-   */
-  public async getAssignmentCounts(): Promise<
-    SupabaseSuccess<{
-      all: number;
-      assigned: number;
-      unassigned: number;
-    }> | SupabaseError
-  > {
-    const supabase = await this.getClient('authenticated_user');
+    return { data: types, error: null };
+  },
+});
 
-    const { data, error } = await supabase.rpc('get_exercise_assignment_counts');
+/** Assignment status counts for the exercise library filter panel. */
+export const getExerciseAssignmentCounts = defineQuery({
+  key: exerciseKeys.assignmentCounts,
+  schema: assignmentCountsSchema,
+  execute: async (client) => {
+    const { data, error } = await client.rpc('get_exercise_assignment_counts');
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get assignment counts',
-      );
+      return { data: null, error };
     }
 
-    const payload = (data as {
-      all: number;
-      assigned: number;
-      unassigned: number;
-    }) || { all: 0, assigned: 0, unassigned: 0 };
+    const parsed = assignmentCountsSchema.safeParse(
+      data ?? { all: 0, assigned: 0, unassigned: 0 },
+    );
 
-    const result = z
-      .object({
-        all: z.number(),
-        assigned: z.number(),
-        unassigned: z.number(),
-      })
-      .safeParse(payload);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
+    if (!parsed.success) {
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
-    return { success: true, data: result.data };
-  }
+    return { data: parsed.data, error: null };
+  },
+});
 
-  /**
-   * Get paginated exercises with search and sort
-   * @param page - Page number (1-indexed)
-   * @param pageSize - Number of items per page
-   * @param search - Search term for exercise name
-   * @param sortBy - Sort field (default: 'updated_at')
-   * @param sortOrder - Sort order ('asc' or 'desc', default: 'desc')
-   * @param type - Optional filter by exercise type (source)
-   * @returns Success with paginated data or error
-   */
-  public async getListPaginated(
-    page: number = 1,
-    pageSize: number = 20,
-    search?: string,
-    sortBy: string = 'updated_at',
-    sortOrder: 'asc' | 'desc' = 'desc',
-    type?: string | null,
-  ): Promise<SupabaseSuccess<PaginatedResult<Exercise>> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    let query = supabase
+/** Paginated exercises with search, sort, and optional type filter. */
+export const listExercisesPaginated = defineQuery({
+  key: (
+    page: number,
+    pageSize: number,
+    search: string | undefined,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    type: string | null | undefined,
+  ) =>
+    exerciseKeys.paginated({
+      page,
+      pageSize,
+      search,
+      sortBy,
+      sortOrder,
+      type,
+    }),
+  schema: paginatedExerciseSchema,
+  execute: async (
+    client,
+    page: number,
+    pageSize: number,
+    search: string | undefined,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    type: string | null | undefined,
+  ) => {
+    let request = client
       .from('exercises')
       .select('*', { count: 'exact' })
       .not('video_url', 'is', null);
 
-    // Apply search filter if provided
     if (search) {
-      query = query.ilike('exercise_name', `%${search}%`);
+      request = request.ilike('exercise_name', `%${search}%`);
     }
 
-    // Apply type (source) filter if provided
     if (type) {
-      query = query.eq('type', type);
+      request = request.eq('type', type);
     }
 
-    // Apply sorting
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+    request = request.order(sortBy, { ascending: sortOrder === 'asc' });
 
-    // Apply pagination
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
+    const { data, error, count } = await request.range(from, to);
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get exercises');
+      return { data: null, error };
     }
 
-    if (!data) {
+    const parsed = exerciseListSchema.safeParse(data ?? []);
+    if (!parsed.success) {
       return {
-        success: true,
-        data: {
-          data: [],
-          page,
-          pageSize,
-          total: 0,
-          hasMore: false,
-        },
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
       };
     }
 
-    const result = exerciseSchema.array().safeParse(data);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    const total = count || 0;
-    const hasMore = from + result.data.length < total;
+    const total = count ?? 0;
+    const hasMore = from + parsed.data.length < total;
 
     return {
-      success: true,
       data: {
-        data: result.data,
+        data: parsed.data,
         page,
         pageSize,
         total,
         hasMore,
       },
+      error: null,
     };
-  }
+  },
+});
 
-  /**
-   * Get paginated exercises with multi-faceted filtering:
-   * search, source type, assignment status, and multi-category tag filtering.
-   */
-  public async getListFiltered(params: {
-    search?: string;
-    type?: string | null;
-    assignment?: 'all' | 'unassigned' | 'assigned';
-    tagIds?: number[];
-    page?: number;
-    pageSize?: number;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-  }): Promise<SupabaseSuccess<PaginatedResult<Exercise>> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+/** Paginated exercises with multi-faceted filtering. */
+export const listExercisesFiltered = defineQuery({
+  key: (input: ListExercisesFilteredInput) => exerciseKeys.filtered(input),
+  schema: paginatedExerciseSchema,
+  execute: async (client, input: ListExercisesFilteredInput) => {
     const {
       search,
       type,
       assignment = 'all',
       tagIds,
       page = 1,
-      pageSize = 20,
+      pageSize = EXERCISES_LIBRARY_PAGE_SIZE,
       sortBy = 'created_at',
       sortOrder = 'desc',
-    } = params;
+    } = input;
 
-    const { data, error } = await supabase.rpc('list_exercises_filtered', {
+    const { data, error } = await client.rpc('list_exercises_filtered', {
       p_search: search || undefined,
       p_type: type || undefined,
       p_assignment: assignment,
@@ -352,7 +394,7 @@ export class ExercisesQuery extends SupabaseQuery {
     });
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get filtered exercises');
+      return { data: null, error };
     }
 
     const payload = (data as {
@@ -361,18 +403,20 @@ export class ExercisesQuery extends SupabaseQuery {
       page: number;
       pageSize: number;
       totalPages: number;
-    }) || { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
+    }) ?? { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
 
-    const parsedData = exerciseSchema.array().safeParse(payload.data ?? []);
+    const parsedData = exerciseListSchema.safeParse(payload.data ?? []);
     if (!parsedData.success) {
-      return this.parseResponseZodError(parsedData.error);
+      return {
+        data: null,
+        error: { message: 'Response validation failed', code: 'VALIDATION' },
+      };
     }
 
     const total = payload.count ?? 0;
     const hasMore = page * pageSize < total;
 
     return {
-      success: true,
       data: {
         data: parsedData.data,
         page,
@@ -380,6 +424,44 @@ export class ExercisesQuery extends SupabaseQuery {
         total,
         hasMore,
       },
+      error: null,
     };
+  },
+});
+
+/**
+ * @deprecated Builder slice — use DAL queries directly. Retained until builder migrates.
+ */
+export class ExercisesQuery {
+  public async getListPaginated(
+    page: number = 1,
+    pageSize: number = 20,
+    search?: string,
+    sortBy: string = 'updated_at',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    type?: string | null,
+  ): Promise<SupabaseSuccess<PaginatedResult<Exercise>> | SupabaseError> {
+    const { createClient } = await import('@/lib/supabase/core/server');
+    const client = await createClient();
+    return toLegacyResult(
+      await query(
+        listExercisesPaginated,
+        page,
+        pageSize,
+        search,
+        sortBy,
+        sortOrder,
+        type,
+        { client },
+      ),
+    );
+  }
+
+  public async getDistinctTypes(): Promise<
+    SupabaseSuccess<string[]> | SupabaseError
+  > {
+    const { createClient } = await import('@/lib/supabase/core/server');
+    const client = await createClient();
+    return toLegacyResult(await query(getExerciseDistinctTypes, { client }));
   }
 }

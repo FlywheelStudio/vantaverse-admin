@@ -1,7 +1,12 @@
 import { ReviewAssignUI } from './review-assign-ui';
-import { ProgramAssignmentsQuery } from '@/lib/supabase/queries/program-assignments';
+import { query, formatDalError } from '@/lib/dal';
+import {
+  getProgramAssignmentById,
+  getProgramAssignmentMembersByTemplateId,
+} from '@/lib/supabase/queries/program-assignments';
 import { convertScheduleToSelectedItems } from '../actions';
 import type { SelectedItem } from '../[id]/template-config/types';
+import type { ProgramAssignmentMember } from '@/lib/supabase/schemas/program-assignments';
 
 export default async function ReviewAssignPage({
   searchParams,
@@ -13,13 +18,11 @@ export default async function ReviewAssignPage({
     throw new Error('Missing program id');
   }
 
-  const query = new ProgramAssignmentsQuery();
-  const result = await query.getById(id);
+  const [assignmentErr, programAssignment] = await query(getProgramAssignmentById, id);
 
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to load program assignment');
+  if (assignmentErr) {
+    throw new Error(formatDalError(assignmentErr));
   }
-  const programAssignment = result.data;
 
   const dbSchedule = programAssignment?.workout_schedule?.schedule;
   let convertedSchedule: SelectedItem[][][] = [];
@@ -30,19 +33,18 @@ export default async function ReviewAssignPage({
     }
   }
 
-  let members = await query.getMembersByTemplateId(
+  const [membersErr, membersData] = await query(
+    getProgramAssignmentMembersByTemplateId,
     programAssignment.program_template_id,
   );
-  if (!members.success) {
-    members = { success: true, data: [] };
-  }
+  const members: ProgramAssignmentMember[] = membersErr ? [] : membersData;
 
   return (
     <ReviewAssignUI
       assignmentId={id}
       programAssignment={programAssignment}
       schedule={convertedSchedule}
-      members={members.data}
+      members={members}
     />
   );
 }

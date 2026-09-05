@@ -1,160 +1,219 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { defineMutation, defineQuery } from '@/lib/dal';
+import type { Database } from '@/lib/supabase/database.types';
+
 import {
-  SupabaseQuery,
-  type SupabaseSuccess,
-  type SupabaseError,
-} from '../query';
-import {
+  messageAttachmentSchema,
   messageSchema,
+  messageTypeSchema,
   type Message,
   type MessageAttachment,
 } from '../schemas/messages';
 
-export class MessagesQuery extends SupabaseQuery {
-  /**
-   * Get the latest user message id in a chat (ordered by created_at desc only)
-   */
-  public async getLastUserMessageIdByCreatedAt(
-    chatId: string,
-  ): Promise<SupabaseSuccess<string | null> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+export const messageKeys = {
+  all: ['messages'] as const,
+  byChat: (chatId: string) => [...messageKeys.all, 'chat', chatId] as const,
+  lastUserMessage: (chatId: string) =>
+    [...messageKeys.byChat(chatId), 'lastUser'] as const,
+};
 
-    const { data, error } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('chat_id', chatId)
-      .eq('message_type', 'user')
-      .order('created_at', { ascending: false })
-      .limit(1);
+/** Page size for `get_messages_paginated` in the admin thread. */
+export const MESSAGES_PAGE_SIZE = 20;
 
-    if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to get last user message',
-      );
-    }
+const lastUserMessageIdSchema = z.string().uuid().nullable();
+const messageListSchema = messageSchema.array();
+const messagesPageSchema = z.object({
+  messages: messageListSchema,
+  hasMore: z.boolean(),
+});
 
+const getMessagesPageInputSchema = z.object({
+  chatId: z.string().uuid(),
+  skip: z.number().int().nonnegative(),
+  pageSize: z.number().int().positive(),
+});
+
+const setLastSeenResultSchema = z.object({
+  id: z.string().uuid(),
+  updated: z.boolean(),
+});
+
+const setMessageLastSeenInputSchema = z.object({
+  messageId: z.string().uuid(),
+});
+
+const createMessageInputSchema = z.object({
+  chatId: z.string().uuid(),
+  content: z.string(),
+  userId: z.string().uuid(),
+  messageType: messageTypeSchema,
+  attachments: messageAttachmentSchema.nullable(),
+});
+
+type MessagesWithStatsRow = {
+  id: string | null;
+  chat_id: string | null;
+  user_id: string | null;
+  sender_id: string | null;
+  content: string | null;
+  attachments: MessageAttachment | null;
+  message_type: string | null;
+  metadata: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+  sender_first_name: string | null;
+  sender_last_name: string | null;
+  sender_avatar_url: string | null;
+  sender_is_admin: boolean | null;
+};
+
+async function fetchLastUserMessageIdByCreatedAt(
+  client: SupabaseClient<Database>,
+  chatId: string,
+): Promise<{ data: string | null; error: { message: string; code?: string } | null }> {
+  const { data, error } = await client
+    .from('messages')
+    .select('id')
+    .eq('chat_id', chatId)
+    .eq('message_type', 'user')
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data: data?.[0]?.id ?? null, error: null };
+}
+
+const normalizeMessagesWithStatsRows = (
+  rows: MessagesWithStatsRow[],
+): Message[] =>
+  rows
+    .filter((row) => row.id && row.chat_id && row.message_type)
+    .map((row) => ({
+      id: row.id as string,
+      chat_id: row.chat_id as string,
+      user_id: row.user_id ?? row.sender_id,
+      content: row.content ?? '',
+      attachments: row.attachments,
+      message_type: row.message_type as Message['message_type'],
+      metadata: row.metadata,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      sender_id: row.sender_id,
+      sender_first_name: row.sender_first_name,
+      sender_last_name: row.sender_last_name,
+      sender_avatar_url: row.sender_avatar_url,
+      sender_is_admin: row.sender_is_admin,
+    }));
+
+async function fetchMessagesPage(
+  client: SupabaseClient<Database>,
+  input: z.infer<typeof getMessagesPageInputSchema>,
+): Promise<{
+  data: z.infer<typeof messagesPageSchema> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { chatId, skip, pageSize } = getMessagesPageInputSchema.parse(input);
+  const { data, error } = await client.rpc('get_messages_paginated', {
+    p_chat_id: chatId,
+    p_skip: skip,
+    p_page_size: pageSize,
+  });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const envelope = data as {
+    success?: boolean;
+    data?: MessagesWithStatsRow[];
+    hasMore?: boolean;
+    error?: string;
+  } | null;
+
+  if (!envelope || envelope.success !== true || !Array.isArray(envelope.data)) {
     return {
-      success: true,
-      data: data?.[0]?.id ?? null,
+      data: null,
+      error: { message: envelope?.error ?? 'Failed to load messages' },
     };
   }
 
-  /**
-   * Set message last_seen_at to now only when it is currently null
-   */
-  public async setMessageLastSeenAtIfNull(
-    messageId: string,
-  ): Promise<SupabaseSuccess<{ updated: boolean }> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
+  const newestFirst = normalizeMessagesWithStatsRows(envelope.data);
+  return {
+    data: {
+      messages: [...newestFirst].reverse(),
+      hasMore: envelope.hasMore === true,
+    },
+    error: null,
+  };
+}
+
+/** Latest user message id in a chat (by created_at desc). */
+export const getLastUserMessageIdByCreatedAt = defineQuery({
+  key: messageKeys.lastUserMessage,
+  schema: lastUserMessageIdSchema,
+  execute: (client, chatId: string) =>
+    fetchLastUserMessageIdByCreatedAt(client, chatId),
+});
+
+/** One page of chat messages (chronological), via get_messages_paginated. */
+export const getMessagesPage = defineQuery({
+  key: (input: z.infer<typeof getMessagesPageInputSchema>) =>
+    [...messageKeys.byChat(input.chatId), 'page', input.skip, input.pageSize],
+  schema: messagesPageSchema,
+  execute: (client, input: z.infer<typeof getMessagesPageInputSchema>) =>
+    fetchMessagesPage(client, input),
+});
+
+/** Set message last_seen_at when currently null. */
+export const setMessageLastSeenAtIfNull = defineMutation({
+  inputSchema: setMessageLastSeenInputSchema,
+  schema: setLastSeenResultSchema,
+  execute: async (client, input) => {
     const now = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('messages')
       .update({
         last_seen_at: now,
         updated_at: now,
       })
-      .eq('id', messageId)
+      .eq('id', input.messageId)
       .is('last_seen_at', null)
       .select('id');
 
     if (error) {
-      return this.parseResponsePostgresError(
-        error,
-        'Failed to update last seen timestamp',
-      );
+      return { data: null, error };
     }
 
     return {
-      success: true,
-      data: { updated: (data?.length ?? 0) > 0 },
+      data: {
+        id: input.messageId,
+        updated: (data?.length ?? 0) > 0,
+      },
+      error: null,
     };
-  }
+  },
+  targets: () => [messageKeys.all],
+});
 
-  /**
-   * Get all messages for a chat
-   * @param chatId - The chat ID
-   * @returns Success with messages array or error
-   */
-  public async getMessagesByChatId(
-    chatId: string,
-  ): Promise<SupabaseSuccess<Message[]> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
-      .from('messages_with_stats')
-      .select('*')
-      .eq('chat_id', chatId)
-      .neq('message_type', 'system')
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to get messages');
-    }
-
-    if (!data) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
-
-    const normalized = data
-      .filter((row) => row.id && row.chat_id && row.message_type)
-      .map((row) => ({
-        id: row.id as string,
-        chat_id: row.chat_id as string,
-        user_id: row.user_id ?? row.sender_id,
-        content: row.content ?? '',
-        attachments: row.attachments,
-        message_type: row.message_type,
-        metadata: row.metadata,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        sender_id: row.sender_id,
-        sender_first_name: row.sender_first_name,
-        sender_last_name: row.sender_last_name,
-        sender_avatar_url: row.sender_avatar_url,
-        sender_is_admin: row.sender_is_admin,
-      }));
-
-    const result = messageSchema.array().safeParse(normalized);
-
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-
-  /**
-   * Create a new message
-   * @param chatId - The chat ID
-   * @param content - The message content
-   * @param userId - The user ID (admin sending the message)
-   * @param messageType - The message type (defaults to 'admin')
-   * @returns Success with created message or error
-   */
-  public async createMessage(
-    chatId: string,
-    content: string,
-    userId: string,
-    messageType: 'admin' | 'user' | 'system' = 'admin',
-    attachments: MessageAttachment | null = null,
-  ): Promise<SupabaseSuccess<Message> | SupabaseError> {
-    const supabase = await this.getClient('authenticated_user');
-
-    const { data, error } = await supabase
+/** Create a message and bump chat last_updated_at. */
+export const createMessage = defineMutation({
+  inputSchema: createMessageInputSchema,
+  schema: messageSchema,
+  execute: async (client, input) => {
+    const { data, error } = await client
       .from('messages')
       .insert({
-        chat_id: chatId,
-        content: content.trim(),
-        attachments,
-        user_id: userId,
-        message_type: messageType,
+        chat_id: input.chatId,
+        content: input.content.trim(),
+        attachments: input.attachments,
+        user_id: input.userId,
+        message_type: input.messageType,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -162,31 +221,29 @@ export class MessagesQuery extends SupabaseQuery {
       .single();
 
     if (error) {
-      return this.parseResponsePostgresError(error, 'Failed to create message');
+      return { data: null, error };
     }
 
     if (!data) {
       return {
-        success: false,
-        error: 'Failed to create message',
+        data: null,
+        error: { message: 'Failed to create message' },
       };
     }
 
-    // Update chat's last_updated_at
-    await supabase
+    await client
       .from('chats')
       .update({ last_updated_at: new Date().toISOString() })
-      .eq('id', chatId);
+      .eq('id', input.chatId);
 
-    const result = messageSchema.safeParse(data);
+    return { data, error: null };
+  },
+  targets: (input) => [messageKeys.all, messageKeys.byChat(input.chatId)],
+});
 
-    if (!result.success) {
-      return this.parseResponseZodError(result.error);
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  }
-}
+export type CreateMessageInput = z.infer<typeof createMessageInputSchema>;
+export type SetMessageLastSeenInput = z.infer<
+  typeof setMessageLastSeenInputSchema
+>;
+export type MessagesPage = z.infer<typeof messagesPageSchema>;
+export type GetMessagesPageInput = z.infer<typeof getMessagesPageInputSchema>;

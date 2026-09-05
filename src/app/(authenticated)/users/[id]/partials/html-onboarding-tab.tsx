@@ -14,6 +14,10 @@ import type { PreprogramEngagementRow } from './insights/adherence-card';
 import { EmpowermentCard } from './insights/empowerment-card';
 import { PledgeCard } from './insights/pledge-card';
 import { VantapointsCard } from './insights/vantapoints-card';
+import {
+  getOnboardingPathProgress,
+  type OnboardingPathProgress,
+} from '@/lib/onboarding-path';
 import { getProgramSlaMode } from './program-sla';
 import {
   buildAdherencePeriods,
@@ -36,21 +40,19 @@ function gateTone(
 
 function buildOnboardingSteps(
   user: ProfileWithStats,
+  path: OnboardingPathProgress,
   onChangePath: () => void,
   onOpenIntake: () => void,
   onAssignProgram: () => void,
 ): HtmlStepItem[] {
-  const intakeDone = Boolean(user.intro_completed);
-  const screeningDone = Boolean(user.screening_completed);
-  const consultDone = Boolean(user.consultation_completed);
-  const programDone = Boolean(user.program_assigned);
+  const { intakeDone, screeningDone, consultationDone, programDone } = path;
 
   const current =
     !intakeDone
       ? 0
       : !screeningDone
         ? 1
-        : !consultDone
+        : !consultationDone
           ? 2
           : !programDone
             ? 3
@@ -128,16 +130,16 @@ function buildOnboardingSteps(
     },
     {
       title: 'Virtual consultation',
-      tone: gateTone(consultDone, current === 2),
-      knob: consultDone ? 'Check' : 3,
-      badge: consultDone ? (
+      tone: gateTone(consultationDone, current === 2),
+      knob: consultationDone ? 'Check' : 3,
+      badge: consultationDone ? (
         <span className="bdg bdg-s">Done</span>
       ) : current === 2 ? (
         <span className="bdg bdg-b">Current</span>
       ) : (
         <span className="bdg">Queued</span>
       ),
-      meta: consultDone
+      meta: consultationDone
         ? 'Marked complete in profile.'
         : current === 2
           ? 'Schedule the virtual consult when screening is done.'
@@ -241,19 +243,15 @@ export function HtmlOnboardingTab({
   onAssignProgram: () => void;
   onOpenIntake: () => void;
 }): React.ReactElement {
+  const path = getOnboardingPathProgress(user);
   const steps = buildOnboardingSteps(
     user,
+    path,
     onChangePath,
     onOpenIntake,
     onAssignProgram,
   );
-
-  const cleared = [
-    user.intro_completed,
-    user.screening_completed,
-    user.consultation_completed,
-    user.program_assigned,
-  ].filter(Boolean).length;
+  const { cleared, total: pathTotal } = path;
 
   const slaMode = getProgramSlaMode({
     programDueDate: user.program_due_date,
@@ -303,7 +301,7 @@ export function HtmlOnboardingTab({
             <div>
               <div className="ch-t">Onboarding path</div>
               <div className="sl-head-sub">
-                <HtmlGate unlocked={cleared} total={4} />
+                <HtmlGate unlocked={cleared} total={pathTotal} />
                 <span className="sl-count">gates cleared</span>
                 {user.journey_phase ? (
                   <>
