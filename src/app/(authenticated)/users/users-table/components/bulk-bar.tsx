@@ -16,21 +16,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { sendBulkInvitations } from '../../actions';
-import {
-  useBulkDeleteUsers,
-  useBulkToggleSuperAdmin,
-} from '../hooks/use-users-table-mutations';
+import { useBulkToggleSuperAdmin } from '../hooks/use-users-table-mutations';
 
 interface UsersTableBulkBarProps {
   table: Table<ProfileWithStats>;
+  onDeleteUsers: (userIds: string[]) => Promise<void>;
+  isDeleting: boolean;
 }
 
 /** HTML `.bulk` selection bar above `.tbl`. */
 export function UsersTableBulkBar({
   table,
+  onDeleteUsers,
+  isDeleting,
 }: UsersTableBulkBarProps): React.ReactElement | null {
   const queryClient = useQueryClient();
-  const bulkDeleteMutation = useBulkDeleteUsers();
   const bulkToggleMutation = useBulkToggleSuperAdmin();
   const [sendingInvites, setSendingInvites] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -82,9 +82,8 @@ export function UsersTableBulkBar({
 
   const handleBulkDelete = async (): Promise<void> => {
     try {
-      await bulkDeleteMutation.mutateAsync(selectedUsers.map((user) => user.id));
+      await onDeleteUsers(selectedUsers.map((user) => user.id));
       setBulkDeleteOpen(false);
-      table.resetRowSelection();
     } catch {
       // handled in mutation
     }
@@ -135,7 +134,7 @@ export function UsersTableBulkBar({
           type="button"
           className="dn"
           onClick={() => setBulkDeleteOpen(true)}
-          disabled={bulkDeleteMutation.isPending}
+          disabled={isDeleting}
         >
           Remove
         </button>
@@ -167,8 +166,16 @@ export function UsersTableBulkBar({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleBulkDelete();
+              }}
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -31,6 +31,7 @@ import { getOnboardingPathProgress } from '@/lib/onboarding-path';
 import toast from 'react-hot-toast';
 import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
+import type { UsersTableMeta } from '../types';
 
 function NameEmailCell({ profile }: { profile: ProfileWithStats }) {
   const router = useRouter();
@@ -322,8 +323,10 @@ function RegistrationCell({ profile }: { profile: ProfileWithStats }) {
 
 function ActionsCell({
   profile,
+  onRemove,
 }: {
   profile: ProfileWithStats;
+  onRemove: (profile: ProfileWithStats) => void;
 }): React.ReactElement {
   const router = useRouter();
   const [assignOpen, setAssignOpen] = React.useState(false);
@@ -373,7 +376,7 @@ function ActionsCell({
             id: 'remove',
             label: 'Remove',
             danger: true,
-            onSelect: () => toastUnavailable('Remove member'),
+            onSelect: () => onRemove(profile),
           },
         ]}
       />
@@ -552,7 +555,16 @@ export const columns: ColumnDef<ProfileWithStats>[] = [
   {
     id: 'actions',
     header: () => null,
-    cell: ({ row }) => <ActionsCell profile={row.original} />,
+    cell: ({ row, table }) => {
+      const onRemove = (table.options.meta as UsersTableMeta | undefined)
+        ?.onRemoveMember;
+      return (
+        <ActionsCell
+          profile={row.original}
+          onRemove={onRemove ?? (() => undefined)}
+        />
+      );
+    },
     enableSorting: false,
     enableColumnFilter: false,
   },

@@ -1,6 +1,11 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import {
   importUsersCSV,
   importUsersExcel,
@@ -10,6 +15,44 @@ import {
 } from '../../actions';
 import toast from 'react-hot-toast';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
+
+/** List caches that render /users (legacy `useUsers` + `useMembersFiltered`). */
+const USER_DIRECTORY_QUERY_KEYS = ['users', 'members-filtered'] as const;
+
+type UserDirectorySnapshot = Array<
+  [QueryKey, ProfileWithStats[] | undefined]
+>;
+
+const snapshotUserDirectory = (queryClient: QueryClient): UserDirectorySnapshot =>
+  USER_DIRECTORY_QUERY_KEYS.flatMap((key) =>
+    queryClient.getQueriesData<ProfileWithStats[]>({ queryKey: [key] }),
+  );
+
+const cancelUserDirectoryQueries = async (
+  queryClient: QueryClient,
+): Promise<void> => {
+  await Promise.all(
+    USER_DIRECTORY_QUERY_KEYS.map((key) =>
+      queryClient.cancelQueries({ queryKey: [key] }),
+    ),
+  );
+};
+
+const restoreUserDirectory = (
+  queryClient: QueryClient,
+  snapshot: UserDirectorySnapshot,
+): void => {
+  snapshot.forEach(([queryKey, data]) => {
+    queryClient.setQueryData(queryKey, data);
+  });
+};
+
+const invalidateUserDirectory = (queryClient: QueryClient): void => {
+  for (const key of USER_DIRECTORY_QUERY_KEYS) {
+    void queryClient.invalidateQueries({ queryKey: [key] });
+  }
+  void queryClient.invalidateQueries({ queryKey: ['member-filter-counts'] });
+};
 
 /**
  * Parse CSV into staged invite rows (no user creation / cache invalidation).
@@ -70,30 +113,31 @@ export function useBulkDeleteUsers() {
       return userIds;
     },
     onMutate: async (userIds) => {
-      await queryClient.cancelQueries({ queryKey: ['users'] });
-      const previousUserQueries = queryClient.getQueriesData<
-        ProfileWithStats[]
-      >({ queryKey: ['users'] });
-      queryClient.setQueriesData<ProfileWithStats[]>(
-        { queryKey: ['users'] },
-        (old) => {
-          if (!old) return old;
-          const set = new Set(userIds);
-          return old.filter((u) => !set.has(u.id));
-        },
-      );
+      await cancelUserDirectoryQueries(queryClient);
+      const previousUserQueries = snapshotUserDirectory(queryClient);
+      const ids = new Set(userIds);
+      const filterOut = (
+        old: ProfileWithStats[] | undefined,
+      ): ProfileWithStats[] | undefined => {
+        if (!old) return old;
+        return old.filter((user) => !ids.has(user.id));
+      };
+      for (const key of USER_DIRECTORY_QUERY_KEYS) {
+        queryClient.setQueriesData<ProfileWithStats[]>(
+          { queryKey: [key] },
+          filterOut,
+        );
+      }
       return { previousUserQueries };
     },
     onError: (_error, _userIds, context) => {
       if (context?.previousUserQueries) {
-        context.previousUserQueries.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
+        restoreUserDirectory(queryClient, context.previousUserQueries);
       }
       toast.error('Failed to delete users');
     },
     onSuccess: (userIds) => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserDirectory(queryClient);
       toast.success(
         `Deleted ${userIds.length} user${userIds.length > 1 ? 's' : ''}`,
       );
