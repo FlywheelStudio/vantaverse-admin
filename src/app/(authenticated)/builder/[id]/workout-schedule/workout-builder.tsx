@@ -91,12 +91,21 @@ export function WorkoutBuilder({
       setSelectedAssignmentId(assignmentId);
     }
 
-    if (initialAssignment.program_template && assignmentId && schedule.length === 0) {
+    // Only seed a blank grid for brand-new programs. Never wipe when the
+    // assignment already has a workout_schedule_id (conversion failure / empty
+    // hydrate must not look like intentional rest days).
+    if (
+      initialAssignment.program_template &&
+      assignmentId &&
+      schedule.length === 0 &&
+      !initialAssignment.workout_schedule_id
+    ) {
       initializeSchedule(template?.weeks ?? 4);
     }
   }, [
     assignmentId,
     initialAssignment.program_template,
+    initialAssignment.workout_schedule_id,
     template?.weeks,
     setSelectedAssignmentId,
     initializeSchedule,

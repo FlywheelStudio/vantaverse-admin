@@ -30,9 +30,10 @@ export default async function BuilderIdPage({
 
   if (dbSchedule) {
     const conversionResult = await convertScheduleToSelectedItems(dbSchedule);
-    if (conversionResult.success) {
-      convertedSchedule = conversionResult.data as SelectedItem[][][];
+    if (!conversionResult.success) {
+      throw new Error(conversionResult.error);
     }
+    convertedSchedule = conversionResult.data as SelectedItem[][][];
   }
 
   return (

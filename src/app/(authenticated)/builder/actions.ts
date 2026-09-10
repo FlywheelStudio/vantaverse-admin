@@ -42,6 +42,7 @@ import {
   upsertWorkoutScheduleMutation,
 } from '@/lib/supabase/queries/workout-schedules';
 import { SupabaseStorage } from '@/lib/supabase/storage';
+import { createAdminClient } from '@/lib/supabase/core/admin';
 import { createClient } from '@/lib/supabase/core/server';
 import type { SupabaseError, SupabaseSuccess } from '@/lib/supabase/result';
 import { DatabaseSchedule } from './[id]/workout-schedule/utils';
@@ -864,7 +865,8 @@ export async function convertScheduleToSelectedItems(
     }
   }
 
-  const client = await createClient();
+  // Match getProgramAssignmentById: admin client so RLS cannot empty the grid.
+  const client = await createAdminClient();
 
   const [directTemplatesResult, groupsResult] = await Promise.all([
     query(
@@ -872,7 +874,7 @@ export async function convertScheduleToSelectedItems(
       Array.from(exerciseTemplateIds),
       { client },
     ),
-    query(getGroupsByIdsQuery, Array.from(groupIds)),
+    query(getGroupsByIdsQuery, Array.from(groupIds), { client }),
   ]);
 
   const [directTemplatesErr, directTemplatesRecord] = directTemplatesResult;
@@ -889,6 +891,23 @@ export async function convertScheduleToSelectedItems(
   const templatesMap = new Map<string, ExerciseTemplate>(
     Object.entries(directTemplatesRecord) as [string, ExerciseTemplate][],
   );
+
+  if (
+    exerciseTemplateIds.size > 0 &&
+    templatesMap.size * 2 < exerciseTemplateIds.size
+  ) {
+    return {
+      success: false,
+      error: `Failed to resolve exercise templates (${templatesMap.size} of ${exerciseTemplateIds.size})`,
+    };
+  }
+
+  if (groupIds.size > 0 && groupsMap.size === 0) {
+    return {
+      success: false,
+      error: `Failed to resolve groups (0 of ${groupIds.size})`,
+    };
+  }
 
   const groupOnlyTemplateIds = new Set<string>();
   for (const group of groupsMap.values()) {
@@ -920,6 +939,8 @@ export async function convertScheduleToSelectedItems(
 
   // Convert schedule to SelectedItem format
   const convertedSchedule: SelectedItem[][][] = [];
+  let scheduledExerciseRefs = 0;
+  let resolvedExerciseRefs = 0;
 
   for (const week of dbSchedule) {
     const convertedWeek: SelectedItem[][] = [];
@@ -929,16 +950,20 @@ export async function convertScheduleToSelectedItems(
 
       for (const exercise of day.exercises) {
         if (exercise.type === 'exercise_template') {
+          scheduledExerciseRefs += 1;
           const template = templatesMap.get(exercise.id);
           if (template) {
+            resolvedExerciseRefs += 1;
             convertedDay.push({
               type: 'template',
               data: template as ExerciseTemplate,
             });
           }
         } else if (exercise.type === 'group') {
+          scheduledExerciseRefs += 1;
           const group = groupsMap.get(exercise.id);
           if (group) {
+            resolvedExerciseRefs += 1;
             // Fetch exercise templates for this group
             const groupTemplates: Array<
               Extract<SelectedItem, { type: 'template' }>
@@ -977,6 +1002,16 @@ export async function convertScheduleToSelectedItems(
     }
 
     convertedSchedule.push(convertedWeek);
+  }
+
+  if (
+    scheduledExerciseRefs > 0 &&
+    resolvedExerciseRefs * 2 < scheduledExerciseRefs
+  ) {
+    return {
+      success: false,
+      error: `Failed to hydrate schedule items (${resolvedExerciseRefs} of ${scheduledExerciseRefs})`,
+    };
   }
 
   return {
