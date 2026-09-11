@@ -25,7 +25,7 @@ export function LoginPanel(): React.ReactElement {
             marginTop: 8,
           }}
         >
-          VantaThrive admin
+          VantaVybe admin
         </div>
       </div>
       <div style={{ position: 'relative' }}>
@@ -50,7 +50,7 @@ export function LoginPanel(): React.ReactElement {
             lineHeight: 1.6,
           }}
         >
-          The VantaThrive admin console — manage members, groups, programs and
+          The VantaVybe admin console — manage members, groups, programs and
           the exercise library across the MedVanta network.
         </div>
       </div>
