@@ -555,7 +555,7 @@ export async function getExercisesPaginated(
   | SupabaseError
 > {
   return toSupabaseResult(
-    await query(
+    await queryWithSession(
       listExercisesPaginated,
       page,
       pageSize,
@@ -609,7 +609,7 @@ export async function getGroupsPaginated(
   sortOrder: 'asc' | 'desc' = 'desc',
 ): Promise<LegacyResult<PaginatedResult<DbGroup>>> {
   return fromDalResult(
-    await query(listGroupsPaginated, {
+    await queryWithSession(listGroupsPaginated, {
       page,
       pageSize,
       search,
