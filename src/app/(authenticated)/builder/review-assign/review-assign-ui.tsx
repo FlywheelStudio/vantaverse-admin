@@ -32,7 +32,12 @@ import {
   getDayName,
 } from '../[id]/workout-schedule/exercise-builder-mock-data';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
-import type { ProgramAssignmentWithTemplate, ProgramAssignmentMember } from '@/lib/supabase/schemas/program-assignments';
+import {
+  EMPTY_TEMPLATE_SAVE_IMPACT,
+  type ProgramAssignmentWithTemplate,
+  type ProgramAssignmentMember,
+  type TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
 import type { SelectedItem } from '../[id]/template-config/types';
 import { QuickAssignModal } from './quick-assign-modal';
 import { PropagateDatesDialog } from './propagate-dates-dialog';
@@ -43,6 +48,7 @@ interface ReviewAssignUIProps {
   programAssignment: ProgramAssignmentWithTemplate;
   schedule: SelectedItem[][][];
   members: ProgramAssignmentMember[];
+  saveImpact?: TemplateSaveImpact;
 }
 
 interface WeekStat {
@@ -59,6 +65,7 @@ export function ReviewAssignUI({
   programAssignment,
   schedule,
   members,
+  saveImpact = EMPTY_TEMPLATE_SAVE_IMPACT,
 }: ReviewAssignUIProps): React.ReactElement {
   const builderHref = `/builder/${assignmentId}`;
   const template = programAssignment.program_template;
@@ -552,6 +559,7 @@ export function ReviewAssignUI({
         onConfirm={(updateDerived) => void performSave(updateDerived)}
         loading={isSaving}
         templateName={templateName}
+        impact={saveImpact}
       />
 
       <PropagateDatesDialog

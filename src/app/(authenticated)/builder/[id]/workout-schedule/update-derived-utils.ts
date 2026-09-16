@@ -1,32 +1,8 @@
-/** Mock impact counts for Save Template modal (HTML `mdUpdateDerived` parity). */
-
-interface UpdateDerivedImpactCounts {
-  activePrograms: number;
-  members: number;
-  groups: number;
-  /** Mid-week members called out in rebuild option copy (HTML). */
-  midWeekMembers: number;
-}
-
-export const UPDATE_DERIVED_IMPACT_COUNTS: UpdateDerivedImpactCounts = {
-  activePrograms: 14,
-  members: 28,
-  groups: 3,
-  midWeekMembers: 3,
-};
-
-export const DEFAULT_TEMPLATE_NAME = 'Lower Body & Back Mobility';
-
-export const AFFECTED_MEMBER_NAMES = [
-  'Nadia Okonjo',
-  'Chuck Bolland',
-  'Ivan Marek',
-  'Sonia Kaur',
-  'Bruno Santos',
-  'Temi Adeyemi',
-] as const;
+/** Avatar stack helpers for Save Template modal (HTML `mdUpdateDerived` parity). */
 
 export const AFFECTED_STACK_VISIBLE = 5;
+
+export const DEFAULT_TEMPLATE_NAME = 'Program';
 
 /**
  * Initials for MedVanta `.av` stack (first + last initial).

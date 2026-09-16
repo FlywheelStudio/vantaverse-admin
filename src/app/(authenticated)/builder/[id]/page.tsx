@@ -1,9 +1,16 @@
 import { BuilderDetailUI } from '../builder-detail-ui';
 import { query, formatDalError } from '@/lib/dal';
-import { getProgramAssignmentById } from '@/lib/supabase/queries/program-assignments';
+import {
+  getProgramAssignmentById,
+  getTemplateSaveImpactByBaseId,
+} from '@/lib/supabase/queries/program-assignments';
 import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
 import { isBuilderWorkoutTab } from '@/app/(authenticated)/builder/partials/html-utils';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
+import {
+  EMPTY_TEMPLATE_SAVE_IMPACT,
+  type TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
 
 export default async function BuilderIdPage({
   params,
@@ -19,11 +26,19 @@ export default async function BuilderIdPage({
     resolvedSearchParams?.collapsed === '1' ||
     resolvedSearchParams?.collapsed === 'true';
 
-  const [assignmentErr, programAssignment] = await query(getProgramAssignmentById, id);
+  const [[assignmentErr, programAssignment], [impactErr, impactData]] =
+    await Promise.all([
+      query(getProgramAssignmentById, id),
+      query(getTemplateSaveImpactByBaseId, id),
+    ]);
 
   if (assignmentErr) {
     throw new Error(formatDalError(assignmentErr));
   }
+
+  const saveImpact: TemplateSaveImpact = impactErr
+    ? EMPTY_TEMPLATE_SAVE_IMPACT
+    : impactData;
 
   const dbSchedule = programAssignment?.workout_schedule?.schedule;
   let convertedSchedule: SelectedItem[][][] | null = null;
@@ -42,6 +57,7 @@ export default async function BuilderIdPage({
       programAssignment={programAssignment}
       convertedSchedule={convertedSchedule}
       programDetailsCollapsed={collapsed}
+      saveImpact={saveImpact}
     />
   );
 }

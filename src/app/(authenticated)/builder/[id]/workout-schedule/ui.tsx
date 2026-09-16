@@ -23,6 +23,10 @@ import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-surv
 import { useQueryClient } from '@tanstack/react-query';
 import { programAssignmentsKeys } from '@/hooks/use-passignments';
 import { PROGRAM_ASSIGNMENT_STATUS } from '@/lib/constants/program-assignment-status';
+import {
+  EMPTY_TEMPLATE_SAVE_IMPACT,
+  type TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
 
 type BuilderAssignmentStatus =
   | typeof PROGRAM_ASSIGNMENT_STATUS.ACTIVE
@@ -38,6 +42,7 @@ interface BuildWorkoutSectionProps {
   onStepActive?: () => void;
   onScheduleDirtyChange?: (dirty: boolean) => void;
   onSaved?: () => void;
+  saveImpact?: TemplateSaveImpact;
 }
 
 export function BuildWorkoutSection({
@@ -49,6 +54,7 @@ export function BuildWorkoutSection({
   onStepActive,
   onScheduleDirtyChange,
   onSaved,
+  saveImpact = EMPTY_TEMPLATE_SAVE_IMPACT,
 }: BuildWorkoutSectionProps) {
   const {
     schedule,
@@ -71,6 +77,7 @@ export function BuildWorkoutSection({
 
   const weeksValue = programForm.watch('weeks') ?? initialWeeks;
   const comingSoonWeeksValue = programForm.watch('coming_soon_weeks') ?? 0;
+  const templateNameValue = programForm.watch('name') || template.name;
   const programEndDate = useMemo(() => {
     if (!programStartDate || weeksValue < 1) return null;
     const end = calculateEndDate(new Date(`${programStartDate}T00:00:00`), weeksValue);
@@ -515,6 +522,8 @@ export function BuildWorkoutSection({
         onOpenChange={setShowDerivedDialog}
         onConfirm={performSave}
         loading={isSaving}
+        templateName={templateNameValue}
+        impact={saveImpact}
       />
 
       {confirmAction ? (

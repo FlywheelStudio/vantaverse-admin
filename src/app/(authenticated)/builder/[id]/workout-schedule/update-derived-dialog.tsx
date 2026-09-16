@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { Icon } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import {
-  AFFECTED_MEMBER_NAMES,
+  EMPTY_TEMPLATE_SAVE_IMPACT,
+  type TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
+import {
   AFFECTED_STACK_VISIBLE,
   DEFAULT_TEMPLATE_NAME,
-  UPDATE_DERIVED_IMPACT_COUNTS,
   getAvatarToneClass,
   getStackInitials,
-} from './update-derived-mock-data';
+} from './update-derived-utils';
 
 interface UpdateDerivedDialogProps {
   open: boolean;
@@ -19,6 +21,8 @@ interface UpdateDerivedDialogProps {
   loading?: boolean;
   /** Template name shown as modal subtitle (HTML). */
   templateName?: string;
+  /** Prefetched impact for derived member programs. */
+  impact?: TemplateSaveImpact;
 }
 
 function UpdateDerivedDialogBody({
@@ -26,14 +30,14 @@ function UpdateDerivedDialogBody({
   onConfirm,
   loading = false,
   templateName,
+  impact = EMPTY_TEMPLATE_SAVE_IMPACT,
 }: Omit<UpdateDerivedDialogProps, 'open'>): React.ReactElement {
   const [updateDerived, setUpdateDerived] = useState(false);
-  const counts = UPDATE_DERIVED_IMPACT_COUNTS;
   const displayName = templateName?.trim() || DEFAULT_TEMPLATE_NAME;
-  const visibleNames = AFFECTED_MEMBER_NAMES.slice(0, AFFECTED_STACK_VISIBLE);
+  const visibleNames = impact.memberNames.slice(0, AFFECTED_STACK_VISIBLE);
   const overflow =
-    AFFECTED_MEMBER_NAMES.length > AFFECTED_STACK_VISIBLE
-      ? AFFECTED_MEMBER_NAMES.length - AFFECTED_STACK_VISIBLE
+    impact.members > visibleNames.length
+      ? impact.members - visibleNames.length
       : 0;
 
   const handleConfirm = (): void => {
@@ -77,7 +81,7 @@ function UpdateDerivedDialogBody({
         <Icon name="Info" size={18} />
         <div>
           <div className="at">
-            {counts.members} members are on a program built from this template
+            {impact.members} members are on a program built from this template
           </div>
           Their completed weeks are never changed. Only weeks they have not reached yet can be
           rebuilt.
@@ -100,7 +104,7 @@ function UpdateDerivedDialogBody({
           <span>
             <span className="ct">Update this template only</span>
             <span className="cd">
-              The {counts.activePrograms} active member programs keep the schedule they were assigned.
+              The {impact.activePrograms} active member programs keep the schedule they were assigned.
               New assignments use the updated template.
             </span>
           </span>
@@ -116,10 +120,10 @@ function UpdateDerivedDialogBody({
           </span>
           <span>
             <span className="ct">
-              Update the template and rebuild {counts.activePrograms} active programs
+              Update the template and rebuild {impact.activePrograms} active programs
             </span>
             <span className="cd">
-              Remaining weeks are replaced with the new schedule. {counts.midWeekMembers} members
+              Remaining weeks are replaced with the new schedule. {impact.midWeekMembers} members
               are mid-week — their current week finishes first.
             </span>
           </span>
@@ -143,7 +147,7 @@ function UpdateDerivedDialogBody({
           }}
         >
           <span className="ovl">Affected members</span>
-          <span className="bdg bdg-b">{counts.members}</span>
+          <span className="bdg bdg-b">{impact.members}</span>
           <button
             type="button"
             className="sp lnk"
@@ -155,20 +159,26 @@ function UpdateDerivedDialogBody({
           </button>
         </div>
         <div className="row" style={{ gap: 11, padding: '12px 13px' }}>
-          <span className="stk">
-            {visibleNames.map((name) => (
-              <span
-                key={name}
-                className={`av av-28 ${getAvatarToneClass(name)}`}
-                title={name}
-              >
-                {getStackInitials(name)}
-              </span>
-            ))}
-            {overflow > 0 ? <span className="more">+{overflow}</span> : null}
-          </span>
+          {visibleNames.length > 0 ? (
+            <span className="stk">
+              {visibleNames.map((name, index) => (
+                <span
+                  key={`${name}-${index}`}
+                  className={`av av-28 ${getAvatarToneClass(name)}`}
+                  title={name}
+                >
+                  {getStackInitials(name)}
+                </span>
+              ))}
+              {overflow > 0 ? <span className="more">+{overflow}</span> : null}
+            </span>
+          ) : (
+            <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
+              No members yet
+            </span>
+          )}
           <span className="mut" style={{ fontSize: 'var(--text-sm)' }}>
-            across {counts.groups} groups
+            across {impact.groups} groups
           </span>
         </div>
       </div>

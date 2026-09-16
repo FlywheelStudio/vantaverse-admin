@@ -19,18 +19,23 @@ import {
 } from '@/lib/constants/program-assignment-status';
 import { PreProgramWarningBanner } from '../pre-program-warning-banner';
 import { BuilderSaveBar } from '../../partials/html-save-bar';
-import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type {
+  ProgramAssignmentWithTemplate,
+  TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
 
 interface WorkoutBuilderProps {
   assignmentId: string | undefined;
   initialAssignment: ProgramAssignmentWithTemplate;
   programDetailsCollapsed?: boolean;
+  saveImpact: TemplateSaveImpact;
 }
 
 export function WorkoutBuilder({
   assignmentId,
   initialAssignment,
   programDetailsCollapsed = false,
+  saveImpact,
 }: WorkoutBuilderProps): React.ReactElement {
   const router = useRouter();
   const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
@@ -214,6 +219,7 @@ export function WorkoutBuilder({
             onSaveStateChange={setSaveState}
             onScheduleDirtyChange={handleScheduleDirtyChange}
             onSaved={handleSaved}
+            saveImpact={saveImpact}
           />
         </div>
       </FormProvider>

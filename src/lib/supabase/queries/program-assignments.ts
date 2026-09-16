@@ -1,25 +1,33 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-import {
-  defineMutation,
-  defineQuery,
-} from '@/lib/dal';
+import { defineMutation, defineQuery } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
-import { calculateEndDate, formatDateForDB } from '@/lib/utils';
+import {
+  calculateEndDate,
+  formatDateForDB,
+  parseLocalDateString,
+} from '@/lib/utils';
 import {
   MIN_GATES_FOR_PROGRAM_ASSIGNMENT,
   PROGRAM_ASSIGNMENT_STATUS,
 } from '@/lib/constants/program-assignment-status';
+import { differenceInCalendarDays, startOfDay } from 'date-fns';
 
 import {
   programAssignmentSchema,
   programAssignmentMemberSchema,
   programAssignmentWithTemplateSchema,
+  templateSaveImpactSchema,
   type ProgramAssignment,
   type ProgramAssignmentMember,
   type ProgramAssignmentWithTemplate,
+  type TemplateSaveImpact,
 } from '../schemas/program-assignments';
+import { resolveDisplayProfilesByIds } from './resolve-display-profiles';
+
+/** Avatar stack preview size for the Save Template impact panel. */
+const TEMPLATE_SAVE_IMPACT_NAME_PREVIEW = 5;
 
 const ASSIGNMENT_WITH_TEMPLATE_SELECT = `
   *,
@@ -37,8 +45,7 @@ const ASSIGNMENT_WITH_TEMPLATE_AND_PROFILES_SELECT = `
 const programAssignmentListSchema = programAssignmentWithTemplateSchema.array();
 const programAssignmentNullableSchema =
   programAssignmentWithTemplateSchema.nullable();
-const programAssignmentMemberListSchema =
-  programAssignmentMemberSchema.array();
+const programAssignmentMemberListSchema = programAssignmentMemberSchema.array();
 const programAssignmentRowNullableSchema = programAssignmentSchema.nullable();
 
 const memberStatsEntrySchema = z.object({
@@ -167,16 +174,14 @@ export const programAssignmentKeys = {
     [...programAssignmentKeys.all, 'by-template', templateId] as const,
   membersByTemplateId: (templateId: string) =>
     [...programAssignmentKeys.all, 'members', templateId] as const,
+  saveImpactByBaseId: (baseAssignmentId: string) =>
+    [...programAssignmentKeys.all, 'save-impact', baseAssignmentId] as const,
   workoutScheduleFields: (id: string) =>
     [...programAssignmentKeys.all, 'workout-schedule-fields', id] as const,
   complianceByUserId: (userId: string) =>
     [...programAssignmentKeys.all, 'compliance', userId] as const,
   memberStats: (ids: string[]) =>
-    [
-      ...programAssignmentKeys.all,
-      'member-stats',
-      ...[...ids].sort(),
-    ] as const,
+    [...programAssignmentKeys.all, 'member-stats', ...[...ids].sort()] as const,
   activeByUserId: (userId: string) =>
     [...programAssignmentKeys.all, 'active', userId] as const,
   listPaginated: (input: GetListPaginatedInput) =>
@@ -199,7 +204,9 @@ type ProfileJoin = {
 
 type RawAssignmentWithTemplate = ProgramAssignmentWithTemplate & {
   profiles?: ProfileJoin | null;
-  workout_schedule?: Database['public']['Tables']['workout_schedules']['Row'] | null;
+  workout_schedule?:
+    | Database['public']['Tables']['workout_schedules']['Row']
+    | null;
 };
 
 function transformAssignmentRow(
@@ -210,7 +217,7 @@ function transformAssignmentRow(
     ...item,
     program_template: item.program_template || null,
     workout_schedule: item.workout_schedule || null,
-    profiles: includeProfiles ? item.profiles ?? null : undefined,
+    profiles: includeProfiles ? (item.profiles ?? null) : undefined,
   };
 }
 
@@ -316,9 +323,7 @@ async function fetchMemberStatsByTemplateIds(
   return { data: result, error: null };
 }
 
-async function fetchTemplates(
-  client: SupabaseClient<Database>,
-): Promise<{
+async function fetchTemplates(client: SupabaseClient<Database>): Promise<{
   data: ProgramAssignmentWithTemplate[] | null;
   error: { message: string; code?: string } | null;
 }> {
@@ -432,8 +437,8 @@ async function fetchTemplatesPaginated(
   const total = templateIds
     ? parsed.data.length < pageSize
       ? from + parsed.data.length
-      : count ?? 0
-    : count ?? 0;
+      : (count ?? 0)
+    : (count ?? 0);
   const hasMore = from + parsed.data.length < total;
 
   const pageTemplateIds = Array.from(
@@ -599,6 +604,101 @@ async function fetchMembersByTemplateId(
   return { data: parsed.data, error: null };
 }
 
+/**
+ * True when today falls mid program-week (not day 1 of the week from start_date).
+ */
+function isAssignmentMidWeek(startDate: string | null): boolean {
+  if (!startDate) return false;
+  const start = startOfDay(parseLocalDateString(startDate));
+  const today = startOfDay(new Date());
+  if (today.getTime() < start.getTime()) return false;
+  return differenceInCalendarDays(today, start) % 7 !== 0;
+}
+
+function formatImpactMemberName(
+  profile:
+    | {
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+      }
+    | undefined,
+): string {
+  if (!profile) return 'Unknown member';
+  const fullName = [profile.first_name, profile.last_name]
+    .filter(Boolean)
+    .join(' ');
+  return fullName || profile.email || 'Unknown member';
+}
+
+/**
+ * Aggregate live derived assignments for the Save Template impact dialog.
+ * Scoped by `base` so counts match {@link updateDerivedProgramAssignmentSchedule}.
+ */
+async function fetchTemplateSaveImpactByBaseId(
+  client: SupabaseClient<Database>,
+  baseAssignmentId: string,
+): Promise<{
+  data: TemplateSaveImpact | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data, error } = await client
+    .from('program_assignment')
+    .select('user_id, organization_id, start_date, status')
+    .eq('base', baseAssignmentId)
+    .in('status', [
+      PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+      PROGRAM_ASSIGNMENT_STATUS.PRE_PROGRAM,
+    ])
+    .not('user_id', 'is', null)
+    .order('created_at');
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const rows = data ?? [];
+  const activeRows = rows.filter(
+    (row) => row.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE,
+  );
+  const groupIds = new Set(
+    rows
+      .map((row) => row.organization_id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
+  );
+  const midWeekMembers = activeRows.filter((row) =>
+    isAssignmentMidWeek(row.start_date),
+  ).length;
+
+  const previewUserIds = rows
+    .map((row) => row.user_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    .slice(0, TEMPLATE_SAVE_IMPACT_NAME_PREVIEW);
+
+  const profiles = await resolveDisplayProfilesByIds(client, previewUserIds);
+  const memberNames = previewUserIds.map((userId) =>
+    formatImpactMemberName(profiles.get(userId)),
+  );
+
+  const impact: TemplateSaveImpact = {
+    members: rows.length,
+    activePrograms: activeRows.length,
+    groups: groupIds.size,
+    midWeekMembers,
+    memberNames,
+  };
+
+  const parsed = templateSaveImpactSchema.safeParse(impact);
+  if (!parsed.success) {
+    return {
+      data: null,
+      error: { message: 'Response validation failed', code: 'VALIDATION' },
+    };
+  }
+
+  return { data: parsed.data, error: null };
+}
+
 async function fetchWorkoutScheduleFields(
   client: SupabaseClient<Database>,
   assignmentId: string,
@@ -678,7 +778,9 @@ async function fetchActiveAssignmentByUserId(
   if (error) {
     if (
       error.code === 'PGRST116' ||
-      error.message?.includes('Cannot coerce the result to a single JSON object')
+      error.message?.includes(
+        'Cannot coerce the result to a single JSON object',
+      )
     ) {
       return { data: null, error: null };
     }
@@ -784,7 +886,7 @@ async function fetchListPaginated(
     };
   }
 
-  const adjustedTotal = input.search ? parsed.data.length : count ?? 0;
+  const adjustedTotal = input.search ? parsed.data.length : (count ?? 0);
   const hasMore = input.search
     ? false
     : from + parsed.data.length < adjustedTotal;
@@ -850,6 +952,15 @@ export const getProgramAssignmentMembersByTemplateId = defineQuery({
     fetchMembersByTemplateId(client, programTemplateId),
 });
 
+/** Save-template impact counts + avatar names for derived assignments. */
+export const getTemplateSaveImpactByBaseId = defineQuery({
+  key: programAssignmentKeys.saveImpactByBaseId,
+  schema: templateSaveImpactSchema,
+  client: 'admin',
+  execute: (client, baseAssignmentId: string) =>
+    fetchTemplateSaveImpactByBaseId(client, baseAssignmentId),
+});
+
 /** Workout schedule id and patient override for an assignment. */
 export const getProgramAssignmentWorkoutScheduleFields = defineQuery({
   key: programAssignmentKeys.workoutScheduleFields,
@@ -867,7 +978,8 @@ export const getProgramAssignmentComplianceByUserId = defineQuery({
 
 /** Member counts and avg completion per template id. */
 export const getProgramAssignmentMemberStatsByTemplateIds = defineQuery({
-  key: (templateIds: string[]) => programAssignmentKeys.memberStats(templateIds),
+  key: (templateIds: string[]) =>
+    programAssignmentKeys.memberStats(templateIds),
   schema: memberStatsSchema,
   client: 'admin',
   execute: (client, templateIds: string[]) =>
@@ -879,7 +991,8 @@ export const getActiveProgramAssignmentByUserId = defineQuery({
   key: programAssignmentKeys.activeByUserId,
   schema: programAssignmentNullableSchema,
   client: 'admin',
-  execute: (client, userId: string) => fetchActiveAssignmentByUserId(client, userId),
+  execute: (client, userId: string) =>
+    fetchActiveAssignmentByUserId(client, userId),
 });
 
 /** Paginated program assignments with optional search. */

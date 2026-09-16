@@ -5,7 +5,10 @@ import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { WorkoutBuilder } from './[id]/workout-schedule/workout-builder';
-import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type {
+  ProgramAssignmentWithTemplate,
+  TemplateSaveImpact,
+} from '@/lib/supabase/schemas/program-assignments';
 import type { SelectedItem } from './[id]/template-config/types';
 
 interface BuilderDetailUIProps {
@@ -13,6 +16,7 @@ interface BuilderDetailUIProps {
   programAssignment: ProgramAssignmentWithTemplate;
   convertedSchedule: SelectedItem[][][] | null;
   programDetailsCollapsed: boolean;
+  saveImpact: TemplateSaveImpact;
 }
 
 export function BuilderDetailUI({
@@ -20,6 +24,7 @@ export function BuilderDetailUI({
   programAssignment,
   convertedSchedule,
   programDetailsCollapsed,
+  saveImpact,
 }: BuilderDetailUIProps): React.ReactElement {
   const template = programAssignment.program_template;
   const templateName = template?.name ?? 'Program';
@@ -51,6 +56,7 @@ export function BuilderDetailUI({
         assignmentId={assignmentId}
         initialAssignment={programAssignment}
         programDetailsCollapsed={programDetailsCollapsed}
+        saveImpact={saveImpact}
       />
     </BuilderContextProvider>
   );

@@ -71,3 +71,24 @@ export const programAssignmentMemberSchema = z.object({
 export type ProgramAssignmentMember = z.infer<
   typeof programAssignmentMemberSchema
 >;
+
+/** Impact summary for Save Template → update-derived dialog. */
+export const templateSaveImpactSchema = z.object({
+  members: z.number().int().nonnegative(),
+  activePrograms: z.number().int().nonnegative(),
+  groups: z.number().int().nonnegative(),
+  midWeekMembers: z.number().int().nonnegative(),
+  /** Display names for the avatar stack (capped by the UI). */
+  memberNames: z.array(z.string()),
+});
+
+export type TemplateSaveImpact = z.infer<typeof templateSaveImpactSchema>;
+
+/** Empty impact when the template has no live derived assignments. */
+export const EMPTY_TEMPLATE_SAVE_IMPACT: TemplateSaveImpact = {
+  members: 0,
+  activePrograms: 0,
+  groups: 0,
+  midWeekMembers: 0,
+  memberNames: [],
+};
