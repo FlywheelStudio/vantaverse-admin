@@ -6,12 +6,10 @@ import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workout-schedule/utils';
-import { Avatar } from '@/components/widgets/avatar';
 import { HtmlGate } from '../../html-helpers';
 import { HtmlStepList, type HtmlStepItem, type HtmlStepTone } from './html-step-list';
 import { AdherenceCard } from './insights/adherence-card';
 import type { PreprogramEngagementRow } from './insights/adherence-card';
-import { EmpowermentCard } from './insights/empowerment-card';
 import { PledgeCard } from './insights/pledge-card';
 import { VantapointsCard } from './insights/vantapoints-card';
 import {
@@ -153,22 +151,22 @@ function buildOnboardingSteps(
         ) : null,
     },
     {
-      title: 'Program assigned',
+      title: programDone ? 'Program assigned' : 'Assign program',
       tone: gateTone(programDone, current === 3),
       knob: programDone ? 'Check' : 4,
       badge: programDone ? (
         <span className="bdg bdg-s">Done</span>
       ) : current === 3 ? (
-        <span className="bdg bdg-a">Ready</span>
+        <span className="bdg bdg-a">Ready to assign</span>
       ) : (
         <span className="bdg">Queued</span>
       ),
       meta: programDone
         ? user.program_assignment_name
           ? `Assigned: ${user.program_assignment_name}`
-          : 'Program marked assigned on profile.'
+          : 'Active program marked assigned on profile.'
         : current === 3
-          ? 'Member is clear to receive a program.'
+          ? 'Member is clear for an active program. Pre-program alone does not count.'
           : 'Opens after the consultation.',
       actions:
         !programDone && current === 3 ? (
@@ -198,37 +196,12 @@ function buildPreprogramRows(
   return rows;
 }
 
-function InsightCard({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <div className="card">
-      <div className="ch" style={{ marginBottom: 12 }}>
-        <div>
-          <div className="ch-t" style={{ fontSize: 'var(--text-md)' }}>
-            {title}
-          </div>
-          {subtitle ? <div className="ch-s">{subtitle}</div> : null}
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export function HtmlOnboardingTab({
   user,
   habitPledge,
   programAssignment,
   schedule,
   completion,
-  pointsMissingForNextLevel,
   onChangePath,
   onAssignProgram,
   onOpenIntake,
@@ -238,7 +211,6 @@ export function HtmlOnboardingTab({
   programAssignment: ProgramAssignmentWithTemplate | null;
   schedule: DatabaseSchedule | null;
   completion: Array<Array<unknown>> | null | undefined;
-  pointsMissingForNextLevel: number | null;
   onChangePath: () => void;
   onAssignProgram: () => void;
   onOpenIntake: () => void;
@@ -324,37 +296,12 @@ export function HtmlOnboardingTab({
             level={user.current_level}
             hpPoints={user.hp_points}
             pointsForNextLevel={user.points_for_next_level}
-            pointsMissingForNextLevel={pointsMissingForNextLevel}
+            pointsMissingForNextLevel={null}
           />
 
-          <div className="g g2" style={{ gap: 12 }}>
-            <EmpowermentCard
-              empowerment={user.empowerment}
-              title={user.empowerment_title}
-            />
-            <PledgeCard habitPledge={habitPledge} />
-          </div>
+          <PledgeCard habitPledge={habitPledge} />
 
           {adherenceCard}
-
-          <InsightCard title="Care team" subtitle="Assignments on this profile">
-            <div className="row" style={{ gap: 10, marginBottom: 10 }}>
-              <Avatar name={user.first_name ?? user.email ?? 'M'} size={32} />
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                Group / physician cards remain available via Assign actions in the header.
-                Detailed roster UI matches HTML when linked records exist.
-              </span>
-            </div>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ marginLeft: -8 }}
-              onClick={onAssignProgram}
-            >
-              Assign program
-              <Icon name="ArrowRight" size={15} />
-            </button>
-          </InsightCard>
         </div>
       </div>
     </>

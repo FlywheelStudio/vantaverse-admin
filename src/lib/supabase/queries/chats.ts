@@ -23,20 +23,26 @@ async function fetchOrCreateChat(
   client: SupabaseClient<Database>,
   input: z.infer<typeof getOrCreateChatInputSchema>,
 ): Promise<{ data: Chat | null; error: { message: string; code?: string } | null }> {
-  const { userId } = input;
+  const { userId, organizationId } = input;
 
-  const { data: existingChat, error: fetchError } = await client
+  const { data: existingChats, error: fetchError } = await client
     .from('chats')
     .select('*')
     .eq('user_id', userId)
     .eq('target_type', 'user')
-    .is('organization_id', null)
     .is('deleted_at', null)
-    .maybeSingle();
+    .order('created_at', { ascending: true });
 
   if (fetchError) {
     return { data: null, error: fetchError };
   }
+
+  const existingChat =
+    (existingChats ?? []).find(
+      (chat) => chat.organization_id === organizationId,
+    ) ??
+    (existingChats ?? [])[0] ??
+    null;
 
   if (existingChat) {
     return { data: existingChat, error: null };
@@ -55,7 +61,7 @@ async function fetchOrCreateChat(
   const { data, error } = await client
     .from('chats')
     .insert({
-      organization_id: null,
+      organization_id: organizationId,
       user_id: userId,
       target_type: 'user',
       name: chatName,

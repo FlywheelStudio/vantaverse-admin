@@ -5,7 +5,6 @@ import { defineQuery } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
 
 import type { MessageAttachment } from '../schemas/messages';
-import { OrganizationMembers } from './organization-members';
 
 export const conversationItemSchema = z.object({
   user_id: z.string().uuid(),
@@ -63,31 +62,138 @@ type RawAssignment = {
     | undefined;
 };
 
+/**
+ * Org IDs in scope for the admin messaging inbox.
+ * Super-admins: all non-super-admin orgs. Org admins: orgs where they are admin.
+ */
 async function fetchAdminOrgIds(
+  client: SupabaseClient<Database>,
   adminUserId: string,
 ): Promise<
   | { data: string[]; error: { message: string; code?: string } | null }
   | { data: null; error: { message: string; code?: string } }
 > {
-  const orgMembersQuery = new OrganizationMembers();
-  const adminOrgsResult =
-    await orgMembersQuery.getOrganizationsWhereUserIsAdmin(adminUserId);
+  const { data: isSuperAdmin, error: superAdminError } = await client.rpc(
+    'user_in_super_admin_org',
+    { p_user_id: adminUserId },
+  );
 
-  if (!adminOrgsResult.success) {
-    return { data: null, error: { message: adminOrgsResult.error } };
+  if (superAdminError) {
+    return { data: null, error: superAdminError };
   }
 
-  return {
-    data: adminOrgsResult.data.map((organization) => organization.id),
-    error: null,
-  };
+  if (isSuperAdmin) {
+    const { data: orgs, error } = await client
+      .from('organizations')
+      .select('id')
+      .or('is_super_admin.is.null,is_super_admin.eq.false');
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return {
+      data: (orgs ?? []).map((organization) => organization.id),
+      error: null,
+    };
+  }
+
+  const { data, error } = await client
+    .from('organization_members')
+    .select(
+      'organization_id, organizations!inner(id, name, is_super_admin)',
+    )
+    .eq('user_id', adminUserId)
+    .eq('role', 'admin')
+    .eq('is_active', true);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const orgIds: string[] = [];
+  for (const row of data ?? []) {
+    const org = Array.isArray(row.organizations)
+      ? row.organizations[0]
+      : row.organizations;
+    if (!org || org.is_super_admin === true) continue;
+    orgIds.push(row.organization_id);
+  }
+
+  return { data: orgIds, error: null };
+}
+
+/**
+ * Organizations (id + name) for the messages filter panel.
+ * Super-admins: all non-super-admin orgs. Org admins: orgs where they are admin.
+ */
+async function fetchMessagingOrganizations(
+  client: SupabaseClient<Database>,
+  adminUserId: string,
+): Promise<{
+  data: Array<{ id: string; name: string }> | null;
+  error: { message: string; code?: string } | null;
+}> {
+  const { data: isSuperAdmin, error: superAdminError } = await client.rpc(
+    'user_in_super_admin_org',
+    { p_user_id: adminUserId },
+  );
+
+  if (superAdminError) {
+    return { data: null, error: superAdminError };
+  }
+
+  if (isSuperAdmin) {
+    const { data: orgs, error } = await client
+      .from('organizations')
+      .select('id, name')
+      .or('is_super_admin.is.null,is_super_admin.eq.false')
+      .order('name', { ascending: true });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return {
+      data: (orgs ?? []).map((organization) => ({
+        id: organization.id,
+        name: organization.name,
+      })),
+      error: null,
+    };
+  }
+
+  const { data, error } = await client
+    .from('organization_members')
+    .select(
+      'organization_id, organizations!inner(id, name, is_super_admin)',
+    )
+    .eq('user_id', adminUserId)
+    .eq('role', 'admin')
+    .eq('is_active', true);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const organizations: Array<{ id: string; name: string }> = [];
+  for (const row of data ?? []) {
+    const org = Array.isArray(row.organizations)
+      ? row.organizations[0]
+      : row.organizations;
+    if (!org || org.is_super_admin === true) continue;
+    organizations.push({ id: org.id, name: org.name });
+  }
+
+  organizations.sort((left, right) => left.name.localeCompare(right.name));
+  return { data: organizations, error: null };
 }
 
 async function fetchHasUnreadMessagesForAdmin(
   client: SupabaseClient<Database>,
   adminUserId: string,
 ): Promise<{ data: boolean; error: { message: string; code?: string } | null }> {
-  const adminOrgs = await fetchAdminOrgIds(adminUserId);
+  const adminOrgs = await fetchAdminOrgIds(client, adminUserId);
   if (adminOrgs.error) {
     return { data: false, error: adminOrgs.error };
   }
@@ -169,7 +275,7 @@ async function fetchConversationsForAdmin(
   data: ConversationItem[];
   error: { message: string; code?: string } | null;
 }> {
-  const adminOrgs = await fetchAdminOrgIds(adminUserId);
+  const adminOrgs = await fetchAdminOrgIds(client, adminUserId);
   if (adminOrgs.error) {
     return { data: [], error: adminOrgs.error };
   }
@@ -397,6 +503,26 @@ export const hasUnreadMessagesForAdmin = defineQuery({
   schema: hasUnreadSchema,
   execute: (client, adminUserId: string) =>
     fetchHasUnreadMessagesForAdmin(client, adminUserId),
+});
+
+const messagingOrganizationSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+
+const messagingOrganizationListSchema = z.array(messagingOrganizationSchema);
+
+export const messagingOrganizationKeys = {
+  forAdmin: (adminUserId: string) =>
+    [...conversationKeys.all, 'messaging-orgs', adminUserId] as const,
+};
+
+/** Organizations available in the messages filter for this admin. */
+export const getMessagingOrganizationsForAdmin = defineQuery({
+  key: messagingOrganizationKeys.forAdmin,
+  schema: messagingOrganizationListSchema,
+  execute: (client, adminUserId: string) =>
+    fetchMessagingOrganizations(client, adminUserId),
 });
 
 /** Conversations list for an admin across their organizations. */

@@ -9,7 +9,6 @@ import type { McIntakeSurvey } from '@/lib/supabase/queries/mc-intake';
 import type { HabitPledge } from '@/lib/supabase/queries/habit-pledge';
 import { ChangeOnboardingDialog } from './partials/change-onboarding-dialog';
 import { MemberDetailHeader } from './partials/member-detail-header';
-import { MemberNotesTab } from './partials/member-notes-tab';
 import { HtmlOnboardingTab } from './partials/html-onboarding-tab';
 import { HtmlProgramTab } from './partials/html-program-tab';
 import { IntakeSurveyPlaceholderModal } from './partials/intake-survey-placeholder-modal';
@@ -18,7 +17,7 @@ import type { DatabaseSchedule } from '@/app/(authenticated)/builder/[id]/workou
 import { getProgramSlaMode } from './partials/program-sla';
 import { getCurrentWeekIndex } from './partials/program-week';
 
-type MemberTab = 'onb' | 'prog' | 'notes';
+type MemberTab = 'onb' | 'prog';
 
 type UserProfilePageUIProps = {
   user: ProfileWithStats;
@@ -46,12 +45,6 @@ type UserProfilePageUIProps = {
     transaction_type: string;
     description: string | null;
   }>;
-  empowermentThreshold: {
-    title: string;
-    base_power: number;
-    top_power: number;
-    effects: string | null;
-  } | null;
   gateInfo: {
     title: string;
     description: string | null;
@@ -62,7 +55,6 @@ type UserProfilePageUIProps = {
     transaction_type: string;
     description: string | null;
   }>;
-  pointsMissingForNextLevel: number | null;
   mcIntakeSurvey: McIntakeSurvey | null;
   habitPledge: HabitPledge | null;
   programAssignment: ProgramAssignmentWithTemplate | null;
@@ -85,7 +77,6 @@ export function UserProfilePageUI({
   completion,
   exerciseNamesMap,
   groupsMap,
-  pointsMissingForNextLevel,
 }: UserProfilePageUIProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<MemberTab>('onb');
   const [changeOnboardingOpen, setChangeOnboardingOpen] = useState(false);
@@ -137,7 +128,6 @@ export function UserProfilePageUI({
           : null
       }
       programAssignment={programAssignment}
-      onChangeOnboarding={() => setChangeOnboardingOpen(true)}
       assignOpen={assignOpen}
       onAssignOpenChange={setAssignOpen}
     />
@@ -206,15 +196,6 @@ export function UserProfilePageUI({
               {programTabBadge}
             </span>
           </button>
-          <button
-            type="button"
-            className={activeTab === 'notes' ? 'on' : undefined}
-            onClick={() => setActiveTab('notes')}
-          >
-            <Icon name="NotebookPen" size={16} />
-            Notes
-            <span className="cnt">2</span>
-          </button>
         </div>
 
         {activeTab === 'onb' ? (
@@ -224,7 +205,6 @@ export function UserProfilePageUI({
             programAssignment={programAssignment}
             schedule={schedule}
             completion={completion}
-            pointsMissingForNextLevel={pointsMissingForNextLevel}
             onChangePath={() => setChangeOnboardingOpen(true)}
             onAssignProgram={() => setAssignOpen(true)}
             onOpenIntake={() => setIntakeSurveyOpen(true)}
@@ -242,12 +222,6 @@ export function UserProfilePageUI({
             programAssignment={programAssignment}
             compliance={compliance}
             onAssignProgram={() => setAssignOpen(true)}
-          />
-        ) : null}
-
-        {activeTab === 'notes' ? (
-          <MemberNotesTab
-            onOpenIntake={() => setIntakeSurveyOpen(true)}
           />
         ) : null}
       </div>

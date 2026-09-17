@@ -11,7 +11,6 @@ type MembersProgramFilter =
   | 'pre_program';
 type MembersLastActiveFilter = 'all' | '7d' | '30d' | '90d' | 'never';
 type MembersJoinedFilter = 'all' | 'month' | 'quarter' | 'year';
-type MembersDueFilter = 'all' | 'due' | 'overdue';
 
 /** Full facet state applied server-side through `list_profiles_filtered`. */
 export interface MembersFilters {
@@ -22,7 +21,6 @@ export interface MembersFilters {
   physiologist: string | null;
   lastActive: MembersLastActiveFilter;
   joined: MembersJoinedFilter;
-  due: MembersDueFilter;
 }
 
 export const DEFAULT_MEMBERS_FILTERS: MembersFilters = {
@@ -31,7 +29,6 @@ export const DEFAULT_MEMBERS_FILTERS: MembersFilters = {
   physiologist: null,
   lastActive: 'all',
   joined: 'all',
-  due: 'all',
 };
 
 export function countActiveFilters(filters: MembersFilters): number {
@@ -43,7 +40,6 @@ export function countActiveFilters(filters: MembersFilters): number {
   if (filters.physiologist) count += 1;
   if (filters.lastActive !== 'all') count += 1;
   if (filters.joined !== 'all') count += 1;
-  if (filters.due !== 'all') count += 1;
   return count;
 }
 
@@ -64,8 +60,6 @@ export function removeMembersFilter(state: MembersFilters, id: string): MembersF
       return { ...state, lastActive: 'all' };
     case 'joined':
       return { ...state, joined: 'all' };
-    case 'due':
-      return { ...state, due: 'all' };
     default:
       return state;
   }
@@ -97,14 +91,12 @@ function CheckMark({ on }: { on?: boolean }): React.ReactElement {
 /** A single-select list of options where re-clicking the active one clears back to `allValue`. */
 function SingleSelectGroup<T extends string>({
   title,
-  hint,
   value,
   allValue,
   options,
   onChange,
 }: {
   title: string;
-  hint?: string;
   value: T;
   allValue: T;
   options: Array<{ label: string; value: T; count?: number }>;
@@ -116,11 +108,6 @@ function SingleSelectGroup<T extends string>({
         <span className="fgrp-t" style={{ margin: 0 }}>
           {title}
         </span>
-        {hint ? (
-          <span className="sp mut" style={{ fontSize: 10 }}>
-            {hint}
-          </span>
-        ) : null}
       </div>
       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
         {options.map((o) => {
@@ -146,7 +133,7 @@ function SingleSelectGroup<T extends string>({
 
 /**
  * HTML `filterPanel` chrome for members.
- * Wired: Group (org/team slot), Program deadline, Status, Program, Physiologist, Last active, Joined.
+ * Wired: Group (org/team slot), Status, Program, Physiologist, Last active, Joined.
  */
 export function MembersFilterPanel({
   open,
@@ -225,18 +212,6 @@ export function MembersFilterPanel({
             { label: 'Assigned', value: 'assigned' },
           ]}
           onChange={(status) => onChange({ ...filters, status })}
-        />
-
-        <SingleSelectGroup
-          title="Program deadline"
-          hint="5 working days from consultation"
-          value={filters.due}
-          allValue="all"
-          options={[
-            { label: 'Overdue', value: 'overdue' },
-            { label: 'Due later', value: 'due' },
-          ]}
-          onChange={(due) => onChange({ ...filters, due })}
         />
 
         <SingleSelectGroup

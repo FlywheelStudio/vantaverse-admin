@@ -113,7 +113,6 @@ export function UsersPageUI({
       physiologist: filters.physiologist,
       lastActive: filters.lastActive,
       joined: filters.joined,
-      due: filters.due,
     },
     isDefaultState ? initialUsers : undefined,
   );
@@ -179,12 +178,6 @@ export function UsersPageUI({
     }
     if (filters.joined !== 'all') {
       pills.push({ id: 'joined', label: JOINED_LABELS[filters.joined] });
-    }
-    if (filters.due !== 'all') {
-      pills.push({
-        id: 'due',
-        label: filters.due === 'overdue' ? 'Program overdue' : 'Program due later',
-      });
     }
     return pills;
   }, [filters, debouncedSearch, appliedOrgName, teamNames, counts?.physiologists]);

@@ -289,11 +289,12 @@ export function MessagesPageUI({
       (conversation) => conversation.user_id === deepLinkUserId,
     );
     if (!match) {
+      // Empty list may still be loading — wait before treating as a miss.
+      if (conversationsList.length === 0) return;
       if (missingUserToastRef.current !== deepLinkUserId) {
         toast.error('No conversation found for this member');
         missingUserToastRef.current = deepLinkUserId;
       }
-      deepLinkHandledRef.current = deepLinkUserId;
       return;
     }
 
@@ -352,45 +353,102 @@ export function MessagesPageUI({
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-sec btn-sm"
-                  style={{ padding: '0 10px' }}
-                  onClick={() => setFiltersOpen((open) => !open)}
-                >
-                  <Icon name="Funnel" size={15} />
-                  {activeFilterCount > 0 ? (
-                    <span
-                      className="bdg bdg-b"
-                      style={{ padding: '0 5px', fontSize: 10 }}
-                    >
-                      {activeFilterCount}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-
-              {filtersOpen && organizations.length > 0 ? (
-                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ position: 'relative', flex: '0 0 auto', zIndex: 120 }}>
                   <button
                     type="button"
-                    className={`btn btn-sm ${orgFilter === null ? 'btn-pri' : 'btn-sec'}`}
-                    onClick={() => setOrgFilter(null)}
+                    className={`btn btn-sec btn-sm${filtersOpen ? ' btn-pri' : ''}`}
+                    style={{ padding: '0 10px' }}
+                    onClick={() => setFiltersOpen((open) => !open)}
+                    aria-expanded={filtersOpen}
+                    aria-label="Filter conversations"
                   >
-                    All groups
+                    <Icon name="Funnel" size={15} />
+                    {activeFilterCount > 0 ? (
+                      <span
+                        className="bdg bdg-b"
+                        style={{ padding: '0 5px', fontSize: 10 }}
+                      >
+                        {activeFilterCount}
+                      </span>
+                    ) : null}
                   </button>
-                  {organizations.map((org) => (
-                    <button
-                      key={org.id}
-                      type="button"
-                      className={`btn btn-sm ${orgFilter === org.id ? 'btn-pri' : 'btn-sec'}`}
-                      onClick={() => setOrgFilter(org.id)}
+                  {filtersOpen && organizations.length > 0 ? (
+                    <div
+                      className="pop"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        width: 280,
+                        zIndex: 120,
+                        maxHeight: 'min(60vh, 420px)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
                     >
-                      {org.name}
-                    </button>
-                  ))}
+                      <div className="pop-h">
+                        <Icon
+                          name="Funnel"
+                          size={16}
+                          style={{ color: 'var(--navy-600)' }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 'var(--text-md)',
+                            fontWeight: 'var(--fw-bold)',
+                            color: 'var(--text-strong)',
+                          }}
+                        >
+                          Filter by group
+                        </span>
+                        <span className="sp">
+                          <button
+                            type="button"
+                            className="ib ib-sm"
+                            aria-label="Close"
+                            onClick={() => setFiltersOpen(false)}
+                          >
+                            <Icon name="X" size={17} />
+                          </button>
+                        </span>
+                      </div>
+                      <div
+                        className="pop-b"
+                        style={{
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${orgFilter === null ? 'btn-pri' : 'btn-sec'}`}
+                          onClick={() => {
+                            setOrgFilter(null);
+                            setFiltersOpen(false);
+                          }}
+                        >
+                          All groups
+                        </button>
+                        {organizations.map((org) => (
+                          <button
+                            key={org.id}
+                            type="button"
+                            className={`btn btn-sm ${orgFilter === org.id ? 'btn-pri' : 'btn-sec'}`}
+                            onClick={() => {
+                              setOrgFilter(org.id);
+                              setFiltersOpen(false);
+                            }}
+                          >
+                            {org.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
 
               <span className="seg" style={{ width: '100%' }}>
                 <button

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/medvanta';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
@@ -63,10 +64,10 @@ function buildHoldingRows(user: ProfileWithStats, overdue: boolean): HoldingRow[
     },
     {
       icon: 'Circle',
-      title: 'Program not built yet',
+      title: 'Active program not assigned yet',
       meta: overdue
-        ? 'Nothing is blocking this — it needs a physiologist to sit down with it'
-        : 'Assign when the member is clear to receive a program',
+        ? 'Needs a physiologist to assign an active program (pre-program does not count)'
+        : 'Assign an active program when the member is clear to receive one',
       done: false,
     },
   ];
@@ -106,6 +107,7 @@ function ProgramAwaitingPane({
   user: ProfileWithStats;
   onAssignProgram: () => void;
 }): React.ReactElement {
+  const router = useRouter();
   const slaMode = getProgramSlaMode({
     programDueDate: user.program_due_date,
     hasAssignment: false,
@@ -127,7 +129,15 @@ function ProgramAwaitingPane({
       ? 'Consultation is complete and the member has been on the shared Pre-program since. Programs are due within 5 days of the consultation.'
       : user.consultation_completed && dueLabel
         ? `Consultation is complete on this profile. Programs are due within 5 days of consultation, so the target is ${dueLabel.dueText}.`
-        : 'Member is cleared through onboarding gates but has no program assignment yet.';
+        : 'Member is cleared through onboarding gates but has no active program assignment yet.';
+
+  const handleBrowseLibrary = (): void => {
+    router.push('/builder');
+  };
+
+  const handleMessage = (): void => {
+    router.push(`/messages?userId=${encodeURIComponent(user.id)}`);
+  };
 
   return (
     <div
@@ -199,10 +209,6 @@ function ProgramAwaitingPane({
               {subtitle}
             </div>
           </div>
-          <button type="button" className="btn btn-acc" onClick={onAssignProgram}>
-            <Icon name="Plus" size={17} />
-            Assign program
-          </button>
         </div>
 
         {dueLabel ? (
@@ -288,36 +294,13 @@ function ProgramAwaitingPane({
             </div>
           ))}
         </div>
-
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-acc btn-sm" onClick={onAssignProgram}>
-            <Icon name="Plus" size={15} />
-            Assign program
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled
-            title="Extend deadline isn't available yet — missing data or APIs for this action."
-          >
-            Extend deadline
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled
-            title="Reassign owner isn't available yet — missing data or APIs for this action."
-          >
-            Reassign owner
-          </button>
-        </div>
       </div>
 
       <div className="card">
         <div className="ch">
           <div>
             <div className="ch-t">Shortcuts</div>
-            <div className="ch-s">Same actions as the HTML awaiting pane</div>
+            <div className="ch-s">Quick actions while awaiting assignment</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -328,16 +311,14 @@ function ProgramAwaitingPane({
           <button
             type="button"
             className="btn btn-sec"
-            disabled
-            title="Browse program library isn't available yet — missing data or APIs for this action."
+            onClick={handleBrowseLibrary}
           >
             Browse program library
           </button>
           <button
             type="button"
             className="btn btn-ghost"
-            disabled
-            title="Message member about delay isn't available yet — missing data or APIs for this action."
+            onClick={handleMessage}
           >
             Message member about delay
           </button>
@@ -453,14 +434,6 @@ function ProgramActivePane({
             >
               Reassign
             </button>
-            <button
-              type="button"
-              className="btn btn-sec btn-sm"
-              disabled
-              title="Push schedule isn't available yet — missing data or APIs for this action."
-            >
-              Push schedule
-            </button>
           </span>
         </div>
 
@@ -557,117 +530,63 @@ function ProgramActivePane({
         </div>
       </div>
 
-      <div
-        className="g"
-        style={{
-          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
-          alignItems: 'start',
-        }}
-      >
-        <div className="card">
-          <div className="ch">
-            <div>
-              <div className="ch-t">
-                {selectedDay
-                  ? `${selectedDay.label} — ${selectedDay.dateLabel}`
-                  : 'Day plan'}
-              </div>
-              <div className="ch-s">
-                {selectedDay?.state === 'rest'
-                  ? 'Rest day on the schedule'
-                  : selectedDay?.state === 'done'
-                    ? 'Session marked complete'
-                    : selectedDay?.state === 'today'
-                      ? 'Today’s scheduled session'
-                      : 'Scheduled session'}
-              </div>
+      <div className="card">
+        <div className="ch">
+          <div>
+            <div className="ch-t">
+              {selectedDay
+                ? `${selectedDay.label} — ${selectedDay.dateLabel}`
+                : 'Day plan'}
+            </div>
+            <div className="ch-s">
+              {selectedDay?.state === 'rest'
+                ? 'Rest day on the schedule'
+                : selectedDay?.state === 'done'
+                  ? 'Session marked complete'
+                  : selectedDay?.state === 'today'
+                    ? 'Today’s scheduled session'
+                    : 'Scheduled session'}
             </div>
           </div>
-          {selectedDay?.state === 'rest' ? (
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-              No exercises scheduled for this day.
-            </p>
-          ) : dayPlan.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-              No exercises on file for this day.
-            </p>
-          ) : (
-            dayPlan.map((block) => (
-              <div key={block.title} style={{ marginBottom: 14 }}>
-                <div
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--fw-bold)',
-                    color: 'var(--text-strong)',
-                    marginBottom: 6,
-                  }}
-                >
-                  {block.title}
-                </div>
-                <ul
-                  style={{
-                    margin: 0,
-                    paddingLeft: 18,
-                    color: 'var(--text-body)',
-                    fontSize: 'var(--text-sm)',
-                  }}
-                >
-                  {block.items.map((item) => (
-                    <li key={item} style={{ marginBottom: 4 }}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          )}
         </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="card">
-            <div className="ch">
-              <div>
-                <div className="ch-t">Check-in responses</div>
-                <div className="ch-s">Mock — last 24h</div>
-              </div>
-            </div>
-            {[
-              ['Pain', '2 / 10'],
-              ['Energy', 'Good'],
-              ['Session RPE', '6'],
-            ].map(([k, v]) => (
+        {selectedDay?.state === 'rest' ? (
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            No exercises scheduled for this day.
+          </p>
+        ) : dayPlan.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            No exercises on file for this day.
+          </p>
+        ) : (
+          dayPlan.map((block) => (
+            <div key={block.title} style={{ marginBottom: 14 }}>
               <div
-                key={k}
-                className="row"
                 style={{
-                  justifyContent: 'space-between',
-                  padding: '8px 0',
-                  borderBottom: '1px solid var(--border-subtle)',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--fw-bold)',
+                  color: 'var(--text-strong)',
+                  marginBottom: 6,
+                }}
+              >
+                {block.title}
+              </div>
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  color: 'var(--text-body)',
                   fontSize: 'var(--text-sm)',
                 }}
               >
-                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                <span
-                  style={{ fontWeight: 'var(--fw-semibold)', color: 'var(--text-strong)' }}
-                >
-                  {v}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="card">
-            <div className="ch">
-              <div>
-                <div className="ch-t">Adjustments</div>
-                <div className="ch-s">Placeholder clinical notes link</div>
-              </div>
+                {block.items.map((item) => (
+                  <li key={item} style={{ marginBottom: 4 }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-              No adjustment log in admin yet. Use Notes for staff commentary when available.
-            </p>
-          </div>
-        </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -684,10 +603,7 @@ export function HtmlProgramTab({
   compliance,
   onAssignProgram,
 }: HtmlProgramTabProps): React.ReactElement {
-  const assigned =
-    hasAssignment ?? Boolean(user.program_assigned || user.program_assignment_id);
-
-  if (assigned && programAssignment) {
+  if (hasAssignment && programAssignment) {
     return (
       <ProgramActivePane
         user={user}

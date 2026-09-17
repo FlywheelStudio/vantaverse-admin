@@ -69,7 +69,6 @@ export type ListProfilesFilteredInput = {
   physiologist?: string | null;
   lastActive?: string;
   joined?: string;
-  due?: string;
   page?: number;
   pageSize?: number;
   sortBy?: string;
@@ -504,7 +503,7 @@ async function fetchListFiltered(
     p_physiologist: params.physiologist || undefined,
     p_last_active: params.lastActive || 'all',
     p_joined: params.joined || 'all',
-    p_due: params.due || 'all',
+    p_due: 'all',
     p_page: params.page ?? 1,
     p_page_size: params.pageSize ?? 500,
     p_sort_by: params.sortBy ?? 'created_at',

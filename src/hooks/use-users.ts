@@ -64,7 +64,6 @@ export function useMembersFiltered(filters: MembersQueryFilters, initialData?: P
     filters.physiologist ?? null,
     filters.lastActive ?? null,
     filters.joined ?? null,
-    filters.due ?? null,
   ];
 
   return useQuery<ProfileWithStats[], Error>({
@@ -80,7 +79,6 @@ export function useMembersFiltered(filters: MembersQueryFilters, initialData?: P
         physiologist: filters.physiologist,
         lastActive: filters.lastActive,
         joined: filters.joined,
-        due: filters.due,
         pageSize: 500,
       });
 

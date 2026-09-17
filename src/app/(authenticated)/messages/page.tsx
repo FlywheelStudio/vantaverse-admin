@@ -2,17 +2,15 @@ import { Suspense } from 'react';
 import { queryWithSession } from '@/lib/dal/core/query.server';
 import { resolveActionResult } from '@/lib/server';
 import { getAuthProfileQuery } from '@/lib/supabase/queries/admins';
-import { OrganizationMembers } from '@/lib/supabase/queries/organization-members';
 import {
   getConversationsForAdmin,
+  getMessagingOrganizationsForAdmin,
   type ConversationItem,
 } from '@/lib/supabase/queries/conversations';
 import { MessagesPageUI } from './messages-page-ui';
 import { MessagesLoadingSkeleton } from './messages-loading-skeleton';
 
 export default async function MessagesPage(): Promise<React.ReactElement> {
-  const orgMembersQuery = new OrganizationMembers();
-
   const [profileErr, profileData] = await queryWithSession(getAuthProfileQuery);
   if (profileErr || !profileData) {
     resolveActionResult({
@@ -25,15 +23,16 @@ export default async function MessagesPage(): Promise<React.ReactElement> {
 
   const currentUser = profileData;
 
-  const [adminOrgsResult, conversationsResult] = await Promise.all([
-    orgMembersQuery.getOrganizationsWhereUserIsAdmin(currentUser.id),
+  const [messagingOrgsResult, conversationsResult] = await Promise.all([
+    queryWithSession(getMessagingOrganizationsForAdmin, currentUser.id),
     queryWithSession(getConversationsForAdmin, currentUser.id),
   ]);
 
-  const adminOrgs =
-    adminOrgsResult.success && Array.isArray(adminOrgsResult.data)
-      ? adminOrgsResult.data
-      : ([] as Array<{ id: string; name: string }>);
+  const [messagingOrgsErr, messagingOrgsData] = messagingOrgsResult;
+  const organizations =
+    messagingOrgsErr || !messagingOrgsData
+      ? ([] as Array<{ id: string; name: string }>)
+      : messagingOrgsData;
 
   const [conversationsErr, conversationsData] = conversationsResult;
   const conversations: ConversationItem[] =
@@ -42,7 +41,7 @@ export default async function MessagesPage(): Promise<React.ReactElement> {
   return (
     <Suspense fallback={<MessagesLoadingSkeleton />}>
       <MessagesPageUI
-        organizations={adminOrgs}
+        organizations={organizations}
         conversations={conversations}
       />
     </Suspense>

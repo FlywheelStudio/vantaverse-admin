@@ -11,9 +11,7 @@ import {
 } from '@/lib/supabase/queries/hp-points';
 import {
   getCurrentGateInfo,
-  getEmpowermentThresholdById,
   getIpTransactionsByUserId,
-  getNextEmpowermentThreshold,
 } from '@/lib/supabase/queries/ip-points';
 import { getSurveyByUserId } from '@/lib/supabase/queries/mc-intake';
 import { getPledgeByUserId } from '@/lib/supabase/queries/habit-pledge';
@@ -193,10 +191,8 @@ export default async function UserProfilePage({
     appointmentsResult,
     hpLevelThresholdResult,
     hpTransactionsResult,
-    empowermentThresholdResult,
     gateInfoResult,
     ipTransactionsResult,
-    nextThresholdResult,
     mcIntakeSurveyResult,
     habitPledgeResult,
     programAssignmentDataResult,
@@ -208,9 +204,6 @@ export default async function UserProfilePage({
       ? runAdminQuery(getHpLevelThresholdByLevel, user.current_level)
       : Promise.resolve({ success: true as const, data: null }),
     runAdminQuery(getHpTransactionsByUserId, id),
-    user.empowerment_threshold !== null
-      ? runAdminQuery(getEmpowermentThresholdById, user.empowerment_threshold)
-      : Promise.resolve({ success: true as const, data: null }),
     user.max_gate_type !== null && user.max_gate_unlocked !== null
       ? runAdminQuery(
           getCurrentGateInfo,
@@ -219,12 +212,6 @@ export default async function UserProfilePage({
         )
       : Promise.resolve({ success: true as const, data: null }),
     runAdminQuery(getIpTransactionsByUserId, id),
-    user.empowerment_threshold !== null
-      ? runAdminQuery(
-          getNextEmpowermentThreshold,
-          user.empowerment_threshold,
-        )
-      : Promise.resolve({ success: true as const, data: null }),
     runAdminQuery(getSurveyByUserId, id),
     runAdminQuery(getPledgeByUserId, id),
     fetchActiveProgramAssignmentData(id),
@@ -276,10 +263,8 @@ export default async function UserProfilePage({
   const appointments = unwrapResult(appointmentsResult, []);
   const hpLevelThreshold = unwrapResult(hpLevelThresholdResult, null);
   const hpTransactions = unwrapResult(hpTransactionsResult, []);
-  const empowermentThreshold = unwrapResult(empowermentThresholdResult, null);
   const gateInfo = unwrapResult(gateInfoResult, null);
   const ipTransactions = unwrapResult(ipTransactionsResult, []);
-  const nextThreshold = unwrapResult(nextThresholdResult, null);
   const mcIntakeSurvey = unwrapResult(mcIntakeSurveyResult, null);
   const habitPledge = unwrapResult(habitPledgeResult, null);
   const programAssignmentData = unwrapResult(programAssignmentDataResult, null);
@@ -314,22 +299,6 @@ export default async function UserProfilePage({
       | undefined;
   }
 
-  let pointsMissingForNextLevel: number | null = null;
-  if (user.empowerment !== null && nextThreshold !== null) {
-    const currentEmpowerment = user.empowerment;
-    const nextBasePower = nextThreshold.base_power;
-    pointsMissingForNextLevel = Math.max(0, nextBasePower - currentEmpowerment);
-  } else if (
-    user.empowerment !== null &&
-    empowermentThreshold &&
-    empowermentThreshold.top_power < 999
-  ) {
-    pointsMissingForNextLevel = Math.max(
-      0,
-      empowermentThreshold.top_power - user.empowerment,
-    );
-  }
-
   return (
     <UserProfilePageUI
       user={user}
@@ -338,10 +307,8 @@ export default async function UserProfilePage({
       appointments={appointments}
       hpLevelThreshold={hpLevelThreshold}
       hpTransactions={hpTransactions}
-      empowermentThreshold={empowermentThreshold}
       gateInfo={gateInfo}
       ipTransactions={ipTransactions}
-      pointsMissingForNextLevel={pointsMissingForNextLevel}
       mcIntakeSurvey={mcIntakeSurvey}
       habitPledge={habitPledge}
       programAssignment={programAssignment}
