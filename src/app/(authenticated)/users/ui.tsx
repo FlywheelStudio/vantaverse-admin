@@ -167,7 +167,12 @@ export function UsersPageUI({
       pills.push({ id: 'program', label: PROGRAM_LABELS[filters.program] });
     }
     if (filters.physiologist) {
-      pills.push({ id: 'physiologist', label: filters.physiologist });
+      const physioLabel =
+        filters.physiologist === 'unassigned'
+          ? 'Unassigned'
+          : counts?.physiologists.find((p) => p.id === filters.physiologist)?.name ??
+            'Physiologist';
+      pills.push({ id: 'physiologist', label: physioLabel });
     }
     if (filters.lastActive !== 'all') {
       pills.push({ id: 'lastActive', label: LAST_ACTIVE_LABELS[filters.lastActive] });
@@ -182,7 +187,7 @@ export function UsersPageUI({
       });
     }
     return pills;
-  }, [filters, debouncedSearch, appliedOrgName, teamNames]);
+  }, [filters, debouncedSearch, appliedOrgName, teamNames, counts?.physiologists]);
 
   const handleRemovePill = (id: string): void => {
     if (id === 'search') setSearchValue('');

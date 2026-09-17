@@ -32,7 +32,7 @@ export interface MemberFilterCounts {
     pre_program: number;
     not_assigned: number;
   };
-  physiologists: Array<{ name: string; count: number }>;
+  physiologists: Array<{ id: string; name: string; count: number }>;
   unassigned_physiologist: number;
 }
 
@@ -118,7 +118,9 @@ const memberFilterCountsSchema = z.object({
     pre_program: z.number(),
     not_assigned: z.number(),
   }),
-  physiologists: z.array(z.object({ name: z.string(), count: z.number() })),
+  physiologists: z.array(
+    z.object({ id: z.string(), name: z.string(), count: z.number() }),
+  ),
   unassigned_physiologist: z.number(),
 });
 

@@ -18,7 +18,7 @@ interface UsersTableFiltersProps {
   activeCount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  physiologistOptions: Array<{ name: string; count: number }>;
+  physiologistOptions: Array<{ id: string; name: string; count: number }>;
   unassignedPhysiologist?: number;
   selectedOrgName?: string;
   selectedTeamName?: string;

@@ -78,7 +78,7 @@ interface MembersFilterPanelProps {
   /** Staged filter state shown inside the panel. */
   filters: MembersFilters;
   onChange: (next: MembersFilters) => void;
-  physiologistOptions: Array<{ name: string; count: number }>;
+  physiologistOptions: Array<{ id: string; name: string; count: number }>;
   unassignedPhysiologist?: number;
   onClear: () => void;
   onApply: () => void;
@@ -163,9 +163,9 @@ export function MembersFilterPanel({
   if (!open) return null;
 
   const physioOpts = [
-    ...physiologistOptions.map((o) => ({ label: o.name, value: o.name, count: o.count })),
+    ...physiologistOptions.map((o) => ({ label: o.name, value: o.id, count: o.count })),
     ...(unassignedPhysiologist && unassignedPhysiologist > 0
-      ? [{ label: 'Unassigned', value: 'Unassigned', count: unassignedPhysiologist }]
+      ? [{ label: 'Unassigned', value: 'unassigned', count: unassignedPhysiologist }]
       : []),
   ];
 
