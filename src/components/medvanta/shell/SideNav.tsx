@@ -108,7 +108,7 @@ export function SideNav(): React.ReactElement {
             style={{ filter: 'brightness(0) invert(1)' }}
             priority
           />
-          <span className="side-pl">VantaVybe admin</span>
+          <span className="side-pl">VantaVybe Admin</span>
         </div>
       </div>
 
