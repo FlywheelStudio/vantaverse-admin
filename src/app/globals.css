@@ -109,8 +109,9 @@
   --foreground: oklch(0.22 0.03 267);
   --card: oklch(0.9702 0.0111 269.55);
   --card-foreground: oklch(0.22 0.03 267);
-  --popover: oklch(0.9702 0.0111 269.55);
-  --popover-foreground: oklch(0.22 0.03 267);
+  /* Match MedVanta `--surface-card` / `.pop` (pure white), not the lavender app canvas. */
+  --popover: #ffffff;
+  --popover-foreground: #10233f;
   --primary: oklch(0.4988 0.1894 267.36);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.9702 0.0111 269.55);

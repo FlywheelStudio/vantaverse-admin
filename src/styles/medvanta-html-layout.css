@@ -31,8 +31,13 @@ a.nav-i.on:visited{color:var(--white)}
   border-radius:var(--radius-md);text-align:left;font-family:var(--font-sans);
   background:rgba(255,255,255,.06);margin-top:6px;
   transition:background var(--dur-fast);
+  outline:none;
 }
-.side-user:hover{background:rgba(255,255,255,.11)}
+.side-user:hover,
+.side-user[data-state="open"]{background:rgba(255,255,255,.11)}
+.side-user:focus-visible{box-shadow:var(--shadow-focus)}
+.side-user[data-state="open"]:focus,
+.side-user[data-state="open"]:focus-visible{box-shadow:none}
 .side-user .n{font-size:var(--text-sm);font-weight:var(--fw-semibold);color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-user .r{font-size:var(--text-2xs);color:var(--navy-300)}
 
@@ -80,6 +85,9 @@ a.nav-i.on:visited{color:var(--white)}
 }
 .btn:active{transform:scale(.97)}
 .btn:focus-visible{outline:none;box-shadow:var(--shadow-focus)}
+/* Radix keeps focus on the trigger while open — suppress the cyan ring so it doesn't glow behind the menu. */
+.btn[data-state="open"]:focus,
+.btn[data-state="open"]:focus-visible{box-shadow:none}
 .btn-sm{height:32px;padding:0 14px;font-size:var(--text-sm);gap:6px}
 .btn-lg{height:48px;padding:0 24px;font-size:var(--text-base);gap:10px}
 .btn-pri{background:var(--primary);color:var(--white)}
@@ -101,11 +109,17 @@ a.nav-i.on:visited{color:var(--white)}
   width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
   border-radius:var(--radius-pill);border:1px solid transparent;background:transparent;color:var(--text-body);
   cursor:pointer;transition:background var(--dur-fast) var(--ease-out);flex:0 0 auto;
+  outline:none;
 }
 .ib:hover{background:var(--slate-100)}
+.ib:focus-visible{box-shadow:var(--shadow-focus)}
+.ib[data-state="open"]{background:var(--slate-100)}
+.ib[data-state="open"]:focus,
+.ib[data-state="open"]:focus-visible{box-shadow:none}
 .ib-sm{width:32px;height:32px}
 .ib-sec{background:var(--surface-card);border-color:var(--border-default);color:var(--text-strong)}
-.ib-sec:hover{background:var(--slate-50)}
+.ib-sec:hover,
+.ib-sec[data-state="open"]{background:var(--slate-50)}
 .ib-sq{border-radius:var(--radius-sm)}
 .ib-dan:hover{background:var(--danger-soft);color:var(--danger)}
 
@@ -453,7 +467,7 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 
 /* Two-pane modal editor */
 .dual{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:0;flex:1;min-height:0}
-.dual-l{padding:18px 20px;overflow:auto;min-height:0;display:flex;flex-direction:column}
+.dual-l{padding:0px 20px;overflow:auto;min-height:0;display:flex;flex-direction:column}
 .dual-r{border-left:1px solid var(--border-subtle);background:var(--slate-50);padding:16px 18px;overflow:auto;min-height:0;display:flex;flex-direction:column}
 
 /* Week strip on the member program tab */
@@ -476,8 +490,8 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .list-rows{display:flex;flex-direction:column;border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden}
 .list-rows>*{border-bottom:1px solid var(--border-subtle)}
 .list-rows>*:last-child{border-bottom:none}
-.lrow{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;background:var(--surface-card);transition:background var(--dur-fast);width:100%;text-align:left}
-.lrow:hover{background:var(--slate-50)}
+.lrow{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;background:var(--surface-card);transition:background var(--dur-fast);width:100%;text-align:left;color:inherit;text-decoration:none}
+.lrow:hover{background:var(--slate-50);color:inherit;text-decoration:none}
 .lrow.on{background:var(--cyan-50)}
 .lrow .nm{display:block;font-size:var(--text-md);font-weight:var(--fw-semibold);color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lrow .em{display:block;font-size:var(--text-xs);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono)}
@@ -654,4 +668,3 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .g5{grid-template-columns:repeat(5,minmax(0,1fr))}
-

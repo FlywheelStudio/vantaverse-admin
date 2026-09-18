@@ -25,7 +25,7 @@ interface HtmlMoreButtonProps {
 /** HTML `moreBtn()` overflow menu — delegates to {@link HtmlActionsMenu}. */
 export function HtmlMoreButton({ items, tooltip }: HtmlMoreButtonProps): React.ReactElement {
   const menuItems = items ?? (tooltip ? parseLegacyMenuItems(tooltip) : []);
-  return <HtmlActionsMenu items={menuItems} variant="icon" />;
+  return <HtmlActionsMenu items={menuItems} variant="icon" tone="sec" />;
 }
 
 interface HtmlRowMenuProps {

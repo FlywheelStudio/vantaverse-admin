@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Icon } from '../actions/Icon';
@@ -70,6 +71,7 @@ function SideNavUser(): React.ReactElement {
         >
           View profile
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={handleSignOut}>
           Sign out
         </DropdownMenuItem>
@@ -147,10 +149,6 @@ export function SideNav(): React.ReactElement {
           <Icon name="Settings" size={18} />
           <span className="l">Manage</span>
         </PreheatableNavButton>
-        <button type="button" className="nav-i" disabled title="Placeholder">
-          <Icon name="CircleHelp" size={18} />
-          <span className="l">Help & docs</span>
-        </button>
         <SideNavUser />
       </div>
     </aside>
