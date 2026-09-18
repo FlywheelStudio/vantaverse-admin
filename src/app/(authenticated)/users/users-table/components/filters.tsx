@@ -87,7 +87,10 @@ export function UsersTableFilters({
                 selectedTeamName={selectedTeamName}
                 onOrgSelect={onStagedOrgSelect}
                 onTeamSelect={onStagedTeamSelect}
-                onClear={onClearAll}
+                onClear={() => {
+                  onStagedOrgSelect(undefined);
+                  onStagedTeamSelect(undefined);
+                }}
               />
             }
           />

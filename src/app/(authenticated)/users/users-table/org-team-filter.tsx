@@ -159,8 +159,11 @@ export function OrgTeamFilter({
 
 
   return (
-    <DropdownMenu 
-      open={isOpen} 
+    // modal=false: avoid body pointer-events lock fighting the parent `.pop` filter panel.
+    // z-[130]: DropdownMenuContent defaults to z-50; members filter panel is zIndex 120.
+    <DropdownMenu
+      modal={false}
+      open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
@@ -171,15 +174,15 @@ export function OrgTeamFilter({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="min-w-[200px] justify-between h-11 rounded-[var(--radius-pill)] bg-background"
+          className="w-full min-w-[200px] justify-between h-11 rounded-[var(--radius-pill)] bg-background"
         >
           {displayText}
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="start" 
-        className="w-[200px] max-h-[400px] overflow-y-auto slim-scrollbar"
+      <DropdownMenuContent
+        align="start"
+        className="z-[130] w-[200px] max-h-[400px] overflow-y-auto slim-scrollbar"
       >
         <div className="p-2 dropdown-item-animate" style={{ animationDelay: '0ms' }}>
           <div className="relative">
@@ -234,7 +237,7 @@ export function OrgTeamFilter({
                 >
                   {org.name}
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
+                <DropdownMenuSubContent className="z-[130]">
                   <DropdownMenuLabel className="dropdown-item-animate" style={{ animationDelay: '50ms' }}>Teams</DropdownMenuLabel>
                   <DropdownMenuSeparator className="dropdown-item-animate" style={{ animationDelay: '100ms' }} />
                   {isLoading ? (

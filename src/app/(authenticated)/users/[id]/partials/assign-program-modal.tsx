@@ -180,9 +180,12 @@ export function AssignProgramModal({
     }
 
     const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+    const programName =
+      selectedAssignment?.program_template?.name?.trim() || undefined;
     const created = await assignProgram.mutateAsync({
       templateAssignmentId: selectedAssignmentId,
       startDate: formattedStartDate,
+      programName,
     });
     if (created?.id) {
       onAssignSuccess?.();

@@ -54,18 +54,34 @@ interface AssignGroupModalProps {
   onAssignSuccess?: () => void;
   userFirstName?: string | null;
   userLastName?: string | null;
+  /** When set, the modal preselects the member's current group (Change flow). */
+  currentOrganizationId?: string | null;
 }
 
-export function AssignGroupModal({
+/**
+ * Remount when opening so search/selection reset without an effect.
+ */
+export function AssignGroupModal(props: AssignGroupModalProps): React.ReactElement {
+  const sessionKey = props.open
+    ? `open:${props.currentOrganizationId ?? 'none'}`
+    : 'closed';
+
+  return <AssignGroupModalSession key={sessionKey} {...props} />;
+}
+
+function AssignGroupModalSession({
   open,
   onOpenChange,
   userId,
   onAssignSuccess,
   userFirstName,
   userLastName,
+  currentOrganizationId = null,
 }: AssignGroupModalProps): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(
+    currentOrganizationId,
+  );
 
   const debouncedSearch = useDebounce(searchQuery, 200);
   const { data: organizations, isLoading, error } = useOrganizations();
@@ -79,6 +95,7 @@ export function AssignGroupModal({
   }, [organizations, debouncedSearch]);
 
   const userName = [userFirstName, userLastName].filter(Boolean).join(' ');
+  const isChanging = Boolean(currentOrganizationId);
 
   const handleCancel = (): void => {
     setSearchQuery('');
@@ -89,12 +106,22 @@ export function AssignGroupModal({
   const handleAssign = async (): Promise<void> => {
     if (!selectedOrganizationId) return;
 
-    await addToOrganization.mutateAsync(selectedOrganizationId, {
-      onSuccess: () => {
-        onAssignSuccess?.();
-        handleCancel();
+    const organizationName = filteredOrganizations.find(
+      (org) => org.id === selectedOrganizationId,
+    )?.name;
+
+    await addToOrganization.mutateAsync(
+      {
+        organizationId: selectedOrganizationId,
+        organizationName,
       },
-    });
+      {
+        onSuccess: () => {
+          onAssignSuccess?.();
+          handleCancel();
+        },
+      },
+    );
   };
 
   const isAssigning = addToOrganization.isPending;
@@ -103,8 +130,12 @@ export function AssignGroupModal({
     <HtmlModal
       open={open}
       onClose={handleCancel}
-      title="Assign to group"
-      subtitle={userName ? `Choose a group for ${userName}.` : 'Choose a group for this member.'}
+      title={isChanging ? 'Change group' : 'Assign to group'}
+      subtitle={
+        userName
+          ? `Choose a group for ${userName}.`
+          : 'Choose a group for this member.'
+      }
       width={560}
       style={{ maxHeight: 'min(85vh, 640px)', display: 'flex', flexDirection: 'column' }}
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -124,7 +155,7 @@ export function AssignGroupModal({
             ) : (
               <Icon name="UserPlus" size={17} />
             )}
-            Assign to group
+            {isChanging ? 'Change group' : 'Assign to group'}
           </button>
         </>
       }

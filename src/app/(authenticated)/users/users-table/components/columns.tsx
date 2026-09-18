@@ -29,7 +29,6 @@ import { sendBulkInvitations } from '../../actions';
 import { MIN_GATES_FOR_PROGRAM_ASSIGNMENT } from '@/lib/constants/program-assignment-status';
 import { getOnboardingPathProgress } from '@/lib/onboarding-path';
 import toast from 'react-hot-toast';
-import { toastUnavailable } from '@/lib/medvanta/unavailable-toast';
 import { usePreheat, type PreheatHandlers } from '@/hooks/use-preheat';
 import type { UsersTableMeta } from '../types';
 
@@ -332,6 +331,9 @@ function ActionsCell({
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [groupOpen, setGroupOpen] = React.useState(false);
   const hasOrganization = (profile.orgMemberships?.length ?? 0) > 0;
+  const hasProgram = Boolean(
+    profile.program_assignment_id && profile.program_assignment_name,
+  );
 
   return (
     <>
@@ -353,7 +355,7 @@ function ActionsCell({
           },
           {
             id: 'assign',
-            label: 'Assign program',
+            label: hasProgram ? 'Change program' : 'Assign program',
             onSelect: () => {
               if (!hasOrganization) {
                 toast.error('Assign a group before assigning a program');
@@ -364,13 +366,8 @@ function ActionsCell({
           },
           {
             id: 'group',
-            label: 'Add to group',
+            label: hasOrganization ? 'Change group' : 'Assign group',
             onSelect: () => setGroupOpen(true),
-          },
-          {
-            id: 'admin',
-            label: 'Make admin',
-            onSelect: () => toastUnavailable('Make admin'),
           },
           {
             id: 'remove',
@@ -393,6 +390,9 @@ function ActionsCell({
         open={groupOpen}
         onOpenChange={setGroupOpen}
         userId={profile.id}
+        userFirstName={profile.first_name}
+        userLastName={profile.last_name}
+        currentOrganizationId={profile.orgMemberships?.[0]?.orgId ?? null}
       />
     </>
   );
