@@ -65,8 +65,8 @@ const satoshi = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'VantaVybe Admin',
-  description: 'VantaVybe Admin panel for the VantaVybe application',
+  title: 'VANTAVYBE Admin',
+  description: 'VANTAVYBE Admin panel for the VANTAVYBE application',
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -75,8 +75,8 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
   },
   openGraph: {
-    title: 'VantaVybe Admin',
-    description: 'VantaVybe Admin panel for the VantaVybe application',
+    title: 'VANTAVYBE Admin',
+    description: 'VANTAVYBE Admin panel for the VANTAVYBE application',
     url: process.env.APP_URL,
     type: 'website',
     images: [
@@ -84,21 +84,21 @@ export const metadata: Metadata = {
         url: `${process.env.APP_URL}/og-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'VantaVybe Admin',
+        alt: 'VANTAVYBE Admin',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@flywheelstudio',
-    title: 'VantaVybe Admin',
-    description: 'VantaVybe Admin panel for the VantaVybe application',
+    title: 'VANTAVYBE Admin',
+    description: 'VANTAVYBE Admin panel for the VANTAVYBE application',
     images: [
       {
         url: `${process.env.APP_URL}/twitter-image.jpg`,
         width: 1200,
         height: 630,
-        alt: 'VantaVybe Admin',
+        alt: 'VANTAVYBE Admin',
       },
     ],
   },
