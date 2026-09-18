@@ -42,6 +42,7 @@ import type { SelectedItem } from '../[id]/template-config/types';
 import { QuickAssignModal } from './quick-assign-modal';
 import { PropagateDatesDialog } from './propagate-dates-dialog';
 import { getMemberName, isOngoingProgram } from './program-window';
+import { usePreheat } from '@/hooks/use-preheat';
 
 interface ReviewAssignUIProps {
   assignmentId: string;
@@ -67,6 +68,7 @@ export function ReviewAssignUI({
   members,
   saveImpact = EMPTY_TEMPLATE_SAVE_IMPACT,
 }: ReviewAssignUIProps): React.ReactElement {
+  const { getPreheatHandlers } = usePreheat();
   const builderHref = `/builder/${assignmentId}`;
   const template = programAssignment.program_template;
   const templateName = template?.name ?? 'Program';
@@ -308,12 +310,6 @@ export function ReviewAssignUI({
             <div className="card card-flush">
               <div className="cs">
                 <span className="cs-t">The {weeks} weeks at a glance</span>
-                <span className="sp">
-                  <Link href={builderWorkoutHref(assignmentId)} className="btn btn-ghost btn-sm">
-                    <Icon name="SquarePen" size={15} />
-                    Edit the schedule
-                  </Link>
-                </span>
               </div>
               <table className="tbl">
                 <thead>
@@ -365,7 +361,7 @@ export function ReviewAssignUI({
                         </td>
                         <td style={{ textAlign: 'right', width: 52 }}>
                           <Link
-                            href={builderWorkoutHref(assignmentId)}
+                            href={builderWorkoutHref(assignmentId, index + 1)}
                             className="ib ib-ghost ib-sm"
                             aria-label={`Edit week ${index + 1}`}
                           >
@@ -410,19 +406,9 @@ export function ReviewAssignUI({
               </div>
 
               {isUnassigned ? (
-                <>
-                  <p className="mut" style={{ fontSize: 'var(--text-sm)', marginBottom: 10 }}>
-                    Assign this template to one or more members with a shared start date.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-acc btn-full"
-                    onClick={() => setIsQuickAssignOpen(true)}
-                  >
-                    <Icon name="ClipboardList" size={16} />
-                    Quick assign
-                  </button>
-                </>
+                <p className="mut" style={{ fontSize: 'var(--text-sm)', marginBottom: 10 }}>
+                  Assign this template to one or more members with a shared start date.
+                </p>
               ) : canEditDates ? (
                 <>
                   <label className="lbl" style={{ marginBottom: 8 }}>
@@ -481,6 +467,16 @@ export function ReviewAssignUI({
                   ) : null}
                 </>
               )}
+
+              <button
+                type="button"
+                className={`btn ${isUnassigned ? 'btn-acc' : 'btn-sec'} btn-full`}
+                style={isUnassigned ? undefined : { marginTop: 12 }}
+                onClick={() => setIsQuickAssignOpen(true)}
+              >
+                <Icon name="ClipboardList" size={16} />
+                {isUnassigned || members.length === 0 ? 'Quick assign' : 'Assign more members'}
+              </button>
             </div>
 
             <div className="card">
@@ -494,7 +490,7 @@ export function ReviewAssignUI({
               </div>
               {members.length === 0 ? (
                 <p className="mut" style={{ fontSize: 'var(--text-sm)' }}>
-                  No members assigned yet — assign this template to add the first one.
+                  No members assigned yet — use Quick assign above to add the first one.
                 </p>
               ) : (
                 <>
@@ -513,36 +509,64 @@ export function ReviewAssignUI({
                     </span>
                   </div>
                   <div className="list-rows">
-                    {members.map((member) => (
-                      <div key={member.id} className="lrow">
-                        <HtmlAvatar name={getMemberName(member)} size={32} />
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span
-                            style={{
-                              display: 'block',
-                              fontSize: 'var(--text-md)',
-                              fontWeight: 'var(--fw-medium)',
-                              color: 'var(--text-strong)',
-                            }}
-                          >
-                            {getMemberName(member)}
+                    {members.map((member) => {
+                      const userId = member.user_id ?? member.profiles?.id ?? null;
+                      const userHref = userId ? `/users/${userId}` : null;
+                      const row = (
+                        <>
+                          <HtmlAvatar name={getMemberName(member)} size={32} />
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span
+                              style={{
+                                display: 'block',
+                                fontSize: 'var(--text-md)',
+                                fontWeight: 'var(--fw-medium)',
+                                color: 'var(--text-strong)',
+                              }}
+                            >
+                              {getMemberName(member)}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 'var(--text-xs)',
+                                color: 'var(--text-muted)',
+                              }}
+                            >
+                              {member.start_date
+                                ? `Started ${format(parseLocalDateString(member.start_date), 'MMM d, yyyy')}`
+                                : 'No start date'}
+                            </span>
                           </span>
                           <span
-                            style={{
-                              fontSize: 'var(--text-xs)',
-                              color: 'var(--text-muted)',
-                            }}
+                            className={`bdg${member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ? ' bdg-b' : ''}`}
+                            style={{ fontSize: 10 }}
                           >
-                            {member.start_date
-                              ? `Started ${format(parseLocalDateString(member.start_date), 'MMM d, yyyy')}`
-                              : 'No start date'}
+                            {member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE
+                              ? 'Active'
+                              : 'Pre-program'}
                           </span>
-                        </span>
-                        <span className={`bdg${member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ? ' bdg-b' : ''}`} style={{ fontSize: 10 }}>
-                          {member.status === PROGRAM_ASSIGNMENT_STATUS.ACTIVE ? 'Active' : 'Pre-program'}
-                        </span>
-                      </div>
-                    ))}
+                        </>
+                      );
+
+                      if (!userHref) {
+                        return (
+                          <div key={member.id} className="lrow">
+                            {row}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={member.id}
+                          href={userHref}
+                          className="lrow"
+                          {...getPreheatHandlers(userHref)}
+                        >
+                          {row}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </>
               )}

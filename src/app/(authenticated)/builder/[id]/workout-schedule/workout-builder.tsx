@@ -28,6 +28,8 @@ interface WorkoutBuilderProps {
   assignmentId: string | undefined;
   initialAssignment: ProgramAssignmentWithTemplate;
   programDetailsCollapsed?: boolean;
+  /** 0-based week to select when opening the workout schedule step. */
+  initialWeekIndex?: number;
   saveImpact: TemplateSaveImpact;
 }
 
@@ -35,10 +37,12 @@ export function WorkoutBuilder({
   assignmentId,
   initialAssignment,
   programDetailsCollapsed = false,
+  initialWeekIndex,
   saveImpact,
 }: WorkoutBuilderProps): React.ReactElement {
   const router = useRouter();
-  const { initializeSchedule, setSelectedAssignmentId, schedule } = useBuilder();
+  const { initializeSchedule, setSelectedAssignmentId, schedule, setCurrentWeek } =
+    useBuilder();
   const locationHash = useSyncExternalStore(
     subscribeLocationHash,
     getLocationHash,
@@ -116,6 +120,18 @@ export function WorkoutBuilder({
     initializeSchedule,
     schedule.length,
   ]);
+
+  useEffect(() => {
+    if (initialWeekIndex == null) return;
+    const maxIndex = Math.max((template?.weeks ?? 1) - 1, 0);
+    setCurrentWeek(Math.min(initialWeekIndex, maxIndex));
+
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('week')) return;
+    url.searchParams.delete('week');
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+  }, [initialWeekIndex, setCurrentWeek, template?.weeks, router]);
 
   const programForm = useForm<ProgramTemplateFormData>({
     resolver: zodResolver(programTemplateFormSchema),

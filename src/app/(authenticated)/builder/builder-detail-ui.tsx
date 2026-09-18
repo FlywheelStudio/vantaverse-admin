@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
 import { BuilderContextProvider } from '@/context/builder-context';
 import { WorkoutBuilder } from './[id]/workout-schedule/workout-builder';
@@ -16,6 +14,7 @@ interface BuilderDetailUIProps {
   programAssignment: ProgramAssignmentWithTemplate;
   convertedSchedule: SelectedItem[][][] | null;
   programDetailsCollapsed: boolean;
+  initialWeekIndex?: number;
   saveImpact: TemplateSaveImpact;
 }
 
@@ -24,6 +23,7 @@ export function BuilderDetailUI({
   programAssignment,
   convertedSchedule,
   programDetailsCollapsed,
+  initialWeekIndex,
   saveImpact,
 }: BuilderDetailUIProps): React.ReactElement {
   const template = programAssignment.program_template;
@@ -42,20 +42,12 @@ export function BuilderDetailUI({
         ]}
         title={templateName}
         subtitle={`Template · ${weeks} week${weeks === 1 ? '' : 's'}`}
-        actions={
-          <Link
-            href={`/builder/review-assign?id=${assignmentId}`}
-            className="btn btn-sec"
-          >
-            <Icon name="BadgeCheck" size={17} />
-            Review &amp; assign
-          </Link>
-        }
       />
       <WorkoutBuilder
         assignmentId={assignmentId}
         initialAssignment={programAssignment}
         programDetailsCollapsed={programDetailsCollapsed}
+        initialWeekIndex={initialWeekIndex}
         saveImpact={saveImpact}
       />
     </BuilderContextProvider>

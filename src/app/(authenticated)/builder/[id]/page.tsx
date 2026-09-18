@@ -5,7 +5,10 @@ import {
   getTemplateSaveImpactByBaseId,
 } from '@/lib/supabase/queries/program-assignments';
 import { convertScheduleToSelectedItems } from '@/app/(authenticated)/builder/actions';
-import { isBuilderWorkoutTab } from '@/app/(authenticated)/builder/partials/html-utils';
+import {
+  isBuilderWorkoutTab,
+  parseBuilderWeekParam,
+} from '@/app/(authenticated)/builder/partials/html-utils';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import {
   EMPTY_TEMPLATE_SAVE_IMPACT,
@@ -25,6 +28,7 @@ export default async function BuilderIdPage({
     isBuilderWorkoutTab(resolvedSearchParams?.tab) ||
     resolvedSearchParams?.collapsed === '1' ||
     resolvedSearchParams?.collapsed === 'true';
+  const initialWeekIndex = parseBuilderWeekParam(resolvedSearchParams?.week);
 
   const [[assignmentErr, programAssignment], [impactErr, impactData]] =
     await Promise.all([
@@ -57,6 +61,7 @@ export default async function BuilderIdPage({
       programAssignment={programAssignment}
       convertedSchedule={convertedSchedule}
       programDetailsCollapsed={collapsed}
+      initialWeekIndex={initialWeekIndex}
       saveImpact={saveImpact}
     />
   );
