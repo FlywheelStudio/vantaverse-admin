@@ -72,19 +72,29 @@ function PledgeViewModal({
             >
               Photo
             </figcaption>
-            <Image
-              src={pledge.photo.image_url}
-              alt="Pledge photo"
-              width={240}
-              height={180}
-              unoptimized
+            <div
               style={{
+                position: 'relative',
                 width: '100%',
-                height: 'auto',
+                aspectRatio: '4 / 3',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-subtle)',
+                overflow: 'hidden',
               }}
-            />
+            >
+              <Image
+                src={pledge.photo.image_url}
+                alt="Pledge photo"
+                width={240}
+                height={180}
+                unoptimized
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
           </figure>
         ) : null}
         {pledge.signature?.image_url ? (
@@ -101,20 +111,33 @@ function PledgeViewModal({
             >
               Signature
             </figcaption>
-            <Image
-              src={pledge.signature.image_url}
-              alt="Pledge signature"
-              width={240}
-              height={120}
-              unoptimized
+            <div
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 width: '100%',
-                height: 'auto',
+                aspectRatio: '4 / 3',
+                padding: 16,
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-subtle)',
-                background: 'var(--surface-card)',
+                background: 'var(--navy-900)',
               }}
-            />
+            >
+              <Image
+                src={pledge.signature.image_url}
+                alt="Pledge signature"
+                width={240}
+                height={120}
+                unoptimized
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                }}
+              />
+            </div>
           </figure>
         ) : null}
       </div>

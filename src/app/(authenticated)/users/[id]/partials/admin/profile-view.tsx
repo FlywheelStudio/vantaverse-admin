@@ -70,9 +70,13 @@ export async function AdminProfileView({
       ? memberCountsByOrgResult.data
       : {};
     complianceByOrg = complianceByOrgResult[0] ? [] : complianceByOrgResult[1];
-    lowComplianceUsers = lowComplianceUsersResult[0]
+    const rawLowCompliance = lowComplianceUsersResult[0]
       ? []
       : lowComplianceUsersResult[1].users;
+    // Worst first so the scroll panel surfaces the members who need help first.
+    lowComplianceUsers = [...rawLowCompliance].sort(
+      (a, b) => a.compliance - b.compliance,
+    );
   }
 
   return (

@@ -1,92 +1,120 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { Card } from '@/components/ui/card';
 import { AdminComplianceBarChart, type ComplianceByOrgItem } from './bar-chart';
 import type { UserNeedingAttention } from '@/lib/supabase/queries/dashboard';
-import type { Organization } from '@/lib/supabase/schemas/organizations';
-import { generateColorFromSeed } from '@/components/ui/avatar';
+import { Avatar } from '@/components/widgets/avatar';
+import { ProgressBar } from '@/components/widgets/progress-bar';
+import { Icon } from '@/components/medvanta';
+
+/** Max visible rows before the list scrolls (matches dashboard attention panel density). */
+const LOW_COMPLIANCE_SCROLL_MAX_HEIGHT = 280;
 
 interface ComplianceCardProps {
   chartData: ComplianceByOrgItem[];
   lowComplianceUsers: UserNeedingAttention[];
-  organizations: Organization[];
+}
+
+function displayName(user: UserNeedingAttention): string {
+  const parts = [user.first_name, user.last_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+  return user.email ?? user.user_id;
 }
 
 export function ComplianceCard({
   chartData,
   lowComplianceUsers,
-  organizations,
-}: ComplianceCardProps) {
+}: ComplianceCardProps): React.ReactElement {
   return (
-    <Card className="overflow-hidden border border-border shadow-(--shadow-lg) p-4 py-6 space-y-4">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.08 }}
-        className="space-y-4"
-      >
-        <h2 className="text-xl font-semibold text-foreground">
-          Group compliance
-        </h2>
-        <AdminComplianceBarChart data={chartData} />
-        <div className="space-y-2 pt-2 border-t border-border">
-          <h3 className="text-sm font-semibold text-foreground">
-            Users with low compliance
-          </h3>
-          {lowComplianceUsers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No users below threshold in your groups.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {lowComplianceUsers.map((u) => {
-                const org = organizations.find((o) => o.id === u.organization_id);
-                const bg = generateColorFromSeed(org?.id || 'default', {
-                  gradient: true,
-                });
-                return (
-                  <li key={u.user_id}>
-                    <Link
-                      href={`/users/${u.user_id}`}
-                      className="group flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="h-8 w-8 rounded-md shrink-0 overflow-hidden relative bg-muted shadow-(--shadow-sm)"
-                          style={
-                            !org?.picture_url ? { backgroundImage: bg } : undefined
-                          }
-                        >
-                          {org?.picture_url && (
-                            <Image
-                              src={org.picture_url}
-                              alt=""
-                              fill
-                              sizes="32px"
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="text-sm font-medium text-primary group-hover:underline truncate">
-                          {[u.first_name, u.last_name].filter(Boolean).join(' ') ||
-                            u.email ||
-                            u.user_id}
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-muted-foreground tabular-nums">
-                        {Math.round(u.compliance)}%
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ch" style={{ marginBottom: 0 }}>
+        <div>
+          <div className="ch-t">Group compliance</div>
+          <div className="ch-s">Compliance vs program completion by group</div>
         </div>
-      </motion.div>
-    </Card>
+      </div>
+
+      <AdminComplianceBarChart data={chartData} />
+
+      <div
+        className="card card-flush"
+        style={{ padding: 0, margin: '0 -4px', boxShadow: 'none' }}
+      >
+        <div className="cs" style={{ paddingLeft: 4, paddingRight: 4 }}>
+          <span className="cs-t">Low compliance</span>
+          <span className="bdg bdg-o">{lowComplianceUsers.length}</span>
+          <span className="sp">
+            <Link href="/users" className="btn btn-ghost btn-sm">
+              View members
+              <Icon name="ArrowRight" size={15} />
+            </Link>
+          </span>
+        </div>
+
+        {lowComplianceUsers.length === 0 ? (
+          <p
+            style={{
+              padding: '16px 4px 4px',
+              margin: 0,
+              fontSize: 'var(--text-sm)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            No members below the compliance threshold in these groups.
+          </p>
+        ) : (
+          <div
+            style={{
+              maxHeight: LOW_COMPLIANCE_SCROLL_MAX_HEIGHT,
+              overflow: 'auto',
+              minHeight: 0,
+            }}
+          >
+            <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                <col style={{ width: '58%' }} />
+                <col style={{ width: '42%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Compliance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowComplianceUsers.map((user) => {
+                  const name = displayName(user);
+                  return (
+                    <tr key={user.user_id}>
+                      <td>
+                        <Link
+                          href={`/users/${user.user_id}`}
+                          className="cellp"
+                          style={{ color: 'inherit', textDecoration: 'none' }}
+                        >
+                          <Avatar name={name} size={32} />
+                          <span style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <span className="nm" style={{ display: 'block' }}>
+                              {name}
+                            </span>
+                            <span className="em">{user.email ?? '—'}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td>
+                        <ProgressBar
+                          pct={Math.round(user.compliance)}
+                          tone={user.compliance < 40 ? 'danger' : 'accent'}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
