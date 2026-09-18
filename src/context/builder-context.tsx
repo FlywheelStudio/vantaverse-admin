@@ -8,8 +8,6 @@ import React, {
   useCallback,
 } from 'react';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
-import type { DayScheduleMeta } from '@/app/(authenticated)/builder/[id]/workout-schedule/exercise-builder-mock-data';
-import { EMPTY_DAY_SCHEDULE_META } from '@/app/(authenticated)/builder/[id]/workout-schedule/exercise-builder-mock-data';
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 
 interface BuilderContextValue {
@@ -23,8 +21,6 @@ interface BuilderContextValue {
   setProgramStartDate: (date: string | null) => void;
   resetProgramAssignmentId: () => void;
   setScheduleItem: (week: number, day: number, items: SelectedItem[]) => void;
-  getDayMeta: (week: number, day: number) => DayScheduleMeta;
-  setDayMeta: (week: number, day: number, meta: DayScheduleMeta) => void;
   setCurrentWeek: (week: number) => void;
   getDayItems: (week: number, day: number) => SelectedItem[];
   hasChanges: (week: number, day: number) => boolean;
@@ -50,33 +46,7 @@ interface BuilderContextValue {
 const BuilderContext = createContext<BuilderContextValue | null>(null);
 
 const SCHEDULE_STORAGE_KEY = 'builder-schedule';
-const DAY_META_STORAGE_KEY = 'builder-day-meta';
 const CURRENT_WEEK_STORAGE_KEY = 'builder-current-week';
-
-function createEmptyDayMetaGrid(weeks: number): DayScheduleMeta[][] {
-  return Array.from({ length: weeks }, () =>
-    Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_SCHEDULE_META })),
-  );
-}
-
-function ensureDayMetaGrid(
-  meta: DayScheduleMeta[][],
-  week: number,
-  day: number,
-): DayScheduleMeta[][] {
-  const updated = [...meta];
-  while (updated.length <= week) {
-    updated.push(Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_SCHEDULE_META })));
-  }
-  for (let w = 0; w < updated.length; w++) {
-    while (updated[w].length < 7) {
-      updated[w].push({ ...EMPTY_DAY_SCHEDULE_META });
-    }
-  }
-  updated[week] = [...updated[week]];
-  updated[week][day] = { ...updated[week][day] };
-  return updated;
-}
 
 export function useBuilder() {
   const context = useContext(BuilderContext);
@@ -111,13 +81,6 @@ export function BuilderContextProvider({
       return initialSchedule;
     }
     
-    return [];
-  });
-
-  const [dayMeta, setDayMetaState] = useState<DayScheduleMeta[][]>(() => {
-    if (initialSchedule && initialSchedule.length > 0) {
-      return createEmptyDayMetaGrid(initialSchedule.length);
-    }
     return [];
   });
 
@@ -158,10 +121,6 @@ export function BuilderContextProvider({
   useEffect(() => {
     if (initialSchedule && typeof window !== 'undefined') {
       sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(initialSchedule));
-      sessionStorage.setItem(
-        DAY_META_STORAGE_KEY,
-        JSON.stringify(createEmptyDayMetaGrid(initialSchedule.length)),
-      );
     }
   }, [initialSchedule]);
 
@@ -169,10 +128,8 @@ export function BuilderContextProvider({
     setSelectedAssignmentIdState(id);
     if (typeof window !== 'undefined' && !id) {
       sessionStorage.removeItem(SCHEDULE_STORAGE_KEY);
-      sessionStorage.removeItem(DAY_META_STORAGE_KEY);
       sessionStorage.removeItem(CURRENT_WEEK_STORAGE_KEY);
       setScheduleState([]);
-      setDayMetaState([]);
       setCurrentWeekState(0);
       setProgramStartDateState(null);
       setCopiedWeekIndex(null);
@@ -190,13 +147,10 @@ export function BuilderContextProvider({
     const newSchedule: SelectedItem[][][] = Array.from({ length: weeks }, () =>
       Array.from({ length: 7 }, () => []),
     );
-    const newDayMeta = createEmptyDayMetaGrid(weeks);
 
     setScheduleState(newSchedule);
-    setDayMetaState(newDayMeta);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(newSchedule));
-      sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(newDayMeta));
     }
   }, []);
 
@@ -218,26 +172,6 @@ export function BuilderContextProvider({
 
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(next));
-      }
-
-      return next;
-    });
-
-    setDayMetaState((prev) => {
-      if (prev.length === weeks) return prev;
-
-      let next: DayScheduleMeta[][];
-      if (weeks > prev.length) {
-        const added = Array.from({ length: weeks - prev.length }, () =>
-          Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_SCHEDULE_META })),
-        );
-        next = [...prev, ...added];
-      } else {
-        next = prev.slice(0, weeks);
-      }
-
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(next));
       }
 
       return next;
@@ -267,32 +201,6 @@ export function BuilderContextProvider({
         // Persist to sessionStorage
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(updated));
-        }
-
-        return updated;
-      });
-    },
-    [],
-  );
-
-  const getDayMeta = useCallback(
-    (week: number, day: number): DayScheduleMeta => {
-      if (week < 0 || day < 0 || day >= 7) return { ...EMPTY_DAY_SCHEDULE_META };
-      if (week >= dayMeta.length) return { ...EMPTY_DAY_SCHEDULE_META };
-      if (day >= dayMeta[week].length) return { ...EMPTY_DAY_SCHEDULE_META };
-      return dayMeta[week][day] ?? { ...EMPTY_DAY_SCHEDULE_META };
-    },
-    [dayMeta],
-  );
-
-  const setDayMeta = useCallback(
-    (week: number, day: number, meta: DayScheduleMeta): void => {
-      setDayMetaState((prev) => {
-        const updated = ensureDayMetaGrid(prev, week, day);
-        updated[week][day] = { ...meta };
-
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(updated));
         }
 
         return updated;
@@ -420,18 +328,6 @@ export function BuilderContextProvider({
       }
       return updated;
     });
-
-    setDayMetaState((prev) => {
-      if (weekIndex >= prev.length) return prev;
-      const updated = [...prev];
-      updated[weekIndex] = Array.from({ length: 7 }, () => ({
-        ...EMPTY_DAY_SCHEDULE_META,
-      }));
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(updated));
-      }
-      return updated;
-    });
   }, []);
 
   const isDayOutOfBoundsForWeek = useCallback(
@@ -474,10 +370,6 @@ export function BuilderContextProvider({
       const sourceItems: SelectedItem[][] = source.map((day) =>
         day.map((item) => ({ ...item })),
       );
-      const sourceMeta = Array.from({ length: 7 }, (_, dayIndex) => {
-        const meta = dayMeta[weekIndex]?.[dayIndex];
-        return meta ? { ...meta } : { ...EMPTY_DAY_SCHEDULE_META };
-      });
 
       setScheduleState((prev) => {
         let changed = false;
@@ -497,27 +389,8 @@ export function BuilderContextProvider({
         }
         return updated;
       });
-
-      setDayMetaState((prev) => {
-        let changed = false;
-        const updated = [...prev];
-        for (const target of targets) {
-          if (target < 0 || target >= prev.length || target === weekIndex) continue;
-          updated[target] = prev[target].map((existingMeta, dayIndex) =>
-            isDayOutOfBoundsForWeek(target, dayIndex, endDate)
-              ? existingMeta
-              : { ...sourceMeta[dayIndex] },
-          );
-          changed = true;
-        }
-        if (!changed) return prev;
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(DAY_META_STORAGE_KEY, JSON.stringify(updated));
-        }
-        return updated;
-      });
     },
-    [schedule, dayMeta, isDayOutOfBoundsForWeek],
+    [schedule, isDayOutOfBoundsForWeek],
   );
 
   const duplicateWeekToAll = useCallback(
@@ -616,8 +489,6 @@ export function BuilderContextProvider({
         setProgramStartDate,
         resetProgramAssignmentId,
         setScheduleItem,
-        getDayMeta,
-        setDayMeta,
         setCurrentWeek,
         getDayItems,
         hasChanges,

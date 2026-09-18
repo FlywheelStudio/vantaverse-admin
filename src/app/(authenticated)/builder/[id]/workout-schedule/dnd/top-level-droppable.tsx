@@ -101,9 +101,7 @@ export function TopLevelDroppable({
                     item={item}
                     onRemove={() => onRemove(index)}
                     onClick={(e) => handleItemClick(index, e)}
-                    onPrescriptionChange={(prescription) => {
-                      onUpdate(index, { ...item, prescription });
-                    }}
+                    onItemChange={(updated) => onUpdate(index, updated)}
                   />
                 </SortableItem>
               );

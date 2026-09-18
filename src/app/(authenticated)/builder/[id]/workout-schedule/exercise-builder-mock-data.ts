@@ -1,4 +1,4 @@
-/** Mock defaults for Edit Workout Day modal (HTML `mdDayEditor` parity). */
+/** Helpers for Edit Workout Day modal (HTML `mdDayEditor` parity). */
 
 const DAY_NAMES = [
   'Monday',
@@ -12,30 +12,13 @@ const DAY_NAMES = [
 
 type DayName = (typeof DAY_NAMES)[number];
 
+/** Quick-assign bubble values shown on selected exercise rows. */
 export interface DayPrescription {
   sets: string;
   reps: string;
+  time: string;
   rest: string;
 }
-
-/** Client-only metadata for a schedule day (no RPC persistence). */
-export interface DayScheduleMeta {
-  isRestDay?: boolean;
-  sessionNote?: string;
-}
-
-export const EMPTY_DAY_SCHEDULE_META: DayScheduleMeta = {
-  isRestDay: false,
-  sessionNote: '',
-};
-
-/** Mock default Rx shown on selected rows: 3×10 · 60s */
-export const DEFAULT_DAY_PRESCRIPTION: DayPrescription = {
-  sets: '3',
-  reps: '10',
-  rest: '60s',
-};
-
 
 const MINUTES_PER_EXERCISE = 5;
 

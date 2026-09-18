@@ -131,6 +131,14 @@ export function SelectedGroupComponent({
                         ? (e) => onGroupItemClick(item, index, itemIndex, e)
                         : () => {}
                     }
+                    onItemChange={(updated) => {
+                      const newItems = [...group.items];
+                      newItems[itemIndex] = updated;
+                      onUpdateGroup({
+                        ...group,
+                        items: newItems,
+                      });
+                    }}
                   />
                 </SortableItem>
               );

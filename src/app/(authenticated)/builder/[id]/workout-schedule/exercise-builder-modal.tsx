@@ -4,11 +4,10 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button, Icon, IconButton, Input } from '@/components/medvanta';
 import { HtmlModal } from '@/app/(authenticated)/users/[id]/partials/intake-survey-placeholder-modal';
 import {
-  useExercisesInfinite,
+  useExercisesFilteredInfinite,
   useExerciseTemplatesInfinite,
   useExerciseTemplatesByIds,
   useGroupsInfinite,
-  useExerciseTypes,
 } from '@/hooks/use-exercises';
 import { useDebounce } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
@@ -20,24 +19,22 @@ import {
   ExerciseTabSwitcher,
   type TabType,
 } from './partials/exercise-tab-switcher';
-import { ExerciseSearchControls } from './partials/exercise-search-controls';
+import {
+  ExerciseSearchControls,
+  DEFAULT_LIBRARY_FILTERS,
+  type LibraryFilters,
+} from './partials/exercise-search-controls';
 import { ExerciseLibraryCard } from './partials/exercise-library-card';
 import { ExerciseTemplateCard } from './partials/exercise-template-card';
 import { GroupCard } from './partials/group-card';
 import { SelectedItemsList } from './selected-items-list';
 import { DefaultValues } from '../default-values/default-values';
-import {
-  formatVolumeFooter,
-  getDayName,
-  type DayScheduleMeta,
-} from './exercise-builder-mock-data';
+import { formatVolumeFooter, getDayName } from './exercise-builder-mock-data';
 
 const FL_SUPERSETS_ENABLED = process.env.NEXT_PUBLIC_FL_SUPERSETS === 'true';
 
 export interface ExerciseBuilderDonePayload {
   items: SelectedItem[];
-  isRestDay: boolean;
-  sessionNote: string;
 }
 
 interface ExerciseBuilderModalProps {
@@ -46,10 +43,7 @@ interface ExerciseBuilderModalProps {
   onDone?: (payload: ExerciseBuilderDonePayload) => void;
   onCancel?: () => void;
   initialItems?: SelectedItem[];
-  initialIsRestDay?: boolean;
-  initialSessionNote?: string;
   onItemsChange?: (selectedItems: SelectedItem[]) => void;
-  onDayMetaChange?: (meta: DayScheduleMeta) => void;
   weekIndex?: number;
   dayIndex?: number;
   date?: Date | null;
@@ -74,10 +68,7 @@ export function ExerciseBuilderModal({
   onDone,
   onCancel,
   initialItems = [],
-  initialIsRestDay = false,
-  initialSessionNote = '',
   onItemsChange,
-  onDayMetaChange,
   weekIndex,
   dayIndex,
   date,
@@ -86,40 +77,39 @@ export function ExerciseBuilderModal({
 }: ExerciseBuilderModalProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<TabType>('library');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('updated_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [libraryFilters, setLibraryFilters] = useState<LibraryFilters>(
+    DEFAULT_LIBRARY_FILTERS,
+  );
   const [selectedItems, setSelectedItems] =
     useState<SelectedItem[]>(initialItems);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
-  const [isRestDay, setIsRestDay] = useState(initialIsRestDay);
-  const [sessionNote, setSessionNote] = useState(initialSessionNote);
   const [mockDayIndex, setMockDayIndex] = useState(dayIndex ?? 0);
 
   const debouncedSearch = useDebounce(search, 300);
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
-  const { data: typeOptions = [] } = useExerciseTypes();
-  const exercisesQuery = useExercisesInfinite(
-    debouncedSearch || undefined,
-    sortBy,
-    sortOrder,
-    20,
-    sourceFilter ?? undefined,
-  );
+  const exercisesQuery = useExercisesFilteredInfinite({
+    search: debouncedSearch || undefined,
+    type: libraryFilters.type !== 'all' ? libraryFilters.type : undefined,
+    assignment: libraryFilters.assignment,
+    tagIds: libraryFilters.tagIds.length > 0 ? libraryFilters.tagIds : undefined,
+    pageSize: 20,
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+  });
 
   const templatesQuery = useExerciseTemplatesInfinite(
     debouncedSearch || undefined,
-    sortBy,
-    sortOrder,
+    'updated_at',
+    'desc',
     20,
   );
 
   const groupsQuery = useGroupsInfinite(
     debouncedSearch || undefined,
-    sortBy,
-    sortOrder,
+    'updated_at',
+    'desc',
     20,
   );
 
@@ -171,16 +161,6 @@ export function ExerciseBuilderModal({
     onItemsChange?.(newItems);
   };
 
-  const updateDayMeta = (next: Partial<DayScheduleMeta>): void => {
-    const meta: DayScheduleMeta = {
-      isRestDay: next.isRestDay ?? isRestDay,
-      sessionNote: next.sessionNote ?? sessionNote,
-    };
-    if (next.isRestDay !== undefined) setIsRestDay(next.isRestDay);
-    if (next.sessionNote !== undefined) setSessionNote(next.sessionNote);
-    onDayMetaChange?.(meta);
-  };
-
   const handleAddExercise = (exercise: Exercise): void => {
     updateSelectedItems([
       ...selectedItems,
@@ -195,7 +175,10 @@ export function ExerciseBuilderModal({
     ]);
   };
 
-  const allExercises = exercisesQuery.data?.pages.flat() || [];
+  const allExercises = useMemo(
+    () => exercisesQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [exercisesQuery.data],
+  );
   const allTemplates = templatesQuery.data?.pages.flat() || [];
   const allGroups = useMemo(
     () => groupsQuery.data?.pages.flat() || [],
@@ -264,8 +247,6 @@ export function ExerciseBuilderModal({
 
     onDone?.({
       items: filteredItems,
-      isRestDay,
-      sessionNote,
     });
     onOpenChange(false);
     setSearch('');
@@ -278,11 +259,6 @@ export function ExerciseBuilderModal({
     setSearch('');
     setShowGroupInput(false);
     setGroupNameInput('');
-  };
-
-  const handleSortChange = (by: string, order: 'asc' | 'desc'): void => {
-    setSortBy(by);
-    setSortOrder(order);
   };
 
   const handleAddGroup = (): void => {
@@ -373,11 +349,12 @@ export function ExerciseBuilderModal({
       title={getHeaderTitle()}
       subtitle={getSubtitle()}
       onClose={() => onOpenChange(false)}
-      width={1060}
+      width={1520}
       style={{
-        maxWidth: 1060,
-        maxHeight: 'min(660px, calc(100vh - 56px))',
-        height: 'min(660px, calc(100vh - 56px))',
+        width: 'min(1520px, calc(100vw - 56px))',
+        maxWidth: 'min(1520px, calc(100vw - 56px))',
+        height: 'calc(100vh - 56px)',
+        maxHeight: 'calc(100vh - 56px)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -415,8 +392,11 @@ export function ExerciseBuilderModal({
         </>
       }
     >
-      <div className="dual flex min-h-0 flex-1 overflow-hidden">
-          <div className="dual-l flex flex-col overflow-hidden">
+      <div
+        className="dual flex min-h-0 flex-1 overflow-hidden"
+        style={{ gridTemplateColumns: 'minmax(0, 1fr) 480px' }}
+      >
+          <div className="dual-l flex min-h-0 flex-col overflow-visible">
             <ExerciseTabSwitcher
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -425,15 +405,19 @@ export function ExerciseBuilderModal({
               <ExerciseSearchControls
                 search={search}
                 onSearchChange={setSearch}
-                sortBy={sortBy}
-                onSortChange={handleSortChange}
-                sourceFilter={sourceFilter}
-                onSourceFilterChange={setSourceFilter}
-                typeOptions={typeOptions}
+                showExerciseFilters={activeTab === 'library'}
+                searchPlaceholder={
+                  activeTab === 'library'
+                    ? 'Search exercises…'
+                    : activeTab === 'templates'
+                      ? 'Search templates…'
+                      : 'Search groups…'
+                }
+                onFiltersChange={setLibraryFilters}
               />
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {activeTab === 'default-values' ? (
                   <DefaultValues />
               ) : (
@@ -576,44 +560,6 @@ export function ExerciseBuilderModal({
               {volumeLabel}
             </div>
 
-            <label
-              className="cbl"
-              style={{
-                fontSize: 'var(--text-sm)',
-                marginBottom: 13,
-                padding: '9px 11px',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--surface-card)',
-              }}
-            >
-              <button
-                type="button"
-                className={isRestDay ? 'sw on' : 'sw'}
-                aria-pressed={isRestDay}
-                aria-label={`Mark ${dayName} as a rest day`}
-                onClick={() => updateDayMeta({ isRestDay: !isRestDay })}
-              >
-                <i />
-              </button>
-              Mark {dayName} as a rest day
-            </label>
-
-            <div style={{ marginBottom: 13 }}>
-              <label className="lbl" htmlFor="day-session-note">
-                Session note
-              </label>
-              <textarea
-                id="day-session-note"
-                className="ta"
-                rows={2}
-                placeholder="Optional — shown at the top of the workout"
-                value={sessionNote}
-                onChange={(e) => updateDayMeta({ sessionNote: e.target.value })}
-                disabled={isRestDay}
-              />
-            </div>
-
             <div
               className="row"
               style={{ justifyContent: 'space-between', marginBottom: 8 }}
@@ -633,7 +579,6 @@ export function ExerciseBuilderModal({
                 type="button"
                 onClick={() => setShowGroupInput(true)}
                 className="mb-4 w-full cursor-pointer rounded-[var(--radius-md)] border-2 border-dashed border-[var(--border-default)] px-4 py-3 text-[length:var(--text-sm)] font-[var(--fw-medium)] text-[var(--text-muted)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--slate-50)] hover:text-[var(--text-strong)]"
-                disabled={isRestDay}
               >
                 + Add Group
               </button>
@@ -672,16 +617,14 @@ export function ExerciseBuilderModal({
                 />
               </div>
             )}
-            <div style={{ opacity: isRestDay ? 0.45 : 1, pointerEvents: isRestDay ? 'none' : undefined }}>
-              <SelectedItemsList
-                items={selectedItems}
-                onRemove={handleRemoveItem}
-                onUpdate={handleUpdateItem}
-                onItemsReorder={updateSelectedItems}
-                onRemoveGroup={handleRemoveGroup}
-                onToggleSuperset={handleToggleSuperset}
-              />
-            </div>
+            <SelectedItemsList
+              items={selectedItems}
+              onRemove={handleRemoveItem}
+              onUpdate={handleUpdateItem}
+              onItemsReorder={updateSelectedItems}
+              onRemoveGroup={handleRemoveGroup}
+              onToggleSuperset={handleToggleSuperset}
+            />
           </div>
       </div>
     </HtmlModal>

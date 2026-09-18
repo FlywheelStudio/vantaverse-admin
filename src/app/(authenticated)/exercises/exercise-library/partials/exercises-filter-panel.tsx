@@ -27,6 +27,8 @@ interface ExercisesFilterPanelProps {
   onSelectedTagIdsChange: (tagIds: number[]) => void;
   onClear: () => void;
   onApply: () => void;
+  /** Override popover max height (builder modal needs a tighter cap). */
+  maxHeight?: string | number;
 }
 
 function CheckMark({ on }: { on?: boolean }): React.ReactElement {
@@ -51,6 +53,7 @@ export function ExercisesFilterPanel({
   onSelectedTagIdsChange,
   onClear,
   onApply,
+  maxHeight = 'min(80vh, 680px)',
 }: ExercisesFilterPanelProps): React.ReactElement | null {
   const { data: allTags = [], isLoading: isLoadingTags } = useAllTags();
   const [categorySearches, setCategorySearches] = useState<Record<string, string>>({});
@@ -101,8 +104,8 @@ export function ExercisesFilterPanel({
         top: 'calc(100% + 8px)',
         right: 0,
         width: 360,
-        zIndex: 120,
-        maxHeight: 'min(80vh, 680px)',
+        zIndex: 1100,
+        maxHeight,
         display: 'flex',
         flexDirection: 'column',
       }}

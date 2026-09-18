@@ -6,8 +6,6 @@ import {
   type ExerciseBuilderDonePayload,
 } from './exercise-builder-modal';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
-import type { DayScheduleMeta } from './exercise-builder-mock-data';
-import { EMPTY_DAY_SCHEDULE_META } from './exercise-builder-mock-data';
 import { useBuilder } from '@/context/builder-context';
 import {
   upsertWorkoutSchedule,
@@ -28,9 +26,6 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
-  const [pendingDayMeta, setPendingDayMeta] = useState<DayScheduleMeta>(
-    EMPTY_DAY_SCHEDULE_META,
-  );
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [animatingDay, setAnimatingDay] = useState<{
     weekIndex: number;
@@ -46,8 +41,6 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     resetProgramAssignmentId,
     setScheduleItem,
     getDayItems,
-    getDayMeta,
-    setDayMeta,
     schedule,
     copiedDayIndex,
     copiedDayData,
@@ -59,7 +52,6 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
 
   const previousWeekDayRef = useRef<{ week: number; day: number } | null>(null);
   const initialItemsRef = useRef<SelectedItem[] | null>(null);
-  const initialDayMetaRef = useRef<DayScheduleMeta>(EMPTY_DAY_SCHEDULE_META);
 
   // Parse date string to local date (avoiding timezone issues)
   const parseLocalDate = useCallback((dateString: string): Date => {
@@ -144,15 +136,12 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
 
     setSelectedDay(day);
     previousWeekDayRef.current = { week: currentWeek, day: dayIndex };
-    // Load existing items and metadata for this day
+    // Load existing items for this day
     const initialItems = getDayItems(currentWeek, dayIndex);
-    const initialMeta = getDayMeta(currentWeek, dayIndex);
 
     // Store initial state (deep copy to prevent mutation)
     initialItemsRef.current = JSON.parse(JSON.stringify(initialItems));
-    initialDayMetaRef.current = { ...initialMeta };
     setPendingItems(initialItems);
-    setPendingDayMeta(initialMeta);
     setModalOpen(true);
   };
 
@@ -163,28 +152,21 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
       const currentDayIndex = selectedDay - 1;
       const targetDayIndex = newDay - 1;
       const targetItems = getDayItems(currentWeek, targetDayIndex);
-      const targetMeta = getDayMeta(currentWeek, targetDayIndex);
 
       setScheduleItem(currentWeek, currentDayIndex, pendingItems);
-      setDayMeta(currentWeek, currentDayIndex, pendingDayMeta);
 
       setSelectedDay(newDay);
       previousWeekDayRef.current = { week: currentWeek, day: targetDayIndex };
 
       initialItemsRef.current = JSON.parse(JSON.stringify(targetItems));
-      initialDayMetaRef.current = { ...targetMeta };
       setPendingItems(JSON.parse(JSON.stringify(targetItems)));
-      setPendingDayMeta({ ...targetMeta });
     },
     [
       selectedDay,
       currentWeek,
       pendingItems,
-      pendingDayMeta,
       getDayItems,
-      getDayMeta,
       setScheduleItem,
-      setDayMeta,
     ],
   );
 
@@ -284,10 +266,6 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     const hasItemChanges =
       JSON.stringify(previousItems) !== JSON.stringify(payload.items);
 
-    setDayMeta(currentWeek, dayIndex, {
-      isRestDay: payload.isRestDay,
-      sessionNote: payload.sessionNote,
-    });
     setScheduleItem(currentWeek, dayIndex, payload.items);
 
     if (hasItemChanges) {
@@ -298,17 +276,11 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     setSelectedDay(null);
     previousWeekDayRef.current = null;
     setPendingItems([]);
-    setPendingDayMeta(EMPTY_DAY_SCHEDULE_META);
     initialItemsRef.current = null;
-    initialDayMetaRef.current = EMPTY_DAY_SCHEDULE_META;
   };
 
   const handleItemsChange = (items: SelectedItem[]): void => {
     setPendingItems(items);
-  };
-
-  const handleDayMetaChange = (meta: DayScheduleMeta): void => {
-    setPendingDayMeta(meta);
   };
 
   const handleReorder = async (dayIndex: number, newItems: SelectedItem[]) => {
@@ -320,19 +292,16 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     if (selectedDay === null || initialItemsRef.current === null) return;
 
     const dayIndex = selectedDay - 1;
-    // Revert schedule state to initial items and metadata
+    // Revert schedule state to initial items
     setScheduleItem(currentWeek, dayIndex, initialItemsRef.current);
-    setDayMeta(currentWeek, dayIndex, initialDayMetaRef.current);
 
     // Clear state
     setSelectedDay(null);
     previousWeekDayRef.current = null;
     setPendingItems([]);
-    setPendingDayMeta(EMPTY_DAY_SCHEDULE_META);
     initialItemsRef.current = null;
-    initialDayMetaRef.current = EMPTY_DAY_SCHEDULE_META;
     setModalOpen(false);
-  }, [selectedDay, currentWeek, setScheduleItem, setDayMeta]);
+  }, [selectedDay, currentWeek, setScheduleItem]);
 
   const handleModalClose = async (open: boolean) => {
     if (!open && selectedDay !== null) {
@@ -508,10 +477,7 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
         onDone={handleModalDone}
         onCancel={handleModalCancel}
         initialItems={pendingItems}
-        initialIsRestDay={pendingDayMeta.isRestDay ?? false}
-        initialSessionNote={pendingDayMeta.sessionNote ?? ''}
         onItemsChange={handleItemsChange}
-        onDayMetaChange={handleDayMetaChange}
         weekIndex={selectedDay !== null ? currentWeek : undefined}
         dayIndex={selectedDay !== null ? selectedDay - 1 : undefined}
         date={selectedDayDate}

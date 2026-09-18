@@ -202,7 +202,6 @@ export function useUpdateExerciseTemplate(
       queryClient.invalidateQueries({
         queryKey: exercisesKeys.lists(),
       });
-      toast.success('Template updated successfully');
       options?.onSuccess?.(data);
     },
   });
