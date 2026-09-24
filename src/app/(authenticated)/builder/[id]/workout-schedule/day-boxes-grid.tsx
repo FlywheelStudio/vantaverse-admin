@@ -12,8 +12,12 @@ import {
   updateProgramSchedule,
   upsertGroup,
   upsertExerciseTemplate,
+  editExerciseTemplate,
 } from '@/app/(authenticated)/builder/actions';
-import { convertSelectedItemsToDatabaseSchedule } from './utils';
+import {
+  convertSelectedItemsToDatabaseSchedule,
+  syncSelectedItemTemplates,
+} from './utils';
 import toast from 'react-hot-toast';
 import { DayBox } from './day-box';
 import { useDefaultValues } from '../default-values/use-default-values';
@@ -193,8 +197,21 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
     }
 
     try {
+      // Persist All-values / overrides from day items before schedule convert
+      const syncResult = await syncSelectedItemTemplates(
+        items,
+        upsertExerciseTemplate,
+        editExerciseTemplate,
+      );
+      if (!syncResult.success) {
+        console.error('Error syncing exercise templates:', syncResult.error);
+        toast.error(syncResult.error || 'Failed to save exercise templates');
+        return;
+      }
+      const syncedItems = syncResult.items;
+
       // Update schedule in context first
-      setScheduleItem(week, day, items);
+      setScheduleItem(week, day, syncedItems);
 
       // Create updated schedule array
       const updatedSchedule = [...schedule];
@@ -211,7 +228,7 @@ export function DayBoxesGrid({ programEndDate }: DayBoxesGridProps) {
         }
       }
       updatedSchedule[week] = [...updatedSchedule[week]];
-      updatedSchedule[week][day] = items;
+      updatedSchedule[week][day] = syncedItems;
 
       // Convert to database format (upserts groups and exercises without IDs)
       const conversionResult = await convertSelectedItemsToDatabaseSchedule(

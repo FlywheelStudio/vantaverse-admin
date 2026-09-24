@@ -104,6 +104,141 @@ export function formatScheduleDB(
   });
 }
 
+type ExerciseTemplateWritePayload = {
+  p_exercise_id: number;
+  p_sets?: number;
+  p_rep?: number | null;
+  p_time?: number | null;
+  p_distance?: string | null;
+  p_weight?: string | null;
+  p_rest_time?: number | null;
+  p_tempo?: string[] | null;
+  p_rep_override?: number[] | null;
+  p_time_override?: number[] | null;
+  p_distance_override?: string[] | null;
+  p_weight_override?: string[] | null;
+  p_rest_time_override?: number[] | null;
+  p_notes?: string;
+};
+
+type UpsertExerciseTemplateFn = (
+  data: ExerciseTemplateWritePayload,
+) => Promise<
+  | { success: true; data: { id: string; template_hash: string } }
+  | { success: false; error: string }
+>;
+
+type EditExerciseTemplateFn = (
+  data: ExerciseTemplateWritePayload & { p_template_id: string },
+) => Promise<
+  | { success: true; data: { id: string; template_hash: string } }
+  | { success: false; error: string }
+>;
+
+type SyncTemplatesResult =
+  | { success: true; items: SelectedItem[] }
+  | { success: false; error: string };
+
+const templateWritePayload = (
+  data: ExerciseTemplate,
+): ExerciseTemplateWritePayload => ({
+  p_exercise_id: data.exercise_id,
+  p_sets: data.sets ?? undefined,
+  p_rep: data.rep,
+  p_time: data.time,
+  p_distance: data.distance,
+  p_weight: data.weight,
+  p_rest_time: data.rest_time,
+  p_tempo: data.tempo,
+  p_rep_override: data.rep_override,
+  p_time_override: data.time_override,
+  p_distance_override: data.distance_override,
+  p_weight_override: data.weight_override,
+  p_rest_time_override: data.rest_time_override,
+  p_notes: data.notes ?? undefined,
+});
+
+/**
+ * Persists All-values (and overrides) from selected items onto exercise_template rows.
+ * Call before convertSelectedItemsToDatabaseSchedule so Save day keeps bubble / detail edits.
+ * Library exercises (type exercise) are left for convert to upsert with session defaults.
+ */
+export async function syncSelectedItemTemplates(
+  items: SelectedItem[],
+  upsertFn: UpsertExerciseTemplateFn,
+  editFn: EditExerciseTemplateFn,
+): Promise<SyncTemplatesResult> {
+  const next: SelectedItem[] = [];
+
+  for (const item of items) {
+    if (item.type === 'template') {
+      const fields = templateWritePayload(item.data);
+      const templateId = item.data.id?.trim();
+
+      if (templateId) {
+        const result = await editFn({
+          p_template_id: templateId,
+          ...fields,
+        });
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error || 'Failed to edit exercise template',
+          };
+        }
+        next.push({
+          type: 'template',
+          data: {
+            ...item.data,
+            id: result.data.id || templateId,
+            template_hash:
+              result.data.template_hash || item.data.template_hash,
+          },
+        });
+        continue;
+      }
+
+      const result = await upsertFn(fields);
+      if (!result.success) {
+        return {
+          success: false,
+          error: result.error || 'Failed to upsert exercise template',
+        };
+      }
+      next.push({
+        type: 'template',
+        data: {
+          ...item.data,
+          id: result.data.id,
+          template_hash: result.data.template_hash,
+        },
+      });
+      continue;
+    }
+
+    if (item.type === 'group') {
+      const childSync = await syncSelectedItemTemplates(
+        item.data.items ?? [],
+        upsertFn,
+        editFn,
+      );
+      if (!childSync.success) return childSync;
+      next.push({
+        ...item,
+        data: {
+          ...item.data,
+          items: childSync.items,
+        },
+      });
+      continue;
+    }
+
+    next.push(item);
+  }
+
+  return { success: true, items: next };
+}
+
 /**
  * Convert SelectedItem[][][] to DatabaseSchedule format
  * Upserts groups and exercises without IDs, then extracts only IDs and types

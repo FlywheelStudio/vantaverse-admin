@@ -232,9 +232,12 @@ export function ExerciseBuilderModal({
   };
 
   const handleUpdateItem = (index: number, item: SelectedItem): void => {
-    const updated = [...selectedItems];
-    updated[index] = item;
-    updateSelectedItems(updated);
+    setSelectedItems((prev) => {
+      const updated = [...prev];
+      updated[index] = item;
+      onItemsChange?.(updated);
+      return updated;
+    });
   };
 
   const handleDone = (): void => {

@@ -42,7 +42,7 @@ function UpdateDerivedDialogBody({
 
   const handleConfirm = (): void => {
     onConfirm(updateDerived);
-    setUpdateDerived(false);
+    onOpenChange(false);
   };
 
   const handleCancel = (): void => {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   generateExerciseTemplateDescription,
   generateDefaultValuesDescription,
@@ -11,7 +12,6 @@ import { cn } from '@/lib/utils';
 import { useDefaultValues } from '@/app/(authenticated)/builder/[id]/default-values/use-default-values';
 import type { DefaultValuesData } from '@/app/(authenticated)/builder/[id]/default-values/schemas';
 import type { DayPrescription } from '../exercise-builder-mock-data';
-import { useUpdateExerciseTemplate } from '@/hooks/use-exercise-template-mutations';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 
@@ -30,6 +30,13 @@ const RX_FIELDS: Array<[RxField, string]> = [
   ['time', 'time'],
   ['rest', 'rest'],
 ];
+
+const EMPTY_PRESCRIPTION: DayPrescription = {
+  sets: '',
+  reps: '',
+  time: '',
+  rest: '',
+};
 
 const toDisplay = (value: number | null | undefined): string =>
   value !== null && value !== undefined ? String(value) : '';
@@ -72,9 +79,12 @@ const prescriptionsEqual = (a: DayPrescription, b: DayPrescription): boolean =>
   a.time === b.time &&
   a.rest === b.rest;
 
+/**
+ * Builds a provisional template from a library exercise + All-values fields.
+ * Empty id/hash: Save day upserts via syncSelectedItemTemplates.
+ */
 function buildTemplateFromExercise(
   exercise: Exercise,
-  ids: { id: string; template_hash: string },
   fields: {
     sets: number;
     rep: number | null;
@@ -83,8 +93,8 @@ function buildTemplateFromExercise(
   },
 ): ExerciseTemplate {
   return {
-    id: ids.id,
-    template_hash: ids.template_hash,
+    id: '',
+    template_hash: '',
     exercise_id: exercise.id,
     exercise_name: exercise.exercise_name,
     video_type: exercise.video_type,
@@ -108,6 +118,10 @@ function buildTemplateFromExercise(
   };
 }
 
+/**
+ * Commits bubble draft into the selected item as All-values (clears per-set overrides).
+ * No DB write — Save day persists via syncSelectedItemTemplates.
+ */
 export function SelectedItemComponent({
   item,
   onRemove,
@@ -115,20 +129,21 @@ export function SelectedItemComponent({
   onItemChange,
 }: SelectedItemProps): React.ReactElement | null {
   const { values: defaultValues } = useDefaultValues();
-  const updateMutation = useUpdateExerciseTemplate();
 
   const isExerciseRow = item.type === 'exercise' || item.type === 'template';
   const baseline = isExerciseRow
     ? prescriptionFromItem(item, defaultValues)
-    : { sets: '', reps: '', time: '', rest: '' };
+    : EMPTY_PRESCRIPTION;
 
   const [draft, setDraft] = useState<DayPrescription>(baseline);
-  const [isSaving, setIsSaving] = useState(false);
+  const [syncedBaseline, setSyncedBaseline] =
+    useState<DayPrescription>(baseline);
 
-  useEffect(() => {
-    if (!isExerciseRow) return;
-    setDraft(prescriptionFromItem(item, defaultValues));
-  }, [item, defaultValues, isExerciseRow]);
+  // Reset draft when item/defaults change (React "adjusting state when a prop changes")
+  if (!prescriptionsEqual(baseline, syncedBaseline)) {
+    setSyncedBaseline(baseline);
+    setDraft(baseline);
+  }
 
   if (!isExerciseRow) {
     return null;
@@ -152,8 +167,8 @@ export function SelectedItemComponent({
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleBlur = async (): Promise<void> => {
-    if (isSaving || prescriptionsEqual(draft, baseline)) return;
+  const handleBlur = (): void => {
+    if (prescriptionsEqual(draft, baseline)) return;
 
     const sets = parseNonNegInt(draft.sets);
     const rep = parseNonNegInt(draft.reps);
@@ -165,41 +180,15 @@ export function SelectedItemComponent({
       return;
     }
 
-    const exerciseId =
-      item.type === 'exercise' ? item.data.id : item.data.exercise_id;
-    const templateId =
-      item.type === 'template' && item.data.id?.trim()
-        ? item.data.id
-        : undefined;
+    const fields = { sets, rep, time, rest_time };
 
-    setIsSaving(true);
-    try {
-      const result = await updateMutation.mutateAsync({
-        exerciseId,
-        templateId,
-        sets,
-        rep,
-        time,
-        rest_time,
-        distance: item.type === 'template' ? item.data.distance : null,
-        weight: item.type === 'template' ? item.data.weight : null,
-        tempo: item.type === 'template' ? item.data.tempo : null,
-        rep_override: null,
-        time_override: null,
-        distance_override: null,
-        weight_override: null,
-        rest_time_override: null,
-      });
-
-      const fields = { sets, rep, time, rest_time };
-
+    // flushSync so Save day (same click after blur) sees updated selectedItems
+    flushSync(() => {
       if (item.type === 'template') {
         onItemChange?.({
           type: 'template',
           data: {
             ...item.data,
-            id: result.id,
-            template_hash: result.template_hash,
             ...fields,
             rep_override: null,
             time_override: null,
@@ -211,14 +200,10 @@ export function SelectedItemComponent({
       } else {
         onItemChange?.({
           type: 'template',
-          data: buildTemplateFromExercise(item.data, result, fields),
+          data: buildTemplateFromExercise(item.data, fields),
         });
       }
-    } catch {
-      setDraft(baseline);
-    } finally {
-      setIsSaving(false);
-    }
+    });
   };
 
   return (
@@ -226,10 +211,8 @@ export function SelectedItemComponent({
       className={cn(
         'border border-[var(--border-subtle)] bg-[var(--surface-card)] rounded-[var(--radius-md)] p-[10px_11px] flex flex-col gap-2',
         'cursor-pointer',
-        isSaving && 'opacity-60 pointer-events-none',
       )}
       onClick={onClick}
-      aria-busy={isSaving}
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 flex items-center gap-3 min-w-0">
@@ -265,7 +248,6 @@ export function SelectedItemComponent({
           }}
           className="text-[var(--danger)] hover:opacity-80 text-lg leading-none cursor-pointer"
           aria-label="Remove"
-          disabled={isSaving}
         >
           ×
         </button>
@@ -278,7 +260,7 @@ export function SelectedItemComponent({
         onKeyDown={(e) => e.stopPropagation()}
         onBlur={(e) => {
           if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-          void handleBlur();
+          handleBlur();
         }}
       >
         {RX_FIELDS.map(([field, label]) => (
@@ -299,7 +281,6 @@ export function SelectedItemComponent({
                 fontSize: 'var(--text-sm)',
               }}
               onChange={(e) => handleRxChange(field, e.target.value)}
-              disabled={isSaving}
               aria-label={label}
             />
             <span

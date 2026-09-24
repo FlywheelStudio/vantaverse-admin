@@ -95,6 +95,7 @@ export function ReviewAssignUI({
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
   const [showPropagateDialog, setShowPropagateDialog] = useState(false);
   const [isQuickAssignOpen, setIsQuickAssignOpen] = useState(false);
+  const [isSaveInFlight, setIsSaveInFlight] = useState(false);
 
   const isUnassigned =
     status === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE ||
@@ -117,6 +118,7 @@ export function ReviewAssignUI({
   });
 
   const isSaving =
+    isSaveInFlight ||
     upsertScheduleMutation.isPending ||
     updateProgramScheduleMutation.isPending ||
     updateProgramTemplateMutation.isPending;
@@ -147,6 +149,7 @@ export function ReviewAssignUI({
     updateDerived: boolean,
     propagateIds?: string[],
   ): Promise<void> => {
+    setIsSaveInFlight(true);
     try {
       const [, scheduleResult] = await Promise.all([
         updateProgramTemplateMutation.mutateAsync({
@@ -193,6 +196,7 @@ export function ReviewAssignUI({
         if (!datesResult.success) {
           throw new Error(datesResult.error);
         }
+        setShowPropagateDialog(false);
       }
 
       if (isUnassigned && updateDerived && scheduleResult) {
@@ -220,10 +224,10 @@ export function ReviewAssignUI({
         start: startDate ? formatDateForDB(startDate) : null,
         end: endDate ? formatDateForDB(endDate) : null,
       });
-      setShowDerivedDialog(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed');
-      setShowDerivedDialog(false);
+    } finally {
+      setIsSaveInFlight(false);
     }
   };
 

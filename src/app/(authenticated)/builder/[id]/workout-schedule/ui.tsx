@@ -69,6 +69,7 @@ export function BuildWorkoutSection({
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
+  const [isSaveInFlight, setIsSaveInFlight] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
     'duplicate' | 'apply_all' | 'clear' | null
   >(null);
@@ -159,6 +160,7 @@ export function BuildWorkoutSection({
           ? String((template.image_url as unknown as { image_url: string }).image_url)
           : null;
 
+    setIsSaveInFlight(true);
     try {
       const [, scheduleResult] = await Promise.all([
         (async (): Promise<ProgramTemplate> => {
@@ -257,15 +259,16 @@ export function BuildWorkoutSection({
       scheduleBaselineRef.current = JSON.stringify(schedule);
       onScheduleDirtyChange?.(false);
       onSaved?.();
-      setShowDerivedDialog(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Save failed';
       toast.error(message);
-      setShowDerivedDialog(false);
+    } finally {
+      setIsSaveInFlight(false);
     }
   };
 
   const isSaving =
+    isSaveInFlight ||
     upsertScheduleMutation.isPending ||
     updateProgramScheduleMutation.isPending ||
     updateProgramTemplateMutation.isPending;
