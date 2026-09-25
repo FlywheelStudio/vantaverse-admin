@@ -122,6 +122,7 @@ export function UserProfilePageUI({
       physiologist={
         primaryPhysiologist
           ? {
+              userId: primaryPhysiologist.userId,
               firstName: primaryPhysiologist.firstName,
               lastName: primaryPhysiologist.lastName,
             }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { WeekNavigation } from './week-navigation';
 import { DayBoxesGrid } from './day-boxes-grid';
 import { Icon, Tooltip } from '@/components/medvanta';
@@ -38,6 +39,8 @@ interface BuildWorkoutSectionProps {
   template: ProgramTemplate;
   assignmentStatus?: BuilderAssignmentStatus;
   saveTrigger?: number;
+  /** Parent clears the save pulse after this section consumes it. */
+  onSaveTriggerConsumed?: () => void;
   onSaveStateChange?: (state: { disabled: boolean; loading: boolean }) => void;
   onStepActive?: () => void;
   onScheduleDirtyChange?: (dirty: boolean) => void;
@@ -50,6 +53,7 @@ export function BuildWorkoutSection({
   template,
   assignmentStatus = 'template',
   saveTrigger = 0,
+  onSaveTriggerConsumed,
   onSaveStateChange,
   onStepActive,
   onScheduleDirtyChange,
@@ -66,6 +70,7 @@ export function BuildWorkoutSection({
     resizeSchedule,
     programStartDate,
   } = useBuilder();
+  const pathname = usePathname();
   const programForm = useFormContext<ProgramTemplateFormData>();
   const { values: defaultValues } = useDefaultValues();
   const [showDerivedDialog, setShowDerivedDialog] = useState(false);
@@ -75,6 +80,7 @@ export function BuildWorkoutSection({
   >(null);
   const queryClient = useQueryClient();
   const scheduleBaselineRef = useRef<string | null>(null);
+  const handledSaveTriggerRef = useRef(saveTrigger);
 
   const weeksValue = programForm.watch('weeks') ?? initialWeeks;
   const comingSoonWeeksValue = programForm.watch('coming_soon_weeks') ?? 0;
@@ -278,12 +284,33 @@ export function BuildWorkoutSection({
     onSaveStateChange?.({ disabled: isDisabled, loading: isSaving });
   }, [isDisabled, isSaving, onSaveStateChange]);
 
+  // Soft-nav / Activity can remount effects while parent still holds the pulse.
+  // Consume each counter value once, then ask parent to reset it to 0.
   useEffect(() => {
+    if (saveTrigger === handledSaveTriggerRef.current) return;
+    handledSaveTriggerRef.current = saveTrigger;
     if (saveTrigger > 0) {
+      onSaveTriggerConsumed?.();
       void handleSave();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- saveTrigger is external pulse
   }, [saveTrigger]);
+
+  // Soft-cached builder trees stay mounted after leave; close portaled dialogs
+  // when the URL is no longer this assignment (and on true unmount).
+  useEffect(() => {
+    const closeTransientModals = (): void => {
+      setShowDerivedDialog(false);
+      setConfirmAction(null);
+    };
+    if (
+      programAssignmentId &&
+      pathname !== `/builder/${programAssignmentId}`
+    ) {
+      closeTransientModals();
+    }
+    return closeTransientModals;
+  }, [pathname, programAssignmentId]);
 
   useEffect(() => {
     onStepActive?.();

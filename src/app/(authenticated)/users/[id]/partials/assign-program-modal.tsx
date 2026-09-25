@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -71,9 +71,24 @@ interface AssignProgramModalProps {
   userFirstName?: string | null;
   userLastName?: string | null;
   fromPath?: string;
+  /** When set, modal preselects this template (Change flow). */
+  currentProgramTemplateId?: string | null;
+  /** Seeds search so the current template is likely in the first page. */
+  currentProgramName?: string | null;
 }
 
-export function AssignProgramModal({
+/**
+ * Remount when opening so search/selection reset without an effect.
+ */
+export function AssignProgramModal(props: AssignProgramModalProps): React.ReactElement {
+  const sessionKey = props.open
+    ? `open:${props.currentProgramTemplateId ?? 'none'}`
+    : 'closed';
+
+  return <AssignProgramModalSession key={sessionKey} {...props} />;
+}
+
+function AssignProgramModalSession({
   open,
   onOpenChange,
   userId,
@@ -81,17 +96,21 @@ export function AssignProgramModal({
   userFirstName,
   userLastName,
   fromPath,
+  currentProgramTemplateId = null,
+  currentProgramName = null,
 }: AssignProgramModalProps): React.ReactElement {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(currentProgramName?.trim() ?? '');
   const [showAssigned, setShowAssigned] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [hasAppliedCurrentTemplate, setHasAppliedCurrentTemplate] = useState(false);
   const observerTargetRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
   const assignProgram = useAssignProgramToUser(userId);
+  const isChanging = Boolean(currentProgramTemplateId);
 
   const {
     data,
@@ -132,7 +151,28 @@ export function AssignProgramModal({
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const assignments = data?.pages.flat() ?? [];
+  const assignments = useMemo(
+    () => data?.pages.flat() ?? [],
+    [data?.pages],
+  );
+
+  // Preselect current template once data arrives (adjust state during render).
+  if (
+    open &&
+    currentProgramTemplateId &&
+    !hasAppliedCurrentTemplate &&
+    assignments.length > 0
+  ) {
+    const match = assignments.find(
+      (assignment) => assignment.program_template_id === currentProgramTemplateId,
+    );
+    if (match?.id) {
+      setSelectedAssignmentId(match.id);
+      setStartDate(getNextProgramStartMonday());
+      setHasAppliedCurrentTemplate(true);
+    }
+  }
+
   const selectedAssignment = assignments.find(
     (a) => a.id === selectedAssignmentId,
   );
@@ -206,12 +246,13 @@ export function AssignProgramModal({
 
   const isAssigning = assignProgram.isPending;
   const memberLabel = [userFirstName, userLastName].filter(Boolean).join(' ');
+  const actionLabel = isChanging ? 'Change program' : 'Assign program';
 
   return (
     <HtmlModal
       open={open}
       onClose={handleCancel}
-      title="Assign program"
+      title={actionLabel}
       subtitle={
         memberLabel
           ? `Choose a template and start date for ${memberLabel}.`
@@ -243,7 +284,7 @@ export function AssignProgramModal({
             ) : (
               <Icon name="ClipboardList" size={17} />
             )}
-            Assign program
+            {actionLabel}
           </button>
         </>
       }

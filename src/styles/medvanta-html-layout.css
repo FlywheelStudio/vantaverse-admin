@@ -287,6 +287,9 @@ table.tbl tbody tr.sel-row{background:var(--cyan-50)}
 .faint{color:var(--text-faint)}
 .lnk{color:var(--text-link);font-weight:var(--fw-medium);cursor:pointer}
 .lnk:hover{text-decoration:underline}
+/* Meta value links: black default, design-system accent blue on hover */
+.meta-lnk{color:var(--text-strong);text-decoration:none;transition:color .15s ease}
+.meta-lnk:hover{color:var(--accent);text-decoration:none}
 
 .seg{display:inline-flex;background:var(--slate-100);border-radius:var(--radius-pill);padding:3px;gap:2px;flex:0 0 auto}
 .seg button, .seg a{

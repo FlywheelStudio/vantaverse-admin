@@ -12,6 +12,7 @@ export const programTemplateSchema = z.object({
   active: z.boolean().nullable(),
   notes: z.string().nullable(),
   created_at: z.string().nullable(),
+  created_by: z.string().uuid().nullable(),
   updated_at: z.string().nullable(),
 });
 

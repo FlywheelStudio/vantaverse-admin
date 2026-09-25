@@ -56,6 +56,10 @@ export function WorkoutBuilder({
   const [saveState, setSaveState] = useState({ disabled: true, loading: false });
   const [scheduleDirty, setScheduleDirty] = useState(false);
 
+  const handleSaveTriggerConsumed = useCallback((): void => {
+    setSaveTrigger(0);
+  }, []);
+
 
   const template = initialAssignment.program_template;
   const isPreProgramTemplate = isPreProgramTemplateStatus(initialAssignment.status);
@@ -232,6 +236,7 @@ export function WorkoutBuilder({
             template={template}
             assignmentStatus={builderAssignmentStatus}
             saveTrigger={saveTrigger}
+            onSaveTriggerConsumed={handleSaveTriggerConsumed}
             onSaveStateChange={setSaveState}
             onScheduleDirtyChange={handleScheduleDirtyChange}
             onSaved={handleSaved}

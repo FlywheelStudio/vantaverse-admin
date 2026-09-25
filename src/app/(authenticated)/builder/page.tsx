@@ -1,10 +1,20 @@
 import { ProgramsUI } from './programs-ui';
-import { getProgramAssignmentsPaginated, getPreProgramTemplate } from './actions';
+import {
+  getProgramAssignmentsPaginated,
+  getPreProgramTemplate,
+} from './actions';
 
 export default async function BuilderPage(): Promise<React.ReactElement> {
   const pageSize = 21;
   const [initialPageResult, preProgramResult] = await Promise.all([
-    getProgramAssignmentsPaginated(1, pageSize),
+    getProgramAssignmentsPaginated(
+      1,
+      pageSize,
+      undefined,
+      undefined,
+      false,
+      true,
+    ),
     getPreProgramTemplate(),
   ]);
 
@@ -15,10 +25,14 @@ export default async function BuilderPage(): Promise<React.ReactElement> {
       }
     : undefined;
 
-  const templateTotal = initialPageResult.success ? initialPageResult.data.total : 0;
+  const templateTotal = initialPageResult.success
+    ? initialPageResult.data.total
+    : 0;
 
   const preProgramAssignment =
-    preProgramResult.success && preProgramResult.data ? preProgramResult.data : null;
+    preProgramResult.success && preProgramResult.data
+      ? preProgramResult.data
+      : null;
 
   return (
     <ProgramsUI

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { Icon } from '@/components/medvanta';
@@ -14,6 +15,7 @@ interface MemberDetailHeaderProps {
   user: ProfileWithStats;
   organizations?: Array<{ id: string; name: string; description: string | null }>;
   physiologist?: {
+    userId: string;
     firstName: string;
     lastName: string;
   } | null;
@@ -22,6 +24,20 @@ interface MemberDetailHeaderProps {
   assignOpen?: boolean;
   onAssignOpenChange?: (open: boolean) => void;
 }
+
+interface MetaItem {
+  icon: string;
+  label: string;
+  value: string;
+  href?: string;
+}
+
+const metaValueStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--text-md)',
+  fontWeight: 'var(--fw-semibold)',
+  marginTop: 3,
+};
 
 function getDisplayName(user: ProfileWithStats): string {
   const parts = [user.first_name, user.last_name].filter(Boolean);
@@ -94,7 +110,8 @@ export function MemberDetailHeader({
   const assignOpen = assignOpenProp ?? assignOpenInternal;
   const setAssignOpen = onAssignOpenChange ?? setAssignOpenInternal;
   const displayName = getDisplayName(user);
-  const groupName = organizations[0]?.name ?? '—';
+  const primaryOrg = organizations[0];
+  const groupName = primaryOrg?.name ?? '—';
   const physiologistName = physiologist
     ? `${physiologist.firstName} ${physiologist.lastName}`.trim()
     : '—';
@@ -103,6 +120,41 @@ export function MemberDetailHeader({
   const lastActive = user.last_sign_in
     ? formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true })
     : '—';
+
+  const metaItems: MetaItem[] = [
+    {
+      icon: 'Building2',
+      label: 'Group',
+      value: groupName,
+      href: primaryOrg ? `/groups/${primaryOrg.id}` : undefined,
+    },
+    {
+      icon: 'UserRound',
+      label: 'Physiologist',
+      value: physiologistName,
+      href: physiologist ? `/manage/${physiologist.userId}` : undefined,
+    },
+    {
+      icon: 'ClipboardList',
+      label: 'Program',
+      value: programName,
+      href: programAssignment
+        ? `/builder/${programAssignment.id}?from=users`
+        : undefined,
+    },
+    {
+      icon: 'Calendar',
+      label: 'Joined',
+      value: user.created_at
+        ? new Date(user.created_at).toLocaleDateString()
+        : '—',
+    },
+    {
+      icon: 'Activity',
+      label: 'Last active',
+      value: lastActive,
+    },
+  ];
 
   const handleMessage = (): void => {
     router.push(`/messages?userId=${encodeURIComponent(user.id)}`);
@@ -142,13 +194,7 @@ export function MemberDetailHeader({
               className="row"
               style={{ gap: 22, flexWrap: 'wrap', marginTop: 14 }}
             >
-              {[
-                ['Building2', 'Group', groupName],
-                ['UserRound', 'Physiologist', physiologistName],
-                ['ClipboardList', 'Program', programName],
-                ['Calendar', 'Joined', user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'],
-                ['Activity', 'Last active', lastActive],
-              ].map(([icon, label, value]) => (
+              {metaItems.map(({ icon, label, value, href }) => (
                 <span key={label} style={{ minWidth: 0 }}>
                   <span
                     className="row"
@@ -164,17 +210,15 @@ export function MemberDetailHeader({
                     <Icon name={icon} size={12} />
                     {label}
                   </span>
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 'var(--text-md)',
-                      fontWeight: 'var(--fw-semibold)',
-                      color: 'var(--text-strong)',
-                      marginTop: 3,
-                    }}
-                  >
-                    {value}
-                  </span>
+                  {href ? (
+                    <Link href={href} className="meta-lnk" style={metaValueStyle}>
+                      {value}
+                    </Link>
+                  ) : (
+                    <span style={{ ...metaValueStyle, color: 'var(--text-strong)' }}>
+                      {value}
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
@@ -190,7 +234,7 @@ export function MemberDetailHeader({
               onClick={() => setAssignOpen(true)}
             >
               <Icon name="ClipboardList" size={17} />
-              Assign program
+              {programAssignment ? 'Change program' : 'Assign program'}
             </button>
           </div>
         </div>
@@ -203,6 +247,8 @@ export function MemberDetailHeader({
         userFirstName={user.first_name}
         userLastName={user.last_name}
         fromPath="profile"
+        currentProgramTemplateId={programAssignment?.program_template_id ?? null}
+        currentProgramName={programAssignment?.program_template?.name ?? null}
       />
     </>
   );

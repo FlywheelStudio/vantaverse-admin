@@ -141,6 +141,7 @@ export type GetTemplatesPaginatedInput = {
   search?: string;
   weeks?: number;
   showAssigned?: boolean;
+  createdBy?: string;
 };
 
 export type GetListPaginatedInput = {
@@ -166,6 +167,7 @@ export const programAssignmentKeys = {
       input.search ?? '',
       input.weeks ?? null,
       input.showAssigned ?? false,
+      input.createdBy ?? null,
     ] as const,
   detail: (id: string) => [...programAssignmentKeys.all, 'detail', id] as const,
   preProgramTemplate: () =>
@@ -233,6 +235,35 @@ function emptyTemplatesPaginated(
     hasMore: false,
     memberStats: {},
   };
+}
+
+async function filterTemplateIdsByCreator(
+  client: SupabaseClient<Database>,
+  createdBy: string,
+  existingTemplateIds?: string[],
+): Promise<{
+  data: string[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  if (existingTemplateIds && existingTemplateIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  let request = client
+    .from('program_template')
+    .select('id')
+    .eq('created_by', createdBy);
+
+  if (existingTemplateIds && existingTemplateIds.length > 0) {
+    request = request.in('id', existingTemplateIds);
+  }
+
+  const { data: templates, error } = await request;
+  if (error) {
+    return { data: null, error };
+  }
+
+  return { data: templates?.map((template) => template.id) ?? [], error: null };
 }
 
 async function filterTemplateIdsByWeeks(
@@ -388,6 +419,21 @@ async function fetchTemplatesPaginated(
       return { data: null, error: searchResult.error };
     }
     templateIds = searchResult.data ?? [];
+    if (templateIds.length === 0) {
+      return { data: emptyTemplatesPaginated(page, pageSize), error: null };
+    }
+  }
+
+  if (input.createdBy) {
+    const creatorResult = await filterTemplateIdsByCreator(
+      client,
+      input.createdBy,
+      templateIds,
+    );
+    if (creatorResult.error) {
+      return { data: null, error: creatorResult.error };
+    }
+    templateIds = creatorResult.data ?? [];
     if (templateIds.length === 0) {
       return { data: emptyTemplatesPaginated(page, pageSize), error: null };
     }

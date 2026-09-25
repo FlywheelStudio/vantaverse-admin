@@ -432,7 +432,7 @@ function ProgramActivePane({
               className="btn btn-ghost btn-sm"
               onClick={onAssignProgram}
             >
-              Reassign
+              Change program
             </button>
           </span>
         </div>

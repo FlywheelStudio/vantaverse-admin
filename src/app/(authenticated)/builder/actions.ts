@@ -49,7 +49,10 @@ import { DatabaseSchedule } from './[id]/workout-schedule/utils';
 import type { Group } from '@/lib/supabase/schemas/exercise-templates';
 import type { SelectedItem } from '@/app/(authenticated)/builder/[id]/template-config/types';
 import type { ExerciseTemplate } from '@/lib/supabase/schemas/exercise-templates';
-import type { ProgramAssignment, ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
+import type {
+  ProgramAssignment,
+  ProgramAssignmentWithTemplate,
+} from '@/lib/supabase/schemas/program-assignments';
 import type { Exercise } from '@/lib/supabase/schemas/exercises';
 import type { ProfileWithStats } from '@/lib/supabase/schemas/profiles';
 import type { ProgramTemplate } from '@/lib/supabase/schemas/program-templates';
@@ -89,7 +92,7 @@ function voidFromDeleteResult(
 
 /**
  * Get paginated program assignments with status='template' (joined with program_template)
- * Supports server-side filtering for search and weeks
+ * Supports server-side filtering for search, weeks, and template author.
  */
 export async function getProgramAssignmentsPaginated(
   page: number = 1,
@@ -97,6 +100,7 @@ export async function getProgramAssignmentsPaginated(
   search?: string,
   weeks?: number,
   showAssigned: boolean = false,
+  createdByMe: boolean = false,
 ): Promise<
   | SupabaseSuccess<{
       data: ProgramAssignmentWithTemplate[];
@@ -111,6 +115,28 @@ export async function getProgramAssignmentsPaginated(
     }>
   | SupabaseError
 > {
+  let createdBy: string | undefined;
+  if (createdByMe) {
+    const session = await createClient();
+    const {
+      data: { user },
+    } = await session.auth.getUser();
+    if (!user) {
+      return {
+        success: true,
+        data: {
+          data: [],
+          page,
+          pageSize,
+          total: 0,
+          hasMore: false,
+          memberStats: {},
+        },
+      };
+    }
+    createdBy = user.id;
+  }
+
   return toSupabaseResult(
     await query(getProgramAssignmentTemplatesPaginated, {
       page,
@@ -118,6 +144,7 @@ export async function getProgramAssignmentsPaginated(
       search,
       weeks,
       showAssigned,
+      createdBy,
     }),
   );
 }
@@ -362,7 +389,11 @@ export async function deleteProgramAssignment(
 ): Promise<SupabaseSuccess<void> | SupabaseError> {
   const client = await createClient();
   return voidFromDeleteResult(
-    await mutate(deleteProgramAssignmentMutation, { id: assignmentId }, { client }),
+    await mutate(
+      deleteProgramAssignmentMutation,
+      { id: assignmentId },
+      { client },
+    ),
   );
 }
 
@@ -372,10 +403,7 @@ export async function deleteProgramAssignment(
  */
 export async function cloneProgramAssignment(
   assignmentId: string,
-): Promise<
-  | SupabaseSuccess<{ assignmentId: string }>
-  | SupabaseError
-> {
+): Promise<SupabaseSuccess<{ assignmentId: string }> | SupabaseError> {
   const sourceResult = toSupabaseResult(
     await query(getProgramAssignmentByIdQuery, assignmentId),
   );
@@ -467,37 +495,35 @@ export async function updateProgramTemplate(
   );
 
   const updateResult = fromDalResult(
-    await mutate(
-      updateProgramTemplateMutation,
-      {
-        id: templateId,
-        data: {
-          name: name.trim(),
-          weeks,
-          coming_soon_weeks: clampedComingSoon,
-          description: description?.trim() || null,
-          goals: goals?.trim() || null,
-          notes: notes?.trim() || null,
-        },
+    await mutate(updateProgramTemplateMutation, {
+      id: templateId,
+      data: {
+        name: name.trim(),
+        weeks,
+        coming_soon_weeks: clampedComingSoon,
+        description: description?.trim() || null,
+        goals: goals?.trim() || null,
+        notes: notes?.trim() || null,
       },
-    ),
+    }),
   );
 
   if (!updateResult.success) {
     return updateResult;
   }
 
-  const assignmentDateResult = startDate && endDate
-    ? voidFromDeleteResult(
-        await mutate(updateProgramAssignmentDatesByTemplateId, {
-          templateId,
-          startDate,
-          endDate,
-        }),
-      )
-    : voidFromDeleteResult(
-        await mutate(clearProgramAssignmentDatesByTemplateId, { templateId }),
-      );
+  const assignmentDateResult =
+    startDate && endDate
+      ? voidFromDeleteResult(
+          await mutate(updateProgramAssignmentDatesByTemplateId, {
+            templateId,
+            startDate,
+            endDate,
+          }),
+        )
+      : voidFromDeleteResult(
+          await mutate(clearProgramAssignmentDatesByTemplateId, { templateId }),
+        );
 
   if (!assignmentDateResult.success) {
     return assignmentDateResult;
@@ -524,13 +550,10 @@ export async function updateProgramTemplateImage(
     : null;
 
   return fromDalResult(
-    await mutate(
-      updateProgramTemplateMutation,
-      {
-        id: templateId,
-        data: { image_url: imageUrlData as unknown },
-      },
-    ),
+    await mutate(updateProgramTemplateMutation, {
+      id: templateId,
+      data: { image_url: imageUrlData as unknown },
+    }),
   );
 }
 
@@ -782,7 +805,11 @@ export async function upsertWorkoutSchedule(
 ) {
   const client = await createClient();
   return fromDalResult(
-    await mutate(upsertWorkoutScheduleMutation, { schedule, notes }, { client }),
+    await mutate(
+      upsertWorkoutScheduleMutation,
+      { schedule, notes },
+      { client },
+    ),
   );
 }
 
@@ -869,11 +896,9 @@ export async function convertScheduleToSelectedItems(
   const client = await createAdminClient();
 
   const [directTemplatesResult, groupsResult] = await Promise.all([
-    query(
-      getExerciseTemplatesByIdsQuery,
-      Array.from(exerciseTemplateIds),
-      { client },
-    ),
+    query(getExerciseTemplatesByIdsQuery, Array.from(exerciseTemplateIds), {
+      client,
+    }),
     query(getGroupsByIdsQuery, Array.from(groupIds), { client }),
   ]);
 

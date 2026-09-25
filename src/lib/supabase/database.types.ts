@@ -1494,6 +1494,7 @@ export type Database = {
           active: boolean | null
           coming_soon_weeks: number
           created_at: string | null
+          created_by: string | null
           description: string | null
           goals: string | null
           id: string
@@ -1508,6 +1509,7 @@ export type Database = {
           active?: boolean | null
           coming_soon_weeks?: number
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           goals?: string | null
           id?: string
@@ -1522,6 +1524,7 @@ export type Database = {
           active?: boolean | null
           coming_soon_weeks?: number
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           goals?: string | null
           id?: string
@@ -1533,6 +1536,13 @@ export type Database = {
           weeks?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "program_template_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admins"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "program_template_organization_id_fkey"
             columns: ["organization_id"]

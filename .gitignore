@@ -49,4 +49,7 @@ next-env.d.ts
 storybook-static
 .gstack/
 
+# pi
+.pi/
+
 .scratch

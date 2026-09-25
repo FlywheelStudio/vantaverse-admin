@@ -41,12 +41,14 @@ export const programAssignmentsKeys = {
     weeks?: number;
     pageSize: number;
     showAssigned?: boolean;
+    createdByMe?: boolean;
   }) => [...programAssignmentsKeys.lists(), filters] as const,
   infinite: (filters: {
     search?: string;
     weeks?: number;
     pageSize: number;
     showAssigned?: boolean;
+    createdByMe?: boolean;
   }) => [...programAssignmentsKeys.lists(), 'infinite', filters] as const,
   detail: (id: string | null | undefined) =>
     [...programAssignmentsKeys.all, 'detail', id] as const,
@@ -61,6 +63,7 @@ export function programAssignmentsInfiniteQueryOptions(
   weeks?: number,
   pageSize: number = 16,
   showAssigned: boolean = false,
+  createdByMe: boolean = false,
   initialData?: {
     pages: ProgramAssignmentsPage[];
     pageParams: number[];
@@ -72,6 +75,7 @@ export function programAssignmentsInfiniteQueryOptions(
       weeks,
       pageSize,
       showAssigned,
+      createdByMe,
     }),
     queryFn: async ({ pageParam }) => {
       const result = await getProgramAssignmentsPaginated(
@@ -80,6 +84,7 @@ export function programAssignmentsInfiniteQueryOptions(
         search,
         weeks,
         showAssigned,
+        createdByMe,
       );
 
       if (!result.success) {
@@ -129,6 +134,7 @@ export function useProgramAssignments(
   weeks?: number,
   pageSize: number = 16,
   showAssigned: boolean = false,
+  createdByMe: boolean = false,
   initialData?: {
     pages: ProgramAssignmentsPage[];
     pageParams: number[];
@@ -139,6 +145,7 @@ export function useProgramAssignments(
     weeks,
     pageSize,
     showAssigned,
+    createdByMe,
     initialData,
   );
 
@@ -166,6 +173,7 @@ export function useDeleteProgramAssignment(
   weeks?: number,
   pageSize: number = 16,
   showAssigned: boolean = false,
+  createdByMe: boolean = false,
 ) {
   const queryClient = useQueryClient();
   const queryKey = programAssignmentsKeys.infinite({
@@ -173,6 +181,7 @@ export function useDeleteProgramAssignment(
     weeks,
     pageSize,
     showAssigned,
+    createdByMe,
   });
 
   return useMutation({
@@ -238,6 +247,7 @@ export function useCloneProgramAssignment(
   weeks?: number,
   pageSize: number = 16,
   showAssigned: boolean = false,
+  createdByMe: boolean = false,
 ) {
   const queryClient = useQueryClient();
   const queryKey = programAssignmentsKeys.infinite({
@@ -245,6 +255,7 @@ export function useCloneProgramAssignment(
     weeks,
     pageSize,
     showAssigned,
+    createdByMe,
   });
 
   return useMutation({

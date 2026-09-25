@@ -13,7 +13,10 @@ import { useRouter } from 'next/navigation';
 import { HtmlSearchField } from '@/app/(authenticated)/groups/partials/html-search-field';
 import { HtmlTableFooter } from '@/app/(authenticated)/groups/partials/html-table-footer';
 import { HtmlRowMenu } from '../partials/html-toolbar';
-import { builderWorkoutHref, formatRelativeEdited } from '../partials/html-utils';
+import {
+  builderWorkoutHref,
+  formatRelativeEdited,
+} from '../partials/html-utils';
 import {
   useCloneProgramAssignment,
   useDeleteProgramAssignment,
@@ -32,6 +35,7 @@ interface ProgramBuilderProps {
   };
   showCreateForm?: boolean;
   onCreateFormClose?: () => void;
+  onListedTotalChange?: (total: number) => void;
 }
 
 function ProgramTableRow({
@@ -72,13 +76,18 @@ function ProgramTableRow({
               width: 38,
               height: 38,
               borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(140deg, var(--navy-800), var(--navy-600))',
+              background:
+                'linear-gradient(140deg, var(--navy-800), var(--navy-600))',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon name="Dumbbell" size={18} style={{ color: 'rgba(255,255,255,.9)' }} />
+            <Icon
+              name="Dumbbell"
+              size={18}
+              style={{ color: 'rgba(255,255,255,.9)' }}
+            />
           </span>
           <span style={{ minWidth: 0 }}>
             <span className="row" style={{ gap: 7 }}>
@@ -88,19 +97,31 @@ function ProgramTableRow({
               {isTemplate ? <span className="bdg bdg-b">Template</span> : null}
             </span>
             {template.goals ? (
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+              <span
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-muted)',
+                }}
+              >
                 {template.goals}
               </span>
             ) : null}
             {assignment.profiles?.email ? (
               <span
                 className="row"
-                style={{ gap: 4, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}
+                style={{
+                  gap: 4,
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-muted)',
+                }}
               >
                 Assigned to
                 <a
                   href={`/users/${assignment.profiles.id}`}
-                  style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+                  style={{
+                    color: 'var(--primary)',
+                    textDecoration: 'underline',
+                  }}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -116,7 +137,10 @@ function ProgramTableRow({
         </div>
       </td>
       <td>
-        <span className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-body)' }}>
+        <span
+          className="mono"
+          style={{ fontSize: 'var(--text-sm)', color: 'var(--text-body)' }}
+        >
           {weeksLabel}
         </span>
       </td>
@@ -195,6 +219,7 @@ export function ProgramBuilder({
   initialData,
   showCreateForm: showCreateFormProp = false,
   onCreateFormClose,
+  onListedTotalChange,
 }: ProgramBuilderProps): React.ReactElement {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -203,10 +228,11 @@ export function ProgramBuilder({
   const showCreateForm = showCreateFormProp || showCreateFormLocal;
   const [listPage, setListPage] = useState(1);
   const [showAssigned, setShowAssigned] = useState(false);
+  const [createdByMe, setCreatedByMe] = useState(true);
   const pageSize = 21;
 
   const debouncedSearch = useDebounce(searchValue, 300);
-  const shouldUseInitialData = !debouncedSearch && !showAssigned;
+  const shouldUseInitialData = !debouncedSearch && !showAssigned && createdByMe;
 
   const {
     assignments,
@@ -220,6 +246,7 @@ export function ProgramBuilder({
     undefined,
     pageSize,
     showAssigned,
+    createdByMe,
     shouldUseInitialData ? initialData : undefined,
   );
 
@@ -246,18 +273,22 @@ export function ProgramBuilder({
     undefined,
     pageSize,
     showAssigned,
+    createdByMe,
   );
   const deleteMutation = useDeleteProgramAssignment(
     debouncedSearch,
     undefined,
     pageSize,
     showAssigned,
+    createdByMe,
   );
-  const [deleteTarget, setDeleteTarget] = useState<ProgramAssignmentWithTemplate | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<ProgramAssignmentWithTemplate | null>(null);
 
   const deleteTargetName = deleteTarget?.program_template?.name ?? '';
   const deleteTargetMembers =
-    deleteTarget?.program_template?.id && memberStatsByTemplate[deleteTarget.program_template.id]
+    deleteTarget?.program_template?.id &&
+    memberStatsByTemplate[deleteTarget.program_template.id]
       ? (memberStatsByTemplate[deleteTarget.program_template.id].members ?? 0)
       : 0;
   const deleteTargetDescription = [
@@ -272,7 +303,8 @@ export function ProgramBuilder({
     .filter(Boolean)
     .join(' ');
 
-  const visibleRangeStart = totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
+  const visibleRangeStart =
+    totalCount === 0 ? 0 : (safeListPage - 1) * pageSize + 1;
   const visibleRangeEnd = Math.min(safeListPage * pageSize, totalCount);
 
   const handleRowClick = (assignment: ProgramAssignmentWithTemplate): void => {
@@ -307,13 +339,23 @@ export function ProgramBuilder({
     prefetchTriggeredRef.current = false;
   }, []);
 
+  const handleCreatedByMeChange = useCallback((value: boolean): void => {
+    setCreatedByMe(value);
+    setListPage(1);
+    prefetchTriggeredRef.current = false;
+  }, []);
+
   const handlePageChange = useCallback((nextPage: number): void => {
     setListPage(nextPage);
   }, []);
 
   useEffect(() => {
     const neededCount = safeListPage * pageSize;
-    if (assignments.length < neededCount && hasNextPage && !isFetchingNextPage) {
+    if (
+      assignments.length < neededCount &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
       void fetchNextPage();
     }
   }, [
@@ -332,12 +374,14 @@ export function ProgramBuilder({
       debouncedSearch,
       undefined,
       pageSize,
-      false,
+      showAssigned,
+      createdByMe,
     );
 
     const handleScroll = (): void => {
       const scrollProgress =
-        (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
+        (window.scrollY + window.innerHeight) /
+        document.documentElement.scrollHeight;
 
       if (scrollProgress > 0.8 && !prefetchTriggeredRef.current) {
         prefetchTriggeredRef.current = true;
@@ -360,7 +404,15 @@ export function ProgramBuilder({
     queryClient,
     debouncedSearch,
     pageSize,
+    showAssigned,
+    createdByMe,
   ]);
+
+  useEffect(() => {
+    if (data?.pages[0]) {
+      onListedTotalChange?.(data.pages[0].total);
+    }
+  }, [data, onListedTotalChange]);
 
   return (
     <>
@@ -377,6 +429,21 @@ export function ProgramBuilder({
           value={searchValue}
           onChange={handleSearchChange}
         />
+        <span className="sel">
+          <select
+            aria-label="Creator"
+            value={createdByMe ? 'me' : 'all'}
+            onChange={(event) =>
+              handleCreatedByMeChange(event.target.value === 'me')
+            }
+          >
+            <option value="me">Created by me</option>
+            <option value="all">All creators</option>
+          </select>
+          <span className="ci">
+            <Icon name="ChevronDown" size={16} />
+          </span>
+        </span>
         <span className="seg">
           <button
             type="button"
@@ -409,18 +476,40 @@ export function ProgramBuilder({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
-                  <span className="row" style={{ gap: 8, justifyContent: 'center' }}>
-                    <Icon name="LoaderCircle" size={18} className="animate-spin" />
+                <td
+                  colSpan={5}
+                  style={{ textAlign: 'center', padding: '24px 0' }}
+                >
+                  <span
+                    className="row"
+                    style={{ gap: 8, justifyContent: 'center' }}
+                  >
+                    <Icon
+                      name="LoaderCircle"
+                      size={18}
+                      className="animate-spin"
+                    />
                     Loading programs…
                   </span>
                 </td>
               </tr>
             ) : assignments.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                    {debouncedSearch ? 'No programs found matching your search.' : 'No programs available.'}
+                <td
+                  colSpan={5}
+                  style={{ textAlign: 'center', padding: '24px 0' }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {debouncedSearch
+                      ? 'No programs found matching your search.'
+                      : createdByMe
+                        ? 'No programs created by you.'
+                        : 'No programs available.'}
                   </span>
                 </td>
               </tr>
@@ -464,9 +553,18 @@ export function ProgramBuilder({
       </div>
 
       {isFetchingNextPage ? (
-        <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}>
-          <Icon name="LoaderCircle" size={18} className="animate-spin text-[var(--primary)]" />
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+        <div
+          className="row"
+          style={{ justifyContent: 'center', gap: 8, marginTop: 16 }}
+        >
+          <Icon
+            name="LoaderCircle"
+            size={18}
+            className="animate-spin text-[var(--primary)]"
+          />
+          <span
+            style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}
+          >
             Loading more programs…
           </span>
         </div>
@@ -477,7 +575,11 @@ export function ProgramBuilder({
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={deleteTargetName ? `Delete “${deleteTargetName}”?` : 'Delete template?'}
+        title={
+          deleteTargetName
+            ? `Delete “${deleteTargetName}”?`
+            : 'Delete template?'
+        }
         description={deleteTargetDescription}
         confirmText={deleteTargetName || undefined}
         onConfirm={async () => {

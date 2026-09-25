@@ -28,13 +28,14 @@ export function ProgramsUI({
   templateTotal,
 }: ProgramsUIProps): React.ReactElement {
   const [createRequested, setCreateRequested] = useState(false);
+  const [listedTotal, setListedTotal] = useState(templateTotal);
 
   return (
     <>
       <AppBar
         crumbs={[{ label: 'Programs' }]}
         title="Programs"
-        subtitle={`${templateTotal} template${templateTotal === 1 ? '' : 's'} · active member programs`}
+        subtitle={`${listedTotal} template${listedTotal === 1 ? '' : 's'} · active member programs`}
         actions={
           <>
             <button
@@ -49,11 +50,14 @@ export function ProgramsUI({
         }
       />
       <div className="body">
-        {preProgramAssignment ? <PreProgramCard assignment={preProgramAssignment} /> : null}
+        {preProgramAssignment ? (
+          <PreProgramCard assignment={preProgramAssignment} />
+        ) : null}
         <ProgramBuilder
           initialData={initialData}
           showCreateForm={createRequested}
           onCreateFormClose={() => setCreateRequested(false)}
+          onListedTotalChange={setListedTotal}
         />
       </div>
     </>

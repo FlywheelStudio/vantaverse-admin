@@ -1,14 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-import {
-  defineMutation,
-  defineQuery,
-} from '@/lib/dal';
+import { defineMutation, defineQuery } from '@/lib/dal';
 import type { Database } from '@/lib/supabase/database.types';
 
-import {
-  programTemplateSchema,
-} from '../schemas/program-templates';
+import { programTemplateSchema } from '../schemas/program-templates';
 
 const programTemplateListSchema = programTemplateSchema.array();
 
@@ -89,11 +85,21 @@ export const getProgramTemplateById = defineQuery({
   },
 });
 
+async function resolveAdminCreatorId(
+  client: SupabaseClient<Database>,
+): Promise<string | null> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  return user?.id ?? null;
+}
+
 /** Create program template. */
 export const createProgramTemplate = defineMutation({
   inputSchema: createProgramTemplateInputSchema,
   schema: programTemplateSchema,
   execute: async (client, input) => {
+    const createdBy = await resolveAdminCreatorId(client);
     const { data, error } = await client
       .from('program_template')
       .insert({
@@ -105,6 +111,7 @@ export const createProgramTemplate = defineMutation({
         organization_id: input.organizationId || null,
         active: true,
         image_url: input.imageUrl ? { image_url: input.imageUrl } : null,
+        created_by: createdBy,
       })
       .select()
       .single();
@@ -114,7 +121,10 @@ export const createProgramTemplate = defineMutation({
     }
 
     if (!data) {
-      return { data: null, error: { message: 'Failed to create program template' } };
+      return {
+        data: null,
+        error: { message: 'Failed to create program template' },
+      };
     }
 
     return { data, error: null };
@@ -145,12 +155,18 @@ export const updateProgramTemplate = defineMutation({
     }
 
     if (!data) {
-      return { data: null, error: { message: 'Failed to update program template' } };
+      return {
+        data: null,
+        error: { message: 'Failed to update program template' },
+      };
     }
 
     return { data, error: null };
   },
-  targets: (input) => [programTemplateKeys.all, programTemplateKeys.detail(input.id)],
+  targets: (input) => [
+    programTemplateKeys.all,
+    programTemplateKeys.detail(input.id),
+  ],
 });
 
 /** Delete program template. */
@@ -171,4 +187,3 @@ export const deleteProgramTemplate = defineMutation({
   },
   targets: () => [programTemplateKeys.all],
 });
-

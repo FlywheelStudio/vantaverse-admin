@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import toast from 'react-hot-toast';
 import { Icon } from '@/components/medvanta';
 import { AppBar } from '@/components/medvanta/shell';
+import { AssignmentSubtitle } from '../partials/assignment-subtitle';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useQueryClient } from '@tanstack/react-query';
@@ -96,6 +97,14 @@ export function ReviewAssignUI({
   const [showPropagateDialog, setShowPropagateDialog] = useState(false);
   const [isQuickAssignOpen, setIsQuickAssignOpen] = useState(false);
   const [isSaveInFlight, setIsSaveInFlight] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      setShowDerivedDialog(false);
+      setShowPropagateDialog(false);
+      setIsQuickAssignOpen(false);
+    };
+  }, []);
 
   const isUnassigned =
     status === PROGRAM_ASSIGNMENT_STATUS.TEMPLATE ||
@@ -288,7 +297,9 @@ export function ReviewAssignUI({
           { label: 'Review and assign' },
         ]}
         title={templateName}
-        subtitle={`Template · ${weeks} week${weeks === 1 ? '' : 's'}`}
+        subtitle={
+          <AssignmentSubtitle assignment={programAssignment} weeks={weeks} />
+        }
       />
       <div className="body">
         <BuilderSaveBar

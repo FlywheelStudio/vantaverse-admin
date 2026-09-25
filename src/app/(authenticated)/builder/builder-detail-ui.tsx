@@ -2,6 +2,7 @@
 
 import { AppBar } from '@/components/medvanta/shell';
 import { BuilderContextProvider } from '@/context/builder-context';
+import { AssignmentSubtitle } from './partials/assignment-subtitle';
 import { WorkoutBuilder } from './[id]/workout-schedule/workout-builder';
 import type {
   ProgramAssignmentWithTemplate,
@@ -41,7 +42,9 @@ export function BuilderDetailUI({
           { label: templateName },
         ]}
         title={templateName}
-        subtitle={`Template · ${weeks} week${weeks === 1 ? '' : 's'}`}
+        subtitle={
+          <AssignmentSubtitle assignment={programAssignment} weeks={weeks} />
+        }
       />
       <WorkoutBuilder
         assignmentId={assignmentId}
