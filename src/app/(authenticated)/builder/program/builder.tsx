@@ -27,6 +27,8 @@ import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-di
 import type { ProgramAssignmentWithTemplate } from '@/lib/supabase/schemas/program-assignments';
 import { usePreheat } from '@/hooks/use-preheat';
 
+const WEEK_LENGTH_OPTIONS = [4, 6, 8, 12] as const;
+
 interface ProgramBuilderProps {
   onTemplateSelect?: (assignment: ProgramAssignmentWithTemplate) => void;
   initialData?: {
@@ -96,41 +98,36 @@ function ProgramTableRow({
               </span>
               {isTemplate ? <span className="bdg bdg-b">Template</span> : null}
             </span>
-            {template.goals ? (
-              <span
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {template.goals}
-              </span>
-            ) : null}
-            {assignment.profiles?.email ? (
+            {template.goals || assignment.profiles?.email ? (
               <span
                 className="row"
                 style={{
-                  gap: 4,
+                  gap: 8,
                   fontSize: 'var(--text-xs)',
                   color: 'var(--text-muted)',
                 }}
               >
-                Assigned to
-                <a
-                  href={`/users/${assignment.profiles.id}`}
-                  style={{
-                    color: 'var(--primary)',
-                    textDecoration: 'underline',
-                  }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    router.push(`/users/${assignment.profiles!.id}`);
-                  }}
-                  {...getPreheatHandlers(`/users/${assignment.profiles.id}`)}
-                >
-                  {assignment.profiles.email}
-                </a>
+                {template.goals ? <span>{template.goals}</span> : null}
+                {assignment.profiles?.email ? (
+                  <span className="row" style={{ gap: 4 }}>
+                    Assigned to
+                    <a
+                      href={`/users/${assignment.profiles.id}`}
+                      style={{
+                        color: 'var(--primary)',
+                        textDecoration: 'underline',
+                      }}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        router.push(`/users/${assignment.profiles!.id}`);
+                      }}
+                      {...getPreheatHandlers(`/users/${assignment.profiles.id}`)}
+                    >
+                      {assignment.profiles.email}
+                    </a>
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </span>
@@ -228,11 +225,16 @@ export function ProgramBuilder({
   const showCreateForm = showCreateFormProp || showCreateFormLocal;
   const [listPage, setListPage] = useState(1);
   const [showAssigned, setShowAssigned] = useState(false);
-  const [createdByMe, setCreatedByMe] = useState(true);
+  const [createdByMe, setCreatedByMe] = useState(false);
+  const [weeksFilter, setWeeksFilter] = useState<number | undefined>();
   const pageSize = 21;
 
   const debouncedSearch = useDebounce(searchValue, 300);
-  const shouldUseInitialData = !debouncedSearch && !showAssigned && createdByMe;
+  const shouldUseInitialData =
+    !debouncedSearch &&
+    !showAssigned &&
+    !createdByMe &&
+    weeksFilter === undefined;
 
   const {
     assignments,
@@ -243,7 +245,7 @@ export function ProgramBuilder({
     data,
   } = useProgramAssignments(
     debouncedSearch,
-    undefined,
+    weeksFilter,
     pageSize,
     showAssigned,
     createdByMe,
@@ -270,14 +272,14 @@ export function ProgramBuilder({
 
   const cloneMutation = useCloneProgramAssignment(
     debouncedSearch,
-    undefined,
+    weeksFilter,
     pageSize,
     showAssigned,
     createdByMe,
   );
   const deleteMutation = useDeleteProgramAssignment(
     debouncedSearch,
-    undefined,
+    weeksFilter,
     pageSize,
     showAssigned,
     createdByMe,
@@ -345,6 +347,15 @@ export function ProgramBuilder({
     prefetchTriggeredRef.current = false;
   }, []);
 
+  const handleWeeksFilterChange = useCallback(
+    (value: number | undefined): void => {
+      setWeeksFilter(value);
+      setListPage(1);
+      prefetchTriggeredRef.current = false;
+    },
+    [],
+  );
+
   const handlePageChange = useCallback((nextPage: number): void => {
     setListPage(nextPage);
   }, []);
@@ -372,7 +383,7 @@ export function ProgramBuilder({
 
     const queryOptions = programAssignmentsInfiniteQueryOptions(
       debouncedSearch,
-      undefined,
+      weeksFilter,
       pageSize,
       showAssigned,
       createdByMe,
@@ -406,6 +417,7 @@ export function ProgramBuilder({
     pageSize,
     showAssigned,
     createdByMe,
+    weeksFilter,
   ]);
 
   useEffect(() => {
@@ -437,8 +449,30 @@ export function ProgramBuilder({
               handleCreatedByMeChange(event.target.value === 'me')
             }
           >
-            <option value="me">Created by me</option>
             <option value="all">All creators</option>
+            <option value="me">Created by me</option>
+          </select>
+          <span className="ci">
+            <Icon name="ChevronDown" size={16} />
+          </span>
+        </span>
+        <span className="sel">
+          <select
+            aria-label="Program length"
+            value={weeksFilter ?? 'all'}
+            onChange={(event) => {
+              const next = event.target.value;
+              handleWeeksFilterChange(
+                next === 'all' ? undefined : Number(next),
+              );
+            }}
+          >
+            <option value="all">All lengths</option>
+            {WEEK_LENGTH_OPTIONS.map((weeks) => (
+              <option key={weeks} value={weeks}>
+                {weeks} weeks
+              </option>
+            ))}
           </select>
           <span className="ci">
             <Icon name="ChevronDown" size={16} />
@@ -509,7 +543,9 @@ export function ProgramBuilder({
                       ? 'No programs found matching your search.'
                       : createdByMe
                         ? 'No programs created by you.'
-                        : 'No programs available.'}
+                        : weeksFilter !== undefined
+                          ? `No ${weeksFilter}-week programs available.`
+                          : 'No programs available.'}
                   </span>
                 </td>
               </tr>

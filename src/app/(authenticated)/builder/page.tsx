@@ -13,7 +13,7 @@ export default async function BuilderPage(): Promise<React.ReactElement> {
       undefined,
       undefined,
       false,
-      true,
+      false,
     ),
     getPreProgramTemplate(),
   ]);
